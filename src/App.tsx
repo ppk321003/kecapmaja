@@ -44,6 +44,7 @@ import NotFound from "./pages/NotFound";
 import UsulanPencairan from "./pages/UsulanPencairan";
 import UserManagement from "./pages/UserManagement";
 import Sikostik28 from "./pages/Sikostik28";
+import SikostikDataSeeder from "./pages/SikostikDataSeeder";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,7 @@ const App = () => (
             <Route path="/linkers" element={<ProtectedRoute><Layout><Linkers /></Layout></ProtectedRoute>} />
             <Route path="/user-management" element={<ProtectedRoute><Layout><UserManagement /></Layout></ProtectedRoute>} />
             <Route path="/sikostik28" element={<ProtectedRoute><Layout><Sikostik28 /></Layout></ProtectedRoute>} />
+            <Route path="/sikostik28/seeder" element={<ProtectedRoute><Layout><SikostikDataSeeder /></Layout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
