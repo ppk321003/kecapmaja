@@ -229,7 +229,6 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
       loadHistoryData();
     }
   }, [loadHistoryData]);
-  }, [selectedAnggotaId, selectedTahun]);
 
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
   const bulanNama = bulanOptions.find(b => b.value === selectedBulan)?.label || '';
