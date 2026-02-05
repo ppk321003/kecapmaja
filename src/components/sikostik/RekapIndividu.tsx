@@ -526,6 +526,14 @@ export const RekapIndividu = ({
 
   return (
     <div className="space-y-6">
+      {/* Debug Info Box */}
+      <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs font-mono">
+        <div className="font-bold text-blue-900 mb-2">📊 DEBUG STATE:</div>
+        <div>Period: {selectedBulan}/{selectedTahun} | Selected Member: {selectedAnggotaId || '(none)'}</div>
+        <div>Data Loaded: {anggotaList.length} anggota, {historyData.length} history items</div>
+        <div>Latest: {latestMonthData ? `Bulan ${latestMonthData.bulan}: Rp ${latestMonthData.totalSimpanan}` : 'none'}</div>
+      </div>
+
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Rekap Individu</h1>
