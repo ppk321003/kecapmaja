@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { seedSikostik2026, seedSikostikPeriod } from '@/utils/seed-sikostik-2026';
+import { Loader2, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
+import { seedSikostik2026 } from '@/utils/seed-sikostik-2026';
 
 export default function SikostikDataSeeder() {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,22 +18,7 @@ export default function SikostikDataSeeder() {
       setMessage(result.message);
       setStatus('success');
     } catch (err: any) {
-      setMessage(err.message || 'Failed to seed data');
-      setStatus('error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSeedPeriod = async (bulan: number) => {
-    setIsLoading(true);
-    setStatus('idle');
-    try {
-      const result = await seedSikostikPeriod(bulan, bulan, 2026);
-      setMessage(result.message);
-      setStatus('success');
-    } catch (err: any) {
-      setMessage(err.message || 'Failed to seed period');
+      setMessage(err.message || 'Gagal menambahkan data');
       setStatus('error');
     } finally {
       setIsLoading(false);
@@ -72,7 +57,7 @@ export default function SikostikDataSeeder() {
 
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              Click to populate 2026 data:
+              Klik tombol di bawah untuk menambahkan data 2026:
             </p>
             <Button 
               onClick={handleSeedAll}
@@ -80,44 +65,50 @@ export default function SikostikDataSeeder() {
               className="w-full"
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Seed All 2026 Data (Jan-Dec)
+              Seed Semua Data 2026 (Jan-Des)
             </Button>
-          </div>
-
-          <div className="space-y-2 border-t pt-4">
-            <p className="text-sm text-muted-foreground">
-              Or seed specific months:
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(bulan => (
-                <Button
-                  key={bulan}
-                  onClick={() => handleSeedPeriod(bulan)}
-                  disabled={isLoading}
-                  variant="outline"
-                  size="sm"
-                >
-                  {bulan}
-                </Button>
-              ))}
-            </div>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Manual Alternative</CardTitle>
+          <CardTitle className="text-sm">Alternatif Manual</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>If the seeder doesn't work, you can manually populate the data:</p>
+          <p>Jika seeder tidak bekerja, Anda dapat menambahkan data secara manual:</p>
           <ol className="list-decimal list-inside space-y-1">
-            <li>Open the SIKOSTIK Google Sheet</li>
-            <li>Go to the "rekap_dashboard" sheet</li>
-            <li>Find all rows with 2025 in the periode_tahun column</li>
-            <li>Copy all 2025 data rows</li>
-            <li>Paste them at the end of the sheet</li>
-            <li>In the pasted rows, change all 2025 to 2026 in the periode_tahun column</li>
+            <li>Buka Google Sheet SIKOSTIK 
+              <a 
+                href="https://docs.google.com/spreadsheets/d/1cBuo9tAtpGvKuThvotIQqd9HDvJfF2Hun61oGYhRtHk" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="ml-2 inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+                di sini
+              </a>
+            </li>
+            <li>Ke sheet "rekap_dashboard"</li>
+            <li>Cari semua baris dengan 2025 di kolom periode_tahun</li>
+            <li>Copy semua baris data 2025</li>
+            <li>Paste di akhir sheet</li>
+            <li>Ubah semua nilai 2025 menjadi 2026 di kolom periode_tahun pada baris yang baru dipaste</li>
+            <li>Refresh halaman ini dan coba Rekap Individu</li>
+          </ol>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Informasi</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-2">
+          <p><strong>Masalah 3 yang dilaporkan:</strong></p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li><strong>RekapIndividu 2026 tidak tampil</strong> - Perlu seed data 2026 dulu (jalankan seeder ini)</li>
+            <li><strong>Nama dan NIP tidak lengkap</strong> - Verifikasi data NIP di Google Sheets tidak kosong</li>
+            <li><strong>Total Potongan = 0</strong> - Akan normal setelah data 2026 diseed</li>
           </ol>
         </CardContent>
       </Card>
