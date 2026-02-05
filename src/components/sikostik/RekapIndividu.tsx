@@ -498,6 +498,18 @@ export const RekapIndividu = ({
 
   return (
     <div className="space-y-6">
+      {/* DEBUG CARD */}
+      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-xs font-mono">
+        <div className="text-yellow-900 font-bold mb-2">🐛 DEBUG INFO:</div>
+        <div>selectedAnggotaId: {selectedAnggotaId || '(empty)'}</div>
+        <div>selectedBulan: {selectedBulan}, selectedTahun: {selectedTahun}</div>
+        <div>historyData.length: {historyData.length}</div>
+        <div>historyDisplayData.length: {historyDisplayData.length}</div>
+        <div>latestMonthData: {latestMonthData ? `Bulan ${latestMonthData.bulan}: saldoPiutang=${latestMonthData.saldoPiutang}` : 'null'}</div>
+        <div>cardDisplayData.saldoPiutang: {cardDisplayData.saldoPiutang}</div>
+        <div>cardDisplayData.totalSimpanan: {cardDisplayData.totalSimpanan}</div>
+      </div>
+
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Rekap Individu</h1>
