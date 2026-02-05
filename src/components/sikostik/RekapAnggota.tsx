@@ -96,7 +96,6 @@ export const RekapAnggota = ({
       onSelectMember(anggotaId);
     }
   };
-  };
 
   // Handle period change
   const handleBulanChange = (bulan: number) => {
