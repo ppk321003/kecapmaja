@@ -90,7 +90,7 @@ export default function Linkers() {
           .filter((row: any[]) => row[0]) // Filter out empty rows
           .map((row: any[], idx: number) => ({
             id: idx.toString(),
-            originalRowIndex: idx + 2,
+            originalRowIndex: idx + 2, // Store original row index in sheet (1-indexed, +2 for header)
             judul: row[0] || "",
             deskripsi: row[1] || "",
             link: row[2] || "",
