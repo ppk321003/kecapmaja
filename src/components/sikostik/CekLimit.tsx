@@ -23,7 +23,7 @@ export const CekLimit = ({
   selectedTahun?: number;
   onPeriodChange?: (bulan: number, tahun: number) => void;
 }) => {
-  const { loading, error, fetchLimitAnggota } = useSikostikData();
+  const { loading, error, fetchRekapDashboard } = useSikostikData();
   const currentPeriod = getCurrentPeriod();
   const [searchQuery, setSearchQuery] = useState('');
   const [limitData, setLimitData] = useState<LimitAnggota[]>([]);
@@ -48,11 +48,38 @@ export const CekLimit = ({
     }
   }, [propSelectedTahun]);
 
+  // Load period-specific data
   const loadData = async () => {
     setIsLoading(true);
-    const data = await fetchLimitAnggota();
-    setLimitData(data);
-    setIsLoading(false);
+    try {
+      console.log('CekLimit: loading period-specific data for bulan=', selectedBulan, 'tahun=', selectedTahun);
+      const rekapData = await fetchRekapDashboard(selectedBulan, selectedTahun);
+      console.log('CekLimit: loaded', rekapData.length, 'members for period');
+      
+      // Convert RekapDashboard to LimitAnggota format with period-specific calculations
+      const convertedData: LimitAnggota[] = rekapData.map(rekap => {
+        const limitPinjaman = Math.max(0, rekap.totalSimpanan * 1.3);
+        const sisaLimit = Math.max(0, limitPinjaman - rekap.saldoPiutang);
+        
+        return {
+          anggotaId: rekap.anggotaId,
+          nama: rekap.nama,
+          nip: rekap.nip,
+          totalSimpanan: rekap.totalSimpanan,
+          totalPinjamanKumulatif: rekap.saldoPiutang,
+          saldoPiutang: rekap.saldoPiutang,
+          limitPinjaman,
+          sisaLimit,
+          cicilanPokok: rekap.cicilanPokok
+        };
+      });
+      
+      setLimitData(convertedData);
+    } catch (err) {
+      console.error('CekLimit: Error loading data:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handle period change
@@ -70,9 +97,10 @@ export const CekLimit = ({
     }
   };
 
+  // Load/reload data when period changes
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedBulan, selectedTahun]);
 
   const enrichedData = useMemo(() => {
     return limitData.map((member) => {
@@ -270,6 +298,7 @@ export const CekLimit = ({
         <CardHeader>
           <CardTitle className="text-lg">Data Limit Pinjaman Anggota</CardTitle>
           <CardDescription>
+            Periode: <span className="font-semibold">{formatPeriode(selectedBulan, selectedTahun)}</span> • 
             {filteredData.length} anggota ditampilkan • 
             <span className="ml-2 text-sm">
               Diurutkan berdasarkan: 
