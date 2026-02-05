@@ -490,7 +490,7 @@ export const RekapIndividu = ({
   // For card display: use latest month data (period-specific) instead of aggregate limit data
   const cardDisplayData = useMemo(() => {
     // Use latest month data for ALL card values (these are period-specific, not aggregate)
-    if (latestMonthData) {
+    if (latestMonthData && (latestMonthData.totalSimpanan > 0 || latestMonthData.saldoPiutang > 0)) {
       const totalSimpanan = latestMonthData.totalSimpanan;
       const saldoPiutang = latestMonthData.saldoPiutang;
       const limitPinjaman = Math.max(0, totalSimpanan * 1.3); // Limit = Total Simpanan × 1.3
@@ -500,14 +500,15 @@ export const RekapIndividu = ({
         selectedAnggotaId,
         selectedBulan,
         selectedTahun,
+        source: 'latestMonthData',
         latestMonth: { bulan: latestMonthData.bulan, tahun: latestMonthData.tahun },
         cardDisplayData: { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit }
       });
       
-      return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit };
+      return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit, source: 'period' };
     }
     
-    // Fallback to aggregate limit data if no latest month data
+    // Fallback to aggregate limit data if no period-specific data available
     const totalSimpanan = safeLimit.totalSimpanan;
     const saldoPiutang = safeLimit.saldoPiutang;
     const limitPinjaman = safeLimit.limitPinjaman;
@@ -517,11 +518,12 @@ export const RekapIndividu = ({
       selectedAnggotaId,
       selectedBulan,
       selectedTahun,
-      latestMonthData: 'null - using aggregate data',
+      source: 'aggregate',
+      latestMonthData: latestMonthData ? { bulan: latestMonthData.bulan, totalSimpanan: latestMonthData.totalSimpanan, saldoPiutang: latestMonthData.saldoPiutang } : 'null - using fallback',
       cardDisplayData: { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit }
     });
     
-    return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit };
+    return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit, source: 'aggregate' };
   }, [latestMonthData, safeLimit, selectedAnggotaId, selectedBulan, selectedTahun]);
 
   return (
@@ -563,10 +565,21 @@ export const RekapIndividu = ({
       </div>
 
       {!member ? (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>Pilih anggota untuk melihat data rekap individu.</AlertDescription>
-        </Alert>
+        <div className="space-y-4">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {selectedAnggotaId === '' 
+                ? 'Pilih anggota untuk melihat data rekap individu.' 
+                : `Anggota dengan ID "${selectedAnggotaId}" tidak ditemukan. Pastikan data sudah dimuat.`}
+            </AlertDescription>
+          </Alert>
+          {dataLoaded && anggotaList.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Available members: {anggotaList.filter(m => m.status === 'Aktif').map(m => m.nama).join(', ')}
+            </p>
+          )}
+        </div>
       ) : (
         <>
           <Card className="overflow-hidden">
@@ -665,6 +678,17 @@ export const RekapIndividu = ({
                 </div>
               </div>
             </CardContent>
+            
+            {cardDisplayData.source === 'aggregate' && (
+              <CardContent className="pt-0">
+                <Alert className="bg-yellow-50 border-yellow-200">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-900 text-xs">
+                    Nilai ditampilkan dari data agregat (semua periode). Data spesifik untuk periode {selectedBulan}/{selectedTahun} tidak ditemukan.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            )}
             
             {showDetail && (
               <>
