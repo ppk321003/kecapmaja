@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,21 +21,16 @@ export const CekLimit = ({ onSelectMember }: { onSelectMember?: (anggotaId: stri
     direction: 'asc' | 'desc';
   }>({ key: 'nama', direction: 'asc' });
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     setIsLoading(true);
-    try {
-      const data = await fetchLimitAnggota();
-      setLimitData(data);
-    } catch (err) {
-      console.error('Failed to load limit data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchLimitAnggota]);
+    const data = await fetchLimitAnggota();
+    setLimitData(data);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, []);
 
   const enrichedData = useMemo(() => {
     return limitData.map((member) => {
