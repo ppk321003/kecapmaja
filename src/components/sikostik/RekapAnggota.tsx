@@ -12,7 +12,17 @@ import { useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunO
 import { RekapDashboard } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
 
-export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: string) => void }) => {
+export const RekapAnggota = ({ 
+  onSelectMember,
+  selectedBulan: propSelectedBulan,
+  selectedTahun: propSelectedTahun,
+  onPeriodChange
+}: { 
+  onSelectMember?: (anggotaId: string) => void;
+  selectedBulan?: number;
+  selectedTahun?: number;
+  onPeriodChange?: (bulan: number, tahun: number) => void;
+}) => {
   const {
     loading,
     error,
@@ -21,10 +31,23 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
 
   const currentPeriod = getCurrentPeriod();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
-  const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
+  const [selectedBulan, setSelectedBulan] = useState(propSelectedBulan !== undefined ? propSelectedBulan : currentPeriod.bulan);
+  const [selectedTahun, setSelectedTahun] = useState(propSelectedTahun !== undefined ? propSelectedTahun : currentPeriod.tahun);
   const [rekapData, setRekapData] = useState<RekapDashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Update period from props
+  useEffect(() => {
+    if (propSelectedBulan !== undefined) {
+      setSelectedBulan(propSelectedBulan);
+    }
+  }, [propSelectedBulan]);
+
+  useEffect(() => {
+    if (propSelectedTahun !== undefined) {
+      setSelectedTahun(propSelectedTahun);
+    }
+  }, [propSelectedTahun]);
 
   // Load data function - stable reference
   const loadData = async () => {
@@ -74,6 +97,21 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
     }
   };
 
+  // Handle period change
+  const handleBulanChange = (bulan: number) => {
+    setSelectedBulan(bulan);
+    if (onPeriodChange) {
+      onPeriodChange(bulan, selectedTahun);
+    }
+  };
+
+  const handleTahunChange = (tahun: number) => {
+    setSelectedTahun(tahun);
+    if (onPeriodChange) {
+      onPeriodChange(selectedBulan, tahun);
+    }
+  };
+
   // Loading skeleton
   if (isLoading && rekapData.length === 0) {
     return <div className="space-y-6">
@@ -98,13 +136,13 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Cari nama anggota..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
         </div>
-        <Select value={selectedBulan.toString()} onValueChange={v => setSelectedBulan(parseInt(v))}>
+        <Select value={selectedBulan.toString()} onValueChange={v => handleBulanChange(parseInt(v))}>
           <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {bulanOptions.map(b => <SelectItem key={b.value} value={b.value.toString()}>{b.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={selectedTahun.toString()} onValueChange={v => setSelectedTahun(parseInt(v))}>
+        <Select value={selectedTahun.toString()} onValueChange={v => handleTahunChange(parseInt(v))}>
           <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {getTahunOptions().map(t => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}

@@ -7,6 +7,7 @@ import { CekLimit } from '@/components/sikostik/CekLimit';
 import { UsulPinjaman } from '@/components/sikostik/UsulPinjaman';
 import { UsulPerubahan } from '@/components/sikostik/UsulPerubahan';
 import { UsulPengambilan } from '@/components/sikostik/UsulPengambilan';
+import { getCurrentPeriod } from '@/hooks/use-sikostik-data';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +15,9 @@ import { useNavigate } from 'react-router-dom';
 const Sikostik28 = () => {
   const [activeTab, setActiveTab] = useState('rekap-anggota');
   const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>('');
+  const currentPeriod = getCurrentPeriod();
+  const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
+  const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -72,15 +76,15 @@ const Sikostik28 = () => {
         </TabsList>
 
         <TabsContent value="rekap-anggota">
-          <RekapAnggota onSelectMember={handleSelectMember} />
+          <RekapAnggota onSelectMember={handleSelectMember} selectedBulan={selectedBulan} selectedTahun={selectedTahun} onPeriodChange={(b, t) => { setSelectedBulan(b); setSelectedTahun(t); }} />
         </TabsContent>
 
         <TabsContent value="rekap-individu">
-          <RekapIndividu selectedAnggotaId={selectedAnggotaId} />
+          <RekapIndividu selectedAnggotaId={selectedAnggotaId} selectedBulan={selectedBulan} selectedTahun={selectedTahun} />
         </TabsContent>
 
         <TabsContent value="cek-limit">
-          <CekLimit onSelectMember={handleSelectMember} />
+          <CekLimit onSelectMember={handleSelectMember} selectedBulan={selectedBulan} selectedTahun={selectedTahun} onPeriodChange={(b, t) => { setSelectedBulan(b); setSelectedTahun(t); }} />
         </TabsContent>
 
         <TabsContent value="usul-pinjaman">
