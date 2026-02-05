@@ -33,15 +33,11 @@ const Sikostik28 = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between bg-background p-4 rounded-xl shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Sikostik28
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Sistem Informasi Koperasi Statistik — Simpan Pinjam Anggota
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Sikostik28</h1>
+        <p className="text-muted-foreground">
+          Sistem Koperasi Statistik - Pengelolaan simpan pinjam anggota
+        </p>
       </div>
 
       {/* Tabs */}
