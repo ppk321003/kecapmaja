@@ -245,12 +245,31 @@ export const useSikostikData = () => {
       }
       const period = { bulan: bulan || getCurrentPeriod().bulan, tahun: tahun || getCurrentPeriod().tahun };
       
-      return data
-        .filter((row: any) => {
-          const rowBulan = parseInt(row.periodeBulan || row.bulan || 0);
-          const rowTahun = parseInt(row.periodeTahun || row.tahun || 0);
-          return rowBulan === period.bulan && rowTahun === period.tahun;
-        })
+      // Filter by period
+      const filteredByPeriod = data.filter((row: any) => {
+        const rowBulan = parseInt(row.periodeBulan || row.bulan || 0);
+        const rowTahun = parseInt(row.periodeTahun || row.tahun || 0);
+        return rowBulan === period.bulan && rowTahun === period.tahun;
+      });
+
+      // Deduplicate by anggotaId: prioritize entries with NIP
+      const deduplicatedMap = new Map<string, any>();
+      
+      filteredByPeriod.forEach((row: any) => {
+        const anggotaId = row.anggotaId || row.id || '';
+        if (!anggotaId) return;
+        
+        const existing = deduplicatedMap.get(anggotaId);
+        const hasNip = row.nip && String(row.nip).trim() !== '';
+        
+        // Keep the entry with NIP, or if both have/don't have NIP, keep existing (first occurrence)
+        if (!existing || (!existing.nip && hasNip)) {
+          deduplicatedMap.set(anggotaId, row);
+        }
+      });
+
+      // Convert map back to array and map to RekapDashboard objects
+      return Array.from(deduplicatedMap.values())
         .map((row: any, index: number) => ({
           no: index + 1,
           anggotaId: row.anggotaId || row.id || '',
