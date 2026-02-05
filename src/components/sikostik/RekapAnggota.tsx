@@ -11,13 +11,14 @@ import { Search, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunOptions, getCurrentPeriod, formatNIP } from '@/hooks/use-sikostik-data';
 import { RekapDashboard } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
+
 export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: string) => void }) => {
   const {
     loading,
     error,
-    fetchRekapDashboard,
-    userSheetId
+    fetchRekapDashboard
   } = useSikostikData();
+
   const currentPeriod = getCurrentPeriod();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
@@ -25,21 +26,24 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
   const [rekapData, setRekapData] = useState<RekapDashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
+  // Load data function - stable reference
+  const loadData = async () => {
     setIsLoading(true);
     try {
       const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
+      console.log('RekapAnggota loaded data:', data.length, 'records');
       setRekapData(data);
     } catch (err) {
       console.error('Failed to load rekap data:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [fetchRekapDashboard, selectedBulan, selectedTahun]);
+  };
 
+  // Initial load and period change
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [selectedBulan, selectedTahun]);
 
   // Filter only active members
   const activeMembers = useMemo(() => {
@@ -51,7 +55,16 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
     if (!searchQuery.trim()) return activeMembers;
     return activeMembers.filter(member => member.nama.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [activeMembers, searchQuery]);
+
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
+
+  // Handle member click navigation
+  const handleMemberClick = (anggotaId: string) => {
+    console.log('RekapAnggota: clicking member', anggotaId);
+    if (onSelectMember) {
+      onSelectMember(anggotaId);
+    }
+  };
 
   // Loading skeleton
   if (isLoading && rekapData.length === 0) {
@@ -60,6 +73,7 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
         <Skeleton className="h-[400px] w-full" />
       </div>;
   }
+
   return <div className="space-y-6">
       {/* Error Alert */}
       {error && <Alert variant="destructive">
@@ -88,7 +102,7 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
             {getTahunOptions().map(t => <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
+        <Button variant="outline" size="icon" onClick={() => loadData()} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
       </div>
@@ -124,15 +138,16 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((member, index) => <TableRow key={member.anggotaId} className={cn(index % 2 === 1 && 'bg-muted/30')}>
+                {filteredData.map((member, index) => (
+                  <TableRow key={member.anggotaId || index} className={cn(index % 2 === 1 && 'bg-muted/30')}>
                     <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell>
                       <div 
-                        className="cursor-pointer hover:text-primary transition-colors"
-                        onClick={() => onSelectMember?.(member.anggotaId)}
+                        className="cursor-pointer hover:text-primary transition-colors group"
+                        onClick={() => handleMemberClick(member.anggotaId)}
                       >
-                        <p className="font-medium hover:underline">{member.nama}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{formatNIP(member.nip)}</p>
+                        <p className="font-medium group-hover:underline">{member.nama || '-'}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{member.nip ? formatNIP(member.nip) : '-'}</p>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(member.saldoAkhirbulanPokok)}</TableCell>
@@ -146,7 +161,8 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
                         {formatCurrency(member.saldoPiutang)}
                       </span>
                     </TableCell>
-                  </TableRow>)}
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
