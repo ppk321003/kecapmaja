@@ -288,23 +288,32 @@ export const RekapIndividu = ({
   const bulanNama = bulanOptions.find(b => b.value === selectedBulan)?.label || '';
 
   const memberData = useMemo(() => {
+    if (!selectedAnggotaId) {
+      console.log('RekapIndividu memberData: selectedAnggotaId is empty');
+      return { member: null, limit: null, rekap: null, nipInfo: null };
+    }
+    
     const member = anggotaList.find(m => m.id === selectedAnggotaId || m.kodeAnggota === selectedAnggotaId);
     const limit = limitList.find(l => l.anggotaId === selectedAnggotaId);
     const rekap = rekapList.find(r => r.anggotaId === selectedAnggotaId);
     const nipInfo = member ? parseNIP(member.nip) : null;
     
-    if (selectedAnggotaId) {
-      console.log('RekapIndividu memberData lookup:', { 
-        selectedAnggotaId, 
-        foundMember: !!member,
-        memberName: member?.nama,
-        foundLimit: !!limit,
-        foundRekap: !!rekap,
-        rekapListLength: rekapList.length,
-        rekapPeriode: rekap ? { bulan: rekap.periodeBulan, tahun: rekap.periodeTahun } : 'N/A',
-        rekapCicilan: rekap?.cicilanPokok,
-      });
-    }
+    console.log('RekapIndividu memberData lookup:', { 
+      selectedAnggotaId,
+      anggotaListLength: anggotaList.length,
+      limitListLength: limitList.length,
+      rekapListLength: rekapList.length,
+      foundMember: !!member,
+      memberName: member?.nama,
+      memberId: member?.id,
+      memberKodeAnggota: member?.kodeAnggota,
+      foundLimit: !!limit,
+      foundRekap: !!rekap,
+      rekapPeriode: rekap ? { bulan: rekap.periodeBulan, tahun: rekap.periodeTahun } : 'N/A',
+      rekapCicilan: rekap?.cicilanPokok,
+      // Show first few anggota for debugging
+      firstAnggota: anggotaList.slice(0, 2).map(m => ({ id: m.id, kodeAnggota: m.kodeAnggota, nama: m.nama }))
+    });
     
     return { member, limit, rekap, nipInfo };
   }, [selectedAnggotaId, anggotaList, limitList, rekapList]);
@@ -478,29 +487,42 @@ export const RekapIndividu = ({
     simpananLainnya: 0, totalSimpanan: 0, biayaOperasional: 0, cicilanPokok: 0, saldoPiutang: 0 
   };
 
-  // For card display: use latest month data if available, otherwise use limit data
+  // For card display: use latest month data (period-specific) instead of aggregate limit data
   const cardDisplayData = useMemo(() => {
-    // Always use limit data for these (aggregate across entire history)
+    // Use latest month data for ALL card values (these are period-specific, not aggregate)
+    if (latestMonthData) {
+      const totalSimpanan = latestMonthData.totalSimpanan;
+      const saldoPiutang = latestMonthData.saldoPiutang;
+      const limitPinjaman = Math.max(0, totalSimpanan * 1.3); // Limit = Total Simpanan × 1.3
+      const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
+      
+      console.log('RekapIndividu cardDisplayData (from latestMonthData):', {
+        selectedAnggotaId,
+        selectedBulan,
+        selectedTahun,
+        latestMonth: { bulan: latestMonthData.bulan, tahun: latestMonthData.tahun },
+        cardDisplayData: { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit }
+      });
+      
+      return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit };
+    }
+    
+    // Fallback to aggregate limit data if no latest month data
     const totalSimpanan = safeLimit.totalSimpanan;
+    const saldoPiutang = safeLimit.saldoPiutang;
     const limitPinjaman = safeLimit.limitPinjaman;
     const sisaLimit = safeLimit.sisaLimit;
     
-    // Use latest month data for saldoPiutang (current state)
-    const saldoPiutang = latestMonthData?.saldoPiutang ?? safeLimit.saldoPiutang;
-    
-    // DEBUG: Log card data
-    console.log('RekapIndividu cardDisplayData DEBUG:', {
+    console.log('RekapIndividu cardDisplayData (fallback to aggregate):', {
       selectedAnggotaId,
       selectedBulan,
       selectedTahun,
-      historyDisplayDataLength: historyDisplayData.length,
-      latestMonthData: latestMonthData ? { bulan: latestMonthData.bulan, tahun: latestMonthData.tahun, saldoPiutang: latestMonthData.saldoPiutang } : 'null',
-      safeLimit,
+      latestMonthData: 'null - using aggregate data',
       cardDisplayData: { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit }
     });
     
     return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit };
-  }, [safeLimit, latestMonthData, selectedAnggotaId, selectedBulan, selectedTahun, historyDisplayData.length]);
+  }, [latestMonthData, safeLimit, selectedAnggotaId, selectedBulan, selectedTahun]);
 
   return (
     <div className="space-y-6">
