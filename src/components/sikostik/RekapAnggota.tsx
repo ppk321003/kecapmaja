@@ -91,10 +91,11 @@ export const RekapAnggota = ({
 
   // Handle member click navigation
   const handleMemberClick = (anggotaId: string) => {
-    console.log('RekapAnggota: clicking member', anggotaId);
+    console.log('RekapAnggota: clicking member', anggotaId, 'type:', typeof anggotaId);
     if (onSelectMember) {
       onSelectMember(anggotaId);
     }
+  };
   };
 
   // Handle period change

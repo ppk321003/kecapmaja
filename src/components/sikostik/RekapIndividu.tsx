@@ -51,7 +51,15 @@ interface HistoryData {
   saldoPiutang: number;
 }
 
-export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { selectedAnggotaId?: string }) => {
+export const RekapIndividu = ({ 
+  selectedAnggotaId: propSelectedAnggotaId,
+  selectedBulan: propSelectedBulan,
+  selectedTahun: propSelectedTahun
+}: { 
+  selectedAnggotaId?: string;
+  selectedBulan?: number;
+  selectedTahun?: number;
+}) => {
   const { loading, error, fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard } = useSikostikData();
   const currentPeriod = getCurrentPeriod();
   
@@ -61,8 +69,8 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
   const [historyData, setHistoryData] = useState<HistoryData[]>([]);
   
   const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>(propSelectedAnggotaId || '');
-  const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
-  const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
+  const [selectedBulan, setSelectedBulan] = useState(propSelectedBulan !== undefined ? propSelectedBulan : currentPeriod.bulan);
+  const [selectedTahun, setSelectedTahun] = useState(propSelectedTahun !== undefined ? propSelectedTahun : currentPeriod.tahun);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
@@ -77,6 +85,19 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
       setSelectedAnggotaId(propSelectedAnggotaId);
     }
   }, [propSelectedAnggotaId]);
+
+  // Update period when props change
+  useEffect(() => {
+    if (propSelectedBulan !== undefined) {
+      setSelectedBulan(propSelectedBulan);
+    }
+  }, [propSelectedBulan]);
+
+  useEffect(() => {
+    if (propSelectedTahun !== undefined) {
+      setSelectedTahun(propSelectedTahun);
+    }
+  }, [propSelectedTahun]);
 
   // Load initial data - master anggota and limit data
   const loadInitialData = useCallback(async () => {
@@ -121,8 +142,12 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
 
   // Load history data for selected member and year
   const loadHistoryData = useCallback(async () => {
-    if (!selectedAnggotaId || !selectedTahun) return;
+    if (!selectedAnggotaId || !selectedTahun) {
+      console.log('RekapIndividu loadHistoryData SKIPPED: selectedAnggotaId=', selectedAnggotaId, 'selectedTahun=', selectedTahun);
+      return;
+    }
     
+    console.log('RekapIndividu loadHistoryData START: selectedAnggotaId=', selectedAnggotaId, 'selectedTahun=', selectedTahun);
     setIsLoadingHistory(true);
     try {
       const allMonthsData: HistoryData[] = [];
@@ -133,6 +158,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
       }
       
       const results = await Promise.all(fetchPromises);
+      console.log('RekapIndividu loadHistoryData: fetched', results.length, 'months');
       
       results.forEach((monthData, monthIndex) => {
         const bulan = monthIndex + 1;
@@ -143,6 +169,8 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
         );
         
         if (anggotaData) {
+          console.log(`RekapIndividu loadHistoryData: found data for bulan ${bulan}:`, { saldoPiutang: anggotaData.saldoPiutang });
+        }
           // Menggunakan properti yang sesuai dari RekapDashboard
           const pinjamanBulanIni = anggotaData.pinjamanBulanIni || 0;
           const pengambilanPokok = anggotaData.pengambilanPokok || 0;
@@ -215,6 +243,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
       });
       
       allMonthsData.sort((a, b) => a.bulan - b.bulan);
+      console.log('RekapIndividu loadHistoryData END: historyData set with', allMonthsData.length, 'months:', allMonthsData.map(m => ({ bulan: m.bulan, bulanNama: m.bulanNama, saldoPiutang: m.saldoPiutang })));
       setHistoryData(allMonthsData);
     } catch (err) {
       console.error('Failed to load history data:', err);
@@ -291,8 +320,23 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
   }, [memberData]);
 
   const historyDisplayData = useMemo(() => {
-    return historyData.filter(h => h.tahun === selectedTahun);
+    const filtered = historyData.filter(h => h.tahun === selectedTahun);
+    console.log('RekapIndividu historyDisplayData:', { selectedTahun, historyDataLength: historyData.length, filteredLength: filtered.length, filtered: filtered.slice(0, 3) });
+    return filtered;
   }, [historyData, selectedTahun]);
+
+  // Get latest month data for the year (for card display)
+  const latestMonthData = useMemo(() => {
+    if (historyDisplayData.length === 0) {
+      console.log('RekapIndividu latestMonthData: NO DATA (historyDisplayData empty)');
+      return null;
+    }
+    // Sort by bulan descending and get the first one (highest month = latest)
+    const sorted = [...historyDisplayData].sort((a, b) => b.bulan - a.bulan);
+    const latest = sorted[0];
+    console.log('RekapIndividu latestMonthData:', latest);
+    return latest;
+  }, [historyDisplayData]);
 
   const yearlyTotalsPeminjamanPengambilan = useMemo(() => {
     return historyDisplayData.reduce((acc, month) => ({
@@ -428,6 +472,30 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     simpananLainnya: 0, totalSimpanan: 0, biayaOperasional: 0, cicilanPokok: 0, saldoPiutang: 0 
   };
 
+  // For card display: use latest month data if available, otherwise use limit data
+  const cardDisplayData = useMemo(() => {
+    // Always use limit data for these (aggregate across entire history)
+    const totalSimpanan = safeLimit.totalSimpanan;
+    const limitPinjaman = safeLimit.limitPinjaman;
+    const sisaLimit = safeLimit.sisaLimit;
+    
+    // Use latest month data for saldoPiutang (current state)
+    const saldoPiutang = latestMonthData?.saldoPiutang ?? safeLimit.saldoPiutang;
+    
+    // DEBUG: Log card data
+    console.log('RekapIndividu cardDisplayData DEBUG:', {
+      selectedAnggotaId,
+      selectedBulan,
+      selectedTahun,
+      historyDisplayDataLength: historyDisplayData.length,
+      latestMonthData: latestMonthData ? { bulan: latestMonthData.bulan, tahun: latestMonthData.tahun, saldoPiutang: latestMonthData.saldoPiutang } : 'null',
+      safeLimit,
+      cardDisplayData: { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit }
+    });
+    
+    return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit };
+  }, [safeLimit, latestMonthData, selectedAnggotaId, selectedBulan, selectedTahun, historyDisplayData.length]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -522,7 +590,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                     <span>Total Simpanan</span>
                   </div>
                   <p className="text-xl font-bold text-primary">
-                    {formatCurrency(safeLimit.totalSimpanan)}
+                    {formatCurrency(cardDisplayData.totalSimpanan)}
                   </p>
                 </div>
                 
@@ -531,8 +599,8 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                     <HandCoins className="h-4 w-4" />
                     <span>Saldo Piutang</span>
                   </div>
-                  <p className={cn("text-xl font-bold", safeLimit.saldoPiutang > 0 ? "text-destructive" : "text-green-600")}>
-                    {formatCurrency(safeLimit.saldoPiutang)}
+                  <p className={cn("text-xl font-bold", cardDisplayData.saldoPiutang > 0 ? "text-destructive" : "text-green-600")}>
+                    {formatCurrency(cardDisplayData.saldoPiutang)}
                   </p>
                 </div>
                 
@@ -542,7 +610,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                     <span>Limit Pinjaman</span>
                   </div>
                   <p className="text-xl font-bold">
-                    {formatCurrency(safeLimit.limitPinjaman)}
+                    {formatCurrency(cardDisplayData.limitPinjaman)}
                   </p>
                 </div>
                 
@@ -551,8 +619,8 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                     <Wallet className="h-4 w-4" />
                     <span>Sisa Limit</span>
                   </div>
-                  <p className={cn("text-xl font-bold", safeLimit.sisaLimit > 0 ? "text-green-600" : "text-muted-foreground")}>
-                    {formatCurrency(safeLimit.sisaLimit)}
+                  <p className={cn("text-xl font-bold", cardDisplayData.sisaLimit > 0 ? "text-green-600" : "text-muted-foreground")}>
+                    {formatCurrency(cardDisplayData.sisaLimit)}
                   </p>
                 </div>
               </div>
@@ -758,7 +826,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
                   </div>
                   <Progress value={financialAnalysis.limitUtilization} className="h-2" />
                   <p className="text-xs text-muted-foreground">
-                    {formatCurrency(safeLimit.saldoPiutang)} dari {formatCurrency(safeLimit.limitPinjaman)}
+                    {formatCurrency(cardDisplayData.saldoPiutang)} dari {formatCurrency(cardDisplayData.limitPinjaman)}
                   </p>
                 </div>
               </CardContent>
