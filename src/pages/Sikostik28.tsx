@@ -26,8 +26,10 @@ const Sikostik28 = () => {
   }, [user, navigate]);
 
   const handleSelectMember = (anggotaId: string) => {
+    console.log('Sikostik28: handleSelectMember called with', anggotaId);
     setSelectedAnggotaId(anggotaId);
     setActiveTab('rekap-individu');
+    console.log('Sikostik28: switched to rekap-individu tab with selectedAnggotaId:', anggotaId);
   };
 
   return (

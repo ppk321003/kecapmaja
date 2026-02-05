@@ -107,14 +107,17 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
   // Load rekap data for selected period
   const loadRekapData = useCallback(async () => {
     try {
-      console.log('RekapIndividu: loading rekap for', selectedBulan, selectedTahun);
+      console.log('RekapIndividu: loading rekap for bulan=', selectedBulan, 'tahun=', selectedTahun, 'selectedAnggotaId=', selectedAnggotaId);
       const rekap = await fetchRekapDashboard(selectedBulan, selectedTahun);
-      console.log('RekapIndividu: loaded', rekap.length, 'rekap records');
+      console.log('RekapIndividu: loaded', rekap.length, 'rekap records for period');
+      if (rekap.length > 0) {
+        console.log('RekapIndividu: sample rekap rows:', rekap.slice(0, 3).map(r => ({ anggotaId: r.anggotaId, nama: r.nama, cicilan: r.cicilanPokok })));
+      }
       setRekapList(rekap);
     } catch (err) {
       console.error('Failed to load rekap data:', err);
     }
-  }, [fetchRekapDashboard, selectedBulan, selectedTahun]);
+  }, [fetchRekapDashboard, selectedBulan, selectedTahun, selectedAnggotaId]);
 
   // Load history data for selected member and year
   const loadHistoryData = useCallback(async () => {
@@ -232,6 +235,13 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     }
   }, [dataLoaded, selectedBulan, selectedTahun, loadRekapData]);
 
+  // Load rekap data when selectedAnggotaId changes (important for click navigation)
+  useEffect(() => {
+    if (selectedAnggotaId && selectedBulan && selectedTahun) {
+      loadRekapData();
+    }
+  }, [selectedAnggotaId, selectedBulan, selectedTahun, loadRekapData]);
+
   // Load history when anggota or tahun changes
   useEffect(() => {
     if (selectedAnggotaId && selectedTahun) {
@@ -248,13 +258,18 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     const rekap = rekapList.find(r => r.anggotaId === selectedAnggotaId);
     const nipInfo = member ? parseNIP(member.nip) : null;
     
-    console.log('RekapIndividu memberData:', { 
-      selectedAnggotaId, 
-      foundMember: !!member, 
-      foundLimit: !!limit, 
-      foundRekap: !!rekap,
-      rekapListLength: rekapList.length
-    });
+    if (selectedAnggotaId) {
+      console.log('RekapIndividu memberData lookup:', { 
+        selectedAnggotaId, 
+        foundMember: !!member,
+        memberName: member?.nama,
+        foundLimit: !!limit,
+        foundRekap: !!rekap,
+        rekapListLength: rekapList.length,
+        rekapPeriode: rekap ? { bulan: rekap.periodeBulan, tahun: rekap.periodeTahun } : 'N/A',
+        rekapCicilan: rekap?.cicilanPokok,
+      });
+    }
     
     return { member, limit, rekap, nipInfo };
   }, [selectedAnggotaId, anggotaList, limitList, rekapList]);
