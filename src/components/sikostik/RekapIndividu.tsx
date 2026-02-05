@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Get all active members
   const activeMembers = useMemo(() => anggotaList.filter(m => m.status === 'Aktif'), [anggotaList]);
@@ -76,7 +78,8 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     }
   }, [propSelectedAnggotaId]);
 
-  const loadInitialData = async () => {
+  // Load initial data - master anggota and limit data
+  const loadInitialData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [anggota, limit] = await Promise.all([
@@ -86,6 +89,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
       
       setAnggotaList(anggota);
       setLimitList(limit);
+      setDataLoaded(true);
       
       const activeMembersList = anggota.filter(m => m.status === 'Aktif');
       // If propSelectedAnggotaId is provided, use it; otherwise use first active member
@@ -93,25 +97,27 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
       if (anggotaToSelect) {
         setSelectedAnggotaId(anggotaToSelect);
       }
-      
-      await loadRekapData();
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchAnggotaMaster, fetchLimitAnggota, propSelectedAnggotaId, selectedAnggotaId]);
 
-  const loadRekapData = async () => {
+  // Load rekap data for selected period
+  const loadRekapData = useCallback(async () => {
     try {
+      console.log('RekapIndividu: loading rekap for', selectedBulan, selectedTahun);
       const rekap = await fetchRekapDashboard(selectedBulan, selectedTahun);
+      console.log('RekapIndividu: loaded', rekap.length, 'rekap records');
       setRekapList(rekap);
     } catch (err) {
       console.error('Failed to load rekap data:', err);
     }
-  };
+  }, [fetchRekapDashboard, selectedBulan, selectedTahun]);
 
-  const loadHistoryData = async () => {
+  // Load history data for selected member and year
+  const loadHistoryData = useCallback(async () => {
     if (!selectedAnggotaId || !selectedTahun) return;
     
     setIsLoadingHistory(true);
@@ -148,8 +154,8 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
           const simpananLebaran = anggotaData.simpananLebaran || 0;
           const simpananLainnya = anggotaData.simpananLainnya || 0;
           
-            const cicilanPokok = anggotaData.cicilanPokok || 0;
-            const saldoPiutang = anggotaData.saldoPiutang || 0;
+          const cicilanPokok = anggotaData.cicilanPokok || 0;
+          const saldoPiutang = anggotaData.saldoPiutang || 0;
           
           const totalPengambilan = pengambilanPokok + pengambilanWajib + 
                                  pengambilanSukarela + pengambilanLebaran + 
@@ -176,10 +182,9 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
             simpananSukarela,
             simpananLebaran,
             simpananLainnya,
-            totalSimpanan
-              ,
-              cicilanPokok,
-              saldoPiutang
+            totalSimpanan,
+            cicilanPokok,
+            saldoPiutang
           });
         } else {
           allMonthsData.push({
@@ -199,10 +204,9 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
             simpananSukarela: 0,
             simpananLebaran: 0,
             simpananLainnya: 0,
-            totalSimpanan: 0
-              ,
-              cicilanPokok: 0,
-              saldoPiutang: 0
+            totalSimpanan: 0,
+            cicilanPokok: 0,
+            saldoPiutang: 0
           });
         }
       });
@@ -214,23 +218,26 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     } finally {
       setIsLoadingHistory(false);
     }
-  };
+  }, [fetchRekapDashboard, selectedAnggotaId, selectedTahun]);
 
+  // Initial load - only runs once on mount
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Load rekap data when period changes or after initial load
   useEffect(() => {
-    if (selectedBulan && selectedTahun) {
+    if (dataLoaded && selectedBulan && selectedTahun) {
       loadRekapData();
     }
-  }, [selectedBulan, selectedTahun]);
+  }, [dataLoaded, selectedBulan, selectedTahun, loadRekapData]);
 
+  // Load history when anggota or tahun changes
   useEffect(() => {
     if (selectedAnggotaId && selectedTahun) {
       loadHistoryData();
     }
-  }, [selectedAnggotaId, selectedTahun]);
+  }, [selectedAnggotaId, selectedTahun, loadHistoryData]);
 
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
   const bulanNama = bulanOptions.find(b => b.value === selectedBulan)?.label || '';
@@ -240,6 +247,14 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     const limit = limitList.find(l => l.anggotaId === selectedAnggotaId);
     const rekap = rekapList.find(r => r.anggotaId === selectedAnggotaId);
     const nipInfo = member ? parseNIP(member.nip) : null;
+    
+    console.log('RekapIndividu memberData:', { 
+      selectedAnggotaId, 
+      foundMember: !!member, 
+      foundLimit: !!limit, 
+      foundRekap: !!rekap,
+      rekapListLength: rekapList.length
+    });
     
     return { member, limit, rekap, nipInfo };
   }, [selectedAnggotaId, anggotaList, limitList, rekapList]);
