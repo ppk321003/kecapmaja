@@ -113,9 +113,16 @@ export const RekapIndividu = ({
       setDataLoaded(true);
       
       const activeMembersList = anggota.filter(m => m.status === 'Aktif');
-      // If propSelectedAnggotaId is provided, use it; otherwise use first active member
-      const anggotaToSelect = propSelectedAnggotaId || (!selectedAnggotaId && activeMembersList.length > 0 ? (activeMembersList[0].id || activeMembersList[0].kodeAnggota) : selectedAnggotaId);
+      // Prioritize: propSelectedAnggotaId > first active member > current state
+      let anggotaToSelect = '';
+      if (propSelectedAnggotaId) {
+        anggotaToSelect = propSelectedAnggotaId;
+      } else if (activeMembersList.length > 0) {
+        anggotaToSelect = activeMembersList[0].id || activeMembersList[0].kodeAnggota;
+      }
+      
       if (anggotaToSelect) {
+        console.log('RekapIndividu loadInitialData: auto-selecting member', anggotaToSelect);
         setSelectedAnggotaId(anggotaToSelect);
       }
     } catch (err) {
@@ -123,7 +130,7 @@ export const RekapIndividu = ({
     } finally {
       setIsLoading(false);
     }
-  }, [fetchAnggotaMaster, fetchLimitAnggota, propSelectedAnggotaId, selectedAnggotaId]);
+  }, [fetchAnggotaMaster, fetchLimitAnggota, propSelectedAnggotaId]);
 
   // Load rekap data for selected period
   const loadRekapData = useCallback(async () => {
@@ -503,16 +510,20 @@ export const RekapIndividu = ({
           <p className="text-muted-foreground">Informasi lengkap keanggotaan dan keuangan</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={selectedAnggotaId} onValueChange={setSelectedAnggotaId}>
+          <Select value={selectedAnggotaId || ''} onValueChange={setSelectedAnggotaId}>
             <SelectTrigger className="w-[280px]">
               <SelectValue placeholder="Pilih Anggota" />
             </SelectTrigger>
             <SelectContent>
-              {activeMembers.map((m) => (
-                <SelectItem key={m.id || m.kodeAnggota} value={m.id || m.kodeAnggota}>
-                  {m.nama} - {formatNIP(m.nip)}
-                </SelectItem>
-              ))}
+              {activeMembers.length === 0 ? (
+                <p className="px-2 py-1.5 text-xs text-muted-foreground">Tidak ada anggota aktif</p>
+              ) : (
+                activeMembers.map((m) => (
+                  <SelectItem key={m.id || m.kodeAnggota} value={m.id || m.kodeAnggota}>
+                    {m.nama} - {formatNIP(m.nip)}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
           <Button onClick={loadInitialData} variant="outline" size="icon" disabled={loading}>
