@@ -487,25 +487,30 @@ export const RekapIndividu = ({
     simpananLainnya: 0, totalSimpanan: 0, biayaOperasional: 0, cicilanPokok: 0, saldoPiutang: 0 
   };
 
+  // Track if we're using fallback data
+  const isUsingFallbackData = useMemo(() => {
+    return !latestMonthData || (latestMonthData.totalSimpanan === 0 && latestMonthData.saldoPiutang === 0);
+  }, [latestMonthData]);
+
   // For card display: use latest month data (period-specific) instead of aggregate limit data
   const cardDisplayData = useMemo(() => {
     // Use latest month data for ALL card values (these are period-specific, not aggregate)
     if (latestMonthData && (latestMonthData.totalSimpanan > 0 || latestMonthData.saldoPiutang > 0)) {
       const totalSimpanan = latestMonthData.totalSimpanan;
       const saldoPiutang = latestMonthData.saldoPiutang;
-      const limitPinjaman = Math.max(0, totalSimpanan * 1.3); // Limit = Total Simpanan × 1.3
+      const limitPinjaman = Math.max(0, totalSimpanan * 1.3);
       const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
       
       console.log('RekapIndividu cardDisplayData (from latestMonthData):', {
         selectedAnggotaId,
         selectedBulan,
         selectedTahun,
-        source: 'latestMonthData',
+        source: 'period',
         latestMonth: { bulan: latestMonthData.bulan, tahun: latestMonthData.tahun },
         cardDisplayData: { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit }
       });
       
-      return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit, source: 'period' };
+      return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit };
     }
     
     // Fallback to aggregate limit data if no period-specific data available
@@ -523,7 +528,7 @@ export const RekapIndividu = ({
       cardDisplayData: { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit }
     });
     
-    return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit, source: 'aggregate' };
+    return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit };
   }, [latestMonthData, safeLimit, selectedAnggotaId, selectedBulan, selectedTahun]);
 
   return (
@@ -679,7 +684,7 @@ export const RekapIndividu = ({
               </div>
             </CardContent>
             
-            {cardDisplayData.source === 'aggregate' && (
+            {isUsingFallbackData && (
               <CardContent className="pt-0">
                 <Alert className="bg-yellow-50 border-yellow-200">
                   <AlertTriangle className="h-4 w-4 text-yellow-600" />
