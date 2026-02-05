@@ -32,6 +32,14 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
     try {
       const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
       console.log('RekapAnggota loaded data:', data.length, 'records');
+      // Debug: log sample data to check NIP
+      if (data.length > 0) {
+        console.log('RekapAnggota sample row:', {
+          nama: data[0].nama,
+          nip: data[0].nip,
+          status: data[0].status
+        });
+      }
       setRekapData(data);
     } catch (err) {
       console.error('Failed to load rekap data:', err);
@@ -147,7 +155,9 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
                         onClick={() => handleMemberClick(member.anggotaId)}
                       >
                         <p className="font-medium group-hover:underline">{member.nama || '-'}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{member.nip ? formatNIP(member.nip) : '-'}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {member.nip ? formatNIP(member.nip) : '-'}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(member.saldoAkhirbulanPokok)}</TableCell>

@@ -312,6 +312,7 @@ export const useSikostikData = () => {
       const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
       
       // Group by anggotaId and calculate limit
+      // Deduplicate: prioritize entries with NIP and latest data
       const limitMap = new Map<string, LimitAnggota>();
       
       data.forEach((row: any) => {
@@ -332,7 +333,7 @@ export const useSikostikData = () => {
         // Sisa Limit = (Total Simpanan × 1.3) - Saldo Piutang
         const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
         
-        limitMap.set(anggotaId, {
+        const newEntry: LimitAnggota = {
           anggotaId,
           nama: row.nama || '',
           nip: row.nip || '',
@@ -343,7 +344,13 @@ export const useSikostikData = () => {
           sisaLimit,
           // Cicilan Saat Ini dari kolom R (cicilan_pokok)
           cicilanPokok: parseNum(row.cicilanPokok)
-        });
+        };
+        
+        const existing = limitMap.get(anggotaId);
+        // Keep the entry with NIP, or if both have NIP/no NIP, keep the one with more data
+        if (!existing || (!existing.nip && newEntry.nip) || (existing.nip === newEntry.nip && newEntry.totalSimpanan > existing.totalSimpanan)) {
+          limitMap.set(anggotaId, newEntry);
+        }
       });
       
       return Array.from(limitMap.values());
