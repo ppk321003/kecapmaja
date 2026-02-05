@@ -170,7 +170,6 @@ export const RekapIndividu = ({
         
         if (anggotaData) {
           console.log(`RekapIndividu loadHistoryData: found data for bulan ${bulan}:`, { saldoPiutang: anggotaData.saldoPiutang });
-        }
           // Menggunakan properti yang sesuai dari RekapDashboard
           const pinjamanBulanIni = anggotaData.pinjamanBulanIni || 0;
           const pengambilanPokok = anggotaData.pengambilanPokok || 0;
