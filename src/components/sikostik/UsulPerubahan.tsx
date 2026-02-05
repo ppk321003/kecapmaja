@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,16 +21,21 @@ export const UsulPerubahan = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formOpen, setFormOpen] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
-    const data = await fetchUsulPerubahan();
-    setUsulData(data);
-    setIsLoading(false);
-  };
+    try {
+      const data = await fetchUsulPerubahan();
+      setUsulData(data);
+    } catch (err) {
+      console.error('Failed to load usul perubahan data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchUsulPerubahan]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const filteredData = useMemo(() => {
     let result = usulData;

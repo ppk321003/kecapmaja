@@ -127,17 +127,18 @@ export const useSikostikData = () => {
   // Dapatkan sheet ID berdasarkan satker user (reactive setelah satkerConfig dimuat)
   const userSheetId = useMemo(() => {
     return satkerContext?.getUserSatkerSheetId('tagging') || SIKOSTIK_SPREADSHEET_ID;
-  }, [satkerContext?.configs]);
+  }, [satkerContext?.isLoading, satkerContext?.configs?.length, satkerContext?.error]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSheet = useCallback(async (sheetName: string, spreadsheetId?: string) => {
-    spreadsheetId = spreadsheetId || userSheetId;
+    // Fix: spreadsheetId parameter takes precedence, fallback to userSheetId if not provided
+    const idToUse = spreadsheetId || userSheetId;
     try {
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: spreadsheetId,
+          spreadsheetId: idToUse,
           operation: "read",
           range: sheetName
         }

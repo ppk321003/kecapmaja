@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ export const UsulPengambilan = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formOpen, setFormOpen] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [usulResult, masterResult, rekapResult] = await Promise.all([
@@ -41,13 +41,14 @@ export const UsulPengambilan = () => {
       setRekapData(rekapResult);
     } catch (err) {
       console.error('Error loading data:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  };
+  }, [fetchUsulPengambilan, fetchAnggotaMaster, fetchRekapDashboard]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const filteredData = useMemo(() => {
     let result = usulData;

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -76,7 +76,7 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     }
   }, [propSelectedAnggotaId]);
 
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [anggota, limit] = await Promise.all([
@@ -93,25 +93,23 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
       if (anggotaToSelect) {
         setSelectedAnggotaId(anggotaToSelect);
       }
-      
-      await loadRekapData();
     } catch (err) {
-      console.error('Failed to load data:', err);
+      console.error('Failed to load initial data:', err);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchAnggotaMaster, fetchLimitAnggota, propSelectedAnggotaId, selectedAnggotaId]);
 
-  const loadRekapData = async () => {
+  const loadRekapData = useCallback(async () => {
     try {
       const rekap = await fetchRekapDashboard(selectedBulan, selectedTahun);
       setRekapList(rekap);
     } catch (err) {
       console.error('Failed to load rekap data:', err);
     }
-  };
+  }, [fetchRekapDashboard, selectedBulan, selectedTahun]);
 
-  const loadHistoryData = async () => {
+  const loadHistoryData = useCallback(async () => {
     if (!selectedAnggotaId || !selectedTahun) return;
     
     setIsLoadingHistory(true);
@@ -214,22 +212,23 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
     } finally {
       setIsLoadingHistory(false);
     }
-  };
+  }, [selectedAnggotaId, selectedTahun, fetchRekapDashboard]);
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [loadInitialData]);
 
   useEffect(() => {
     if (selectedBulan && selectedTahun) {
       loadRekapData();
     }
-  }, [selectedBulan, selectedTahun]);
+  }, [loadRekapData]);
 
   useEffect(() => {
     if (selectedAnggotaId && selectedTahun) {
       loadHistoryData();
     }
+  }, [loadHistoryData]);
   }, [selectedAnggotaId, selectedTahun]);
 
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);

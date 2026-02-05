@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -24,15 +24,22 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
   const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const [rekapData, setRekapData] = useState<RekapDashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const loadData = async () => {
+
+  const loadData = useCallback(async () => {
     setIsLoading(true);
-    const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
-    setRekapData(data);
-    setIsLoading(false);
-  };
+    try {
+      const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
+      setRekapData(data);
+    } catch (err) {
+      console.error('Failed to load rekap data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchRekapDashboard, selectedBulan, selectedTahun]);
+
   useEffect(() => {
     loadData();
-  }, [selectedBulan, selectedTahun, userSheetId]);
+  }, [loadData]);
 
   // Filter only active members
   const activeMembers = useMemo(() => {
