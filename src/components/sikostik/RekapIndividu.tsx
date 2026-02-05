@@ -260,8 +260,22 @@ export const RekapIndividu = ({
 
   // Initial load - only runs once on mount
   useEffect(() => {
+    console.log('RekapIndividu: Initial load effect running');
     loadInitialData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select first active member if none is selected and list loaded
+  useEffect(() => {
+    console.log('RekapIndividu: Auto-select effect - dataLoaded=', dataLoaded, 'selectedAnggotaId=', selectedAnggotaId, 'anggotaListLength=', anggotaList.length);
+    if (dataLoaded && !selectedAnggotaId && anggotaList.length > 0) {
+      const activeMembers = anggotaList.filter(m => m.status === 'Aktif');
+      if (activeMembers.length > 0) {
+        const memberToSelect = activeMembers[0].id || activeMembers[0].kodeAnggota;
+        console.log('RekapIndividu: Auto-selecting member:', memberToSelect);
+        setSelectedAnggotaId(memberToSelect);
+      }
+    }
+  }, [dataLoaded, anggotaList, selectedAnggotaId]);
 
   // Load rekap data when period changes or after initial load
   useEffect(() => {
@@ -289,30 +303,31 @@ export const RekapIndividu = ({
 
   const memberData = useMemo(() => {
     if (!selectedAnggotaId) {
-      console.log('RekapIndividu memberData: selectedAnggotaId is empty');
+      console.log('RekapIndividu memberData: selectedAnggotaId is empty, returning empty data');
       return { member: null, limit: null, rekap: null, nipInfo: null };
     }
     
-    const member = anggotaList.find(m => m.id === selectedAnggotaId || m.kodeAnggota === selectedAnggotaId);
+    console.log('RekapIndividu memberData: looking up member with selectedAnggotaId=', selectedAnggotaId);
+    console.log('  anggotaList:', anggotaList.length, 'items');
+    
+    const member = anggotaList.find(m => {
+      const matches = m.id === selectedAnggotaId || m.kodeAnggota === selectedAnggotaId;
+      if (matches) {
+        console.log('  ✓ Member match found:', m.id, m.kodeAnggota, m.nama);
+      }
+      return matches;
+    });
+    
     const limit = limitList.find(l => l.anggotaId === selectedAnggotaId);
     const rekap = rekapList.find(r => r.anggotaId === selectedAnggotaId);
     const nipInfo = member ? parseNIP(member.nip) : null;
     
-    console.log('RekapIndividu memberData lookup:', { 
+    console.log('RekapIndividu memberData lookup result:', { 
       selectedAnggotaId,
-      anggotaListLength: anggotaList.length,
-      limitListLength: limitList.length,
-      rekapListLength: rekapList.length,
       foundMember: !!member,
       memberName: member?.nama,
-      memberId: member?.id,
-      memberKodeAnggota: member?.kodeAnggota,
       foundLimit: !!limit,
-      foundRekap: !!rekap,
-      rekapPeriode: rekap ? { bulan: rekap.periodeBulan, tahun: rekap.periodeTahun } : 'N/A',
-      rekapCicilan: rekap?.cicilanPokok,
-      // Show first few anggota for debugging
-      firstAnggota: anggotaList.slice(0, 2).map(m => ({ id: m.id, kodeAnggota: m.kodeAnggota, nama: m.nama }))
+      foundRekap: !!rekap
     });
     
     return { member, limit, rekap, nipInfo };
@@ -533,12 +548,27 @@ export const RekapIndividu = ({
 
   return (
     <div className="space-y-6">
-      {/* Debug Info Box */}
-      <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs font-mono">
-        <div className="font-bold text-blue-900 mb-2">📊 DEBUG STATE:</div>
-        <div>Period: {selectedBulan}/{selectedTahun} | Selected Member: {selectedAnggotaId || '(none)'}</div>
-        <div>Data Loaded: {anggotaList.length} anggota, {historyData.length} history items</div>
-        <div>Latest: {latestMonthData ? `Bulan ${latestMonthData.bulan}: Rp ${latestMonthData.totalSimpanan}` : 'none'}</div>
+      {/* Debug Info Box - More Prominent */}
+      <div className="p-4 bg-blue-100 border-2 border-blue-500 rounded-lg text-sm font-mono">
+        <div className="font-bold text-blue-900 mb-3">📊 STATE DEBUG INFO:</div>
+        <div className="grid grid-cols-2 gap-2 text-blue-900">
+          <div>Period: {selectedBulan}/{selectedTahun}</div>
+          <div>Selected ID: {selectedAnggotaId || <span className="text-red-600 font-bold">(EMPTY!)</span>}</div>
+          <div>Members Loaded: {anggotaList.length}</div>
+          <div>Active Members: {anggotaList.filter(m => m.status === 'Aktif').length}</div>
+          <div>History Data: {historyData.length} months</div>
+          <div>Latest Month: {latestMonthData ? `Bulan ${latestMonthData.bulan}` : 'none'}</div>
+          <div>Data Loaded: {dataLoaded ? '✓' : '✗'}</div>
+          <div>Is Loading: {isLoading ? '⏳' : '✓'}</div>
+        </div>
+        {selectedAnggotaId && anggotaList.length > 0 && (
+          <div className="mt-2 text-xs text-blue-800">
+            Member lookup: {(() => { 
+              const m = anggotaList.find(x => x.id === selectedAnggotaId || x.kodeAnggota === selectedAnggotaId);
+              return m ? `✓ Found: ${m.nama}` : `✗ Not found (searched ${anggotaList.length} members)`; 
+            })()}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
