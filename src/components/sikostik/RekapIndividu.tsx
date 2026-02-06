@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,15 +50,7 @@ interface HistoryData {
   saldoPiutang: number;
 }
 
-export const RekapIndividu = ({ 
-  selectedAnggotaId: propSelectedAnggotaId,
-  selectedBulan: propSelectedBulan,
-  selectedTahun: propSelectedTahun
-}: { 
-  selectedAnggotaId?: string;
-  selectedBulan?: number;
-  selectedTahun?: number;
-}) => {
+export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { selectedAnggotaId?: string }) => {
   const { loading, error, fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard } = useSikostikData();
   const currentPeriod = getCurrentPeriod();
   
@@ -69,12 +60,11 @@ export const RekapIndividu = ({
   const [historyData, setHistoryData] = useState<HistoryData[]>([]);
   
   const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>(propSelectedAnggotaId || '');
-  const [selectedBulan, setSelectedBulan] = useState(propSelectedBulan !== undefined ? propSelectedBulan : currentPeriod.bulan);
-  const [selectedTahun, setSelectedTahun] = useState(propSelectedTahun !== undefined ? propSelectedTahun : currentPeriod.tahun);
+  const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
+  const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Get all active members
   const activeMembers = useMemo(() => anggotaList.filter(m => m.status === 'Aktif'), [anggotaList]);
@@ -86,21 +76,7 @@ export const RekapIndividu = ({
     }
   }, [propSelectedAnggotaId]);
 
-  // Update period when props change
-  useEffect(() => {
-    if (propSelectedBulan !== undefined) {
-      setSelectedBulan(propSelectedBulan);
-    }
-  }, [propSelectedBulan]);
-
-  useEffect(() => {
-    if (propSelectedTahun !== undefined) {
-      setSelectedTahun(propSelectedTahun);
-    }
-  }, [propSelectedTahun]);
-
-  // Load initial data - master anggota and limit data
-  const loadInitialData = useCallback(async () => {
+  const loadInitialData = async () => {
     setIsLoading(true);
     try {
       const [anggota, limit] = await Promise.all([
@@ -110,51 +86,34 @@ export const RekapIndividu = ({
       
       setAnggotaList(anggota);
       setLimitList(limit);
-      setDataLoaded(true);
       
       const activeMembersList = anggota.filter(m => m.status === 'Aktif');
-      // Prioritize: propSelectedAnggotaId > first active member > current state
-      let anggotaToSelect = '';
-      if (propSelectedAnggotaId) {
-        anggotaToSelect = propSelectedAnggotaId;
-      } else if (activeMembersList.length > 0) {
-        anggotaToSelect = activeMembersList[0].id || activeMembersList[0].kodeAnggota;
-      }
-      
+      // If propSelectedAnggotaId is provided, use it; otherwise use first active member
+      const anggotaToSelect = propSelectedAnggotaId || (!selectedAnggotaId && activeMembersList.length > 0 ? (activeMembersList[0].id || activeMembersList[0].kodeAnggota) : selectedAnggotaId);
       if (anggotaToSelect) {
-        console.log('RekapIndividu loadInitialData: auto-selecting member', anggotaToSelect);
         setSelectedAnggotaId(anggotaToSelect);
       }
+      
+      await loadRekapData();
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [fetchAnggotaMaster, fetchLimitAnggota, propSelectedAnggotaId]);
+  };
 
-  // Load rekap data for selected period
-  const loadRekapData = useCallback(async () => {
+  const loadRekapData = async () => {
     try {
-      console.log('RekapIndividu: loading rekap for bulan=', selectedBulan, 'tahun=', selectedTahun, 'selectedAnggotaId=', selectedAnggotaId);
       const rekap = await fetchRekapDashboard(selectedBulan, selectedTahun);
-      console.log('RekapIndividu: loaded', rekap.length, 'rekap records for period');
-      if (rekap.length > 0) {
-        console.log('RekapIndividu: sample rekap rows:', rekap.slice(0, 3).map(r => ({ anggotaId: r.anggotaId, nama: r.nama, cicilan: r.cicilanPokok })));
-      }
       setRekapList(rekap);
     } catch (err) {
       console.error('Failed to load rekap data:', err);
     }
-  }, [fetchRekapDashboard, selectedBulan, selectedTahun, selectedAnggotaId]);
+  };
 
-  // Load history data for selected member and year
-  const loadHistoryData = useCallback(async () => {
-    if (!selectedAnggotaId || !selectedTahun) {
-      console.log('RekapIndividu loadHistoryData SKIPPED: selectedAnggotaId=', selectedAnggotaId, 'selectedTahun=', selectedTahun);
-      return;
-    }
+  const loadHistoryData = async () => {
+    if (!selectedAnggotaId || !selectedTahun) return;
     
-    console.log('RekapIndividu loadHistoryData START: selectedAnggotaId=', selectedAnggotaId, 'selectedTahun=', selectedTahun);
     setIsLoadingHistory(true);
     try {
       const allMonthsData: HistoryData[] = [];
@@ -165,7 +124,6 @@ export const RekapIndividu = ({
       }
       
       const results = await Promise.all(fetchPromises);
-      console.log('RekapIndividu loadHistoryData: fetched', results.length, 'months');
       
       results.forEach((monthData, monthIndex) => {
         const bulan = monthIndex + 1;
@@ -176,7 +134,6 @@ export const RekapIndividu = ({
         );
         
         if (anggotaData) {
-          console.log(`RekapIndividu loadHistoryData: found data for bulan ${bulan}:`, { saldoPiutang: anggotaData.saldoPiutang });
           // Menggunakan properti yang sesuai dari RekapDashboard
           const pinjamanBulanIni = anggotaData.pinjamanBulanIni || 0;
           const pengambilanPokok = anggotaData.pengambilanPokok || 0;
@@ -191,8 +148,8 @@ export const RekapIndividu = ({
           const simpananLebaran = anggotaData.simpananLebaran || 0;
           const simpananLainnya = anggotaData.simpananLainnya || 0;
           
-          const cicilanPokok = anggotaData.cicilanPokok || 0;
-          const saldoPiutang = anggotaData.saldoPiutang || 0;
+            const cicilanPokok = anggotaData.cicilanPokok || 0;
+            const saldoPiutang = anggotaData.saldoPiutang || 0;
           
           const totalPengambilan = pengambilanPokok + pengambilanWajib + 
                                  pengambilanSukarela + pengambilanLebaran + 
@@ -219,9 +176,10 @@ export const RekapIndividu = ({
             simpananSukarela,
             simpananLebaran,
             simpananLainnya,
-            totalSimpanan,
-            cicilanPokok,
-            saldoPiutang
+            totalSimpanan
+              ,
+              cicilanPokok,
+              saldoPiutang
           });
         } else {
           allMonthsData.push({
@@ -241,94 +199,47 @@ export const RekapIndividu = ({
             simpananSukarela: 0,
             simpananLebaran: 0,
             simpananLainnya: 0,
-            totalSimpanan: 0,
-            cicilanPokok: 0,
-            saldoPiutang: 0
+            totalSimpanan: 0
+              ,
+              cicilanPokok: 0,
+              saldoPiutang: 0
           });
         }
       });
       
       allMonthsData.sort((a, b) => a.bulan - b.bulan);
-      console.log('RekapIndividu loadHistoryData END: historyData set with', allMonthsData.length, 'months:', allMonthsData.map(m => ({ bulan: m.bulan, bulanNama: m.bulanNama, saldoPiutang: m.saldoPiutang })));
       setHistoryData(allMonthsData);
     } catch (err) {
       console.error('Failed to load history data:', err);
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [fetchRekapDashboard, selectedAnggotaId, selectedTahun]);
+  };
 
-  // Initial load - only runs once on mount
   useEffect(() => {
-    console.log('RekapIndividu: Initial load effect running');
     loadInitialData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Auto-select first active member if none is selected and list loaded
   useEffect(() => {
-    console.log('RekapIndividu: Auto-select effect - dataLoaded=', dataLoaded, 'selectedAnggotaId=', selectedAnggotaId, 'anggotaListLength=', anggotaList.length);
-    if (dataLoaded && !selectedAnggotaId && anggotaList.length > 0) {
-      const activeMembers = anggotaList.filter(m => m.status === 'Aktif');
-      if (activeMembers.length > 0) {
-        const memberToSelect = activeMembers[0].id || activeMembers[0].kodeAnggota;
-        console.log('RekapIndividu: Auto-selecting member:', memberToSelect);
-        setSelectedAnggotaId(memberToSelect);
-      }
-    }
-  }, [dataLoaded, anggotaList, selectedAnggotaId]);
-
-  // Load rekap data when period changes or after initial load
-  useEffect(() => {
-    if (dataLoaded && selectedBulan && selectedTahun) {
+    if (selectedBulan && selectedTahun) {
       loadRekapData();
     }
-  }, [dataLoaded, selectedBulan, selectedTahun, loadRekapData]);
+  }, [selectedBulan, selectedTahun]);
 
-  // Load rekap data when selectedAnggotaId changes (important for click navigation)
-  useEffect(() => {
-    if (selectedAnggotaId && selectedBulan && selectedTahun) {
-      loadRekapData();
-    }
-  }, [selectedAnggotaId, selectedBulan, selectedTahun, loadRekapData]);
-
-  // Load history when anggota or tahun changes
   useEffect(() => {
     if (selectedAnggotaId && selectedTahun) {
       loadHistoryData();
     }
-  }, [selectedAnggotaId, selectedTahun, loadHistoryData]);
+  }, [selectedAnggotaId, selectedTahun]);
 
   const periodeLabel = formatPeriode(selectedBulan, selectedTahun);
   const bulanNama = bulanOptions.find(b => b.value === selectedBulan)?.label || '';
 
   const memberData = useMemo(() => {
-    if (!selectedAnggotaId) {
-      console.log('RekapIndividu memberData: selectedAnggotaId is empty, returning empty data');
-      return { member: null, limit: null, rekap: null, nipInfo: null };
-    }
-    
-    console.log('RekapIndividu memberData: looking up member with selectedAnggotaId=', selectedAnggotaId);
-    console.log('  anggotaList:', anggotaList.length, 'items');
-    
-    const member = anggotaList.find(m => {
-      const matches = m.id === selectedAnggotaId || m.kodeAnggota === selectedAnggotaId;
-      if (matches) {
-        console.log('  ✓ Member match found:', m.id, m.kodeAnggota, m.nama);
-      }
-      return matches;
-    });
-    
+    const member = anggotaList.find(m => m.id === selectedAnggotaId || m.kodeAnggota === selectedAnggotaId);
     const limit = limitList.find(l => l.anggotaId === selectedAnggotaId);
     const rekap = rekapList.find(r => r.anggotaId === selectedAnggotaId);
     const nipInfo = member ? parseNIP(member.nip) : null;
-    
-    console.log('RekapIndividu memberData lookup result:', { 
-      selectedAnggotaId,
-      foundMember: !!member,
-      memberName: member?.nama,
-      foundLimit: !!limit,
-      foundRekap: !!rekap
-    });
     
     return { member, limit, rekap, nipInfo };
   }, [selectedAnggotaId, anggotaList, limitList, rekapList]);
@@ -350,23 +261,8 @@ export const RekapIndividu = ({
   }, [memberData]);
 
   const historyDisplayData = useMemo(() => {
-    const filtered = historyData.filter(h => h.tahun === selectedTahun);
-    console.log('RekapIndividu historyDisplayData:', { selectedTahun, historyDataLength: historyData.length, filteredLength: filtered.length, filtered: filtered.slice(0, 3) });
-    return filtered;
+    return historyData.filter(h => h.tahun === selectedTahun);
   }, [historyData, selectedTahun]);
-
-  // Get latest month data for the year (for card display)
-  const latestMonthData = useMemo(() => {
-    if (historyDisplayData.length === 0) {
-      console.log('RekapIndividu latestMonthData: NO DATA (historyDisplayData empty)');
-      return null;
-    }
-    // Sort by bulan descending and get the first one (highest month = latest)
-    const sorted = [...historyDisplayData].sort((a, b) => b.bulan - a.bulan);
-    const latest = sorted[0];
-    console.log('RekapIndividu latestMonthData:', latest);
-    return latest;
-  }, [historyDisplayData]);
 
   const yearlyTotalsPeminjamanPengambilan = useMemo(() => {
     return historyDisplayData.reduce((acc, month) => ({
@@ -502,95 +398,24 @@ export const RekapIndividu = ({
     simpananLainnya: 0, totalSimpanan: 0, biayaOperasional: 0, cicilanPokok: 0, saldoPiutang: 0 
   };
 
-  // Track if we're using fallback data
-  const isUsingFallbackData = useMemo(() => {
-    return !latestMonthData || (latestMonthData.totalSimpanan === 0 && latestMonthData.saldoPiutang === 0);
-  }, [latestMonthData]);
-
-  // For card display: use latest month data (period-specific) instead of aggregate limit data
-  const cardDisplayData = useMemo(() => {
-    // Use latest month data for ALL card values (these are period-specific, not aggregate)
-    if (latestMonthData && (latestMonthData.totalSimpanan > 0 || latestMonthData.saldoPiutang > 0)) {
-      const totalSimpanan = latestMonthData.totalSimpanan;
-      const saldoPiutang = latestMonthData.saldoPiutang;
-      const limitPinjaman = Math.max(0, totalSimpanan * 1.3);
-      const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
-      
-      console.log('RekapIndividu cardDisplayData (from latestMonthData):', {
-        selectedAnggotaId,
-        selectedBulan,
-        selectedTahun,
-        source: 'period',
-        latestMonth: { bulan: latestMonthData.bulan, tahun: latestMonthData.tahun },
-        cardDisplayData: { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit }
-      });
-      
-      return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit };
-    }
-    
-    // Fallback to aggregate limit data if no period-specific data available
-    const totalSimpanan = safeLimit.totalSimpanan;
-    const saldoPiutang = safeLimit.saldoPiutang;
-    const limitPinjaman = safeLimit.limitPinjaman;
-    const sisaLimit = safeLimit.sisaLimit;
-    
-    console.log('RekapIndividu cardDisplayData (fallback to aggregate):', {
-      selectedAnggotaId,
-      selectedBulan,
-      selectedTahun,
-      source: 'aggregate',
-      latestMonthData: latestMonthData ? { bulan: latestMonthData.bulan, totalSimpanan: latestMonthData.totalSimpanan, saldoPiutang: latestMonthData.saldoPiutang } : 'null - using fallback',
-      cardDisplayData: { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit }
-    });
-    
-    return { totalSimpanan, saldoPiutang, limitPinjaman, sisaLimit };
-  }, [latestMonthData, safeLimit, selectedAnggotaId, selectedBulan, selectedTahun]);
-
   return (
     <div className="space-y-6">
-      {/* Debug Info Box - More Prominent */}
-      <div className="p-4 bg-blue-100 border-2 border-blue-500 rounded-lg text-sm font-mono">
-        <div className="font-bold text-blue-900 mb-3">📊 STATE DEBUG INFO:</div>
-        <div className="grid grid-cols-2 gap-2 text-blue-900">
-          <div>Period: {selectedBulan}/{selectedTahun}</div>
-          <div>Selected ID: {selectedAnggotaId || <span className="text-red-600 font-bold">(EMPTY!)</span>}</div>
-          <div>Members Loaded: {anggotaList.length}</div>
-          <div>Active Members: {anggotaList.filter(m => m.status === 'Aktif').length}</div>
-          <div>History Data: {historyData.length} months</div>
-          <div>Latest Month: {latestMonthData ? `Bulan ${latestMonthData.bulan}` : 'none'}</div>
-          <div>Data Loaded: {dataLoaded ? '✓' : '✗'}</div>
-          <div>Is Loading: {isLoading ? '⏳' : '✓'}</div>
-        </div>
-        {selectedAnggotaId && anggotaList.length > 0 && (
-          <div className="mt-2 text-xs text-blue-800">
-            Member lookup: {(() => { 
-              const m = anggotaList.find(x => x.id === selectedAnggotaId || x.kodeAnggota === selectedAnggotaId);
-              return m ? `✓ Found: ${m.nama}` : `✗ Not found (searched ${anggotaList.length} members)`; 
-            })()}
-          </div>
-        )}
-      </div>
-
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Rekap Individu</h1>
           <p className="text-muted-foreground">Informasi lengkap keanggotaan dan keuangan</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={selectedAnggotaId || ''} onValueChange={setSelectedAnggotaId}>
+          <Select value={selectedAnggotaId} onValueChange={setSelectedAnggotaId}>
             <SelectTrigger className="w-[280px]">
               <SelectValue placeholder="Pilih Anggota" />
             </SelectTrigger>
             <SelectContent>
-              {activeMembers.length === 0 ? (
-                <p className="px-2 py-1.5 text-xs text-muted-foreground">Tidak ada anggota aktif</p>
-              ) : (
-                activeMembers.map((m) => (
-                  <SelectItem key={m.id || m.kodeAnggota} value={m.id || m.kodeAnggota}>
-                    {m.nama} - {formatNIP(m.nip)}
-                  </SelectItem>
-                ))
-              )}
+              {activeMembers.map((m) => (
+                <SelectItem key={m.id || m.kodeAnggota} value={m.id || m.kodeAnggota}>
+                  {m.nama} - {formatNIP(m.nip)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button onClick={loadInitialData} variant="outline" size="icon" disabled={loading}>
@@ -600,21 +425,10 @@ export const RekapIndividu = ({
       </div>
 
       {!member ? (
-        <div className="space-y-4">
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              {selectedAnggotaId === '' 
-                ? 'Pilih anggota untuk melihat data rekap individu.' 
-                : `Anggota dengan ID "${selectedAnggotaId}" tidak ditemukan. Pastikan data sudah dimuat.`}
-            </AlertDescription>
-          </Alert>
-          {dataLoaded && anggotaList.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Available members: {anggotaList.filter(m => m.status === 'Aktif').map(m => m.nama).join(', ')}
-            </p>
-          )}
-        </div>
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>Pilih anggota untuk melihat data rekap individu.</AlertDescription>
+        </Alert>
       ) : (
         <>
           <Card className="overflow-hidden">
@@ -678,7 +492,7 @@ export const RekapIndividu = ({
                     <span>Total Simpanan</span>
                   </div>
                   <p className="text-xl font-bold text-primary">
-                    {formatCurrency(cardDisplayData.totalSimpanan)}
+                    {formatCurrency(safeLimit.totalSimpanan)}
                   </p>
                 </div>
                 
@@ -687,8 +501,8 @@ export const RekapIndividu = ({
                     <HandCoins className="h-4 w-4" />
                     <span>Saldo Piutang</span>
                   </div>
-                  <p className={cn("text-xl font-bold", cardDisplayData.saldoPiutang > 0 ? "text-destructive" : "text-green-600")}>
-                    {formatCurrency(cardDisplayData.saldoPiutang)}
+                  <p className={cn("text-xl font-bold", safeLimit.saldoPiutang > 0 ? "text-destructive" : "text-green-600")}>
+                    {formatCurrency(safeLimit.saldoPiutang)}
                   </p>
                 </div>
                 
@@ -698,7 +512,7 @@ export const RekapIndividu = ({
                     <span>Limit Pinjaman</span>
                   </div>
                   <p className="text-xl font-bold">
-                    {formatCurrency(cardDisplayData.limitPinjaman)}
+                    {formatCurrency(safeLimit.limitPinjaman)}
                   </p>
                 </div>
                 
@@ -707,23 +521,12 @@ export const RekapIndividu = ({
                     <Wallet className="h-4 w-4" />
                     <span>Sisa Limit</span>
                   </div>
-                  <p className={cn("text-xl font-bold", cardDisplayData.sisaLimit > 0 ? "text-green-600" : "text-muted-foreground")}>
-                    {formatCurrency(cardDisplayData.sisaLimit)}
+                  <p className={cn("text-xl font-bold", safeLimit.sisaLimit > 0 ? "text-green-600" : "text-muted-foreground")}>
+                    {formatCurrency(safeLimit.sisaLimit)}
                   </p>
                 </div>
               </div>
             </CardContent>
-            
-            {isUsingFallbackData && (
-              <CardContent className="pt-0">
-                <Alert className="bg-yellow-50 border-yellow-200">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-900 text-xs">
-                    Nilai ditampilkan dari data agregat (semua periode). Data spesifik untuk periode {selectedBulan}/{selectedTahun} tidak ditemukan.
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            )}
             
             {showDetail && (
               <>
@@ -925,7 +728,7 @@ export const RekapIndividu = ({
                   </div>
                   <Progress value={financialAnalysis.limitUtilization} className="h-2" />
                   <p className="text-xs text-muted-foreground">
-                    {formatCurrency(cardDisplayData.saldoPiutang)} dari {formatCurrency(cardDisplayData.limitPinjaman)}
+                    {formatCurrency(safeLimit.saldoPiutang)} dari {formatCurrency(safeLimit.limitPinjaman)}
                   </p>
                 </div>
               </CardContent>

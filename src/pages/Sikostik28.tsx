@@ -7,7 +7,6 @@ import { CekLimit } from '@/components/sikostik/CekLimit';
 import { UsulPinjaman } from '@/components/sikostik/UsulPinjaman';
 import { UsulPerubahan } from '@/components/sikostik/UsulPerubahan';
 import { UsulPengambilan } from '@/components/sikostik/UsulPengambilan';
-import { getCurrentPeriod } from '@/hooks/use-sikostik-data';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -15,9 +14,6 @@ import { useNavigate } from 'react-router-dom';
 const Sikostik28 = () => {
   const [activeTab, setActiveTab] = useState('rekap-anggota');
   const [selectedAnggotaId, setSelectedAnggotaId] = useState<string>('');
-  const currentPeriod = getCurrentPeriod();
-  const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
-  const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -30,20 +26,22 @@ const Sikostik28 = () => {
   }, [user, navigate]);
 
   const handleSelectMember = (anggotaId: string) => {
-    console.log('Sikostik28: handleSelectMember called with', anggotaId);
     setSelectedAnggotaId(anggotaId);
     setActiveTab('rekap-individu');
-    console.log('Sikostik28: switched to rekap-individu tab with selectedAnggotaId:', anggotaId);
   };
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Sikostik28</h1>
-        <p className="text-muted-foreground">
-          Sistem Koperasi Statistik - Pengelolaan simpan pinjam anggota
-        </p>
+      <div className="flex items-center justify-between bg-background p-4 rounded-xl shadow-sm">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Sikostik28
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Sistem Informasi Koperasi Statistik — Simpan Pinjam Anggota
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -76,15 +74,15 @@ const Sikostik28 = () => {
         </TabsList>
 
         <TabsContent value="rekap-anggota">
-          <RekapAnggota onSelectMember={handleSelectMember} selectedBulan={selectedBulan} selectedTahun={selectedTahun} onPeriodChange={(b, t) => { setSelectedBulan(b); setSelectedTahun(t); }} />
+          <RekapAnggota onSelectMember={handleSelectMember} />
         </TabsContent>
 
         <TabsContent value="rekap-individu">
-          <RekapIndividu selectedAnggotaId={selectedAnggotaId} selectedBulan={selectedBulan} selectedTahun={selectedTahun} />
+          <RekapIndividu selectedAnggotaId={selectedAnggotaId} />
         </TabsContent>
 
         <TabsContent value="cek-limit">
-          <CekLimit onSelectMember={handleSelectMember} selectedBulan={selectedBulan} selectedTahun={selectedTahun} onPeriodChange={(b, t) => { setSelectedBulan(b); setSelectedTahun(t); }} />
+          <CekLimit onSelectMember={handleSelectMember} />
         </TabsContent>
 
         <TabsContent value="usul-pinjaman">
