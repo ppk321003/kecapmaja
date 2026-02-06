@@ -586,79 +586,108 @@ export default function RekapSPKBAST() {
 
       let successCount = 0;
       for (const mapping of relevantMappings) {
-        try {
-          // Baca data row yang akan diupdate
-          const readResult = await callEdgeFunction("read", {
-            spreadsheetId: userSheetId,
-            range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
-          });
-          const currentRow = readResult?.values?.[0] || [];
-          console.log("📊 Current row data:", currentRow);
+        let retryCount = 0;
+        let updateSuccess = false;
+        
+        while (retryCount < 3 && !updateSuccess) {
+          try {
+            // Baca data row yang akan diupdate
+            const readResult = await callEdgeFunction("read", {
+              spreadsheetId: userSheetId,
+              range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
+            });
+            const currentRow = readResult?.values?.[0] || [];
+            console.log(`📊 Current row data (attempt ${retryCount + 1}):`, currentRow);
 
-          // Update hanya kolom status TTD (kolom X, index 23)
-          const updatedRow = [...currentRow];
+            // Update hanya kolom status TTD (kolom X, index 23)
+            const updatedRow = [...currentRow];
 
-          // PERBAIKAN: Handle multiple petugas untuk kolom TTD (kolom 23, index 23) - SAMA SEPERTI NOTIF
-          if (updatedRow[23] !== undefined) {
-            if (updatedRow[23] && updatedRow[23].includes('|')) {
-              const statusParts = updatedRow[23].split('|').map(s => s.trim());
-              if (mapping.petugasIndex < statusParts.length) {
-                statusParts[mapping.petugasIndex] = newStatus;
-                updatedRow[23] = statusParts.join(' | ');
+            // PERBAIKAN: Handle multiple petugas untuk kolom TTD (kolom 23, index 23)
+            if (updatedRow[23] !== undefined) {
+              if (updatedRow[23] && updatedRow[23].includes('|')) {
+                const statusParts = updatedRow[23].split('|').map(s => s.trim());
+                if (mapping.petugasIndex < statusParts.length) {
+                  statusParts[mapping.petugasIndex] = newStatus;
+                  updatedRow[23] = statusParts.join(' | ');
+                } else {
+                  statusParts.push(newStatus);
+                  updatedRow[23] = statusParts.join(' | ');
+                }
               } else {
-                // Jika index melebihi jumlah existing, tambahkan di akhir
-                statusParts.push(newStatus);
-                updatedRow[23] = statusParts.join(' | ');
+                if (mapping.petugasIndex === 0) {
+                  updatedRow[23] = newStatus;
+                } else {
+                  const statusParts = Array(mapping.petugasIndex + 1).fill("Belum ditandatangani");
+                  statusParts[mapping.petugasIndex] = newStatus;
+                  updatedRow[23] = statusParts.join(' | ');
+                }
               }
             } else {
-              // Single petugas atau belum ada data
               if (mapping.petugasIndex === 0) {
                 updatedRow[23] = newStatus;
               } else {
-                // Untuk multiple petugas, buat array dengan default "Belum ditandatangani" untuk index sebelumnya
                 const statusParts = Array(mapping.petugasIndex + 1).fill("Belum ditandatangani");
                 statusParts[mapping.petugasIndex] = newStatus;
                 updatedRow[23] = statusParts.join(' | ');
               }
             }
-          } else {
-            // Jika kolom 23 belum ada sama sekali
-            if (mapping.petugasIndex === 0) {
-              updatedRow[23] = newStatus;
+
+            console.log("🆕 Updated TTD row data:", updatedRow);
+
+            // Update row menggunakan operasi 'update'
+            await callEdgeFunction("update", {
+              spreadsheetId: userSheetId,
+              rowIndex: mapping.rowIndex + 1,
+              values: [updatedRow]
+            });
+            
+            // Tunggu Google Sheets persisting sebelum verify
+            await delay(1500);
+            
+            // Verify bahwa update berhasil dengan read kembali
+            const verifyResult = await callEdgeFunction("read", {
+              spreadsheetId: userSheetId,
+              range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
+            });
+            const verifiedRow = verifyResult?.values?.[0] || [];
+            const verifiedStatus = verifiedRow[23];
+            
+            // Check apakah update benar-benar tersimpan
+            if (verifiedStatus && verifiedStatus.includes(newStatus)) {
+              console.log(`✅ TTD update VERIFIED untuk row ${mapping.rowIndex}: ${newStatus}`);
+              updateSuccess = true;
+              successCount++;
             } else {
-              const statusParts = Array(mapping.petugasIndex + 1).fill("Belum ditandatangani");
-              statusParts[mapping.petugasIndex] = newStatus;
-              updatedRow[23] = statusParts.join(' | ');
+              console.warn(`⚠️ TTD update verification FAILED untuk row ${mapping.rowIndex}. Expected: ${newStatus}, Got: ${verifiedStatus}`);
+              retryCount++;
+              if (retryCount < 3) {
+                console.log(`🔄 Retrying TTD update untuk row ${mapping.rowIndex}...`);
+                await delay(2000 * retryCount);
+              }
+            }
+          } catch (error) {
+            console.error(`❌ Failed to update TTD mapping ${mapping.rowIndex} (attempt ${retryCount + 1}):`, error);
+            retryCount++;
+            if (retryCount < 3) {
+              await delay(2000 * retryCount);
             }
           }
-
-          console.log("🆕 Updated TTD row data:", updatedRow);
-
-          // Update row menggunakan operasi 'update'
-          await callEdgeFunction("update", {
-            spreadsheetId: userSheetId,
-            rowIndex: mapping.rowIndex + 1,
-            values: [updatedRow]
-          });
-          successCount++;
-        } catch (error) {
-          console.error(`❌ Failed to update TTD mapping ${mapping.rowIndex}:`, error);
+        }
+        
+        if (!updateSuccess) {
+          console.error(`❌ TTD update FAILED setelah 3x retry untuk row ${mapping.rowIndex}`);
         }
       }
 
       if (successCount > 0 && !isBulkUpdate) {
         toast({
           title: "Berhasil",
-          description: `Status TTD ${item.namaMitra} diubah menjadi "${newStatus}" (${successCount}/${relevantMappings.length} data terupdate)`
+          description: `Status TTD ${item.namaMitra} diubah menjadi "${newStatus}" (${successCount}/${relevantMappings.length} data terupdate dengan verifikasi)`
         });
 
-        // Refresh data dengan delay yang lebih panjang dan verify
-        // Tunggu Google Sheets API selesai persisting data sebelum fetch kembali
-        console.log("⏳ Menunggu persisting data ke Google Sheets...");
-        setTimeout(() => {
-          console.log("🔄 Fetching data untuk verify perubahan...");
-          fetchData();
-        }, 2500);
+        // Data sudah diverifikasi tersimpan, langsung refresh UI
+        console.log("✅ Data sudah diverifikasi tersimpan, refresh UI...");
+        fetchData();
       } else if (successCount === 0) {
         throw new Error("Gagal mengupdate semua data TTD");
       }
@@ -719,78 +748,106 @@ export default function RekapSPKBAST() {
 
       let successCount = 0;
       for (const mapping of relevantMappings) {
-        try {
-          // Baca data row yang akan diupdate
-          const readResult = await callEdgeFunction("read", {
-            spreadsheetId: userSheetId,
-            range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
-          });
-          
-          const currentRow = readResult?.values?.[0] || [];
-          const updatedRow = [...currentRow];
+        let retryCount = 0;
+        let updateSuccess = false;
+        
+        while (retryCount < 3 && !updateSuccess) {
+          try {
+            // Baca data row yang akan diupdate
+            const readResult = await callEdgeFunction("read", {
+              spreadsheetId: userSheetId,
+              range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
+            });
+            
+            const currentRow = readResult?.values?.[0] || [];
+            const updatedRow = [...currentRow];
 
-          // PERBAIKAN: Handle multiple petugas untuk kolom notifikasi (kolom 24, index 24)
-          if (updatedRow[24] !== undefined) {
-            if (updatedRow[24] && updatedRow[24].includes('|')) {
-              const notifParts = updatedRow[24].split('|').map(s => s.trim());
-              if (mapping.petugasIndex < notifParts.length) {
-                notifParts[mapping.petugasIndex] = newStatus;
-                updatedRow[24] = notifParts.join(' | ');
+            // PERBAIKAN: Handle multiple petugas untuk kolom notifikasi (kolom 24, index 24)
+            if (updatedRow[24] !== undefined) {
+              if (updatedRow[24] && updatedRow[24].includes('|')) {
+                const notifParts = updatedRow[24].split('|').map(s => s.trim());
+                if (mapping.petugasIndex < notifParts.length) {
+                  notifParts[mapping.petugasIndex] = newStatus;
+                  updatedRow[24] = notifParts.join(' | ');
+                } else {
+                  notifParts.push(newStatus);
+                  updatedRow[24] = notifParts.join(' | ');
+                }
               } else {
-                // Jika index melebihi jumlah existing, tambahkan di akhir
-                notifParts.push(newStatus);
-                updatedRow[24] = notifParts.join(' | ');
+                if (mapping.petugasIndex === 0) {
+                  updatedRow[24] = newStatus;
+                } else {
+                  const notifParts = Array(mapping.petugasIndex + 1).fill("belum");
+                  notifParts[mapping.petugasIndex] = newStatus;
+                  updatedRow[24] = notifParts.join(' | ');
+                }
               }
             } else {
-              // Single petugas atau belum ada data
               if (mapping.petugasIndex === 0) {
                 updatedRow[24] = newStatus;
               } else {
-                // Untuk multiple petugas, buat array dengan empty string untuk index sebelumnya
                 const notifParts = Array(mapping.petugasIndex + 1).fill("belum");
                 notifParts[mapping.petugasIndex] = newStatus;
                 updatedRow[24] = notifParts.join(' | ');
               }
             }
-          } else {
-            // Jika kolom 24 belum ada sama sekali
-            if (mapping.petugasIndex === 0) {
-              updatedRow[24] = newStatus;
+
+            console.log(`📊 Updated notif row data (attempt ${retryCount + 1}):`, updatedRow);
+
+            // Update row di spreadsheet
+            await callEdgeFunction("update", {
+              spreadsheetId: userSheetId,
+              rowIndex: mapping.rowIndex + 1,
+              values: [updatedRow]
+            });
+            
+            // Tunggu Google Sheets persisting sebelum verify
+            await delay(1500);
+            
+            // Verify bahwa update berhasil dengan read kembali
+            const verifyResult = await callEdgeFunction("read", {
+              spreadsheetId: userSheetId,
+              range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
+            });
+            const verifiedRow = verifyResult?.values?.[0] || [];
+            const verifiedNotif = verifiedRow[24];
+            
+            // Check apakah update benar-benar tersimpan
+            if (verifiedNotif && verifiedNotif.includes(newStatus)) {
+              console.log(`✅ Notif update VERIFIED untuk row ${mapping.rowIndex}: ${newStatus}`);
+              updateSuccess = true;
+              successCount++;
             } else {
-              const notifParts = Array(mapping.petugasIndex + 1).fill("belum");
-              notifParts[mapping.petugasIndex] = newStatus;
-              updatedRow[24] = notifParts.join(' | ');
+              console.warn(`⚠️ Notif update verification FAILED untuk row ${mapping.rowIndex}. Expected: ${newStatus}, Got: ${verifiedNotif}`);
+              retryCount++;
+              if (retryCount < 3) {
+                console.log(`🔄 Retrying Notif update untuk row ${mapping.rowIndex}...`);
+                await delay(2000 * retryCount);
+              }
+            }
+          } catch (error) {
+            console.error(`❌ Failed to update notif mapping ${mapping.rowIndex} (attempt ${retryCount + 1}):`, error);
+            retryCount++;
+            if (retryCount < 3) {
+              await delay(2000 * retryCount);
             }
           }
-
-          console.log("🆕 Updated notif row data:", updatedRow);
-
-          // Update row di spreadsheet
-          await callEdgeFunction("update", {
-            spreadsheetId: userSheetId,
-            rowIndex: mapping.rowIndex + 1,
-            values: [updatedRow]
-          });
-          
-          successCount++;
-        } catch (error) {
-          console.error(`❌ Failed to update notif mapping ${mapping.rowIndex}:`, error);
+        }
+        
+        if (!updateSuccess) {
+          console.error(`❌ Notif update FAILED setelah 3x retry untuk row ${mapping.rowIndex}`);
         }
       }
 
       if (successCount > 0 && !isBulkUpdate) {
         toast({
           title: "Berhasil",
-          description: `Status notifikasi ${item.namaMitra} diubah menjadi "${newStatus === 'sudah' ? 'Sudah' : 'Belum'} kirim notif"`
+          description: `Status notifikasi ${item.namaMitra} diubah menjadi "${newStatus === 'sudah' ? 'Sudah' : 'Belum'} kirim notif" (${successCount}/${relevantMappings.length} data terupdate dengan verifikasi)`
         });
 
-        // Refresh data dengan delay yang lebih panjang dan verify
-        // Tunggu Google Sheets API selesai persisting data sebelum fetch kembali
-        console.log("⏳ Menunggu persisting data ke Google Sheets...");
-        setTimeout(() => {
-          console.log("🔄 Fetching data untuk verify perubahan...");
-          fetchData();
-        }, 2500);
+        // Data sudah diverifikasi tersimpan, langsung refresh UI
+        console.log("✅ Data sudah diverifikasi tersimpan, refresh UI...");
+        fetchData();
       } else if (successCount === 0) {
         throw new Error("Gagal mengupdate semua data notifikasi");
       }
@@ -889,14 +946,13 @@ export default function RekapSPKBAST() {
       toast({
         title: successCount === totalItems ? "Berhasil" : "Perhatian",
         description: successCount === totalItems 
-          ? `Semua status notifikasi berhasil diubah menjadi "${newStatus === 'sudah' ? 'Sudah' : 'Belum'} kirim notif" (${successCount} data)`
+          ? `Semua status notifikasi berhasil diubah menjadi "${newStatus === 'sudah' ? 'Sudah' : 'Belum'} kirim notif" (${successCount} data dengan verifikasi)`
           : `Status notifikasi berhasil diubah untuk ${successCount} dari ${totalItems} data`
       });
 
-      // Refresh data untuk memastikan konsistensi dengan delay yang lebih panjang
-      setTimeout(() => {
-        fetchData();
-      }, 2500);
+      // Data sudah diverifikasi di dalam handleNotifChange, langsung refresh
+      console.log("✅ Semua data sudah diverifikasi, refresh UI...");
+      fetchData();
 
     } catch (error: any) {
       console.error("❌ Error updating all notif status:", error);
@@ -939,14 +995,13 @@ export default function RekapSPKBAST() {
       toast({
         title: successCount === totalItems ? "Berhasil" : "Perhatian",
         description: successCount === totalItems 
-          ? `Semua status TTD berhasil diubah menjadi "${newStatus}" (${successCount} data)`
+          ? `Semua status TTD berhasil diubah menjadi "${newStatus}" (${successCount} data dengan verifikasi)`
           : `Status TTD berhasil diubah untuk ${successCount} dari ${totalItems} data`
       });
 
-      // Refresh data untuk memastikan konsistensi dengan delay yang lebih panjang
-      setTimeout(() => {
-        fetchData();
-      }, 2500);
+      // Data sudah diverifikasi di dalam handleStatusChange, langsung refresh
+      console.log("✅ Semua data sudah diverifikasi, refresh UI...");
+      fetchData();
 
     } catch (error: any) {
       console.error("❌ Error updating all TTD status:", error);
