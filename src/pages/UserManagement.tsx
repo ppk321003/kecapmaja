@@ -70,6 +70,7 @@ const ROLE_OPTIONS = [
   { value: "Fungsi Distribusi", label: "Fungsi Distribusi" },
   { value: "Fungsi IPDS", label: "Fungsi IPDS" },
   { value: "Organik BPS", label: "Organik BPS" },
+  { value: "operator", label: "Operator BPS" },
 ];
 
 interface UserData {
