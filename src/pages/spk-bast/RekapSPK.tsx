@@ -143,8 +143,6 @@ export default function RekapSPKBAST() {
   const { toast } = useToast();
 
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
-  const isOperator = user?.role === "operator";
-  const canEditTTD = isPPK || isOperator;
 
   const formatRupiah = useCallback((amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -545,7 +543,7 @@ export default function RekapSPKBAST() {
   }, [filterBulan, filterTahun, cleanPeriode, processPetugasData, toast, callEdgeFunction, sbmlData, validateRow, userSheetId, masterMitraSheetId]);
 
   const handleStatusChange = useCallback(async (namaMitra: string, nik: string, newStatus: string, isBulkUpdate = false) => {
-    if (!canEditTTD) return;
+    if (!isPPK) return;
     
     try {
       const item = data.find(row => row.namaMitra === namaMitra && row.nik === nik);
@@ -652,13 +650,10 @@ export default function RekapSPKBAST() {
           description: `Status TTD ${item.namaMitra} diubah menjadi "${newStatus}" (${successCount}/${relevantMappings.length} data terupdate)`
         });
 
-        // Refresh data dengan delay yang lebih panjang dan verify
-        // Tunggu Google Sheets API selesai persisting data sebelum fetch kembali
-        console.log("⏳ Menunggu persisting data ke Google Sheets...");
+        // Refresh data untuk memastikan konsistensi
         setTimeout(() => {
-          console.log("🔄 Fetching data untuk verify perubahan...");
           fetchData();
-        }, 2500);
+        }, 1000);
       } else if (successCount === 0) {
         throw new Error("Gagal mengupdate semua data TTD");
       }
@@ -677,7 +672,7 @@ export default function RekapSPKBAST() {
       }
       throw error;
     }
-  }, [data, canEditTTD, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
+  }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
 
   const handleNotifChange = useCallback(async (namaMitra: string, nik: string, newStatus: string, isBulkUpdate = false) => {
     if (!isPPK) return;
@@ -784,13 +779,10 @@ export default function RekapSPKBAST() {
           description: `Status notifikasi ${item.namaMitra} diubah menjadi "${newStatus === 'sudah' ? 'Sudah' : 'Belum'} kirim notif"`
         });
 
-        // Refresh data dengan delay yang lebih panjang dan verify
-        // Tunggu Google Sheets API selesai persisting data sebelum fetch kembali
-        console.log("⏳ Menunggu persisting data ke Google Sheets...");
+        // Refresh data untuk memastikan konsistensi
         setTimeout(() => {
-          console.log("🔄 Fetching data untuk verify perubahan...");
           fetchData();
-        }, 2500);
+        }, 1000);
       } else if (successCount === 0) {
         throw new Error("Gagal mengupdate semua data notifikasi");
       }
@@ -893,10 +885,10 @@ export default function RekapSPKBAST() {
           : `Status notifikasi berhasil diubah untuk ${successCount} dari ${totalItems} data`
       });
 
-      // Refresh data untuk memastikan konsistensi dengan delay yang lebih panjang
+      // Refresh data untuk memastikan konsistensi
       setTimeout(() => {
         fetchData();
-      }, 2500);
+      }, 1000);
 
     } catch (error: any) {
       console.error("❌ Error updating all notif status:", error);
@@ -912,7 +904,7 @@ export default function RekapSPKBAST() {
 
   // Fungsi untuk mengubah semua status TTD sekaligus
   const handleAllTTDChange = useCallback(async (newStatus: string) => {
-    if (!canEditTTD || filteredAndSortedData.length === 0) return;
+    if (!isPPK || filteredAndSortedData.length === 0) return;
 
     try {
       setUpdatingAllTTD(true);
@@ -943,10 +935,10 @@ export default function RekapSPKBAST() {
           : `Status TTD berhasil diubah untuk ${successCount} dari ${totalItems} data`
       });
 
-      // Refresh data untuk memastikan konsistensi dengan delay yang lebih panjang
+      // Refresh data untuk memastikan konsistensi
       setTimeout(() => {
         fetchData();
-      }, 2500);
+      }, 1000);
 
     } catch (error: any) {
       console.error("❌ Error updating all TTD status:", error);
@@ -1073,14 +1065,14 @@ export default function RekapSPKBAST() {
         </Card>
       )}
 
-      {/* Bulk Actions Card - untuk PPK dan Operator */}
-      {(isPPK || isOperator) && filteredAndSortedData.length > 0 && (
+      {/* Bulk Actions Card - hanya untuk PPK */}
+      {isPPK && filteredAndSortedData.length > 0 && (
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-base">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />
-                Aksi Massal {isOperator && !isPPK ? '(Operator)' : ''}
+                Aksi Massal
               </div>
               <Badge variant="secondary" className="text-sm">
                 {filteredAndSortedData.length} Data
@@ -1089,47 +1081,45 @@ export default function RekapSPKBAST() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Bulk Notif Actions - hanya untuk PPK */}
-              {isPPK && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Notifikasi Massal</Label>
-                    <div className="text-xs text-muted-foreground">
-                      Sudah: {notifStats.sudah} | Belum: {notifStats.belum}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleAllNotifChange('sudah')}
-                      disabled={updatingAllNotif || notifStats.sudah === notifStats.total}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                    >
-                      {updatingAllNotif ? (
-                        <>Memproses...</>
-                      ) : (
-                        <>Set Semua Sudah Notif</>
-                      )}
-                    </Button>
-                    <Button
-                      onClick={() => handleAllNotifChange('belum')}
-                      disabled={updatingAllNotif || notifStats.belum === notifStats.total}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                    >
-                      {updatingAllNotif ? (
-                        <>Memproses...</>
-                      ) : (
-                        <>Set Semua Belum Notif</>
-                      )}
-                    </Button>
+              {/* Bulk Notif Actions */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Notifikasi Massal</Label>
+                  <div className="text-xs text-muted-foreground">
+                    Sudah: {notifStats.sudah} | Belum: {notifStats.belum}
                   </div>
                 </div>
-              )}
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleAllNotifChange('sudah')}
+                    disabled={updatingAllNotif || notifStats.sudah === notifStats.total}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    {updatingAllNotif ? (
+                      <>Memproses...</>
+                    ) : (
+                      <>Set Semua Sudah Notif</>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => handleAllNotifChange('belum')}
+                    disabled={updatingAllNotif || notifStats.belum === notifStats.total}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    {updatingAllNotif ? (
+                      <>Memproses...</>
+                    ) : (
+                      <>Set Semua Belum Notif</>
+                    )}
+                  </Button>
+                </div>
+              </div>
 
-              {/* Bulk TTD Actions - untuk PPK dan Operator */}
+              {/* Bulk TTD Actions */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">TTD Massal</Label>
@@ -1326,10 +1316,7 @@ export default function RekapSPKBAST() {
                     {isPPK && (
                       <TableHead className="w-32 text-center">Notif Mitra</TableHead>
                     )}
-                    {/* Kolom Status TTD - untuk PPK dan Operator */}
-                    {canEditTTD && (
-                      <TableHead className="w-48 text-center">Status TTD</TableHead>
-                    )}
+                    <TableHead className="w-48 text-center">Status TTD</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1462,7 +1449,7 @@ export default function RekapSPKBAST() {
                             {row.statusTTD}
                           </Badge>
                           
-                          {canEditTTD && (
+                          {isPPK && (
                             <div className="flex items-center space-x-2">
                               <Switch 
                                 checked={row.statusTTD === "Sudah ditandatangani"} 
@@ -1504,7 +1491,7 @@ export default function RekapSPKBAST() {
                       </TableCell>
                       <TableCell></TableCell>
                       {isPPK && <TableCell></TableCell>}
-                      {canEditTTD && <TableCell></TableCell>}
+                      <TableCell></TableCell>
                     </TableRow>
                   )}
                 </TableBody>

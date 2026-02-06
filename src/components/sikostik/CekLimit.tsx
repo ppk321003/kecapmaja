@@ -11,24 +11,8 @@ import { useSikostikData, formatCurrency, parseNIP, formatNIP, getRetirementStat
 import { LimitAnggota } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
 
-<<<<<<< HEAD
-export const CekLimit = ({ 
-  onSelectMember,
-  selectedBulan: propSelectedBulan,
-  selectedTahun: propSelectedTahun,
-  onPeriodChange
-}: { 
-  onSelectMember?: (anggotaId: string) => void;
-  selectedBulan?: number;
-  selectedTahun?: number;
-  onPeriodChange?: (bulan: number, tahun: number) => void;
-}) => {
-  const { loading, error, fetchRekapDashboard } = useSikostikData();
-  const currentPeriod = getCurrentPeriod();
-=======
 export const CekLimit = ({ onSelectMember }: { onSelectMember?: (anggotaId: string) => void }) => {
   const { loading, error, fetchLimitAnggota } = useSikostikData();
->>>>>>> a34348812f905be668f1e05901bc88dc765f7826
   const [searchQuery, setSearchQuery] = useState('');
   const [limitData, setLimitData] = useState<LimitAnggota[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,78 +21,16 @@ export const CekLimit = ({ onSelectMember }: { onSelectMember?: (anggotaId: stri
     direction: 'asc' | 'desc';
   }>({ key: 'nama', direction: 'asc' });
 
-<<<<<<< HEAD
-  // Update period from props
-  useEffect(() => {
-    if (propSelectedBulan !== undefined) {
-      setSelectedBulan(propSelectedBulan);
-    }
-  }, [propSelectedBulan]);
-
-  useEffect(() => {
-    if (propSelectedTahun !== undefined) {
-      setSelectedTahun(propSelectedTahun);
-    }
-  }, [propSelectedTahun]);
-
-  // Load period-specific data
-=======
->>>>>>> a34348812f905be668f1e05901bc88dc765f7826
   const loadData = async () => {
     setIsLoading(true);
-    try {
-      console.log('CekLimit: loading period-specific data for bulan=', selectedBulan, 'tahun=', selectedTahun);
-      const rekapData = await fetchRekapDashboard(selectedBulan, selectedTahun);
-      console.log('CekLimit: loaded', rekapData.length, 'members for period');
-      
-      // Convert RekapDashboard to LimitAnggota format with period-specific calculations
-      const convertedData: LimitAnggota[] = rekapData.map(rekap => {
-        const limitPinjaman = Math.max(0, rekap.totalSimpanan * 1.3);
-        const sisaLimit = Math.max(0, limitPinjaman - rekap.saldoPiutang);
-        
-        return {
-          anggotaId: rekap.anggotaId,
-          nama: rekap.nama,
-          nip: rekap.nip,
-          totalSimpanan: rekap.totalSimpanan,
-          totalPinjamanKumulatif: rekap.saldoPiutang,
-          saldoPiutang: rekap.saldoPiutang,
-          limitPinjaman,
-          sisaLimit,
-          cicilanPokok: rekap.cicilanPokok
-        };
-      });
-      
-      setLimitData(convertedData);
-    } catch (err) {
-      console.error('CekLimit: Error loading data:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    const data = await fetchLimitAnggota();
+    setLimitData(data);
+    setIsLoading(false);
   };
 
-<<<<<<< HEAD
-  // Handle period change
-  const handleBulanChange = (bulan: number) => {
-    setSelectedBulan(bulan);
-    if (onPeriodChange) {
-      onPeriodChange(bulan, selectedTahun);
-    }
-  };
-
-  const handleTahunChange = (tahun: number) => {
-    setSelectedTahun(tahun);
-    if (onPeriodChange) {
-      onPeriodChange(selectedBulan, tahun);
-    }
-  };
-
-  // Load/reload data when period changes
-=======
->>>>>>> a34348812f905be668f1e05901bc88dc765f7826
   useEffect(() => {
     loadData();
-  }, [selectedBulan, selectedTahun]);
+  }, []);
 
   const enrichedData = useMemo(() => {
     return limitData.map((member) => {
@@ -294,7 +216,6 @@ export const CekLimit = ({ onSelectMember }: { onSelectMember?: (anggotaId: stri
         <CardHeader>
           <CardTitle className="text-lg">Data Limit Pinjaman Anggota</CardTitle>
           <CardDescription>
-            Periode: <span className="font-semibold">{formatPeriode(selectedBulan, selectedTahun)}</span> • 
             {filteredData.length} anggota ditampilkan • 
             <span className="ml-2 text-sm">
               Diurutkan berdasarkan: 
