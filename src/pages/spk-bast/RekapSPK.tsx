@@ -591,51 +591,38 @@ export default function RekapSPKBAST() {
         
         while (retryCount < 3 && !updateSuccess) {
           try {
-            // Baca data row yang akan diupdate - gunakan range yang lebih lengkap
-            // Baca sampai column AE untuk memastikan kolom 23 dan 24 ada dengan proper
+            // Baca data row yang akan diupdate
             const readResult = await callEdgeFunction("read", {
               spreadsheetId: userSheetId,
-              range: `Sheet1!A${mapping.rowIndex + 1}:AE${mapping.rowIndex + 1}`
+              range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
             });
-            let currentRow = readResult?.values?.[0] || [];
-            console.log(`📊 Current row length: ${currentRow.length}, data:`, currentRow);
+            const currentRow = readResult?.values?.[0] || [];
+            console.log(`📊 Current row data (attempt ${retryCount + 1}):`, currentRow);
 
-            // Ensure array has minimal length untuk kolom TTD (index 23)
-            while (currentRow.length < 24) {
-              currentRow.push("");
-            }
-
+            // Update hanya kolom status TTD (kolom X, index 23)
             const updatedRow = [...currentRow];
 
             // PERBAIKAN: Handle multiple petugas untuk kolom TTD (kolom 23, index 23)
-            console.log(`   Before update - Column 23 value: "${updatedRow[23]}"`);
-            
-            if (updatedRow[23] !== undefined && updatedRow[23] !== null && updatedRow[23] !== "") {
-              if (updatedRow[23].includes('|')) {
+            if (updatedRow[23] !== undefined) {
+              if (updatedRow[23] && updatedRow[23].includes('|')) {
                 const statusParts = updatedRow[23].split('|').map(s => s.trim());
-                console.log(`   Split status parts:`, statusParts, `petugas index: ${mapping.petugasIndex}`);
                 if (mapping.petugasIndex < statusParts.length) {
                   statusParts[mapping.petugasIndex] = newStatus;
+                  updatedRow[23] = statusParts.join(' | ');
                 } else {
                   statusParts.push(newStatus);
+                  updatedRow[23] = statusParts.join(' | ');
                 }
-                updatedRow[23] = statusParts.join(' | ');
               } else {
-                // Single value, tidak ada pipe
                 if (mapping.petugasIndex === 0) {
                   updatedRow[23] = newStatus;
                 } else {
-                  // Multiple petugas, butuh pipe
-                  const statusParts = [updatedRow[23]];
-                  while (statusParts.length <= mapping.petugasIndex) {
-                    statusParts.push("Belum ditandatangani");
-                  }
+                  const statusParts = Array(mapping.petugasIndex + 1).fill("Belum ditandatangani");
                   statusParts[mapping.petugasIndex] = newStatus;
                   updatedRow[23] = statusParts.join(' | ');
                 }
               }
             } else {
-              // Kolom kosong, isi dengan new status
               if (mapping.petugasIndex === 0) {
                 updatedRow[23] = newStatus;
               } else {
@@ -645,24 +632,13 @@ export default function RekapSPKBAST() {
               }
             }
 
-            console.log(`   After update - Column 23 value: "${updatedRow[23]}"`);
-            console.log(`🆕 Updated TTD row - will update from index 0 to ${updatedRow.length}`);
+            console.log("🆕 Updated TTD row data:", updatedRow);
 
-            // Update row menggunakan operasi 'update' - hanya kirim data yang updated
-            // Trim trailing empty columns untuk efficiency
-            let trimmedRow = updatedRow.slice();
-            while (trimmedRow.length > 0 && (trimmedRow[trimmedRow.length - 1] === "" || trimmedRow[trimmedRow.length - 1] === undefined)) {
-              trimmedRow.pop();
-            }
-            // Ensure minimal length untuk kolom 23
-            while (trimmedRow.length < 24) {
-              trimmedRow.push("");
-            }
-
+            // Update row menggunakan operasi 'update'
             await callEdgeFunction("update", {
               spreadsheetId: userSheetId,
               rowIndex: mapping.rowIndex + 1,
-              values: [trimmedRow]
+              values: [updatedRow]
             });
             
             // Tunggu Google Sheets persisting sebelum verify
@@ -671,39 +647,13 @@ export default function RekapSPKBAST() {
             // Verify bahwa update berhasil dengan read kembali
             const verifyResult = await callEdgeFunction("read", {
               spreadsheetId: userSheetId,
-              range: `Sheet1!A${mapping.rowIndex + 1}:AE${mapping.rowIndex + 1}`
+              range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
             });
-            let verifiedRow = verifyResult?.values?.[0] || [];
-            
-            // Ensure verified row has enough length
-            while (verifiedRow.length < 24) {
-              verifiedRow.push("");
-            }
-            
+            const verifiedRow = verifyResult?.values?.[0] || [];
             const verifiedStatus = verifiedRow[23];
-            console.log(`   Verified - Column 23: "${verifiedStatus}"`);
             
-            // Check apakah update benar-benar tersimpan - check dengan lebih ketat
-            let verificationPassed = false;
-            if (verifiedStatus !== undefined && verifiedStatus !== null && verifiedStatus !== "") {
-              if (verifiedStatus.includes('|')) {
-                // Multiple values
-                const verifiedParts = verifiedStatus.split('|').map(s => s.trim());
-                if (mapping.petugasIndex < verifiedParts.length && verifiedParts[mapping.petugasIndex] === newStatus) {
-                  verificationPassed = true;
-                }
-              } else {
-                // Single value
-                if (verifiedStatus === newStatus) {
-                  verificationPassed = true;
-                }
-              }
-            } else if (newStatus === "" || newStatus === null) {
-              // If expecting empty value
-              verificationPassed = true;
-            }
-            
-            if (verificationPassed) {
+            // Check apakah update benar-benar tersimpan
+            if (verifiedStatus && verifiedStatus.includes(newStatus)) {
               console.log(`✅ TTD update VERIFIED untuk row ${mapping.rowIndex}: ${newStatus}`);
               updateSuccess = true;
               successCount++;
@@ -711,7 +661,7 @@ export default function RekapSPKBAST() {
               console.warn(`⚠️ TTD update verification FAILED untuk row ${mapping.rowIndex}. Expected: ${newStatus}, Got: ${verifiedStatus}`);
               retryCount++;
               if (retryCount < 3) {
-                console.log(`🔄 Retrying TTD update untuk row ${mapping.rowIndex}... (attempt ${retryCount + 1}/3)`);
+                console.log(`🔄 Retrying TTD update untuk row ${mapping.rowIndex}...`);
                 await delay(2000 * retryCount);
               }
             }
@@ -756,7 +706,7 @@ export default function RekapSPKBAST() {
       }
       throw error;
     }
-  }, [data, canEditTTD, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
+  }, [data, isPPK, filterBulan, filterTahun, cleanPeriode, toast, callEdgeFunction, fetchData]);
 
   const handleNotifChange = useCallback(async (namaMitra: string, nik: string, newStatus: string, isBulkUpdate = false) => {
     if (!isPPK) return;
@@ -803,51 +753,36 @@ export default function RekapSPKBAST() {
         
         while (retryCount < 3 && !updateSuccess) {
           try {
-            // Baca data row yang akan diupdate - gunakan range yang lebih lengkap
-            // Baca sampai column AE untuk memastikan kolom 24 (Y) ada dengan proper
+            // Baca data row yang akan diupdate
             const readResult = await callEdgeFunction("read", {
               spreadsheetId: userSheetId,
-              range: `Sheet1!A${mapping.rowIndex + 1}:AE${mapping.rowIndex + 1}`
+              range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
             });
-            let currentRow = readResult?.values?.[0] || [];
-            console.log(`📊 Current row length: ${currentRow.length}, data:`, currentRow);
-
-            // Ensure array has minimal length untuk kolom Notif (index 24)
-            while (currentRow.length < 25) {
-              currentRow.push("");
-            }
-
+            
+            const currentRow = readResult?.values?.[0] || [];
             const updatedRow = [...currentRow];
 
             // PERBAIKAN: Handle multiple petugas untuk kolom notifikasi (kolom 24, index 24)
-            console.log(`   Before update - Column 24 value: "${updatedRow[24]}"`);
-            
-            if (updatedRow[24] !== undefined && updatedRow[24] !== null && updatedRow[24] !== "") {
-              if (updatedRow[24].includes('|')) {
+            if (updatedRow[24] !== undefined) {
+              if (updatedRow[24] && updatedRow[24].includes('|')) {
                 const notifParts = updatedRow[24].split('|').map(s => s.trim());
-                console.log(`   Split notif parts:`, notifParts, `petugas index: ${mapping.petugasIndex}`);
                 if (mapping.petugasIndex < notifParts.length) {
                   notifParts[mapping.petugasIndex] = newStatus;
+                  updatedRow[24] = notifParts.join(' | ');
                 } else {
                   notifParts.push(newStatus);
+                  updatedRow[24] = notifParts.join(' | ');
                 }
-                updatedRow[24] = notifParts.join(' | ');
               } else {
-                // Single value, tidak ada pipe
                 if (mapping.petugasIndex === 0) {
                   updatedRow[24] = newStatus;
                 } else {
-                  // Multiple petugas, butuh pipe
-                  const notifParts = [updatedRow[24]];
-                  while (notifParts.length <= mapping.petugasIndex) {
-                    notifParts.push("belum");
-                  }
+                  const notifParts = Array(mapping.petugasIndex + 1).fill("belum");
                   notifParts[mapping.petugasIndex] = newStatus;
                   updatedRow[24] = notifParts.join(' | ');
                 }
               }
             } else {
-              // Kolom kosong, isi dengan new status
               if (mapping.petugasIndex === 0) {
                 updatedRow[24] = newStatus;
               } else {
@@ -857,23 +792,13 @@ export default function RekapSPKBAST() {
               }
             }
 
-            console.log(`   After update - Column 24 value: "${updatedRow[24]}"`);
-            console.log(`🆕 Updated Notif row - will update from index 0 to ${updatedRow.length}`);
+            console.log(`📊 Updated notif row data (attempt ${retryCount + 1}):`, updatedRow);
 
-            // Update row di spreadsheet - trim trailing empty columns untuk efficiency
-            let trimmedRow = updatedRow.slice();
-            while (trimmedRow.length > 0 && (trimmedRow[trimmedRow.length - 1] === "" || trimmedRow[trimmedRow.length - 1] === undefined)) {
-              trimmedRow.pop();
-            }
-            // Ensure minimal length untuk kolom 24
-            while (trimmedRow.length < 25) {
-              trimmedRow.push("");
-            }
-
+            // Update row di spreadsheet
             await callEdgeFunction("update", {
               spreadsheetId: userSheetId,
               rowIndex: mapping.rowIndex + 1,
-              values: [trimmedRow]
+              values: [updatedRow]
             });
             
             // Tunggu Google Sheets persisting sebelum verify
@@ -882,39 +807,13 @@ export default function RekapSPKBAST() {
             // Verify bahwa update berhasil dengan read kembali
             const verifyResult = await callEdgeFunction("read", {
               spreadsheetId: userSheetId,
-              range: `Sheet1!A${mapping.rowIndex + 1}:AE${mapping.rowIndex + 1}`
+              range: `Sheet1!A${mapping.rowIndex + 1}:Z${mapping.rowIndex + 1}`
             });
-            let verifiedRow = verifyResult?.values?.[0] || [];
-            
-            // Ensure verified row has enough length
-            while (verifiedRow.length < 25) {
-              verifiedRow.push("");
-            }
-            
+            const verifiedRow = verifyResult?.values?.[0] || [];
             const verifiedNotif = verifiedRow[24];
-            console.log(`   Verified - Column 24: "${verifiedNotif}"`);
             
-            // Check apakah update benar-benar tersimpan - check dengan lebih ketat
-            let verificationPassed = false;
-            if (verifiedNotif !== undefined && verifiedNotif !== null && verifiedNotif !== "") {
-              if (verifiedNotif.includes('|')) {
-                // Multiple values
-                const verifiedParts = verifiedNotif.split('|').map(s => s.trim());
-                if (mapping.petugasIndex < verifiedParts.length && verifiedParts[mapping.petugasIndex] === newStatus) {
-                  verificationPassed = true;
-                }
-              } else {
-                // Single value
-                if (verifiedNotif === newStatus) {
-                  verificationPassed = true;
-                }
-              }
-            } else if (newStatus === "" || newStatus === null) {
-              // If expecting empty value
-              verificationPassed = true;
-            }
-            
-            if (verificationPassed) {
+            // Check apakah update benar-benar tersimpan
+            if (verifiedNotif && verifiedNotif.includes(newStatus)) {
               console.log(`✅ Notif update VERIFIED untuk row ${mapping.rowIndex}: ${newStatus}`);
               updateSuccess = true;
               successCount++;
@@ -922,7 +821,7 @@ export default function RekapSPKBAST() {
               console.warn(`⚠️ Notif update verification FAILED untuk row ${mapping.rowIndex}. Expected: ${newStatus}, Got: ${verifiedNotif}`);
               retryCount++;
               if (retryCount < 3) {
-                console.log(`🔄 Retrying Notif update untuk row ${mapping.rowIndex}... (attempt ${retryCount + 1}/3)`);
+                console.log(`🔄 Retrying Notif update untuk row ${mapping.rowIndex}...`);
                 await delay(2000 * retryCount);
               }
             }
