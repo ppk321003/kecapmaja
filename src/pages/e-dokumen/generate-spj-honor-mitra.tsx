@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,12 @@ interface KegiatanSPJData {
   hargaSatuan?: number;
   totalRealisasi?: number;
   satuan?: string;
+  // Raw data fields for generateSPJ record
+  bebanAnggaran?: number;  // Kolom S
+  pembuatDaftar?: string;   // Kolom L
+  nik?: string;             // Kolom W
+  bulan?: string;           // Parsed from periode
+  tahun?: string;           // Parsed from periode
   [key: string]: string | number | string[] | undefined;
 }
 
@@ -39,6 +46,17 @@ export default function GenerateSPJHonorMitra() {
   // Get dynamic sheet ID from satker config - ambil dari entrikegiatan_sheet_id (kolom E satker_config)
   const dynamicSheetId = useMemo(() => {
     return satkerConfig?.getUserSatkerSheetId('entrikegiatan') || TUGAS_SPREADSHEET_ID;
+  }, [satkerConfig]);
+
+  // Get generateSPJ sheet ID from satker config - ambil dari generatespj_sheet_id (kolom W satker_config)
+  const generateSPJSheetId = useMemo(() => {
+    // Try to get from satker config, using a workaround for type checking
+    const config = satkerConfig?.getUserSatkerConfig();
+    if (config && typeof config === 'object') {
+      const sheetId = (config as any)['generatespj_sheet_id'] || (config as any)['generateSPJ_sheet_id'];
+      if (sheetId) return sheetId;
+    }
+    return null;
   }, [satkerConfig]);
 
   // Get current month and year
@@ -56,6 +74,11 @@ export default function GenerateSPJHonorMitra() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const { toast } = useToast();
+
+  // Dialog state untuk generate SPJ
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [selectedItemForGenerate, setSelectedItemForGenerate] = useState<KegiatanSPJData | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Get user role from localStorage
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -144,9 +167,12 @@ export default function GenerateSPJHonorMitra() {
       // D/3 or E/4: Nama Kegiatan
       // J/9: Harga Satuan (per unit price)
       // K/10: Satuan (unit type)
+      // L/11: Pembuat Daftar
       // N/13: Nama Petugas (names separated by |)
       // P/15: Realisasi (quantity/jumlah unit) - USED FOR JUMLAH PETUGAS
+      // S/18: Beban Anggaran
       // T/19: Keterangan (Status)
+      // W/22: NIK
       const noIndex = 0; // Kolom A
       const roleIndex = getColumnIndex(['role', 'jenis pekerjaan', 'pekerjaan']) || 3; // Kolom D/E - could be Jenis Pekerjaan
       const periodeIndex = 2; // Kolom C
@@ -155,15 +181,19 @@ export default function GenerateSPJHonorMitra() {
       const namaPetugasIndex = getColumnIndex(['petugas', 'nama petugas']) || 13; // Kolom N - Nama Petugas (untuk tooltip)
       const hargaSatuanIndex = getColumnIndex(['harga', 'satuan']) || 9; // Kolom J - Harga Satuan
       const satuanIndex = getColumnIndex(['satuan']) || 10; // Kolom K - Satuan
+      const pembuatDaftarIndex = getColumnIndex(['pembuat', 'daftar', 'nama']) || 11; // Kolom L - Pembuat Daftar
       const jumlahPetugasIndex = getColumnIndex(['realisasi', 'jumlah']) || 15; // Kolom P - Realisasi (jumlah unit/petugas)
+      const bebanAnggaranIndex = getColumnIndex(['beban', 'anggaran']) || 18; // Kolom S - Beban Anggaran
       const statusIndex = getColumnIndex(['keterangan', 'status']) || 19; // Kolom T - Keterangan
+      const nikIndex = getColumnIndex(['nik']) || 22; // Kolom W - NIK
 
       // DEBUG: Logging untuk verify column indices
       console.log('📋 Column Mapping:');
       console.log(`  noIndex: ${noIndex}, roleIndex: ${roleIndex}, periodeIndex: ${periodeIndex}`);
       console.log(`  jenisIndex: ${jenisIndex}, namaKegiatanIndex: ${namaKegiatanIndex}`);
       console.log(`  namaPetugasIndex: ${namaPetugasIndex}, hargaSatuanIndex: ${hargaSatuanIndex}, satuanIndex: ${satuanIndex}`);
-      console.log(`  jumlahPetugasIndex: ${jumlahPetugasIndex}, statusIndex: ${statusIndex}`);
+      console.log(`  pembuatDaftarIndex: ${pembuatDaftarIndex}, jumlahPetugasIndex: ${jumlahPetugasIndex}`);
+      console.log(`  bebanAnggaranIndex: ${bebanAnggaranIndex}, statusIndex: ${statusIndex}, nikIndex: ${nikIndex}`);
       console.log('📋 Headers:', headers);
       
       // Show first 2 data rows for debugging
@@ -267,7 +297,13 @@ export default function GenerateSPJHonorMitra() {
             // Breakdown fields for tooltip
             hargaSatuan: hargaSatuanRaw,
             totalRealisasi: totalRealisasi,
-            satuan: row[satuanIndex]?.toString() || 'Unit'
+            satuan: row[satuanIndex]?.toString() || 'Unit',
+            // Raw data fields for generateSPJ record
+            bebanAnggaran: parseInt(row[bebanAnggaranIndex]?.toString() || '0') || nilaiRealisasi,
+            pembuatDaftar: row[pembuatDaftarIndex]?.toString() || '',
+            nik: row[nikIndex]?.toString() || '',
+            bulan: bulanPeriode,
+            tahun: tahunPeriode
           };
         });
 
@@ -380,20 +416,137 @@ export default function GenerateSPJHonorMitra() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
+  // Generate ID dengan format genSPJ-yymmxxx dimana xxx adalah nomor urut perbulan
+  const generateSPJId = (bulan: string, tahun: string) => {
+    const yy = tahun.slice(-2); // 2 digit tahun terakhir
+    
+    // Map nama bulan ke number (01-12)
+    const bulanMap: { [key: string]: string } = {
+      'Januari': '01', 'Februari': '02', 'Maret': '03', 'April': '04',
+      'Mei': '05', 'Juni': '06', 'Juli': '07', 'Agustus': '08',
+      'September': '09', 'Oktober': '10', 'November': '11', 'Desember': '12'
+    };
+    const mm = bulanMap[bulan] || '01';
+    
+    // TODO: Ambil nomor urut terakhir dari generatespj_sheet_id untuk mendapatkan xxx
+    // Untuk sekarang, gunakan timestamp-based counter
+    const xxx = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+    
+    return `genSPJ-${yy}${mm}${xxx}`;
+  };
+
+  // Write Generate SPJ data ke sheet
+  const writeToGenerateSPJ = async (item: KegiatanSPJData) => {
+    if (!generateSPJSheetId) {
+      toast({
+        title: "Error",
+        description: "generatespj_sheet_id tidak ditemukan di satker_config",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    try {
+      setIsGenerating(true);
+
+      // Format tanggal dalam bahasa Indonesia
+      const today = new Date();
+      const tanggalIndonesia = `${today.getDate()} ${currentMonthName} ${today.getFullYear()}`;
+
+      // Generate ID
+      const idSPJ = generateSPJId(item.bulan || '', item.tahun || '');
+
+      // Prepare data untuk ditulis
+      const recordData = [
+        [
+          idSPJ,                           // Id
+          item.namaKegiatan,               // Nama Kegiatan
+          item.periode,                    // Periode
+          item.penanggungjawab,            // Penanggungjawab Kegiatan
+          item.jenisPekerjaan,             // Jenis Pekerjaan
+          item.bebanAnggaran || 0,         // Beban Anggaran (dari kolom S)
+          tanggalIndonesia,                // Tanggal (SPJ)
+          item.pembuatDaftar,              // Pembuat Daftar (dari kolom L)
+          item.namaPetugasList.join(', '), // Nama Petugas (dari kolom N)
+          item.totalRealisasi || 1,        // Banyaknya (dari kolom P)
+          item.hargaSatuan || 0,           // Harga Satuan (dari kolom J)
+          item.nik                         // NIK (dari kolom W)
+        ]
+      ];
+
+      console.log('📝 Menulis ke generateSPJ sheet:', recordData);
+
+      // Write ke Google Sheets via Supabase function
+      const result = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: generateSPJSheetId,
+          operation: "append",
+          range: "generateSPJ!A:L",
+          values: recordData
+        }
+      });
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      console.log('✅ Data berhasil ditulis ke generateSPJ sheet');
+      toast({
+        title: "Sukses",
+        description: `SPJ ${idSPJ} untuk "${item.namaKegiatan}" berhasil dibuat`,
+        variant: "default"
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error('❌ Error writing to generateSPJ:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Gagal membuat SPJ",
+        variant: "destructive"
+      });
+      return false;
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // Handle Generate SPJ untuk single row
   const handleGenerateSPJ = (item: KegiatanSPJData) => {
-    toast({
-      title: "Generate SPJ",
-      description: `Memproses SPJ untuk kegiatan: ${item.namaKegiatan}`
-    });
+    setSelectedItemForGenerate(item);
+    setShowGenerateDialog(true);
+  };
 
-    // TODO: Implementasi generate SPJ akan dikonfigurasi nanti
-    console.log('🚀 Generate SPJ untuk:', item);
+  // Handle konfirmasi generate SPJ
+  const handleConfirmGenerate = async () => {
+    if (!selectedItemForGenerate) return;
+    
+    const success = await writeToGenerateSPJ(selectedItemForGenerate);
+    if (success) {
+      setShowGenerateDialog(false);
+      setSelectedItemForGenerate(null);
+    }
   };
 
   // Download data
   return (
     <div className="min-h-screen bg-background">
+      {/* Dialog Generate SPJ */}
+      <AlertDialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Generate SPJ</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda akan membuat rekap tabel <span className="font-semibold text-foreground">"{selectedItemForGenerate?.namaKegiatan}"</span>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogCancel disabled={isGenerating}>Batal</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirmGenerate} disabled={isGenerating}>
+            {isGenerating ? 'Sedang memproses...' : 'Ya'}
+          </AlertDialogAction>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Header */}
       <div className="mb-8 p-4 sm:p-6">
         <div className="flex items-center gap-3 mb-3">
