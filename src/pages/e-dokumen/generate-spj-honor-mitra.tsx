@@ -192,9 +192,8 @@ export default function GenerateSPJHonorMitra() {
             .map(name => name.trim())
             .filter(name => name.length > 0);
           
-          // Get Jumlah Petugas from row[15] (Realisasi) - the actual count/quantity
-          const jumlahRealisasi = parseInt(row[jumlahPetugasIndex]?.toString() || '1') || 1;
-          const petugasCount = jumlahRealisasi || petugasList.length || 1;
+          // Jumlah Petugas = count of actual petugas names in the list
+          const petugasCount = petugasList.length || 1;
 
           // DEBUG first few rows
           if (index < 2) {
@@ -205,7 +204,7 @@ export default function GenerateSPJHonorMitra() {
               namaPetugas: namaPetugasStr,
               petugasCount: petugasCount,
               hargaSatuan: row[hargaSatuanIndex],
-              jumlahPetugas: jumlahRealisasi
+              realisasi: row[jumlahPetugasIndex]
             });
           }
 
@@ -222,17 +221,31 @@ export default function GenerateSPJHonorMitra() {
           const statusStr = row[statusIndex]?.toString().trim() || '';
           const status = statusStr.toLowerCase().includes('kirim') ? 'Kirim ke PPK' : 'Belum Kirim';
           
-          // Nilai Realisasi: Calculate from hargaSatuan (row[9]) × realisasi quantity (row[15])
-          // This matches the logic in RekapSPK.tsx
+          // Nilai Realisasi: Aligned dengan RekapSPK.tsx approach
+          // row[9] = hargaSatuan (price per unit)
+          // row[15] = realisasi (can be pipe-separated values, one per petugas: "5 | 5 | 5")
+          // Nilai = hargaSatuan × sum of all realisasi values
           const hargaSatuanStr = row[hargaSatuanIndex]?.toString() || '0';
           const hargaSatuanRaw = parseInt(hargaSatuanStr.replace(/[^0-9]/g, '') || '0') || 0;
-          const nilaiRealisasi = hargaSatuanRaw * jumlahRealisasi;
+          
+          // Parse realisasi - might be pipe-separated for multiple petugas
+          const realisasiStr = row[jumlahPetugasIndex]?.toString() || '0';
+          const realisasiValues = realisasiStr
+            .split('|')
+            .map(v => parseInt(v.trim().replace(/[^0-9]/g, '')) || 0)
+            .filter(v => v > 0);
+          const totalRealisasi = realisasiValues.length > 0 
+            ? realisasiValues.reduce((sum, val) => sum + val, 0)
+            : 1;  // Fallback jika tidak ada nilai
+          const nilaiRealisasi = hargaSatuanRaw * totalRealisasi;
           
           // DEBUG: Log nilai calculation untuk verification
           if (index < 2) {
             console.log(`📊 Row ${index} nilai calc:`, {
               hargaSatuan: hargaSatuanRaw,
-              jumlahPetugas: jumlahRealisasi,
+              realisasiStr: realisasiStr,
+              realisasiValues: realisasiValues,
+              totalRealisasi: totalRealisasi,
               nilaiRealisasi: nilaiRealisasi
             });
           }
@@ -252,19 +265,28 @@ export default function GenerateSPJHonorMitra() {
 
       console.log('✅ Data processed:', processedData.length, 'baris');
       
-      // Deduplicate data - keep unique combination of kegiatan + jenisPekerjaan
+      // Remove exact duplicates only (all fields identical) - don't deduplicate by kegiatan+jenis
+      // because same kegiatan+jenis with different petugas lists are different entries
       const deduplicatedData: KegiatanSPJData[] = [];
-      const seenCombination = new Set<string>();
+      const seenRows = new Set<string>();
       
       for (const item of processedData) {
-        const combination = `${item.namaKegiatan}|||${item.jenisPekerjaan}`;
-        if (!seenCombination.has(combination)) {
-          seenCombination.add(combination);
+        // Create hash of complete item data to detect exact duplicates only
+        const itemHash = JSON.stringify({
+          namaKegiatan: item.namaKegiatan,
+          penanggungjawab: item.penanggungjawab,
+          jenisPekerjaan: item.jenisPekerjaan,
+          periode: item.periode,
+          namaPetugasList: item.namaPetugasList.sort().join('|')
+        });
+        
+        if (!seenRows.has(itemHash)) {
+          seenRows.add(itemHash);
           deduplicatedData.push(item);
         }
       }
       
-      console.log('✅ Data after deduplication:', deduplicatedData.length, 'baris');
+      console.log('✅ Data after duplicate removal:', deduplicatedData.length, 'baris');
       setData(deduplicatedData);
       setCurrentPage(1); // Reset to first page when data is loaded
 
