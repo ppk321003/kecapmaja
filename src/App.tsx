@@ -25,6 +25,7 @@ import KuitansiPerjalananDinas from "./pages/e-dokumen/kuitansi-perjalanan";
 import KuitansiTransportLokal from "./pages/e-dokumen/kuitansi-transport";
 import LemburLaporan from "./pages/e-dokumen/lembur-laporan";
 import SPJHonor from "./pages/e-dokumen/spj-honor";
+import GenerateSPJHonorMitra from "./pages/e-dokumen/generate-spj-honor-mitra";
 import SuratKeputusan from "./pages/e-dokumen/surat-keputusan";
 import SuratPernyataan from "./pages/e-dokumen/surat-pernyataan";
 import TandaTerima from "./pages/e-dokumen/tanda-terima";
@@ -75,6 +76,7 @@ const App = () => (
             <Route path="/e-dokumen/kuitansi-transport" element={<ProtectedRoute><KuitansiTransportLokal /></ProtectedRoute>} />
             <Route path="/e-dokumen/lembur-laporan" element={<ProtectedRoute><LemburLaporan /></ProtectedRoute>} />
             <Route path="/e-dokumen/spj-honor" element={<ProtectedRoute><SPJHonor /></ProtectedRoute>} />
+            <Route path="/e-dokumen/generate-spj-honor-mitra" element={<ProtectedRoute><Layout><GenerateSPJHonorMitra /></Layout></ProtectedRoute>} />
             <Route path="/e-dokumen/surat-keputusan" element={<ProtectedRoute><SuratKeputusan /></ProtectedRoute>} />
             <Route path="/e-dokumen/surat-pernyataan" element={<ProtectedRoute><SuratPernyataan /></ProtectedRoute>} />
             <Route path="/e-dokumen/tanda-terima" element={<ProtectedRoute><TandaTerima /></ProtectedRoute>} />
