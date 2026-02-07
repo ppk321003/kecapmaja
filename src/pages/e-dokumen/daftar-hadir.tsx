@@ -21,6 +21,8 @@ import { KomponenSelect } from "@/components/KomponenSelect";
 import { KegiatanSelect } from "@/components/KegiatanSelect";
 import { KROSelect } from "@/components/KROSelect";
 import { ROSelect } from "@/components/ROSelect";
+import { PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
+import { AkunSelect } from "@/components/AkunSelect";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -1226,23 +1228,16 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Pembuat daftar harus dipilih" }}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih pembuat daftar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <div className="max-h-64 overflow-y-auto">
-                            {organikList.map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{item.name}</span>
-                                  <span className="text-xs text-muted-foreground">{item.jabatan}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </div>
-                        </SelectContent>
-                      </Select>
+                      <PersonSingleSelect
+                        placeholder="Pilih pembuat daftar"
+                        options={organikList.map(item => ({
+                          id: item.id,
+                          name: item.name,
+                          jabatan: item.jabatan
+                        } as Person))}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      />
                     )} 
                   />
                   {errors.pembuatDaftar && <p className="text-sm text-destructive">{errors.pembuatDaftar.message}</p>}
