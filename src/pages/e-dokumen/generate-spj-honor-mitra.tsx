@@ -26,12 +26,14 @@ interface KegiatanSPJData {
   hargaSatuan?: number;
   totalRealisasi?: number;
   satuan?: string;
-  // Raw data fields for generateSPJ record
-  bebanAnggaran?: number;  // Kolom S
-  pembuatDaftar?: string;   // Kolom L
-  nik?: string;             // Kolom W
-  bulan?: string;           // Parsed from periode
-  tahun?: string;           // Parsed from periode
+  // Raw data fields for generateSPJ record - apa adanya
+  banyaknya?: string | number;     // Kolom P - apa adanya
+  realisasi?: string | number;       // Kolom Q - apa adanya (baru)
+  bebanAnggaran?: string | number;  // Kolom S - apa adanya (string)
+  pembuatDaftar?: string;            // Kolom L
+  nik?: string;                      // Kolom W
+  bulan?: string;                    // Parsed from periode
+  tahun?: string;                    // Parsed from periode
   [key: string]: string | number | string[] | undefined;
 }
 
@@ -182,10 +184,11 @@ export default function GenerateSPJHonorMitra() {
       const namaPetugasIndex = getColumnIndex(['petugas', 'nama petugas']) || 13; // Kolom N - Nama Petugas (untuk tooltip)
       const hargaSatuanIndex = getColumnIndex(['harga', 'satuan']) || 9; // Kolom J - Harga Satuan
       const satuanIndex = getColumnIndex(['satuan']) || 10; // Kolom K - Satuan
-      const pembuatDaftarIndex = getColumnIndex(['pembuat', 'daftar', 'nama']) || 11; // Kolom L - Pembuat Daftar
-      const jumlahPetugasIndex = getColumnIndex(['realisasi', 'jumlah']) || 15; // Kolom P - Realisasi (jumlah unit/petugas)
-      const bebanAnggaranIndex = getColumnIndex(['beban', 'anggaran']) || 18; // Kolom S - Beban Anggaran
-      const statusIndex = getColumnIndex(['keterangan', 'status']) || 19; // Kolom T - Keterangan
+      const pembuatDaftarIndex = 11; // Kolom L - Pembuat Daftar (index 11, no fuzzy match)
+      const jumlahPetugasIndex = 15; // Kolom P - Banyaknya (index 15, apa adanya)
+      const realisasiIndex = 16; // Kolom Q - Realisasi (index 16, apa adanya) 
+      const bebanAnggaranIndex = 18; // Kolom S - Beban Anggaran (index 18, apa adanya)
+      const statusIndex = 19; // Kolom T - Keterangan/Status
       const nikIndex = getColumnIndex(['nik']) || 22; // Kolom W - NIK
 
       // DEBUG: Logging untuk verify column indices
@@ -193,7 +196,7 @@ export default function GenerateSPJHonorMitra() {
       console.log(`  noIndex: ${noIndex}, roleIndex: ${roleIndex}, periodeIndex: ${periodeIndex}`);
       console.log(`  jenisIndex: ${jenisIndex}, namaKegiatanIndex: ${namaKegiatanIndex}`);
       console.log(`  namaPetugasIndex: ${namaPetugasIndex}, hargaSatuanIndex: ${hargaSatuanIndex}, satuanIndex: ${satuanIndex}`);
-      console.log(`  pembuatDaftarIndex: ${pembuatDaftarIndex}, jumlahPetugasIndex: ${jumlahPetugasIndex}`);
+      console.log(`  pembuatDaftarIndex: ${pembuatDaftarIndex}, jumlahPetugasIndex: ${jumlahPetugasIndex}, realisasiIndex: ${realisasiIndex}`);
       console.log(`  bebanAnggaranIndex: ${bebanAnggaranIndex}, statusIndex: ${statusIndex}, nikIndex: ${nikIndex}`);
       console.log('📋 Headers:', headers);
       
@@ -230,6 +233,26 @@ export default function GenerateSPJHonorMitra() {
           // Jumlah Petugas = count of actual petugas names in the list
           const petugasCount = petugasList.length || 1;
 
+          // Kolom P (Banyaknya) - ambil apa adanya
+          const banyaknyaStr = row[jumlahPetugasIndex]?.toString() || '0';
+          
+          // Kolom Q - Realisasi (apa adanya)
+          const realisasiStr = row[realisasiIndex]?.toString() || '';
+          
+          // Harga Satuan parsing
+          const hargaSatuanStr = row[hargaSatuanIndex]?.toString() || '0';
+          const hargaSatuanRaw = parseInt(hargaSatuanStr.replace(/[^0-9]/g, '') || '0') || 0;
+          
+          // Parse untuk nilai calculation (sum if pipe-separated)
+          const banyaknyaValues = banyaknyaStr
+            .split('|')
+            .map(v => parseInt(v.trim().replace(/[^0-9]/g, '')) || 0)
+            .filter(v => v > 0);
+          const totalRealisasi = banyaknyaValues.length > 0 
+            ? banyaknyaValues.reduce((sum, val) => sum + val, 0)
+            : 1;
+          const nilaiRealisasi = hargaSatuanRaw * totalRealisasi;
+
           // DEBUG first few rows
           if (index < 2) {
             console.log(`📌 Row ${index}:`, {
@@ -239,10 +262,13 @@ export default function GenerateSPJHonorMitra() {
               namaPetugas: namaPetugasStr,
               petugasCount: petugasCount,
               hargaSatuan: row[hargaSatuanIndex],
-              realisasi: row[jumlahPetugasIndex]
+              banyaknya: banyaknyaStr,
+              realisasi: realisasiStr,
+              pembuatDaftar: row[pembuatDaftarIndex]
             });
           }
-
+          
+          // Jenis Pekerjaan classification
           const jenisPekerjaan = row[jenisIndex]?.toString().toLowerCase() || '';
           let jenis: 'Petugas Pendataan Lapangan' | 'Petugas Pemeriksaan Lapangan' | 'Petugas Pengolahan' = 'Petugas Pengolahan';
           
@@ -252,34 +278,16 @@ export default function GenerateSPJHonorMitra() {
             jenis = 'Petugas Pemeriksaan Lapangan';
           }
 
-          // Status: jika kolom U kosong → "Belum Kirim", jika ada text "kirim" → "Kirim ke PPK"
+          // Status: jika kolom T kosong → "Belum Kirim", jika ada text "kirim" → "Kirim ke PPK"
           const statusStr = row[statusIndex]?.toString().trim() || '';
           const status = statusStr.toLowerCase().includes('kirim') ? 'Kirim ke PPK' : 'Belum Kirim';
-          
-          // Nilai Realisasi: Aligned dengan RekapSPK.tsx approach
-          // row[9] = hargaSatuan (price per unit)
-          // row[15] = realisasi (can be pipe-separated values, one per petugas: "5 | 5 | 5")
-          // Nilai = hargaSatuan × sum of all realisasi values
-          const hargaSatuanStr = row[hargaSatuanIndex]?.toString() || '0';
-          const hargaSatuanRaw = parseInt(hargaSatuanStr.replace(/[^0-9]/g, '') || '0') || 0;
-          
-          // Parse realisasi - might be pipe-separated for multiple petugas
-          const realisasiStr = row[jumlahPetugasIndex]?.toString() || '0';
-          const realisasiValues = realisasiStr
-            .split('|')
-            .map(v => parseInt(v.trim().replace(/[^0-9]/g, '')) || 0)
-            .filter(v => v > 0);
-          const totalRealisasi = realisasiValues.length > 0 
-            ? realisasiValues.reduce((sum, val) => sum + val, 0)
-            : 1;  // Fallback jika tidak ada nilai
-          const nilaiRealisasi = hargaSatuanRaw * totalRealisasi;
           
           // DEBUG: Log nilai calculation untuk verification
           if (index < 2) {
             console.log(`📊 Row ${index} nilai calc:`, {
               hargaSatuan: hargaSatuanRaw,
               realisasiStr: realisasiStr,
-              realisasiValues: realisasiValues,
+              banyaknyaValues: banyaknyaValues,
               totalRealisasi: totalRealisasi,
               nilaiRealisasi: nilaiRealisasi
             });
@@ -299,9 +307,11 @@ export default function GenerateSPJHonorMitra() {
             hargaSatuan: hargaSatuanRaw,
             totalRealisasi: totalRealisasi,
             satuan: row[satuanIndex]?.toString() || 'Unit',
-            // Raw data fields for generateSPJ record
-            bebanAnggaran: parseInt(row[bebanAnggaranIndex]?.toString() || '0') || nilaiRealisasi,
-            pembuatDaftar: row[pembuatDaftarIndex]?.toString() || '',
+            // Raw data fields for generateSPJ record - apa adanya
+            banyaknya: banyaknyaStr,           // Kolom P apa adanya
+            realisasi: realisasiStr,            // Kolom Q apa adanya
+            bebanAnggaran: row[bebanAnggaranIndex]?.toString() || '', // Kolom S apa adanya
+            pembuatDaftar: row[pembuatDaftarIndex]?.toString() || '', // Kolom L
             nik: row[nikIndex]?.toString() || '',
             bulan: bulanPeriode,
             tahun: tahunPeriode
@@ -418,7 +428,7 @@ export default function GenerateSPJHonorMitra() {
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
   // Generate ID dengan format genSPJ-yymmxxx dimana xxx adalah nomor urut perbulan
-  const generateSPJId = (bulan: string, tahun: string) => {
+  const generateSPJId = async (bulan: string, tahun: string): Promise<string> => {
     const yy = tahun.slice(-2); // 2 digit tahun terakhir
     
     // Map nama bulan ke number (01-12)
@@ -429,9 +439,42 @@ export default function GenerateSPJHonorMitra() {
     };
     const mm = bulanMap[bulan] || '01';
     
-    // TODO: Ambil nomor urut terakhir dari generatespj_sheet_id untuk mendapatkan xxx
-    // Untuk sekarang, gunakan timestamp-based counter
-    const xxx = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+    // Query generateSPJ sheet untuk dapatkan last sequential number bulan ini
+    let xxx = '001';
+    if (generateSPJSheetId) {
+      try {
+        const result = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: generateSPJSheetId,
+            operation: "read",
+            range: "generateSPJ"
+          }
+        });
+        
+        if (result.data?.values && Array.isArray(result.data.values)) {
+          // Filter IDs untuk bulan/tahun ini
+          const prefix = `genSPJ-${yy}${mm}`;
+          const matchingIds = result.data.values
+            .map((row: any[]) => row[0]?.toString() || '')
+            .filter((id: string) => id.startsWith(prefix));
+          
+          if (matchingIds.length > 0) {
+            // Extract last number dari matching IDs
+            const numbers = matchingIds
+              .map(id => parseInt(id.slice(-3)))
+              .filter(n => !isNaN(n))
+              .sort((a, b) => b - a);
+            
+            if (numbers.length > 0) {
+              xxx = String(numbers[0] + 1).padStart(3, '0');
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Error querying last ID, using default 001:', error);
+        xxx = '001';
+      }
+    }
     
     return `genSPJ-${yy}${mm}${xxx}`;
   };
@@ -454,24 +497,25 @@ export default function GenerateSPJHonorMitra() {
       const today = new Date();
       const tanggalIndonesia = `${today.getDate()} ${currentMonthName} ${today.getFullYear()}`;
 
-      // Generate ID
-      const idSPJ = generateSPJId(item.bulan || '', item.tahun || '');
+      // Generate ID (now async)
+      const idSPJ = await generateSPJId(item.bulan || '', item.tahun || '');
 
       // Prepare data untuk ditulis
       const recordData = [
         [
-          idSPJ,                           // Id
-          item.namaKegiatan,               // Nama Kegiatan
-          item.periode,                    // Periode
-          item.penanggungjawab,            // Penanggungjawab Kegiatan
-          item.jenisPekerjaan,             // Jenis Pekerjaan
-          item.bebanAnggaran || 0,         // Beban Anggaran (dari kolom S)
+          idSPJ,                           // Id (genSPJ-yymmxxx)
+          item.namaKegiatan,               // Nama Kegiatan (Kolom E)
+          item.periode,                    // Periode (Kolom C)
+          item.penanggungjawab,            // Penanggungjawab Kegiatan (Kolom B)
+          item.jenisPekerjaan,             // Jenis Pekerjaan (Kolom D)
+          item.bebanAnggaran,              // Beban Anggaran (Kolom S - apa adanya)
           tanggalIndonesia,                // Tanggal (SPJ)
-          item.pembuatDaftar,              // Pembuat Daftar (dari kolom L)
-          item.namaPetugasList.join(', '), // Nama Petugas (dari kolom N)
-          item.totalRealisasi || 1,        // Banyaknya (dari kolom P)
-          item.hargaSatuan || 0,           // Harga Satuan (dari kolom J)
-          item.nik                         // NIK (dari kolom W)
+          item.pembuatDaftar,              // Pembuat Daftar (Kolom L)
+          item.namaPetugasList.join(', '), // Nama Petugas (Kolom N - apa adanya dari sheet)
+          item.banyaknya,                  // Banyaknya (Kolom P - apa adanya)
+          item.hargaSatuan || 0,           // Harga Satuan (Kolom J)
+          item.realisasi,                  // Realisasi (Kolom Q - apa adanya)
+          item.nik                         // NIK (Kolom W)
         ]
       ];
 
