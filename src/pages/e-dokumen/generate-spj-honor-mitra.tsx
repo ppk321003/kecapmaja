@@ -30,9 +30,9 @@ export default function GenerateSPJHonorMitra() {
     return satkerConfig?.getUserSatkerConfig()?.satker_nama || 'BPS';
   }, [satkerConfig]);
 
-  // Get dynamic sheet ID from satker config
+  // Get dynamic sheet ID from satker config - ambil dari entrikegiatan_sheet_id (kolom E satker_config)
   const dynamicSheetId = useMemo(() => {
-    return satkerConfig?.getUserSatkerSheetId('spjhonor') || TUGAS_SPREADSHEET_ID;
+    return satkerConfig?.getUserSatkerSheetId('entrikegiatan') || TUGAS_SPREADSHEET_ID;
   }, [satkerConfig]);
 
   // Get current month and year
@@ -131,22 +131,37 @@ export default function GenerateSPJHonorMitra() {
         return -1;
       };
 
-      // Mapping kolom berdasarkan requirement:
+      // Mapping kolom struktur entrikegiatan sheet sesuai EntriTarget.tsx:
       // A/0: No
       // B/1: Role (Penanggungjawab)
       // C/2: Periode (Bulan) SPK - format: "Januari 2026"
-      // K/10: Nama Kegiatan  
-      // M/12: Jenis Pekerjaan
+      // D/3: Jenis Pekerjaan
+      // E/4: Nama Kegiatan
       // N/13: Nama Petugas (untuk count jumlah)
-      // O/14: Nilai Realisasi
+      // Q/16: Nilai Realisasi
       const noIndex = 0; // Kolom A
       const roleIndex = 1; // Kolom B
       const periodeIndex = 2; // Kolom C
-      const namaKegiatanIndex = getColumnIndex(['kegiatan', 'nama kegiatan']) || 10; // Kolom K
-      const jenisIndex = getColumnIndex(['jenis', 'pekerjaan']) || 12; // Kolom M
-      const namaPetugasIndex = 13; // Kolom N - berisi "Nama1 | Nama2 | ..."
-      const nilaiIndex = getColumnIndex(['nilai', 'realisasi']) || 14; // Kolom O
-      const statusIndex = getColumnIndex(['status']) || 15;
+      const jenisIndex = getColumnIndex(['jenis', 'pekerjaan']) || 3; // Kolom D
+      const namaKegiatanIndex = getColumnIndex(['kegiatan', 'nama kegiatan']) || 4; // Kolom E
+      const namaPetugasIndex = getColumnIndex(['petugas', 'nama petugas']) || 13; // Kolom N - berisi "Nama1 | Nama2 | ..."
+      const nilaiIndex = getColumnIndex(['nilai', 'realisasi']) || 16; // Kolom Q
+      const statusIndex = getColumnIndex(['status', 'dikirim']) || 19;
+
+      // DEBUG: Logging untuk verify column indices
+      console.log('📋 Column Mapping:');
+      console.log(`  noIndex: ${noIndex}, roleIndex: ${roleIndex}, periodeIndex: ${periodeIndex}`);
+      console.log(`  jenisIndex: ${jenisIndex}, namaKegiatanIndex: ${namaKegiatanIndex}`);
+      console.log(`  namaPetugasIndex: ${namaPetugasIndex}, nilaiIndex: ${nilaiIndex}, statusIndex: ${statusIndex}`);
+      console.log('📋 Headers:', headers);
+      
+      // Show first 2 data rows for debugging
+      if (dataRows.length > 0) {
+        console.log('📋 First data row:', dataRows[0]);
+        if (dataRows.length > 1) {
+          console.log('📋 Second data row:', dataRows[1]);
+        }
+      }
 
       const processedData: KegiatanSPJData[] = dataRows
         .filter((row: any[]) => row && row.length > 0 && row[namaKegiatanIndex])
@@ -171,6 +186,18 @@ export default function GenerateSPJHonorMitra() {
             .filter(name => name.length > 0);
           const petugasCount = petugasList.length;
 
+          // DEBUG first few rows
+          if (index < 2) {
+            console.log(`📌 Row ${index}:`, {
+              kegiatan: row[namaKegiatanIndex]?.toString(),
+              periode: periodeStr,
+              parsedPeriode: `${bulanPeriode} ${tahunPeriode}`,
+              namaPetugas: namaPetugasStr,
+              petugasCount: petugasCount,
+              nilai: row[nilaiIndex]
+            });
+          }
+
           const jenisPekerjaan = row[jenisIndex]?.toString().toLowerCase() || '';
           let jenis: 'Petugas Pendataan Lapangan' | 'Petugas Pemeriksaan Lapangan' | 'Petugas Pengolahan' = 'Petugas Pengolahan';
           
@@ -182,9 +209,13 @@ export default function GenerateSPJHonorMitra() {
 
           const status = row[statusIndex]?.toString().toLowerCase().includes('kirim') ? 'Kirim PPK' : 'Belum Kirim PPK';
           
-          // Nilai realisasi: multiply by 1000 to convert 800 -> 800000
-          const nilaiRaw = parseInt(row[nilaiIndex]) || 0;
-          const nilaiRealisasi = nilaiRaw * 1000;
+          // Nilai realisasi: dapat berupa "800", "Rp 800.000", atau "800 | 800 | 800"
+          // Ambil nilai pertama jika ada separator, remove semua non-numeric, kemudian
+          // Jika nilai < 10000 maka multiply by 1000, jika >= 10000 sudah final
+          const nilaiStr = row[nilaiIndex]?.toString() || '0';
+          const nilaiValueStr = nilaiStr.split('|')[0].trim(); // Ambil nilai pertama jika multiple
+          const nilaiRaw = parseInt(nilaiValueStr.replace(/[^0-9]/g, '') || '0') || 0;
+          const nilaiRealisasi = nilaiRaw < 10000 ? nilaiRaw * 1000 : nilaiRaw;
 
           return {
             no: parseInt(row[noIndex]) || index + 1,
