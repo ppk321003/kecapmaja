@@ -27,6 +27,7 @@ interface KegiatanSPJData {
   totalRealisasi?: number;
   satuan?: string;
   // Raw data fields for generateSPJ record - apa adanya
+  namaPetugasRaw?: string;           // Kolom N - apa adanya (langsung dari sheet)
   banyaknya?: string | number;     // Kolom P - apa adanya
   realisasi?: string | number;       // Kolom Q - apa adanya (baru)
   bebanAnggaran?: string | number;  // Kolom S - apa adanya (string)
@@ -308,6 +309,7 @@ export default function GenerateSPJHonorMitra() {
             totalRealisasi: totalRealisasi,
             satuan: row[satuanIndex]?.toString() || 'Unit',
             // Raw data fields for generateSPJ record - apa adanya
+            namaPetugasRaw: namaPetugasStr,     // Kolom N apa adanya langsung
             banyaknya: banyaknyaStr,           // Kolom P apa adanya
             realisasi: realisasiStr,            // Kolom Q apa adanya
             bebanAnggaran: row[bebanAnggaranIndex]?.toString() || '', // Kolom S apa adanya
@@ -511,7 +513,7 @@ export default function GenerateSPJHonorMitra() {
           item.bebanAnggaran,              // Beban Anggaran (Kolom S - apa adanya)
           tanggalIndonesia,                // Tanggal (SPJ)
           item.pembuatDaftar,              // Pembuat Daftar (Kolom L)
-          item.namaPetugasList.join(', '), // Nama Petugas (Kolom N - apa adanya dari sheet)
+          item.namaPetugasRaw,             // Nama Petugas (Kolom N - langsung apa adanya)
           item.banyaknya,                  // Banyaknya (Kolom P - apa adanya)
           item.hargaSatuan || 0,           // Harga Satuan (Kolom J)
           item.realisasi,                  // Realisasi (Kolom Q - apa adanya)
