@@ -417,18 +417,21 @@ export default function GenerateSPJHonorMitra() {
                     spjId,
                     namaKegiatan: namaKegiatan.substring(0, 30),
                     periode,
-                    hasUrl: !!documentUrl,
+                    documentUrl: documentUrl.substring(0, 60) + (documentUrl.length > 60 ? '...' : ''),
+                    hasUrl: documentUrl.length > 0,
                     urlLength: documentUrl.length,
-                    rowLength: row.length
+                    rowLength: row.length,
+                    rawRow14: String(row[14])
                   });
                 }
                 
-                // Only add to map jika ada valid nama kegiatan, periode, AND URL
-                if (namaKegiatan && periode && documentUrl) {
+                // Only add to map jika ada valid nama kegiatan, periode, DAN URL (relax validation)
+                // Accept ANY non-empty URL string - don't validate format
+                if (namaKegiatan && periode && documentUrl && documentUrl.length > 0) {
                   const key = `${namaKegiatan}|${periode}`;
                   spjUrlMap.set(key, { id: spjId, url: documentUrl });
                   if (i <= 3) {
-                    console.log(`✅ Added to map: ${key.substring(0, 40)}...`);
+                    console.log(`✅ Added to map: key="${key.substring(0, 40)}...", urlLength=${documentUrl.length}`);
                   }
                 }
               }
@@ -441,35 +444,53 @@ export default function GenerateSPJHonorMitra() {
               // Enrich data dengan URL
               let enrichedCount = 0;
               let unmatchedCount = 0;
+              let emptyUrlCount = 0;
               
               deduplicatedData.forEach((item, idx) => {
                 const key = `${item.namaKegiatan}|${item.periode}`;
                 const spjRecord = spjUrlMap.get(key);
                 
-                if (spjRecord) {
+                // Log untuk item pertama dan terakhir
+                const shouldLog = idx < 2 || idx === deduplicatedData.length - 1;
+                
+                if (spjRecord && spjRecord.url) {
                   item.spjIdGenerated = spjRecord.id;
                   item.spjDocumentUrl = spjRecord.url;
                   enrichedCount++;
-                  if (enrichedCount <= 2) {
-                    console.log(`✅ Matched item ${idx + 1}: has URL, length=${spjRecord.url.length}`);
+                  if (shouldLog) {
+                    console.log(`✅ Item ${idx + 1}: MATCHED with URL`, {
+                      key: key.substring(0, 50),
+                      urlLength: spjRecord.url.length,
+                      url: spjRecord.url.substring(0, 80)
+                    });
+                  }
+                } else if (spjRecord && !spjRecord.url) {
+                  emptyUrlCount++;
+                  if (shouldLog) {
+                    console.log(`⚠️ Item ${idx + 1}: MATCHED but URL is empty`, { key: key.substring(0, 50) });
                   }
                 } else {
                   unmatchedCount++;
-                  if (unmatchedCount <= 2) {
-                    console.log(`❌ No match for item ${idx + 1}: "${key.substring(0, 50)}..."`);
-                    // Cek kemungkinan typo/spacing
-                    const mainKeyPart = item.namaKegiatan.substring(0, 15);
+                  if (unmatchedCount <= 3) {
+                    console.log(`❌ Item ${idx + 1}: NO MATCH`, { key: key.substring(0, 50) });
+                    // Show similar keys untuk debugging
+                    const mainKeyPart = item.namaKegiatan.substring(0, 15).toLowerCase();
                     const possibleMatches = Array.from(spjUrlMap.keys()).filter(k => 
-                      k.toLowerCase().includes(mainKeyPart.toLowerCase())
+                      k.toLowerCase().includes(mainKeyPart)
                     );
                     if (possibleMatches.length > 0) {
-                      console.log(`   Found ${possibleMatches.length} similar keys:`, possibleMatches.slice(0, 2));
+                      console.log(`   Similar keys found:`, possibleMatches.slice(0, 3).map(k => k.substring(0, 50)));
                     }
                   }
                 }
               });
               
-              console.log('✅ Enrichment complete:', { enrichedCount, unmatchedCount, totalRecords: deduplicatedData.length });
+              console.log('✅ Enrichment complete:', { 
+                enrichedCount, 
+                unmatchedCount, 
+                emptyUrlCount,
+                totalRecords: deduplicatedData.length 
+              });
             }
           }
         } catch (error) {
@@ -976,7 +997,18 @@ export default function GenerateSPJHonorMitra() {
                   <TableBody>
                     {paginatedData.length > 0 ? (
                       <>
-                        {paginatedData.map((item, index) => (
+                        {paginatedData.map((item, index) => {
+                          // Log untuk debugging item dengan URL
+                          if (index === 0) {
+                            console.log('📋 First paginated item:', {
+                              namaKegiatan: item.namaKegiatan,
+                              periode: item.periode,
+                              hasUrl: !!item.spjDocumentUrl,
+                              url: item.spjDocumentUrl?.substring(0, 80),
+                              urlTrimmed: item.spjDocumentUrl?.trim().substring(0, 80)
+                            });
+                          }
+                          return (
                           <TableRow key={index} className="hover:bg-muted/50">
                             <TableCell className="text-center font-medium">{startIndex + index + 1}</TableCell>
                             <TableCell className="font-medium">{item.namaKegiatan}</TableCell>
@@ -1098,12 +1130,15 @@ export default function GenerateSPJHonorMitra() {
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
-                                {item.spjDocumentUrl ? (
+                                {item.spjDocumentUrl && item.spjDocumentUrl.trim() ? (
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button
-                                          onClick={() => window.open(item.spjDocumentUrl, '_blank')}
+                                          onClick={() => {
+                                            console.log('📄 Opening document URL:', item.spjDocumentUrl?.substring(0, 60));
+                                            window.open(item.spjDocumentUrl, '_blank');
+                                          }}
                                           size="sm"
                                           variant="ghost"
                                           className="h-8 w-8 p-0 hover:bg-blue-100 transition-colors"
@@ -1140,7 +1175,8 @@ export default function GenerateSPJHonorMitra() {
                               </div>
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </>
                     ) : (
                       <TableRow>
