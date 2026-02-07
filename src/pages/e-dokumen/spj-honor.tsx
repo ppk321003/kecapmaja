@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { usePrograms, useKegiatan, useKRO, useRO, useKomponen, useAkun, useOrganikBPS, useMitraStatistik, useJenis } from "@/hooks/use-database";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { FormSelect } from "@/components/FormSelect";
+import { PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { AkunSelect } from "@/components/AkunSelect";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,129 +60,6 @@ const SHEET_NAME = "SPJHonor";
 
 const getTargetSheetId = (contextValue?: string): string => {
   return contextValue || DEFAULT_TARGET_SPREADSHEET_ID;
-};
-
-// Custom searchable select component
-interface SearchableSelectProps {
-  value: string;
-  onChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
-  placeholder: string;
-  emptyMessage?: string;
-  searchPlaceholder?: string;
-}
-
-const SearchableSelect: React.FC<SearchableSelectProps> = ({
-  value,
-  onChange,
-  options,
-  placeholder,
-  emptyMessage = "Tidak ada data ditemukan",
-  searchPlaceholder = "Cari..."
-}) => {
-  const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredOptions = useMemo(() => {
-    if (!searchTerm) return options;
-    return options.filter(option =>
-      option.label.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [options, searchTerm]);
-
-  const selectedLabel = useMemo(() => {
-    const selected = options.find(opt => opt.value === value);
-    return selected?.label || placeholder;
-  }, [value, options, placeholder]);
-
-  const handleSelect = (selectedValue: string) => {
-    onChange(selectedValue);
-    setOpen(false);
-    setSearchTerm("");
-  };
-
-  return (
-    <div className="relative">
-      <Button
-        variant="outline"
-        role="combobox"
-        aria-expanded={open}
-        className="w-full justify-between"
-        onClick={() => setOpen(!open)}
-      >
-        <span className="truncate">{selectedLabel}</span>
-        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
-      
-      {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
-          <div className="p-2 border-b">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={searchPlaceholder}
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setOpen(false);
-                  }
-                }}
-              />
-              {searchTerm && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1 h-6 w-6 p-0"
-                  onClick={() => setSearchTerm("")}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          </div>
-          
-          <div className="max-h-60 overflow-y-auto">
-            {filteredOptions.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                {emptyMessage}
-              </div>
-            ) : (
-              <div className="py-1">
-                {filteredOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                      value === option.value ? "bg-gray-100 font-medium" : ""
-                    }`}
-                    onClick={() => handleSelect(option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <div className="border-t p-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-full text-xs"
-              onClick={() => setOpen(false)}
-            >
-              Tutup
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 };
 
 // Custom hook untuk submit data
@@ -381,17 +259,6 @@ const SPJHonor = () => {
   const akunMap = Object.fromEntries((akunList || []).map(item => [item.id, item.name.split(' - ')[1] || item.name]));
   const organikMap = Object.fromEntries((organikList || []).map(item => [item.id, item.name]));
   const mitraMap = Object.fromEntries((mitraList || []).map(item => [item.id, item.name]));
-
-  // Options untuk searchable select
-  const organikOptions = (organikList || []).map(item => ({
-    value: item.id,
-    label: item.name.split(' - ')[1] || item.name
-  }));
-
-  const mitraOptions = (mitraList || []).map(item => ({
-    value: item.id,
-    label: `${item.name.split(' - ')[1] || item.name}${item.kecamatan ? ` - ${item.kecamatan}` : ''}`
-  }));
 
   // Add organik handler
   const addOrganik = () => {
@@ -920,13 +787,18 @@ const SPJHonor = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Pembuat Daftar</FormLabel>
-                        <SearchableSelect
-                          value={field.value}
-                          onChange={field.onChange}
-                          options={organikOptions}
-                          placeholder="Pilih pembuat daftar"
-                          searchPlaceholder="Cari nama organik..."
-                        />
+                        <FormControl>
+                          <PersonSingleSelect
+                            placeholder="Pilih pembuat daftar"
+                            options={organikList.map(item => ({
+                              id: item.id,
+                              name: item.name,
+                              jabatan: (item as any).jabatan
+                            } as Person))}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -969,12 +841,15 @@ const SPJHonor = () => {
                       {/* Nama dengan Search */}
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <SearchableSelect
-                          value={honor.personId}
-                          onChange={(value) => updateHonorDetail("organik", index, "personId", value)}
-                          options={organikOptions}
+                        <PersonSingleSelect
                           placeholder="Pilih Organik BPS"
-                          searchPlaceholder="Cari nama organik..."
+                          options={organikList.map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            jabatan: (item as any).jabatan
+                          } as Person))}
+                          value={honor.personId}
+                          onValueChange={(value) => updateHonorDetail("organik", index, "personId", value)}
                         />
                       </div>
                       
@@ -1077,12 +952,15 @@ const SPJHonor = () => {
                       {/* Nama dengan Search */}
                       <div className="space-y-2">
                         <Label>Nama</Label>
-                        <SearchableSelect
-                          value={honor.personId}
-                          onChange={(value) => updateHonorDetail("mitra", index, "personId", value)}
-                          options={mitraOptions}
+                        <PersonSingleSelect
                           placeholder="Pilih Mitra Statistik"
-                          searchPlaceholder="Cari nama mitra..."
+                          options={mitraList.map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            jabatan: item.kecamatan ? `${item.kecamatan}` : undefined
+                          } as Person))}
+                          value={honor.personId}
+                          onValueChange={(value) => updateHonorDetail("mitra", index, "personId", value)}
                         />
                       </div>
                       
