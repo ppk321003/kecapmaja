@@ -505,19 +505,40 @@ export default function GenerateSPJHonorMitra() {
       // Prepare data untuk ditulis
       const recordData = [
         [
-          idSPJ,                           // Id (genSPJ-yymmxxx)
-          item.namaKegiatan,               // Nama Kegiatan (Kolom E)
-          item.periode,                    // Periode (Kolom C)
-          item.penanggungjawab,            // Penanggungjawab Kegiatan (Kolom B)
-          item.jenisPekerjaan,             // Jenis Pekerjaan (Kolom D)
-          item.bebanAnggaran,              // Beban Anggaran (Kolom S - apa adanya)
-          tanggalIndonesia,                // Tanggal (SPJ)
-          item.pembuatDaftar,              // Pembuat Daftar (Kolom L)
-          item.namaPetugasRaw,             // Nama Petugas (Kolom N - langsung apa adanya)
-          item.banyaknya,                  // Banyaknya (Kolom P - apa adanya)
-          item.hargaSatuan || 0,           // Harga Satuan (Kolom J)
-          item.realisasi,                  // Realisasi (Kolom Q - apa adanya)
-          item.nik                         // NIK (Kolom W)
+          idSPJ,                           // A: Id (genSPJ-yymmxxx)
+          item.namaKegiatan,               // B: Nama Kegiatan (Kolom E)
+          item.periode,                    // C: Periode (Kolom C)
+          item.penanggungjawab,            // D: Penanggungjawab Kegiatan (Kolom B)
+          item.jenisPekerjaan,             // E: Jenis Pekerjaan (Kolom D)
+          item.bebanAnggaran,              // F: Beban Anggaran (Kolom S - apa adanya)
+          tanggalIndonesia,                // G: Tanggal (SPJ)
+          item.pembuatDaftar,              // H: Pembuat Daftar (Kolom L)
+          item.namaPetugasRaw,             // I: Nama Petugas (Kolom N - langsung apa adanya)
+          item.banyaknya,                  // J: Banyaknya (Kolom P - apa adanya)
+          item.hargaSatuan || 0,           // K: Harga Satuan (Kolom J)
+          item.realisasi,                  // L: Realisasi (Kolom Q - apa adanya)
+          item.nik,                        // M: NIK (Kolom W)
+          '', '', '', '', '', '', '', '', '', '', '', '', '', // N-Z kosong (clear pada saat update)
+        ]
+      ];
+
+      // Untuk update, gunakan full range A:Z agar kolom N-Z ter-clear
+      const recordDataForUpdate = [
+        [
+          idSPJ,                           // A
+          item.namaKegiatan,               // B
+          item.periode,                    // C
+          item.penanggungjawab,            // D
+          item.jenisPekerjaan,             // E
+          item.bebanAnggaran,              // F
+          tanggalIndonesia,                // G
+          item.pembuatDaftar,              // H
+          item.namaPetugasRaw,             // I
+          item.banyaknya,                  // J
+          item.hargaSatuan || 0,           // K
+          item.realisasi,                  // L
+          item.nik,                        // M
+          '', '', '', '', '', '', '', '', '', '', '', '', '', // N-Z kosong
         ]
       ];
 
@@ -562,18 +583,18 @@ export default function GenerateSPJHonorMitra() {
       let result;
       
       if (existingRowIndex !== null) {
-        // Update existing row
+        // Update existing row - gunakan recordDataForUpdate dengan range A:Z agar kolom N-Z ter-clear
         console.log(`📝 Updating existing row ${existingRowIndex}...`);
         result = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: generateSPJSheetId,
             operation: "update",
-            range: `generateSPJ!A${existingRowIndex}`,
-            values: recordData
+            range: `generateSPJ!A${existingRowIndex}:Z${existingRowIndex}`,
+            values: recordDataForUpdate
           }
         });
       } else {
-        // Append new row
+        // Append new row - gunakan recordData yang normal (13 kolom)
         console.log('📝 No existing record found, appending new row...');
         result = await supabase.functions.invoke("google-sheets", {
           body: {
