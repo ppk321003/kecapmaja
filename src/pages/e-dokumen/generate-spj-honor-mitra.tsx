@@ -523,15 +523,67 @@ export default function GenerateSPJHonorMitra() {
 
       console.log('📝 Menulis ke generateSPJ sheet:', recordData);
 
-      // Write ke Google Sheets via Supabase function
-      const result = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: generateSPJSheetId,
-          operation: "append",
-          range: "generateSPJ",  // Just sheet name for append
-          values: recordData
+      // First, check if record dengan nama kegiatan + bulan ini sudah ada
+      let existingRowIndex: number | null = null;
+      
+      try {
+        console.log('🔍 Mencari record existing dengan nama kegiatan + bulan yang sama...');
+        const checkResult = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: generateSPJSheetId,
+            operation: "read",
+            range: "generateSPJ"
+          }
+        });
+        
+        if (checkResult.data?.values && Array.isArray(checkResult.data.values)) {
+          // Find row yang cocok: sama bulan/tahun (dari ID prefix) + sama nama kegiatan
+          const idPrefix = `genSPJ-${item.tahun?.slice(-2)}${String(["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].indexOf(item.bulan || '') + 1).padStart(2, '0')}`;
+          
+          for (let i = 1; i < checkResult.data.values.length; i++) {
+            const row = checkResult.data.values[i];
+            const rowId = row[0]?.toString() || '';
+            const rowNamaKegiatan = row[1]?.toString() || '';
+            
+            // Check jika ID prefix cocok dan nama kegiatan sama
+            if (rowId.startsWith(idPrefix) && rowNamaKegiatan === item.namaKegiatan) {
+              existingRowIndex = i + 1; // Row number di sheet (1-indexed header)
+              console.log(`✅ Found existing record at row ${existingRowIndex}, akan di-update`);
+              break;
+            }
+          }
         }
-      });
+      } catch (error) {
+        console.warn('⚠️ Error checking existing records:', error);
+        // Continue dengan append jika ada error
+      }
+
+      // Write ke Google Sheets via Supabase function
+      let result;
+      
+      if (existingRowIndex !== null) {
+        // Update existing row
+        console.log(`📝 Updating existing row ${existingRowIndex}...`);
+        result = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: generateSPJSheetId,
+            operation: "update",
+            range: `generateSPJ!A${existingRowIndex}`,
+            values: recordData
+          }
+        });
+      } else {
+        // Append new row
+        console.log('📝 No existing record found, appending new row...');
+        result = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: generateSPJSheetId,
+            operation: "append",
+            range: "generateSPJ",
+            values: recordData
+          }
+        });
+      }
 
       if (result.error) {
         throw result.error;
@@ -540,7 +592,9 @@ export default function GenerateSPJHonorMitra() {
       console.log('✅ Data berhasil ditulis ke generateSPJ sheet');
       toast({
         title: "Sukses",
-        description: `SPJ ${idSPJ} untuk "${item.namaKegiatan}" berhasil dibuat`,
+        description: existingRowIndex !== null 
+          ? `SPJ ${idSPJ} untuk "${item.namaKegiatan}" berhasil diperbarui`
+          : `SPJ ${idSPJ} untuk "${item.namaKegiatan}" berhasil dibuat`,
         variant: "default"
       });
 
@@ -549,7 +603,7 @@ export default function GenerateSPJHonorMitra() {
       console.error('❌ Error writing to generateSPJ:', error);
       toast({
         title: "Error",
-        description: error.message || "Gagal membuat SPJ",
+        description: error.message || "Gagal membuat/update SPJ",
         variant: "destructive"
       });
       return false;
