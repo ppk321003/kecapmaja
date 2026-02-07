@@ -346,52 +346,139 @@ export default function GenerateSPJHonorMitra() {
       }
       
       console.log('✅ Data after duplicate removal:', deduplicatedData.length, 'baris');
+      console.log('Debug - First item keys:', deduplicatedData[0] ? `${deduplicatedData[0].namaKegiatan}|${deduplicatedData[0].periode}` : 'no data');
       
       // Enrich data dengan URL dari generateSPJ sheet jika ada
       if (generateSPJSheetId) {
         try {
-          console.log('🔍 Fetching URLs dari generateSPJ sheet...');
-          const spjResult = await supabase.functions.invoke("google-sheets", {
-            body: {
-              spreadsheetId: generateSPJSheetId,
-              operation: "read",
-              range: "generateSPJ!A:O"  // Baca kolom A (ID) hingga O (URL)
-            }
-          });
+          console.log('🔍 Fetching URLs dari generateSPJ sheet...', { generateSPJSheetId });
           
-          if (spjResult.data?.values && Array.isArray(spjResult.data.values)) {
-            // Build map dari nama kegiatan + periode -> URL (kolom O)
-            const spjUrlMap = new Map<string, { id: string; url: string }>();
-            
-            for (let i = 1; i < spjResult.data.values.length; i++) {
-              const row = spjResult.data.values[i];
-              const spjId = row[0]?.toString() || '';
-              const namaKegiatan = row[1]?.toString() || '';
-              const periode = row[2]?.toString() || '';
-              const documentUrl = row[14]?.toString() || ''; // Kolom O (index 14)
+          // Try multiple sheet names since we're not sure of the exact name
+          const rangeOptions = [
+            "generateSPJ!A:O",
+            "genSPJ!A:O",
+            "A:O",       // Default sheet
+            "generateSPJ",
+            "genSPJ"
+          ];
+          
+          let spjSheetData = null;
+          let lastError = null;
+          
+          for (const range of rangeOptions) {
+            try {
+              console.log(`  Trying range: ${range}`);
+              const spjResult = await supabase.functions.invoke("google-sheets", {
+                body: {
+                  spreadsheetId: generateSPJSheetId,
+                  operation: "read",
+                  range: range
+                }
+              });
               
-              if (namaKegiatan && periode) {
-                const key = `${namaKegiatan}|${periode}`;
-                if (documentUrl.trim()) {
+              if (!spjResult.data?.error && spjResult.data?.values && Array.isArray(spjResult.data.values)) {
+                spjSheetData = spjResult.data;
+                console.log(`  ✅ Success dengan range: ${range}, rows: ${spjSheetData.values.length}`);
+                break;
+              } else {
+                console.log(`  ❌ Gagal dengan range: ${range}`);
+                lastError = spjResult.data?.error;
+              }
+            } catch (rangeError) {
+              console.log(`  ❌ Error trying range ${range}:`, rangeError);
+            }
+          }
+          
+          if (!spjSheetData) {
+            console.warn('⚠️ Tidak bisa fetch generateSPJ sheet dengan range manapun', { lastError, generateSPJSheetId });
+          } else {
+            console.log('📊 SPJ Result:', { hasValues: !!spjSheetData?.values, rowCount: spjSheetData?.values?.length });
+            
+            if (spjSheetData?.values && Array.isArray(spjSheetData.values)) {
+              // Build map dari nama kegiatan + periode -> URL (kolom O)
+              const spjUrlMap = new Map<string, { id: string; url: string }>();
+              
+              console.log('Processing', spjSheetData.values.length, 'rows from generateSPJ');
+              
+              for (let i = 1; i < spjSheetData.values.length; i++) {
+                const row = spjSheetData.values[i];
+                
+                // Ensure row exists dan accessible
+                if (!row || row.length < 3) continue;
+                
+                const spjId = String(row[0] || '').trim();
+                const namaKegiatan = String(row[1] || '').trim();
+                const periode = String(row[2] || '').trim();
+                const documentUrl = String(row[14] || '').trim(); // Kolom O (index 14)
+                
+                // Debug log untuk beberapa row pertama
+                if (i <= 3) {
+                  console.log(`SPJ Row ${i}:`, {
+                    spjId,
+                    namaKegiatan: namaKegiatan.substring(0, 30),
+                    periode,
+                    hasUrl: !!documentUrl,
+                    urlLength: documentUrl.length,
+                    rowLength: row.length
+                  });
+                }
+                
+                // Only add to map jika ada valid nama kegiatan, periode, AND URL
+                if (namaKegiatan && periode && documentUrl) {
+                  const key = `${namaKegiatan}|${periode}`;
                   spjUrlMap.set(key, { id: spjId, url: documentUrl });
+                  if (i <= 3) {
+                    console.log(`✅ Added to map: ${key.substring(0, 40)}...`);
+                  }
                 }
               }
+              
+              console.log('📌 SPJ URL Map created:', {
+                size: spjUrlMap.size,
+                keys: Array.from(spjUrlMap.keys()).slice(0, 5).map(k => k.substring(0, 40))
+              });
+              
+              // Enrich data dengan URL
+              let enrichedCount = 0;
+              let unmatchedCount = 0;
+              
+              deduplicatedData.forEach((item, idx) => {
+                const key = `${item.namaKegiatan}|${item.periode}`;
+                const spjRecord = spjUrlMap.get(key);
+                
+                if (spjRecord) {
+                  item.spjIdGenerated = spjRecord.id;
+                  item.spjDocumentUrl = spjRecord.url;
+                  enrichedCount++;
+                  if (enrichedCount <= 2) {
+                    console.log(`✅ Matched item ${idx + 1}: has URL, length=${spjRecord.url.length}`);
+                  }
+                } else {
+                  unmatchedCount++;
+                  if (unmatchedCount <= 2) {
+                    console.log(`❌ No match for item ${idx + 1}: "${key.substring(0, 50)}..."`);
+                    // Cek kemungkinan typo/spacing
+                    const mainKeyPart = item.namaKegiatan.substring(0, 15);
+                    const possibleMatches = Array.from(spjUrlMap.keys()).filter(k => 
+                      k.toLowerCase().includes(mainKeyPart.toLowerCase())
+                    );
+                    if (possibleMatches.length > 0) {
+                      console.log(`   Found ${possibleMatches.length} similar keys:`, possibleMatches.slice(0, 2));
+                    }
+                  }
+                }
+              });
+              
+              console.log('✅ Enrichment complete:', { enrichedCount, unmatchedCount, totalRecords: deduplicatedData.length });
             }
-            
-            // Enrich data dengan URL
-            deduplicatedData.forEach(item => {
-              const key = `${item.namaKegiatan}|${item.periode}`;
-              const spjRecord = spjUrlMap.get(key);
-              if (spjRecord) {
-                item.spjIdGenerated = spjRecord.id;
-                item.spjDocumentUrl = spjRecord.url;
-              }
-            });
-            
-            console.log('✅ Enriched', spjUrlMap.size, 'records dengan URL dari generateSPJ');
           }
         } catch (error) {
-          console.warn('⚠️ Error fetching generateSPJ URLs:', error);
+          console.error('❌ Error fetching generateSPJ URLs:', error);
+          console.error('Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            generateSPJSheetId,
+            type: typeof error
+          });
           // Continue - jika error, URL tidak akan ada (tidak masalah)
         }
       }
