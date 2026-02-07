@@ -77,6 +77,7 @@ export default function GenerateSPJHonorMitra() {
 
   // Dialog state untuk generate SPJ
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [showStatusWarning, setShowStatusWarning] = useState(false);
   const [selectedItemForGenerate, setSelectedItemForGenerate] = useState<KegiatanSPJData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -440,7 +441,7 @@ export default function GenerateSPJHonorMitra() {
     if (!generateSPJSheetId) {
       toast({
         title: "Error",
-        description: "generatespj_sheet_id tidak ditemukan di satker_config",
+        description: "generatespj_sheet_id tidak ditemukan. Pastikan kolom W (generatespj_sheet_id) sudah ditambahkan di satker_config dan diperluas",
         variant: "destructive"
       });
       return false;
@@ -513,6 +514,11 @@ export default function GenerateSPJHonorMitra() {
 
   // Handle Generate SPJ untuk single row
   const handleGenerateSPJ = (item: KegiatanSPJData) => {
+    if (item.status !== 'Kirim ke PPK') {
+      setSelectedItemForGenerate(item);
+      setShowStatusWarning(true);
+      return;
+    }
     setSelectedItemForGenerate(item);
     setShowGenerateDialog(true);
   };
@@ -526,6 +532,16 @@ export default function GenerateSPJHonorMitra() {
       setShowGenerateDialog(false);
       setSelectedItemForGenerate(null);
     }
+  };
+
+  // Handle navigasi ke EntriSPK
+  const handleGoToEntriSPK = () => {
+    setShowStatusWarning(false);
+    setSelectedItemForGenerate(null);
+    toast({
+      title: "Info",
+      description: "Silahkan buka menu 'Entri SPK' untuk mengubah status menjadi 'Kirim PPK'"
+    });
   };
 
   // Download data
@@ -544,6 +560,20 @@ export default function GenerateSPJHonorMitra() {
           <AlertDialogAction onClick={handleConfirmGenerate} disabled={isGenerating}>
             {isGenerating ? 'Sedang memproses...' : 'Ya'}
           </AlertDialogAction>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog Status Warning */}
+      <AlertDialog open={showStatusWarning} onOpenChange={setShowStatusWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Status Pekerjaan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Status pekerjaan harus <span className="font-semibold">Kirim PPK</span> silahkan kirim pada menu <span className="font-semibold">Entri SPK</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogAction onClick={handleGoToEntriSPK}>Mengerti</AlertDialogAction>
         </AlertDialogContent>
       </AlertDialog>
 
