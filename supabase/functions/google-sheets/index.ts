@@ -177,6 +177,8 @@ serve(async (req) => {
     if (operation === 'append') {
       console.log(`Appending to range: ${range || 'Sheet1'}`);
       console.log('Values to append:', JSON.stringify(values));
+      console.log('Append URL:', `${baseUrl}/values/${range || 'Sheet1'}:append?valueInputOption=USER_ENTERED`);
+      
       const response = await fetch(
         `${baseUrl}/values/${range || 'Sheet1'}:append?valueInputOption=USER_ENTERED`,
         {
@@ -189,13 +191,19 @@ serve(async (req) => {
         }
       );
       const data = await response.json();
+      console.log('Append response status:', response.status);
       console.log('Append response:', JSON.stringify(data));
       
       if (!response.ok) {
-        console.error('Append failed:', data);
-        throw new Error(`Append failed: ${JSON.stringify(data)}`);
+        console.error('❌ Append failed with status', response.status);
+        console.error('Append error details:', JSON.stringify(data, null, 2));
+        if (data.error) {
+          console.error('Google Sheets API Error:', data.error.message || JSON.stringify(data.error));
+        }
+        throw new Error(`Append failed: ${data.error?.message || JSON.stringify(data)}`);
       }
       
+      console.log('✅ Append succeeded');
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
