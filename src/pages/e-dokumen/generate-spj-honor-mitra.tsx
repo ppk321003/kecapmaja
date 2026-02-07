@@ -133,29 +133,33 @@ export default function GenerateSPJHonorMitra() {
         return -1;
       };
 
-      // Mapping kolom struktur entrikegiatan sheet sesuai EntriTarget.tsx:
+      // Mapping kolom struktur entrikegiatan sheet - ALIGNED dengan RekapSPK.tsx:
       // A/0: No
-      // B/1: Role (Penanggungjawab)
+      // B/1/3: Role (Penanggungjawab/Jenis Pekerjaan)
       // C/2: Periode (Bulan) SPK - format: "Januari 2026"
-      // D/3: Jenis Pekerjaan
-      // E/4: Nama Kegiatan
-      // N/13: Nama Petugas (untuk count jumlah)
-      // R/17: Total Realisasi
+      // D/3 or E/4: Nama Kegiatan
+      // J/9: Harga Satuan (per unit price)
+      // K/10: Satuan (unit type)
+      // N/13: Nama Petugas (names separated by |)
+      // P/15: Realisasi (quantity/jumlah unit) - USED FOR JUMLAH PETUGAS
       // T/19: Keterangan (Status)
       const noIndex = 0; // Kolom A
-      const roleIndex = 1; // Kolom B
+      const roleIndex = getColumnIndex(['role', 'jenis pekerjaan', 'pekerjaan']) || 3; // Kolom D/E - could be Jenis Pekerjaan
       const periodeIndex = 2; // Kolom C
-      const jenisIndex = getColumnIndex(['jenis', 'pekerjaan']) || 3; // Kolom D
-      const namaKegiatanIndex = getColumnIndex(['kegiatan', 'nama kegiatan']) || 4; // Kolom E
-      const namaPetugasIndex = getColumnIndex(['petugas', 'nama petugas']) || 13; // Kolom N - berisi "Nama1 | Nama2 | ..."
-      const nilaiIndex = getColumnIndex(['total', 'realisasi']) || 17; // Kolom R - Total Realisasi
+      const jenisIndex = getColumnIndex(['jenis', 'pekerjaan']) || 3; // Kolom D - Jenis Pekerjaan
+      const namaKegiatanIndex = getColumnIndex(['kegiatan', 'nama kegiatan']) || 4; // Kolom E - Nama Kegiatan
+      const namaPetugasIndex = getColumnIndex(['petugas', 'nama petugas']) || 13; // Kolom N - Nama Petugas (untuk tooltip)
+      const hargaSatuanIndex = getColumnIndex(['harga', 'satuan']) || 9; // Kolom J - Harga Satuan
+      const satuanIndex = getColumnIndex(['satuan']) || 10; // Kolom K - Satuan
+      const jumlahPetugasIndex = getColumnIndex(['realisasi', 'jumlah']) || 15; // Kolom P - Realisasi (jumlah unit/petugas)
       const statusIndex = getColumnIndex(['keterangan', 'status']) || 19; // Kolom T - Keterangan
 
       // DEBUG: Logging untuk verify column indices
       console.log('📋 Column Mapping:');
       console.log(`  noIndex: ${noIndex}, roleIndex: ${roleIndex}, periodeIndex: ${periodeIndex}`);
       console.log(`  jenisIndex: ${jenisIndex}, namaKegiatanIndex: ${namaKegiatanIndex}`);
-      console.log(`  namaPetugasIndex: ${namaPetugasIndex}, nilaiIndex: ${nilaiIndex}, statusIndex: ${statusIndex}`);
+      console.log(`  namaPetugasIndex: ${namaPetugasIndex}, hargaSatuanIndex: ${hargaSatuanIndex}, satuanIndex: ${satuanIndex}`);
+      console.log(`  jumlahPetugasIndex: ${jumlahPetugasIndex}, statusIndex: ${statusIndex}`);
       console.log('📋 Headers:', headers);
       
       // Show first 2 data rows for debugging
@@ -181,13 +185,16 @@ export default function GenerateSPJHonorMitra() {
             tahunPeriode = bulanTahunMatch[2]; // Tahun
           }
 
-          // Count petugas dari kolom N (Nama Petugas) - format: "Nama1 | Nama2 | ..."
+          // Get petugas data for tooltip from kolom N (Nama Petugas) - format: "Nama1 | Nama2 | ..."
           const namaPetugasStr = row[namaPetugasIndex]?.toString() || '';
           const petugasList = namaPetugasStr
             .split('|')
             .map(name => name.trim())
             .filter(name => name.length > 0);
-          const petugasCount = petugasList.length;
+          
+          // Get Jumlah Petugas from row[15] (Realisasi) - the actual count/quantity
+          const jumlahRealisasi = parseInt(row[jumlahPetugasIndex]?.toString() || '1') || 1;
+          const petugasCount = jumlahRealisasi || petugasList.length || 1;
 
           // DEBUG first few rows
           if (index < 2) {
@@ -197,7 +204,8 @@ export default function GenerateSPJHonorMitra() {
               parsedPeriode: `${bulanPeriode} ${tahunPeriode}`,
               namaPetugas: namaPetugasStr,
               petugasCount: petugasCount,
-              nilai: row[nilaiIndex]
+              hargaSatuan: row[hargaSatuanIndex],
+              jumlahPetugas: jumlahRealisasi
             });
           }
 
@@ -214,13 +222,20 @@ export default function GenerateSPJHonorMitra() {
           const statusStr = row[statusIndex]?.toString().trim() || '';
           const status = statusStr.toLowerCase().includes('kirim') ? 'Kirim ke PPK' : 'Belum Kirim';
           
-          // Nilai realisasi: dapat berupa "800", "Rp 800.000", atau "800 | 800 | 800"
-          // Ambil nilai pertama jika ada separator, remove semua non-numeric, kemudian
-          // Jika nilai < 10000 maka multiply by 1000, jika >= 10000 sudah final
-          const nilaiStr = row[nilaiIndex]?.toString() || '0';
-          const nilaiValueStr = nilaiStr.split('|')[0].trim(); // Ambil nilai pertama jika multiple
-          const nilaiRaw = parseInt(nilaiValueStr.replace(/[^0-9]/g, '') || '0') || 0;
-          const nilaiRealisasi = nilaiRaw < 10000 ? nilaiRaw * 1000 : nilaiRaw;
+          // Nilai Realisasi: Calculate from hargaSatuan (row[9]) × realisasi quantity (row[15])
+          // This matches the logic in RekapSPK.tsx
+          const hargaSatuanStr = row[hargaSatuanIndex]?.toString() || '0';
+          const hargaSatuanRaw = parseInt(hargaSatuanStr.replace(/[^0-9]/g, '') || '0') || 0;
+          const nilaiRealisasi = hargaSatuanRaw * jumlahRealisasi;
+          
+          // DEBUG: Log nilai calculation untuk verification
+          if (index < 2) {
+            console.log(`📊 Row ${index} nilai calc:`, {
+              hargaSatuan: hargaSatuanRaw,
+              jumlahPetugas: jumlahRealisasi,
+              nilaiRealisasi: nilaiRealisasi
+            });
+          }
 
           return {
             no: parseInt(row[noIndex]) || index + 1,
@@ -401,19 +416,17 @@ export default function GenerateSPJHonorMitra() {
                 </SelectTrigger>
                 <SelectContent>
                   {(() => {
-                    const tahunSet = new Set<string>();
-                    availablePeriodes
-                      .filter(p => p.startsWith(selectedBulan))
-                      .forEach(p => {
-                        const tahunStr = p.split(' ')[1];
+                    // Show fixed range 2024-2030
+                    const staticTahunArray = Array.from({ length: 7 }, (_, i) => (2024 + i).toString());
+                    // Filter to show at least static range, plus any extra years from data beyond 2030
+                    const tahunSet = new Set<string>(staticTahunArray);
+                    availablePeriodes.forEach(p => {
+                      const tahunStr = p.split(' ')[1];
+                      const tahunNum = parseInt(tahunStr);
+                      if (tahunNum > 2030) {
                         tahunSet.add(tahunStr);
-                      });
-                    // If no tahun for selected bulan, show all available years
-                    if (tahunSet.size === 0) {
-                      availablePeriodes.forEach(p => {
-                        tahunSet.add(p.split(' ')[1]);
-                      });
-                    }
+                      }
+                    });
                     // Sort numerically
                     const tahunArray = Array.from(tahunSet).sort((a, b) => parseInt(a) - parseInt(b));
                     return tahunArray.map((tahun) => (
@@ -470,7 +483,7 @@ export default function GenerateSPJHonorMitra() {
                       <TableHead className="min-w-[220px]">Nama Kegiatan</TableHead>
                       <TableHead className="min-w-[180px]">Penanggungjawab Kegiatan</TableHead>
                       <TableHead className="min-w-[120px] text-center">Jumlah Petugas</TableHead>
-                      <TableHead className="min-w-[200px]">Jenis Pekerjaan</TableHead>
+                      <TableHead className="min-w-[140px] max-w-[140px]">Jenis Pekerjaan</TableHead>
                       <TableHead className="min-w-[150px] text-right">Nilai Realisasi</TableHead>
                       <TableHead className="min-w-[140px]">Status</TableHead>
                       <TableHead className="min-w-[200px] text-center">Aksi</TableHead>
@@ -513,38 +526,39 @@ export default function GenerateSPJHonorMitra() {
                               </TooltipProvider>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline" className="whitespace-nowrap">
+                              <Badge variant="outline" className="text-wrap break-words line-clamp-2 text-xs">
                                 {item.jenisPekerjaan}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right font-medium text-emerald-600">
                               Rp {item.nilaiRealisasi.toLocaleString('id-ID')}
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {item.status === 'Kirim ke PPK' ? (
-                                  <>
-                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                    <span className="text-xs text-green-600 font-medium">{item.status}</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle className="h-4 w-4 text-red-600" />
-                                    <span className="text-xs text-red-600 font-medium">{item.status}</span>
-                                  </>
-                                )}
-                              </div>
+                            <TableCell className="text-center">
+                              {item.status === 'Kirim ke PPK' ? (
+                                <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto" aria-label="Kirim ke PPK" />
+                              ) : (
+                                <XCircle className="h-5 w-5 text-red-600 mx-auto" aria-label="Belum Kirim" />
+                              )}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center justify-center">
+                              <div className="flex items-center justify-center gap-2">
                                 <Button
                                   onClick={() => handleGenerateSPJ(item)}
                                   size="sm"
-                                  variant="outline"
-                                  className="gap-1 text-xs h-8"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  aria-label="Generate SPJ"
                                 >
-                                  <Zap className="h-3.5 w-3.5" />
-                                  Generate
+                                  <Zap className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  onClick={() => console.log('Link icon clicked')}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  aria-label="Buka Link"
+                                >
+                                  <FileText className="h-4 w-4" />
                                 </Button>
                               </div>
                             </TableCell>
