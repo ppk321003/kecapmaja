@@ -25,8 +25,8 @@ export default function BuatEDokumen() {
   const eDokumenMenuItems = [
     { title: "Daftar Hadir (Tabel Rekap)", url: "/e-dokumen/daftar-hadir", icon: Users, description: "Buat daftar hadir kegiatan dalam format tabel rekap" },
     { title: "Dokumen Pengadaan", url: "/e-dokumen/dokumen-pengadaan", icon: Briefcase, description: "Buat dokumen pengadaan barang dan jasa" },
-    { title: "Generate SPJ Honor Mitra", url: "/e-dokumen/generate-spj-honor-mitra", icon: Zap, description: "Generate SPJ honor mitra dari data SPK dan BAST" },
-    { title: "Kerangka Acuan Kerja (KAK)", url: "/e-dokumen/kak", icon: FileText, description: "Buat Kerangka Acuan Kerja kegiatan" },
+    { title: "Generate SPJ Honor Mitra", url: "/e-dokumen/generate-spj-honor-mitra", icon: Zap, description: "Generate SPJ honor mitra secara otomatis hasil entri dari SPK dan BAST" },
+    { title: "Kerangka Acuan Kerja (KAK)", url: "/e-dokumen/kak", icon: FileText, description: "Buat Kerangka Acuan Kerja / Spesifikasi Teknis kegiatan" },
     { title: "Kuitansi Perjalanan Dinas", url: "/e-dokumen/kuitansi-perjalanan", icon: Car, description: "Kuitansi Perjalanan Dinas Luar Kota / Dalam Kota > 8 Jam" },
     { title: "Kuitansi Transport Lokal", url: "/e-dokumen/kuitansi-transport", icon: Bike, description: "Buat kuitansi transport lokal" },
     { title: "Lembur & Laporan", url: "/e-dokumen/lembur-laporan", icon: Clock, description: "Buat dokumen lembur dan laporan" },
