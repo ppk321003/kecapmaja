@@ -21,6 +21,10 @@ interface KegiatanSPJData {
   nilaiRealisasi: number;
   status: 'Kirim ke PPK' | 'Belum Kirim';
   periode?: string;
+  // Breakdown fields for nilai realisasi tooltip
+  hargaSatuan?: number;
+  totalRealisasi?: number;
+  satuan?: string;
   [key: string]: string | number | string[] | undefined;
 }
 
@@ -259,7 +263,11 @@ export default function GenerateSPJHonorMitra() {
             jenisPekerjaan: jenis,
             nilaiRealisasi: nilaiRealisasi,
             status: status,
-            periode: `${bulanPeriode} ${tahunPeriode}`
+            periode: `${bulanPeriode} ${tahunPeriode}`,
+            // Breakdown fields for tooltip
+            hargaSatuan: hargaSatuanRaw,
+            totalRealisasi: totalRealisasi,
+            satuan: row[satuanIndex]?.toString() || 'Unit'
           };
         });
 
@@ -295,8 +303,19 @@ export default function GenerateSPJHonorMitra() {
         const periodSet = new Set(deduplicatedData.map(item => item.periode));
         const availBulanTahun = Array.from(periodSet).sort();
         console.log('Available periods:', availBulanTahun);
-        if (availBulanTahun.length > 0) {
-          // Set default selected period to first available
+        
+        // Cek apakah current month/year ada di available periods
+        const currentPeriode = `${currentMonthName} ${currentYear}`;
+        const currentPeriodeExists = availBulanTahun.includes(currentPeriode);
+        
+        if (currentPeriodeExists) {
+          // Jika current period ada, gunakan itu (jangan override)
+          console.log('✅ Current period available, keeping filters:', currentPeriode);
+          setSelectedBulan(currentMonthName);
+          setSelectedTahun(currentYear);
+        } else if (availBulanTahun.length > 0) {
+          // Hanya jika current period tidak ada, gunakan first available
+          console.log('⚠️ Current period not available, using first available:', availBulanTahun[0]);
           const firstPeriode = availBulanTahun[0];
           const periodParts = firstPeriode?.split(' ') || [];
           setSelectedBulan(periodParts[0] || currentMonthName);
@@ -374,9 +393,9 @@ export default function GenerateSPJHonorMitra() {
 
   // Download data
   return (
-    <div className="min-h-screen bg-background pt-4 pb-16 px-4 sm:px-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="mb-8 max-w-7xl mx-auto">
+      <div className="mb-8 p-4 sm:p-6">
         <div className="flex items-center gap-3 mb-3">
           <div className="p-2 bg-red-100 rounded-lg">
             <FileText className="text-red-600" size={24} />
@@ -391,7 +410,7 @@ export default function GenerateSPJHonorMitra() {
       </div>
 
       {/* Filter Section */}
-      <div className="max-w-7xl mx-auto grid gap-4 mb-6">
+      <div className="px-4 sm:px-6 grid gap-4 mb-6">
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Filter Data</CardTitle>
@@ -478,7 +497,7 @@ export default function GenerateSPJHonorMitra() {
       </div>
 
       {/* Data Section */}
-      <div className="max-w-7xl mx-auto">
+      <div className="px-4 sm:px-6">
         {isLoading ? (
           <Card>
             <CardContent className="flex justify-center items-center py-12">
@@ -553,35 +572,107 @@ export default function GenerateSPJHonorMitra() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right font-medium text-emerald-600">
-                              Rp {item.nilaiRealisasi.toLocaleString('id-ID')}
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="cursor-help hover:underline transition-all">
+                                      Rp {item.nilaiRealisasi.toLocaleString('id-ID')}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="bg-white border border-gray-200 shadow-lg max-w-xs">
+                                    <div className="space-y-2">
+                                      <p className="font-semibold text-gray-900">Perhitungan Nilai Realisasi</p>
+                                      <div className="text-sm text-gray-700 space-y-1">
+                                        <div className="flex items-center justify-between gap-2 bg-gray-50 p-2 rounded">
+                                          <span>Harga Satuan:</span>
+                                          <span className="font-medium">Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}</span>
+                                        </div>
+                                        <div className="flex items-center justify-center">
+                                          <span className="text-gray-400">×</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2 bg-gray-50 p-2 rounded">
+                                          <span>{item.satuan || 'Unit'}:</span>
+                                          <span className="font-medium">{item.totalRealisasi || 1}</span>
+                                        </div>
+                                        <div className="flex items-center justify-center text-gray-400 my-1">
+                                          <span>=</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2 bg-emerald-50 p-2 rounded border border-emerald-200">
+                                          <span className="font-semibold text-emerald-700">Total:</span>
+                                          <span className="font-bold text-emerald-700">Rp {item.nilaiRealisasi.toLocaleString('id-ID')}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.status === 'Kirim ke PPK' ? (
-                                <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto" aria-label="Kirim ke PPK" />
-                              ) : (
-                                <XCircle className="h-5 w-5 text-red-600 mx-auto" aria-label="Belum Kirim" />
-                              )}
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex justify-center cursor-help">
+                                      {item.status === 'Kirim ke PPK' ? (
+                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                      ) : (
+                                        <XCircle className="h-5 w-5 text-red-600" />
+                                      )}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="bg-white border border-gray-200 shadow-lg">
+                                    {item.status === 'Kirim ke PPK' ? (
+                                      <div className="text-sm">
+                                        <p className="font-semibold text-green-700">✓ Kirim ke PPK</p>
+                                        <p className="text-gray-600 text-xs mt-1">SPJ sudah dikirimkan ke Pejabat Pembuat Komitmen</p>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm">
+                                        <p className="font-semibold text-red-700">✗ Belum Kirim</p>
+                                        <p className="text-gray-600 text-xs mt-1">SPJ belum dikirimkan ke Pejabat Pembuat Komitmen</p>
+                                      </div>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center justify-center gap-2">
-                                <Button
-                                  onClick={() => handleGenerateSPJ(item)}
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                  aria-label="Generate SPJ"
-                                >
-                                  <Zap className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  onClick={() => console.log('Link icon clicked')}
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                  aria-label="Buka Link"
-                                >
-                                  <FileText className="h-4 w-4" />
-                                </Button>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        onClick={() => handleGenerateSPJ(item)}
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0 hover:bg-blue-100 transition-colors"
+                                      >
+                                        <Zap className="h-4 w-4 text-blue-600" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-white border border-gray-200 shadow-lg">
+                                      <p className="text-sm font-semibold text-blue-700">Generate SPJ</p>
+                                      <p className="text-xs text-gray-600 mt-1">Buat Surat Pernyataan Jumlah untuk kegiatan ini</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        onClick={() => console.log('Link icon clicked')}
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0 hover:bg-gray-100 transition-colors"
+                                      >
+                                        <FileText className="h-4 w-4 text-gray-600" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-white border border-gray-200 shadow-lg">
+                                      <p className="text-sm font-semibold text-gray-700">Buka Dokumen</p>
+                                      <p className="text-xs text-gray-600 mt-1">Buka SPJ yang telah dibuat sebelumnya</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               </div>
                             </TableCell>
                           </TableRow>
