@@ -141,7 +141,7 @@ export default function GenerateSPJHonorMitra() {
       // E/4: Nama Kegiatan
       // N/13: Nama Petugas (untuk count jumlah)
       // R/17: Total Realisasi
-      // U/20: Status
+      // T/19: Keterangan (Status)
       const noIndex = 0; // Kolom A
       const roleIndex = 1; // Kolom B
       const periodeIndex = 2; // Kolom C
@@ -149,7 +149,7 @@ export default function GenerateSPJHonorMitra() {
       const namaKegiatanIndex = getColumnIndex(['kegiatan', 'nama kegiatan']) || 4; // Kolom E
       const namaPetugasIndex = getColumnIndex(['petugas', 'nama petugas']) || 13; // Kolom N - berisi "Nama1 | Nama2 | ..."
       const nilaiIndex = getColumnIndex(['total', 'realisasi']) || 17; // Kolom R - Total Realisasi
-      const statusIndex = getColumnIndex(['status']) || 20; // Kolom U - Status
+      const statusIndex = getColumnIndex(['keterangan', 'status']) || 19; // Kolom T - Keterangan
 
       // DEBUG: Logging untuk verify column indices
       console.log('📋 Column Mapping:');
@@ -372,37 +372,56 @@ export default function GenerateSPJHonorMitra() {
                 />
               </div>
 
-              {/* Bulan */}
+              {/* Bulan - Sort berdasarkan urutan bulan, bukan abjad */}
               <Select value={selectedBulan} onValueChange={setSelectedBulan}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih Bulan" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from(new Set(
-                    availablePeriodes.map(p => p.split(' ')[0])
-                  )).map((bulan) => (
-                    <SelectItem key={bulan} value={bulan}>
-                      {bulan}
-                    </SelectItem>
-                  ))}
+                  {(() => {
+                    const bulanMap = new Map();
+                    availablePeriodes.forEach(p => {
+                      const bulanName = p.split(' ')[0];
+                      bulanMap.set(bulanName, true);
+                    });
+                    const bulanList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+                    return bulanList.filter(b => bulanMap.has(b)).map((bulan) => (
+                      <SelectItem key={bulan} value={bulan}>
+                        {bulan}
+                      </SelectItem>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
 
-              {/* Tahun */}
+              {/* Tahun - Show semua tahun yang ada data */}
               <Select value={selectedTahun} onValueChange={setSelectedTahun}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih Tahun" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from(new Set(
+                  {(() => {
+                    const tahunSet = new Set<string>();
                     availablePeriodes
                       .filter(p => p.startsWith(selectedBulan))
-                      .map(p => p.split(' ')[1])
-                  )).map((tahun) => (
-                    <SelectItem key={tahun} value={tahun}>
-                      {tahun}
-                    </SelectItem>
-                  ))}
+                      .forEach(p => {
+                        const tahunStr = p.split(' ')[1];
+                        tahunSet.add(tahunStr);
+                      });
+                    // If no tahun for selected bulan, show all available years
+                    if (tahunSet.size === 0) {
+                      availablePeriodes.forEach(p => {
+                        tahunSet.add(p.split(' ')[1]);
+                      });
+                    }
+                    // Sort numerically
+                    const tahunArray = Array.from(tahunSet).sort((a, b) => parseInt(a) - parseInt(b));
+                    return tahunArray.map((tahun) => (
+                      <SelectItem key={tahun} value={tahun}>
+                        {tahun}
+                      </SelectItem>
+                    ));
+                  })()}
                 </SelectContent>
               </Select>
 
@@ -466,24 +485,27 @@ export default function GenerateSPJHonorMitra() {
                             <TableCell className="font-medium">{item.namaKegiatan}</TableCell>
                             <TableCell className="text-sm">{item.penanggungjawab}</TableCell>
                             <TableCell className="text-center">
-                              <TooltipProvider>
+                              <TooltipProvider delayDuration={200}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className="cursor-help font-medium text-blue-600 underline decoration-dotted">
+                                    <span className="cursor-help font-semibold text-blue-600 inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors">
                                       {item.jumlahPetugas}
                                     </span>
                                   </TooltipTrigger>
-                                  <TooltipContent className="bg-slate-900 border border-slate-700 text-white p-3 max-w-xs">
-                                    <div className="space-y-1">
-                                      <p className="font-semibold">Nama-nama Petugas:</p>
+                                  <TooltipContent className="bg-white border border-gray-200 shadow-lg p-3 max-w-sm">
+                                    <div className="space-y-2">
+                                      <p className="font-semibold text-gray-900">Petugas Terlibat ({item.jumlahPetugas})</p>
                                       {item.namaPetugasList && item.namaPetugasList.length > 0 ? (
-                                        <ul className="list-disc list-inside text-sm space-y-0.5">
+                                        <ul className="space-y-1">
                                           {item.namaPetugasList.map((nama, idx) => (
-                                            <li key={idx}>{nama}</li>
+                                            <li key={idx} className="text-sm text-gray-700 flex items-center gap-2">
+                                              <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                                              {nama}
+                                            </li>
                                           ))}
                                         </ul>
                                       ) : (
-                                        <p className="text-sm italic">Tidak ada data petugas</p>
+                                        <p className="text-sm text-gray-500 italic">Tidak ada data petugas</p>
                                       )}
                                     </div>
                                   </TooltipContent>
