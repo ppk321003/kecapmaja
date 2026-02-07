@@ -33,6 +33,8 @@ interface KegiatanSPJData {
   bebanAnggaran?: string | number;  // Kolom S - apa adanya (string)
   pembuatDaftar?: string;            // Kolom L
   nik?: string;                      // Kolom W
+  spjIdGenerated?: string;           // Generated SPJ ID (kolom A dari generateSPJ)
+  spjDocumentUrl?: string;           // Kolom O dari generateSPJ - URL dokumen SPJ
   bulan?: string;                    // Parsed from periode
   tahun?: string;                    // Parsed from periode
   [key: string]: string | number | string[] | undefined;
@@ -344,6 +346,56 @@ export default function GenerateSPJHonorMitra() {
       }
       
       console.log('✅ Data after duplicate removal:', deduplicatedData.length, 'baris');
+      
+      // Enrich data dengan URL dari generateSPJ sheet jika ada
+      if (generateSPJSheetId) {
+        try {
+          console.log('🔍 Fetching URLs dari generateSPJ sheet...');
+          const spjResult = await supabase.functions.invoke("google-sheets", {
+            body: {
+              spreadsheetId: generateSPJSheetId,
+              operation: "read",
+              range: "generateSPJ!A:O"  // Baca kolom A (ID) hingga O (URL)
+            }
+          });
+          
+          if (spjResult.data?.values && Array.isArray(spjResult.data.values)) {
+            // Build map dari nama kegiatan + periode -> URL (kolom O)
+            const spjUrlMap = new Map<string, { id: string; url: string }>();
+            
+            for (let i = 1; i < spjResult.data.values.length; i++) {
+              const row = spjResult.data.values[i];
+              const spjId = row[0]?.toString() || '';
+              const namaKegiatan = row[1]?.toString() || '';
+              const periode = row[2]?.toString() || '';
+              const documentUrl = row[14]?.toString() || ''; // Kolom O (index 14)
+              
+              if (namaKegiatan && periode) {
+                const key = `${namaKegiatan}|${periode}`;
+                if (documentUrl.trim()) {
+                  spjUrlMap.set(key, { id: spjId, url: documentUrl });
+                }
+              }
+            }
+            
+            // Enrich data dengan URL
+            deduplicatedData.forEach(item => {
+              const key = `${item.namaKegiatan}|${item.periode}`;
+              const spjRecord = spjUrlMap.get(key);
+              if (spjRecord) {
+                item.spjIdGenerated = spjRecord.id;
+                item.spjDocumentUrl = spjRecord.url;
+              }
+            });
+            
+            console.log('✅ Enriched', spjUrlMap.size, 'records dengan URL dari generateSPJ');
+          }
+        } catch (error) {
+          console.warn('⚠️ Error fetching generateSPJ URLs:', error);
+          // Continue - jika error, URL tidak akan ada (tidak masalah)
+        }
+      }
+      
       setData(deduplicatedData);
       setCurrentPage(1); // Reset to first page when data is loaded
 
@@ -959,24 +1011,45 @@ export default function GenerateSPJHonorMitra() {
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        onClick={() => console.log('Link icon clicked')}
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-8 w-8 p-0 hover:bg-gray-100 transition-colors"
-                                      >
-                                        <FileText className="h-4 w-4 text-gray-600" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="bg-white border border-gray-200 shadow-lg">
-                                      <p className="text-sm font-semibold text-gray-700">Buka Dokumen</p>
-                                      <p className="text-xs text-gray-600 mt-1">Buka SPJ yang telah dibuat sebelumnya</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                {item.spjDocumentUrl ? (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          onClick={() => window.open(item.spjDocumentUrl, '_blank')}
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 p-0 hover:bg-blue-100 transition-colors"
+                                        >
+                                          <FileText className="h-4 w-4 text-blue-600" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="bg-white border border-gray-200 shadow-lg">
+                                        <p className="text-sm font-semibold text-blue-700">Buka Dokumen</p>
+                                        <p className="text-xs text-gray-600 mt-1">Buka SPJ yang telah dibuat sebelumnya</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          disabled
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 p-0 opacity-50 cursor-not-allowed"
+                                        >
+                                          <FileText className="h-4 w-4 text-gray-400" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="bg-white border border-gray-200 shadow-lg">
+                                        <p className="text-sm font-semibold text-gray-700">Belum tersedia</p>
+                                        <p className="text-xs text-gray-600 mt-1">Dokumen SPJ belum dapat diakses</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
