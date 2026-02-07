@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Search, Loader2, RefreshCw, Zap } from "lucide-react";
+import { FileText, Search, Loader2, RefreshCw, Zap, CheckCircle2, XCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +16,12 @@ interface KegiatanSPJData {
   namaKegiatan: string;
   penanggungjawab: string;
   jumlahPetugas: number;
+  namaPetugasList: string[];
   jenisPekerjaan: 'Petugas Pendataan Lapangan' | 'Petugas Pemeriksaan Lapangan' | 'Petugas Pengolahan';
   nilaiRealisasi: number;
-  status: 'Kirim PPK' | 'Belum Kirim PPK';
+  status: 'Kirim ke PPK' | 'Belum Kirim';
   periode?: string;
-  [key: string]: string | number | undefined;
+  [key: string]: string | number | string[] | undefined;
 }
 
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
@@ -138,15 +140,16 @@ export default function GenerateSPJHonorMitra() {
       // D/3: Jenis Pekerjaan
       // E/4: Nama Kegiatan
       // N/13: Nama Petugas (untuk count jumlah)
-      // Q/16: Nilai Realisasi
+      // R/17: Total Realisasi
+      // U/20: Status
       const noIndex = 0; // Kolom A
       const roleIndex = 1; // Kolom B
       const periodeIndex = 2; // Kolom C
       const jenisIndex = getColumnIndex(['jenis', 'pekerjaan']) || 3; // Kolom D
       const namaKegiatanIndex = getColumnIndex(['kegiatan', 'nama kegiatan']) || 4; // Kolom E
       const namaPetugasIndex = getColumnIndex(['petugas', 'nama petugas']) || 13; // Kolom N - berisi "Nama1 | Nama2 | ..."
-      const nilaiIndex = getColumnIndex(['nilai', 'realisasi']) || 16; // Kolom Q
-      const statusIndex = getColumnIndex(['status', 'dikirim']) || 19;
+      const nilaiIndex = getColumnIndex(['total', 'realisasi']) || 17; // Kolom R - Total Realisasi
+      const statusIndex = getColumnIndex(['status']) || 20; // Kolom U - Status
 
       // DEBUG: Logging untuk verify column indices
       console.log('📋 Column Mapping:');
@@ -207,7 +210,9 @@ export default function GenerateSPJHonorMitra() {
             jenis = 'Petugas Pemeriksaan Lapangan';
           }
 
-          const status = row[statusIndex]?.toString().toLowerCase().includes('kirim') ? 'Kirim PPK' : 'Belum Kirim PPK';
+          // Status: jika kolom U kosong → "Belum Kirim", jika ada text "kirim" → "Kirim ke PPK"
+          const statusStr = row[statusIndex]?.toString().trim() || '';
+          const status = statusStr.toLowerCase().includes('kirim') ? 'Kirim ke PPK' : 'Belum Kirim';
           
           // Nilai realisasi: dapat berupa "800", "Rp 800.000", atau "800 | 800 | 800"
           // Ambil nilai pertama jika ada separator, remove semua non-numeric, kemudian
@@ -222,6 +227,7 @@ export default function GenerateSPJHonorMitra() {
             namaKegiatan: row[namaKegiatanIndex]?.toString() || '',
             penanggungjawab: row[roleIndex]?.toString() || '',
             jumlahPetugas: petugasCount,
+            namaPetugasList: petugasList,
             jenisPekerjaan: jenis,
             nilaiRealisasi: nilaiRealisasi,
             status: status,
@@ -459,7 +465,31 @@ export default function GenerateSPJHonorMitra() {
                             <TableCell className="text-center font-medium">{startIndex + index + 1}</TableCell>
                             <TableCell className="font-medium">{item.namaKegiatan}</TableCell>
                             <TableCell className="text-sm">{item.penanggungjawab}</TableCell>
-                            <TableCell className="text-center">{item.jumlahPetugas}</TableCell>
+                            <TableCell className="text-center">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help font-medium text-blue-600 underline decoration-dotted">
+                                      {item.jumlahPetugas}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="bg-slate-900 border border-slate-700 text-white p-3 max-w-xs">
+                                    <div className="space-y-1">
+                                      <p className="font-semibold">Nama-nama Petugas:</p>
+                                      {item.namaPetugasList && item.namaPetugasList.length > 0 ? (
+                                        <ul className="list-disc list-inside text-sm space-y-0.5">
+                                          {item.namaPetugasList.map((nama, idx) => (
+                                            <li key={idx}>{nama}</li>
+                                          ))}
+                                        </ul>
+                                      ) : (
+                                        <p className="text-sm italic">Tidak ada data petugas</p>
+                                      )}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="whitespace-nowrap">
                                 {item.jenisPekerjaan}
@@ -469,9 +499,19 @@ export default function GenerateSPJHonorMitra() {
                               Rp {item.nilaiRealisasi.toLocaleString('id-ID')}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={item.status === 'Kirim PPK' ? 'default' : 'secondary'}>
-                                {item.status}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                {item.status === 'Kirim ke PPK' ? (
+                                  <>
+                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                    <span className="text-xs text-green-600 font-medium">{item.status}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="h-4 w-4 text-red-600" />
+                                    <span className="text-xs text-red-600 font-medium">{item.status}</span>
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center justify-center">
