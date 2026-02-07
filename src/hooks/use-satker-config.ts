@@ -27,6 +27,7 @@ export interface SatkerConfig {
   uh_sheet_id?: string;
   linkers_sheet_id?: string;
   kecaptobendahara_sheet_id?: string;
+  generatespj_sheet_id?: string;
 }
 
 /**
@@ -45,7 +46,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:V`, // 22 kolom (semua sheet IDs termasuk kecaptobendahara)
+            range: `${sheetName}!A:W`, // 23 kolom (semua sheet IDs termasuk generatespj_sheet_id)
           },
         });
         
@@ -97,6 +98,7 @@ export function useSatkerConfig() {
           uh_sheet_id: row[19]?.trim() || '',
           linkers_sheet_id: row[20]?.trim() || '',
           kecaptobendahara_sheet_id: row[21]?.trim() || '',
+          generatespj_sheet_id: row[22]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
