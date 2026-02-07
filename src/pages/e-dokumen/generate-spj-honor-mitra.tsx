@@ -19,7 +19,7 @@ interface KegiatanSPJData {
   jenisPekerjaan: 'Petugas Pendataan Lapangan' | 'Petugas Pemeriksaan Lapangan' | 'Petugas Pengolahan';
   nilaiRealisasi: number;
   status: 'Kirim PPK' | 'Belum Kirim PPK';
-  link?: string;
+  periode?: string;
   [key: string]: string | number | undefined;
 }
 
@@ -48,6 +48,8 @@ export default function GenerateSPJHonorMitra() {
   const [selectedTahun, setSelectedTahun] = useState(currentYear);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { toast } = useToast();
 
   // Get user role from localStorage
@@ -130,17 +132,44 @@ export default function GenerateSPJHonorMitra() {
         return -1;
       };
 
-      const noIndex = getColumnIndex(['no', 'nomor']) || 0;
-      const kegiatanIndex = getColumnIndex(['kegiatan', 'nama kegiatan']) || 1;
-      const ppkIndex = getColumnIndex(['ppk', 'penanggungjawab', 'pejabat', 'fungsi']) || 2;
-      const petugasIndex = getColumnIndex(['petugas', 'jumlah petugas']) || 3;
-      const jenisIndex = getColumnIndex(['jenis', 'pekerjaan']) || 4;
-      const nilaiIndex = getColumnIndex(['nilai', 'realisasi', 'nilai realisasi']) || 5;
-      const statusIndex = getColumnIndex(['status']) || 6;
+      // Mapping kolom berdasarkan requirement:
+      // A/0: No
+      // B/1: Role (Penanggungjawab)
+      // C/2: Periode (Bulan) SPK - format: "Januari 2026"
+      // K/10: Nama Kegiatan  
+      // M/12: Jenis Pekerjaan
+      // N/13: Nama Petugas (untuk count jumlah)
+      // O/14: Nilai Realisasi
+      const noIndex = 0; // Kolom A
+      const roleIndex = 1; // Kolom B
+      const periodeIndex = 2; // Kolom C
+      const namaKegiatanIndex = getColumnIndex(['kegiatan', 'nama kegiatan']) || 10; // Kolom K
+      const jenisIndex = getColumnIndex(['jenis', 'pekerjaan']) || 12; // Kolom M
+      const namaPetugasIndex = 13; // Kolom N
+      const nilaiIndex = getColumnIndex(['nilai', 'realisasi']) || 14; // Kolom O
+      const statusIndex = getColumnIndex(['status']) || 15;
 
       const processedData: KegiatanSPJData[] = dataRows
-        .filter((row: any[]) => row && row.length > 0 && row[kegiatanIndex])
+        .filter((row: any[]) => row && row.length > 0 && row[namaKegiatanIndex])
         .map((row: any[], index: number) => {
+          // Parse periode dari format "Januari 2026"
+          const periodeStr = row[periodeIndex]?.toString() || '';
+          const periodParts = periodeStr.split(' ');
+          const bulanPeriode = periodParts[0]?.trim() || currentMonthName;
+          const tahunPeriode = periodParts[1]?.trim() || currentYear;
+
+          // Count petugas dari kolom N (Nama Petugas) untuk baris yang sama
+          const currentKegiatan = row[namaKegiatanIndex]?.toString() || '';
+          const currentJenis = row[jenisIndex]?.toString() || '';
+          
+          // Count unique petugas for this kegiatan + jenis combination
+          const petugasCount = dataRows.filter((r: any[]) => {
+            const rKegiatan = r[namaKegiatanIndex]?.toString() || '';
+            const rJenis = r[jenisIndex]?.toString() || '';
+            const rPetugas = r[namaPetugasIndex]?.toString() || '';
+            return rKegiatan === currentKegiatan && rJenis === currentJenis && rPetugas;
+          }).length;
+
           const jenisPekerjaan = row[jenisIndex]?.toString().toLowerCase() || '';
           let jenis: 'Petugas Pendataan Lapangan' | 'Petugas Pemeriksaan Lapangan' | 'Petugas Pengolahan' = 'Petugas Pengolahan';
           
@@ -151,21 +180,39 @@ export default function GenerateSPJHonorMitra() {
           }
 
           const status = row[statusIndex]?.toString().toLowerCase().includes('kirim') ? 'Kirim PPK' : 'Belum Kirim PPK';
+          
+          // Nilai realisasi: multiply by 1000 to convert 800 -> 800000
+          const nilaiRaw = parseInt(row[nilaiIndex]) || 0;
+          const nilaiRealisasi = nilaiRaw * 1000;
 
           return {
             no: parseInt(row[noIndex]) || index + 1,
-            namaKegiatan: row[kegiatanIndex]?.toString() || '',
-            penanggungjawab: row[ppkIndex]?.toString() || '',
-            jumlahPetugas: parseInt(row[petugasIndex]) || 0,
+            namaKegiatan: currentKegiatan,
+            penanggungjawab: row[roleIndex]?.toString() || '',
+            jumlahPetugas: petugasCount,
             jenisPekerjaan: jenis,
-            nilaiRealisasi: parseInt(row[nilaiIndex]) || 0,
+            nilaiRealisasi: nilaiRealisasi,
             status: status,
-            link: undefined
+            periode: `${bulanPeriode} ${tahunPeriode}`
           };
         });
 
       console.log('✅ Data processed:', processedData.length, 'baris');
       setData(processedData);
+      setCurrentPage(1); // Reset to first page when data is loaded
+
+      // Extract available bulan dan tahun dari periode data
+      if (processedData.length > 0) {
+        const periodSet = new Set(processedData.map(item => item.periode));
+        const availBulanTahun = Array.from(periodSet);
+        if (availBulanTahun.length > 0) {
+          // Set default selected period to first available
+          const firstPeriode = availBulanTahun[0];
+          const [bulan, tahun] = firstPeriode.split(' ');
+          setSelectedBulan(bulan || currentMonthName);
+          setSelectedTahun(tahun || currentYear);
+        }
+      }
 
     } catch (error: any) {
       console.error('❌ Error fetching data:', error);
@@ -198,15 +245,31 @@ export default function GenerateSPJHonorMitra() {
       );
     }
 
-    setFilteredData(filtered);
-  }, [data, searchTerm]);
+    // Filter berdasarkan periode (bulan dan tahun)
+    const selectedPeriode = `${selectedBulan} ${selectedTahun}`;
+    filtered = filtered.filter(item => item.periode === selectedPeriode);
 
-  // Calculate totals
+    setFilteredData(filtered);
+    setCurrentPage(1); // Reset to first page when filter changes
+  }, [data, searchTerm, selectedBulan, selectedTahun]);
+
   // Calculate totals
   const totals = useMemo(() => ({
     petugas: filteredData.reduce((sum, item) => sum + item.jumlahPetugas, 0),
     nilai: filteredData.reduce((sum, item) => sum + item.nilaiRealisasi, 0)
   }), [filteredData]);
+
+  // Extract available bulan/tahun from data
+  const availablePeriodes = useMemo(() => {
+    const periodSet = new Set(data.map(item => item.periode || ''));
+    return Array.from(periodSet).filter(p => p).sort();
+  }, [data]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
 
   // Handle Generate SPJ untuk single row
   const handleGenerateSPJ = (item: KegiatanSPJData) => {
@@ -343,11 +406,15 @@ export default function GenerateSPJHonorMitra() {
                   <SelectValue placeholder="Pilih Bulan" />
                 </SelectTrigger>
                 <SelectContent>
-                  {bulanOptions.map((bulan) => (
-                    <SelectItem key={bulan} value={bulan}>
-                      {bulan}
-                    </SelectItem>
-                  ))}
+                  {bulanOptions.map((bulan) => {
+                    // Check if this bulan exists in available periods
+                    const hasOption = availablePeriodes.some(p => p.startsWith(bulan));
+                    return (
+                      <SelectItem key={bulan} value={bulan} disabled={!hasOption}>
+                        {bulan}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
 
@@ -357,11 +424,15 @@ export default function GenerateSPJHonorMitra() {
                   <SelectValue placeholder="Pilih Tahun" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tahunOptions.map((tahun) => (
-                    <SelectItem key={tahun} value={tahun}>
-                      {tahun}
-                    </SelectItem>
-                  ))}
+                  {tahunOptions.map((tahun) => {
+                    // Check if this tahun exists in available periods combined with selected bulan
+                    const hasOption = availablePeriodes.some(p => p.endsWith(tahun) && p.startsWith(selectedBulan));
+                    return (
+                      <SelectItem key={tahun} value={tahun} disabled={!hasOption}>
+                        {tahun}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
 
@@ -428,11 +499,11 @@ export default function GenerateSPJHonorMitra() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredData.length > 0 ? (
+                    {paginatedData.length > 0 ? (
                       <>
-                        {filteredData.map((item, index) => (
+                        {paginatedData.map((item, index) => (
                           <TableRow key={index} className="hover:bg-muted/50">
-                            <TableCell className="text-center font-medium">{index + 1}</TableCell>
+                            <TableCell className="text-center font-medium">{startIndex + index + 1}</TableCell>
                             <TableCell className="font-medium">{item.namaKegiatan}</TableCell>
                             <TableCell className="text-sm">{item.penanggungjawab}</TableCell>
                             <TableCell className="text-center">{item.jumlahPetugas}</TableCell>
@@ -450,7 +521,7 @@ export default function GenerateSPJHonorMitra() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2 justify-center">
+                              <div className="flex items-center justify-center">
                                 <Button
                                   onClick={() => handleGenerateSPJ(item)}
                                   size="sm"
@@ -460,33 +531,10 @@ export default function GenerateSPJHonorMitra() {
                                   <Zap className="h-3.5 w-3.5" />
                                   Generate
                                 </Button>
-                                {item.link && (
-                                  <Button
-                                    onClick={() => window.open(item.link, '_blank')}
-                                    size="sm"
-                                    variant="ghost"
-                                    className="gap-1 text-xs h-8"
-                                  >
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                    Link
-                                  </Button>
-                                )}
                               </div>
                             </TableCell>
                           </TableRow>
                         ))}
-                        {/* Total Row */}
-                        <TableRow className="bg-muted/70 font-bold">
-                          <TableCell colSpan={3} className="text-right">
-                            TOTAL ({filteredData.length} Kegiatan)
-                          </TableCell>
-                          <TableCell className="text-center">{totals.petugas}</TableCell>
-                          <TableCell></TableCell>
-                          <TableCell className="text-right text-emerald-600">
-                            Rp {totals.nilai.toLocaleString('id-ID')}
-                          </TableCell>
-                          <TableCell colSpan={2}></TableCell>
-                        </TableRow>
                       </>
                     ) : (
                       <TableRow>
@@ -498,6 +546,58 @@ export default function GenerateSPJHonorMitra() {
                   </TableBody>
                 </Table>
                 </div>
+
+                {/* Total Summary */}
+                {filteredData.length > 0 && (
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
+                      <div>
+                        <p className="text-muted-foreground mb-1">Total Kegiatan</p>
+                        <p className="text-lg">{filteredData.length}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground mb-1">Total Petugas</p>
+                        <p className="text-lg text-blue-600">{totals.petugas}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground mb-1">Total Nilai</p>
+                        <p className="text-lg text-emerald-600">Rp {totals.nilai.toLocaleString('id-ID')}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {filteredData.length > itemsPerPage && (
+                  <div className="mt-6 pt-4 border-t border-border flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Tampilkan {startIndex + 1} - {Math.min(endIndex, filteredData.length)} dari {filteredData.length} data
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Sebelumnya
+                      </Button>
+                      <div className="flex items-center gap-2 px-3">
+                        <span className="text-sm">
+                          Halaman {currentPage} dari {totalPages}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Selanjutnya
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
         )}
