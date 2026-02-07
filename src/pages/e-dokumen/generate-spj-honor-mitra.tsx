@@ -482,7 +482,7 @@ export default function GenerateSPJHonorMitra() {
         body: {
           spreadsheetId: generateSPJSheetId,
           operation: "append",
-          range: "generateSPJ!A:L",
+          range: "generateSPJ",  // Just sheet name for append
           values: recordData
         }
       });
