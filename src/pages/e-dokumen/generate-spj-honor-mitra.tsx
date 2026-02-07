@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Search, Loader2, RefreshCw, Download, Zap, ExternalLink } from "lucide-react";
+import { FileText, Search, Loader2, RefreshCw, Zap } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { utils, writeFile } from 'xlsx';
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
 interface KegiatanSPJData {
@@ -145,30 +144,32 @@ export default function GenerateSPJHonorMitra() {
       const periodeIndex = 2; // Kolom C
       const namaKegiatanIndex = getColumnIndex(['kegiatan', 'nama kegiatan']) || 10; // Kolom K
       const jenisIndex = getColumnIndex(['jenis', 'pekerjaan']) || 12; // Kolom M
-      const namaPetugasIndex = 13; // Kolom N
+      const namaPetugasIndex = 13; // Kolom N - berisi "Nama1 | Nama2 | ..."
       const nilaiIndex = getColumnIndex(['nilai', 'realisasi']) || 14; // Kolom O
       const statusIndex = getColumnIndex(['status']) || 15;
 
       const processedData: KegiatanSPJData[] = dataRows
         .filter((row: any[]) => row && row.length > 0 && row[namaKegiatanIndex])
         .map((row: any[], index: number) => {
-          // Parse periode dari format "Januari 2026"
+          // Parse periode dari format yang kompleks seperti "Periode (Bulan) SPK: Januari 2026" atau "Januari 2026"
           const periodeStr = row[periodeIndex]?.toString() || '';
-          const periodParts = periodeStr.split(' ');
-          const bulanPeriode = periodParts[0]?.trim() || currentMonthName;
-          const tahunPeriode = periodParts[1]?.trim() || currentYear;
-
-          // Count petugas dari kolom N (Nama Petugas) untuk baris yang sama
-          const currentKegiatan = row[namaKegiatanIndex]?.toString() || '';
-          const currentJenis = row[jenisIndex]?.toString() || '';
+          // Ekstrak bulan dan tahun menggunakan regex untuk handle berbagai format
+          const bulanTahunMatch = periodeStr.match(/(\w+)\s+(\d{4})/);
+          let bulanPeriode = currentMonthName;
+          let tahunPeriode = currentYear;
           
-          // Count unique petugas for this kegiatan + jenis combination
-          const petugasCount = dataRows.filter((r: any[]) => {
-            const rKegiatan = r[namaKegiatanIndex]?.toString() || '';
-            const rJenis = r[jenisIndex]?.toString() || '';
-            const rPetugas = r[namaPetugasIndex]?.toString() || '';
-            return rKegiatan === currentKegiatan && rJenis === currentJenis && rPetugas;
-          }).length;
+          if (bulanTahunMatch) {
+            bulanPeriode = bulanTahunMatch[1]; // Nama bulan
+            tahunPeriode = bulanTahunMatch[2]; // Tahun
+          }
+
+          // Count petugas dari kolom N (Nama Petugas) - format: "Nama1 | Nama2 | ..."
+          const namaPetugasStr = row[namaPetugasIndex]?.toString() || '';
+          const petugasList = namaPetugasStr
+            .split('|')
+            .map(name => name.trim())
+            .filter(name => name.length > 0);
+          const petugasCount = petugasList.length;
 
           const jenisPekerjaan = row[jenisIndex]?.toString().toLowerCase() || '';
           let jenis: 'Petugas Pendataan Lapangan' | 'Petugas Pemeriksaan Lapangan' | 'Petugas Pengolahan' = 'Petugas Pengolahan';
@@ -187,7 +188,7 @@ export default function GenerateSPJHonorMitra() {
 
           return {
             no: parseInt(row[noIndex]) || index + 1,
-            namaKegiatan: currentKegiatan,
+            namaKegiatan: row[namaKegiatanIndex]?.toString() || '',
             penanggungjawab: row[roleIndex]?.toString() || '',
             jumlahPetugas: petugasCount,
             jenisPekerjaan: jenis,
@@ -198,19 +199,34 @@ export default function GenerateSPJHonorMitra() {
         });
 
       console.log('✅ Data processed:', processedData.length, 'baris');
-      setData(processedData);
+      
+      // Deduplicate data - keep unique combination of kegiatan + jenisPekerjaan
+      const deduplicatedData: KegiatanSPJData[] = [];
+      const seenCombination = new Set<string>();
+      
+      for (const item of processedData) {
+        const combination = `${item.namaKegiatan}|||${item.jenisPekerjaan}`;
+        if (!seenCombination.has(combination)) {
+          seenCombination.add(combination);
+          deduplicatedData.push(item);
+        }
+      }
+      
+      console.log('✅ Data after deduplication:', deduplicatedData.length, 'baris');
+      setData(deduplicatedData);
       setCurrentPage(1); // Reset to first page when data is loaded
 
       // Extract available bulan dan tahun dari periode data
-      if (processedData.length > 0) {
-        const periodSet = new Set(processedData.map(item => item.periode));
-        const availBulanTahun = Array.from(periodSet);
+      if (deduplicatedData.length > 0) {
+        const periodSet = new Set(deduplicatedData.map(item => item.periode));
+        const availBulanTahun = Array.from(periodSet).sort();
+        console.log('Available periods:', availBulanTahun);
         if (availBulanTahun.length > 0) {
           // Set default selected period to first available
           const firstPeriode = availBulanTahun[0];
-          const [bulan, tahun] = firstPeriode.split(' ');
-          setSelectedBulan(bulan || currentMonthName);
-          setSelectedTahun(tahun || currentYear);
+          const periodParts = firstPeriode?.split(' ') || [];
+          setSelectedBulan(periodParts[0] || currentMonthName);
+          setSelectedTahun(periodParts[1] || currentYear);
         }
       }
 
@@ -283,87 +299,6 @@ export default function GenerateSPJHonorMitra() {
   };
 
   // Download data
-  const downloadFilteredData = () => {
-    if (!canAccessFeatures()) {
-      toast({
-        title: "Akses Ditolak",
-        description: `Role ${currentUser?.role} tidak memiliki izin untuk mendownload data`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (filteredData.length === 0) {
-      toast({
-        title: "Tidak ada data",
-        description: "Tidak ada data yang bisa diunduh",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      let judul = "Rekap SPJ Honor Mitra";
-      if (selectedBulan && selectedTahun) {
-        judul += ` ${selectedBulan} ${selectedTahun}`;
-      }
-
-      const excelData = [];
-      excelData.push([judul]);
-      excelData.push([]);
-
-      const headers = ['No', 'Nama Kegiatan', 'Penanggungjawab', 'Jumlah Petugas', 'Jenis Pekerjaan', 'Nilai Realisasi', 'Status'];
-      excelData.push(headers);
-
-      filteredData.forEach((item, idx) => {
-        excelData.push([
-          idx + 1,
-          item.namaKegiatan,
-          item.penanggungjawab,
-          item.jumlahPetugas,
-          item.jenisPekerjaan,
-          item.nilaiRealisasi,
-          item.status
-        ]);
-      });
-
-      excelData.push([
-        'Total',
-        '',
-        '',
-        totals.petugas,
-        '',
-        totals.nilai,
-        ''
-      ]);
-
-      const worksheet = utils.aoa_to_sheet(excelData);
-      const colWidths = Array(headers.length).fill({ width: 20 });
-      worksheet['!cols'] = colWidths;
-
-      if (!worksheet['!merges']) worksheet['!merges'] = [];
-      worksheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } });
-
-      const workbook = utils.book_new();
-      utils.book_append_sheet(workbook, worksheet, 'SPJ Honor Mitra');
-
-      const fileName = `spj_honor_mitra_${selectedBulan}_${selectedTahun}_${new Date().toISOString().split('T')[0]}.xlsx`;
-      writeFile(workbook, fileName);
-
-      toast({
-        title: "Download berhasil",
-        description: `Data ${filteredData.length} kegiatan berhasil diunduh sebagai Excel`
-      });
-    } catch (error) {
-      console.error('Error downloading data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal mengunduh data",
-        variant: "destructive"
-      });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background pt-4 pb-16 px-4 sm:px-6">
       {/* Header */}
@@ -406,15 +341,13 @@ export default function GenerateSPJHonorMitra() {
                   <SelectValue placeholder="Pilih Bulan" />
                 </SelectTrigger>
                 <SelectContent>
-                  {bulanOptions.map((bulan) => {
-                    // Check if this bulan exists in available periods
-                    const hasOption = availablePeriodes.some(p => p.startsWith(bulan));
-                    return (
-                      <SelectItem key={bulan} value={bulan} disabled={!hasOption}>
-                        {bulan}
-                      </SelectItem>
-                    );
-                  })}
+                  {Array.from(new Set(
+                    availablePeriodes.map(p => p.split(' ')[0])
+                  )).map((bulan) => (
+                    <SelectItem key={bulan} value={bulan}>
+                      {bulan}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -424,15 +357,15 @@ export default function GenerateSPJHonorMitra() {
                   <SelectValue placeholder="Pilih Tahun" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tahunOptions.map((tahun) => {
-                    // Check if this tahun exists in available periods combined with selected bulan
-                    const hasOption = availablePeriodes.some(p => p.endsWith(tahun) && p.startsWith(selectedBulan));
-                    return (
-                      <SelectItem key={tahun} value={tahun} disabled={!hasOption}>
-                        {tahun}
-                      </SelectItem>
-                    );
-                  })}
+                  {Array.from(new Set(
+                    availablePeriodes
+                      .filter(p => p.startsWith(selectedBulan))
+                      .map(p => p.split(' ')[1])
+                  )).map((tahun) => (
+                    <SelectItem key={tahun} value={tahun}>
+                      {tahun}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -471,17 +404,6 @@ export default function GenerateSPJHonorMitra() {
                   {filteredData.length} kegiatan | Total Petugas: {totals.petugas} | Total Nilai: Rp {totals.nilai.toLocaleString('id-ID')}
                 </p>
               </div>
-              {filteredData.length > 0 && (
-                <Button
-                  onClick={downloadFilteredData}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Download Excel
-                </Button>
-              )}
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
