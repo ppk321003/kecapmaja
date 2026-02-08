@@ -59,13 +59,16 @@ export function useNotifications() {
         return [];
       }
 
+      console.log('[fetchPencairanNotifications] API response:', JSON.stringify(data, null, 2));
+      
       if (!data?.values) {
-        console.log('[fetchPencairanNotifications] No data returned');
+        console.log('[fetchPencairanNotifications] No data returned - values is', data?.values);
         return [];
       }
 
       const rows = data.values;
       console.log(`[fetchPencairanNotifications] Retrieved ${rows.length} rows`);
+      console.log(`[fetchPencairanNotifications] Raw headers:`, JSON.stringify(rows[0], null, 2));
       const headers = rows[0] || [];
       const notifs: Notification[] = [];
 
@@ -180,10 +183,12 @@ export function useNotifications() {
       if (sbmlError) {
         console.error('[fetchSBMLNotifications] SBML Error:', sbmlError);
       } else if (!sbmlData?.values) {
-        console.log('[fetchSBMLNotifications] No SBML data returned');
+        console.log('[fetchSBMLNotifications] No SBML data returned - values is', sbmlData?.values);
+        console.log('[fetchSBMLNotifications] SBML API response:', JSON.stringify(sbmlData, null, 2));
       } else {
         const rows = sbmlData.values;
         console.log(`[fetchSBMLNotifications] Retrieved ${rows.length} SBML rows`);
+        console.log(`[fetchSBMLNotifications] SBML raw data:`, JSON.stringify(rows.slice(0, 5), null, 2));
         const headers = rows[0] || [];
 
         const idxNama = headers.findIndex((h: string) => h?.toLowerCase().includes('nama') || h?.toLowerCase().includes('petugas'));
@@ -238,10 +243,12 @@ export function useNotifications() {
       if (rekapError) {
         console.error('[fetchSBMLNotifications] Rekap Error:', rekapError);
       } else if (!rekapData?.values) {
-        console.log('[fetchSBMLNotifications] No Rekap data returned');
+        console.log('[fetchSBMLNotifications] No Rekap data returned - values is', rekapData?.values);
+        console.log('[fetchSBMLNotifications] Rekap API response:', JSON.stringify(rekapData, null, 2));
       } else {
         const rows = rekapData.values;
         console.log(`[fetchSBMLNotifications] Retrieved ${rows.length} Rekap rows`);
+        console.log(`[fetchSBMLNotifications] Rekap raw data:`, JSON.stringify(rows.slice(0, 5), null, 2));
         const headers = rows[0] || [];
 
         const idxNama = headers.findIndex((h: string) => h?.toLowerCase().includes('nama') || h?.toLowerCase().includes('petugas'));
