@@ -125,6 +125,47 @@ export default function UserManagement() {
   const isSuperAdmin = user?.satker === "3210"; // PPK 3210 is super admin
   const userSatker = user?.satker || "";
 
+  // Parse IDN datetime format: "HH:MM:SS - DD/MM/YYYY"
+  const parseIDNDateTime = (dateStr: string): number => {
+    if (!dateStr || typeof dateStr !== "string") return 0;
+    
+    const trimmed = dateStr.trim();
+    if (!trimmed) return 0;
+    
+    try {
+      // More flexible regex to handle various spacing
+      // Match: HH:MM:SS or HH:MM, with optional spaces around dash, then DD/MM/YYYY
+      const match = trimmed.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      
+      if (!match) {
+        // If regex doesn't match, log for debugging and return 0
+        console.warn("Failed to parse date:", { dateStr: trimmed, match });
+        return 0;
+      }
+      
+      const hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const seconds = match[3] ? parseInt(match[3], 10) : 0;
+      const day = parseInt(match[4], 10);
+      const month = parseInt(match[5], 10);
+      const year = parseInt(match[6], 10);
+      
+      const date = new Date(year, month - 1, day, hours, minutes, seconds);
+      const timestamp = date.getTime();
+      
+      // Debug log
+      if (isNaN(timestamp)) {
+        console.warn("Invalid date parsed:", { dateStr: trimmed, hours, minutes, seconds, day, month, year });
+        return 0;
+      }
+      
+      return timestamp;
+    } catch (e) {
+      console.warn("Error parsing date:", { dateStr: trimmed, error: e });
+      return 0;
+    }
+  };
+
   useEffect(() => {
     if (isPPK) {
       fetchUsers();
@@ -171,9 +212,9 @@ export default function UserManagement() {
         // Update lastLogin ke yang paling baru
         if (user.lastLogin) {
           if (existing.lastLogin) {
-            const existingDate = new Date(existing.lastLogin);
-            const newDate = new Date(user.lastLogin);
-            if (newDate > existingDate) {
+            const existingTimestamp = parseIDNDateTime(existing.lastLogin);
+            const newTimestamp = parseIDNDateTime(user.lastLogin);
+            if (newTimestamp > existingTimestamp) {
               existing.lastLogin = user.lastLogin;
               existing.isOnline = isUserOnline(user.lastLogin);
             }
@@ -274,31 +315,6 @@ export default function UserManagement() {
       return `${diffDays} hari lalu`;
     } catch {
       return "";
-    }
-  };
-
-  // Parse IDN datetime format: "HH:MM:SS - DD/MM/YYYY"
-  const parseIDNDateTime = (dateStr: string): number => {
-    if (!dateStr || !dateStr.trim()) return 0;
-    try {
-      // Match format: "HH:MM:SS - DD/MM/YYYY"
-      const match = dateStr.match(/(\d{1,2}):(\d{2}):(\d{2})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (!match) return 0;
-      
-      const [, hours, minutes, seconds, day, month, year] = match;
-      const date = new Date(
-        parseInt(year),
-        parseInt(month) - 1, // Month is 0-indexed
-        parseInt(day),
-        parseInt(hours),
-        parseInt(minutes),
-        parseInt(seconds)
-      );
-      
-      // Check if date is valid
-      return isNaN(date.getTime()) ? 0 : date.getTime();
-    } catch {
-      return 0;
     }
   };
 
