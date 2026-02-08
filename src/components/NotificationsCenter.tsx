@@ -38,6 +38,19 @@ export function NotificationsCenter() {
     }
   };
 
+  const getNotificationBackground = (notification: Notification) => {
+    // Color by status/title for pencairan notifications
+    const title = notification.title || '';
+    if (title.includes('Pengajuan Baru')) {
+      return 'bg-green-50 border-green-200';
+    }
+    if (title.includes('Pengajuan Ditolak')) {
+      return 'bg-red-50 border-red-200';
+    }
+    // Fallback to priority-based coloring
+    return getPriorityBg(notification.priority);
+  };
+
   const getNotificationIcon = (notification: Notification) => {
     if (notification.type === 'pencairan') {
       const status = (notification as any).submissionStatus;
@@ -117,7 +130,7 @@ export function NotificationsCenter() {
                   <div
                     className={cn(
                       'p-3 rounded-lg border transition-all hover:shadow-sm cursor-pointer group',
-                      getPriorityBg(notif.priority)
+                      getNotificationBackground(notif)
                     )}
                     onClick={() => {
                       if (notif.actionUrl) {
