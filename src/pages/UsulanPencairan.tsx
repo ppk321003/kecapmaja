@@ -252,12 +252,9 @@ export default function UsulanPencairan() {
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-amber-900">
-                Perhatian: Peran Akun Anda
+                Perhatian: Anda saat ini login sebagai <strong>{currentUser.role}</strong>.
               </h3>
               <div className="mt-2 text-sm text-amber-800 space-y-1">
-                <p>
-                  Anda saat ini login sebagai <strong>{currentUser.role}</strong>.
-                </p>
                 <p>
                   Untuk melakukan pengajuan SPJ, Anda harus menggunakan akun dengan role <strong>Ketua Tim</strong> atau <strong>Fungsi.</strong> Silakan hubungi administrator jika Anda perlu mengubah role akun Anda.
                 </p>
