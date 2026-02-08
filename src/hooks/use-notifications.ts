@@ -5,7 +5,6 @@ import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useNotificationsContext, NotificationsContextType } from '@/contexts/NotificationsContext';
 import { Notification, PencairanNotification, SBMLNotification } from '@/types/notifications';
 
-const POLLING_INTERVAL = 300000; // 5 minutes - reduced frequency to respect Google Sheets API quota
 const MIN_REQUEST_INTERVAL = 60000; // 1 minute - minimum time between requests to debounce
 const QUOTA_EXCEEDED_BACKOFF = 600000; // 10 minutes - wait longer after hitting quota (429)
 
@@ -13,7 +12,6 @@ export function useNotifications() {
   const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
   const notificationsContext = useNotificationsContext();
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchRef = useRef<number>(0);
   const quotaExceededRef = useRef<boolean>(false);
 
@@ -353,22 +351,6 @@ export function useNotifications() {
       return;
     }
 
-    // Determine debounce interval based on quota status
-    const debounceInterval = quotaExceededRef.current ? QUOTA_EXCEEDED_BACKOFF : MIN_REQUEST_INTERVAL;
-    
-    // Debounce: don't fetch if last fetch was less than debounce time ago
-    const now = Date.now();
-    if (now - lastFetchRef.current < debounceInterval) {
-      const waitTime = Math.round((debounceInterval - (now - lastFetchRef.current)) / 1000);
-      console.log(`[fetchAllNotifications] Skipping - last fetch was ${Math.round((now - lastFetchRef.current) / 1000)}s ago, waiting ${waitTime}s more (backoff: ${debounceInterval / 60000}m)`);
-      return;
-    }
-
-    lastFetchRef.current = now;
-    
-    // Reset quota flag at start of fetch cycle - will be set if any API call hits 429
-    quotaExceededRef.current = false;
-
     try {
       const pencairanNotifs = await fetchPencairanNotifications();
       console.log(`[fetchAllNotifications] Pencairan: ${pencairanNotifs.length} notifications`);
@@ -386,30 +368,20 @@ export function useNotifications() {
     }
   }, [currentUser, userSatker, userRole, satkerConfigReady, notificationsContext, fetchPencairanNotifications, fetchSBMLNotifications]);
 
-  // Setup polling
+  // Fetch notifications on page load/refresh (no polling)
   useEffect(() => {
-    console.log(`[useNotifications] Setup polling - currentUser=${!!currentUser}, userSatker=${userSatker}, satkerConfigReady=${satkerConfigReady}`);
+    console.log(`[useNotifications] Setup - currentUser=${!!currentUser}, userSatker=${userSatker}, satkerConfigReady=${satkerConfigReady}`);
     if (!currentUser || !userSatker || !satkerConfigReady) {
-      console.log('[useNotifications] Skipping polling - no currentUser, userSatker, or satkerConfig not ready');
+      console.log('[useNotifications] Skipping - no currentUser, userSatker, or satkerConfig not ready');
       return;
     }
 
-    // Fetch immediately
-    console.log('[useNotifications] Polling started - calling fetchAllNotifications immediately');
+    // Fetch immediately on page load
+    console.log('[useNotifications] Page loaded - fetching notifications now');
     fetchAllNotifications();
 
-    // Set up polling - every 5 minutes (to respect Google Sheets API quota)
-    console.log('[useNotifications] Setting interval for polling every 5 minutes');
-    pollIntervalRef.current = setInterval(() => {
-      console.log('[useNotifications] Polling interval triggered');
-      fetchAllNotifications();
-    }, POLLING_INTERVAL);
-
-    return () => {
-      console.log('[useNotifications] Cleaning up polling interval');
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
+    // NOTE: Removed polling interval - notifications only update when user refreshes the page
+    // This significantly reduces API calls and respects Google Sheets quota limits
+    
   }, [currentUser, userSatker, satkerConfigReady, fetchAllNotifications]);
 }
