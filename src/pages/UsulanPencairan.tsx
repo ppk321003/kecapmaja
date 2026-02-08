@@ -60,9 +60,29 @@ export default function UsulanPencairan() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const userRole = user?.role as UserRole;
   const showCreateButton = canCreateSubmission(userRole);
+
+  // Get user from localStorage or AuthContext
+  useEffect(() => {
+    const userData = localStorage.getItem('simaja_user');
+    if (userData) {
+      setCurrentUser(JSON.parse(userData));
+    }
+  }, []);
+
+  // Fungsi untuk mengecek apakah user memiliki role yang sesuai untuk pengajuan
+  const shouldShowRoleWarning = () => {
+    if (!currentUser) return false;
+    const role = currentUser.role || '';
+    // Jangan tampil warning jika role adalah "Ketua Tim" atau mengandung kata "Fungsi"
+    if (role === 'Ketua Tim' || role.includes('Fungsi')) {
+      return false;
+    }
+    return true;
+  };
 
   useEffect(() => {
     if (sheetSubmissions.length > 0) {
@@ -222,6 +242,33 @@ export default function UsulanPencairan() {
 
         </div>
       </div>
+
+      {/* Role Warning - Informasi Role User */}
+      {shouldShowRoleWarning() && currentUser && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-amber-900">
+                Perhatian: Peran Akun Anda
+              </h3>
+              <div className="mt-2 text-sm text-amber-800 space-y-1">
+                <p>
+                  Anda saat ini login sebagai <strong>{currentUser.role}</strong>.
+                </p>
+                <p>
+                  Untuk melakukan pengajuan SPJ, Anda harus menggunakan akun dengan role <strong>Ketua Tim</strong> atau <strong>Fungsi</strong> (Fungsi Sosial, Fungsi Neraca, Fungsi Produksi, Fungsi Distribusi, atau Fungsi IPDS).
+                </p>
+                <p className="pt-1">
+                  Silakan hubungi administrator jika Anda perlu mengubah role akun Anda.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FILTER TABS - Clean & Modern Style */}
       <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)} className="w-full">
