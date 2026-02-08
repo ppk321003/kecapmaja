@@ -87,8 +87,9 @@ export function useNotifications() {
       const idxStatus = 6; // Column G
       const idxJudul = headers.findIndex((h: string) => h?.toLowerCase().includes('uraian') || h?.toLowerCase().includes('judul') || h?.toLowerCase().includes('pengajuan'));
       const idxId = headers.findIndex((h: string) => h?.toLowerCase().includes('id'));
+      const idxUpdateTime = headers.findIndex((h: string) => h?.toLowerCase().includes('update') || h?.toLowerCase().includes('waktu') || h?.toLowerCase().includes('terakhir'));
 
-      console.log(`[fetchPencairanNotifications] Using fixed column indices - status:${idxStatus}(col G), judul:${idxJudul}, id:${idxId}`);
+      console.log(`[fetchPencairanNotifications] Using fixed column indices - status:${idxStatus}(col G), judul:${idxJudul}, id:${idxId}, updateTime:${idxUpdateTime}`);
 
       // Collect all unique statuses found
       const allStatuses = new Set<string>();
@@ -102,6 +103,16 @@ export function useNotifications() {
         
         const judul = row[idxJudul]?.toString() || 'Pengajuan';
         const submissionId = row[idxId]?.toString() || `pencairan-${i}`;
+        const updateTimeStr = row[idxUpdateTime]?.toString() || '';
+        
+        // Parse update time - try to convert to Date
+        let updateTime = new Date();
+        if (updateTimeStr) {
+          const parsed = new Date(updateTimeStr);
+          if (!isNaN(parsed.getTime())) {
+            updateTime = parsed;
+          }
+        }
 
         let targetRoles: string[] = [];
         let message = '';
@@ -147,7 +158,7 @@ export function useNotifications() {
               targetRoles,
               relatedId: submissionId,
               status: status as any,
-              createdAt: new Date(),
+              createdAt: updateTime,
               judulPengajuan: judul,
               submissionStatus: status as any,
               actionUrl: '/usulan-pencairan',
@@ -215,12 +226,12 @@ export function useNotifications() {
         console.log(`[fetchSBMLNotifications] SBML raw data:`, JSON.stringify(rows.slice(0, 5), null, 2));
         const headers = rows[0] || [];
 
-        const idxNama = headers.findIndex((h: string) => h?.toLowerCase().includes('nama') || h?.toLowerCase().includes('petugas'));
-        const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status'));
-        const idxTtd = 23; // Column X - Status TTD
+        const idxNama = headers.findIndex((h: string) => h?.toLowerCase().includes('nama'));
+        const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status') && !h?.toLowerCase().includes('ttd'));
+        const idxTtd = headers.findIndex((h: string) => h?.toLowerCase().includes('status ttd') || h?.toLowerCase().includes('status') && h?.toLowerCase().includes('ttd'));
         const idxPeriode = headers.findIndex((h: string) => h?.toLowerCase().includes('periode') || h?.toLowerCase().includes('bulan'));
 
-        console.log(`[fetchSBMLNotifications] Header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}(col X), periode:${idxPeriode}`);
+        console.log(`[fetchSBMLNotifications] Header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}`);
 
         // Collect all unique TTD statuses found
         const allTtdStatuses = new Set<string>();
@@ -239,9 +250,12 @@ export function useNotifications() {
           ttdStatuses.forEach(t => allTtdStatuses.add(t));
 
           // Check if ANY of the TTD statuses indicate not signed yet
-          const hasPendingTtd = ttdStatuses.some(t => t === 'belum' || t === 'tidak' || t.includes('belum ttd'));
+          // Matches: "belum", "tidak", "belum ditandatangani", "tidak ditandatangani"
+          const hasPendingTtd = ttdStatuses.some(t => 
+            t.includes('belum') || t.includes('tidak') || status?.includes('belum ttd')
+          );
           
-          if (hasPendingTtd || status === 'belum ttd') {
+          if (hasPendingTtd) {
             console.log(`[fetchSBMLNotifications] SBML Row ${i}: nama=${nama}, ttd=${ttdRaw}, periode=${periode}`);
             const notif: SBMLNotification = {
               id: `sbml-${i}-${nama}`,
@@ -287,12 +301,12 @@ export function useNotifications() {
         console.log(`[fetchSBMLNotifications] Rekap raw data:`, JSON.stringify(rows.slice(0, 5), null, 2));
         const headers = rows[0] || [];
 
-        const idxNama = headers.findIndex((h: string) => h?.toLowerCase().includes('nama') || h?.toLowerCase().includes('petugas'));
-        const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status'));
-        const idxTtd = 23; // Column X - Status TTD
+        const idxNama = headers.findIndex((h: string) => h?.toLowerCase().includes('nama'));
+        const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status') && !h?.toLowerCase().includes('ttd'));
+        const idxTtd = headers.findIndex((h: string) => h?.toLowerCase().includes('status ttd') || h?.toLowerCase().includes('status') && h?.toLowerCase().includes('ttd'));
         const idxPeriode = headers.findIndex((h: string) => h?.toLowerCase().includes('periode') || h?.toLowerCase().includes('bulan'));
 
-        console.log(`[fetchSBMLNotifications] Rekap header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}(col X), periode:${idxPeriode}`);
+        console.log(`[fetchSBMLNotifications] Rekap header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}`);
 
         // Collect all unique TTD statuses found
         const allRekCapTtdStatuses = new Set<string>();
@@ -311,9 +325,12 @@ export function useNotifications() {
           ttdStatuses.forEach(t => allRekCapTtdStatuses.add(t));
 
           // Check if ANY of the TTD statuses indicate not signed yet
-          const hasPendingTtd = ttdStatuses.some(t => t === 'belum' || t === 'tidak' || t.includes('belum ttd'));
+          // Matches: "belum", "tidak", "belum ditandatangani", "tidak ditandatangani"
+          const hasPendingTtd = ttdStatuses.some(t => 
+            t.includes('belum') || t.includes('tidak') || status?.includes('belum ttd')
+          );
           
-          if (hasPendingTtd || status === 'belum ttd') {
+          if (hasPendingTtd) {
             console.log(`[fetchSBMLNotifications] Rekap Row ${i}: nama=${nama}, ttd=${ttdRaw}, periode=${periode}`);
             const notif: SBMLNotification = {
               id: `rekap-${i}-${nama}`,
