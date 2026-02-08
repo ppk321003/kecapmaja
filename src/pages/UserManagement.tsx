@@ -475,8 +475,12 @@ export default function UserManagement() {
           bValue = b.isOnline ? 1 : 0;
           break;
         case "lastLogin":
-          aValue = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
-          bValue = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
+          // Parse date safely, handling invalid/empty dates
+          const aDate = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
+          const bDate = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
+          // Handle NaN case (invalid date strings)
+          aValue = !isNaN(aDate) ? aDate : 0;
+          bValue = !isNaN(bDate) ? bDate : 0;
           break;
         default:
           return 0;
@@ -489,7 +493,7 @@ export default function UserManagement() {
           : bValue.localeCompare(aValue, "id-ID");
       }
 
-      // Numeric comparison
+      // Numeric comparison (including lastLogin date)
       if (sortDirection === "asc") {
         return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
       } else {
