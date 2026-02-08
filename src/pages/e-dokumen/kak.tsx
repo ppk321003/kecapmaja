@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganikBPS } from "@/hooks/use-database";
 import { ProgramSelect } from "@/components/ProgramSelect";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { KegiatanSelect } from "@/components/KegiatanSelect";
@@ -319,11 +320,22 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
 const KerangkaAcuanKerja = () => {
   const { toast } = useToast();
   const satkerContext = useSatkerConfigContext();
-  const organikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_ORGANIK_SHEET_ID;
   const kakSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('kak'));
   
-  const [organikData, setOrganikData] = useState<OrganikData[]>([]);
-  const [loadingOrganik, setLoadingOrganik] = useState(false);
+  // Get organik data from hook (already satker-aware)
+  const { data: organikDataFromHook, loading: loadingOrganik } = useOrganikBPS();
+  
+  // Transform hook data to OrganikData format
+  const organikData: OrganikData[] = useMemo(() => 
+    organikDataFromHook.map(item => ({
+      nip: item.nip,
+      nama: item.name,
+      jabatan: item.jabatan,
+      kecamatan: item.kecamatan
+    })) || [],
+    [organikDataFromHook]
+  );
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [labelCache, setLabelCache] = useState<{[key: string]: string}>({});
   const [komponenOptions, setKomponenOptions] = useState<Array<{value: string; label: string}>>([]);
@@ -355,56 +367,6 @@ const KerangkaAcuanKerja = () => {
     jumlahGelombang: "0",
     waveDates: []
   });
-
-  // Fetch data organik dari Google Sheets menggunakan Supabase function
-  const fetchOrganikData = async () => {
-    setLoadingOrganik(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: organikSheetId,
-          operation: "read",
-          range: "MASTER.ORGANIK"
-        }
-      });
-
-      if (error) {
-        console.error("Error fetching organik data:", error);
-        throw new Error(error.message || 'Gagal mengambil data organik');
-      }
-
-      const rows = data?.values || [];
-      
-      if (!rows || rows.length <= 1) {
-        setOrganikData([]);
-        return;
-      }
-      
-      // Skip header (baris pertama)
-      const organikRows = rows.slice(1);
-      
-      const formattedData: OrganikData[] = organikRows
-        .map((row: any[]) => ({
-          nip: row[1] || '', // NIP BPS (kolom B)
-          nama: row[3] || '', // Nama (kolom D)
-          jabatan: row[4] || '', // Jabatan (kolom E)
-          kecamatan: row[5] || '' // Kecamatan (kolom F)
-        }))
-        .filter((item: OrganikData) => item.nama && item.nip);
-      
-      setOrganikData(formattedData);
-      
-    } catch (error: any) {
-      console.error('Error fetching organik data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal mengambil data organik: " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingOrganik(false);
-    }
-  };
 
   // Fetch data komponen untuk search select
   const fetchKomponenOptions = async () => {
@@ -515,7 +477,6 @@ const KerangkaAcuanKerja = () => {
 
   // Load data saat komponen mount
   useEffect(() => {
-    fetchOrganikData();
     fetchKomponenOptions();
     fetchAkunOptions();
   }, []);

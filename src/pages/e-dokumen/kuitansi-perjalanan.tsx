@@ -245,8 +245,6 @@ const KuitansiPerjalananDinas = () => {
   const [kecamatanDetails, setKecamatanDetails] = useState<KecamatanDetail[]>([]);
   const [isLuarKota, setIsLuarKota] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [organikData, setOrganikData] = useState<Array<{nip: string; nama: string; jabatan: string}>>([]);
-  const [loadingOrganik, setLoadingOrganik] = useState(false);
 
   // Gunakan hook untuk submit data
   const { submitData, isSubmitting: isSubmitLoading } = useSubmitKuitansiToSheets(targetSheetId);
@@ -281,63 +279,7 @@ const KuitansiPerjalananDinas = () => {
   const { data: roList = [] } = useRO(watchedKRO || null);
   const { data: komponenList = [] } = useKomponen();
   const { data: akunList = [] } = useAkun();
-  const { data: organikList = [] } = useOrganikBPS();
-  
-  // Get satker-specific organik sheet ID
-  const organikSheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_ORGANIK_SHEET_ID;
-
-  // Fetch data organik
-  const fetchOrganikData = async () => {
-    setLoadingOrganik(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: organikSheetId,
-          operation: "read",
-          range: "MASTER.ORGANIK"
-        }
-      });
-
-      if (error) {
-        console.error("Error fetching organik data:", error);
-        throw new Error(error.message || 'Gagal mengambil data organik');
-      }
-
-      const rows = data?.values || [];
-      
-      if (!rows || rows.length <= 1) {
-        setOrganikData([]);
-        return;
-      }
-      
-      const organikRows = rows.slice(1);
-      
-      const formattedData = organikRows
-        .map((row: any[]) => ({
-          nip: row[1] || '',
-          nama: row[3] || '',
-          jabatan: row[4] || ''
-        }))
-        .filter((item: any) => item.nama && item.nip);
-      
-      setOrganikData(formattedData);
-      
-    } catch (error: any) {
-      console.error('Error fetching organik data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal mengambil data organik: " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingOrganik(false);
-    }
-  };
-
-  // Load data organik saat komponen mount atau organikSheetId berubah
-  useEffect(() => {
-    fetchOrganikData();
-  }, [organikSheetId]);
+  const { data: organikList = [], loading: loadingOrganik } = useOrganikBPS();
 
 // GANTI bagian name mappings dengan yang ini:
 
@@ -661,9 +603,9 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {organikData.map(organik => (
-                              <SelectItem key={organik.nip} value={organik.nama}>
-                                {organik.nama} - {organik.jabatan}
+                            {organikList.map(organik => (
+                              <SelectItem key={organik.nip} value={organik.name}>
+                                {organik.name} - {organik.jabatan}
                               </SelectItem>
                             ))}
                           </SelectContent>

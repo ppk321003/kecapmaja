@@ -16,6 +16,7 @@ import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { useOrganikBPS, useMitraStatistik } from "@/hooks/use-database";
 import { ProgramSelect } from "@/components/ProgramSelect";
 import { KomponenSelect } from "@/components/KomponenSelect";
 import { KegiatanSelect } from "@/components/KegiatanSelect";
@@ -631,17 +632,35 @@ const SelectedParticipants: React.FC<SelectedParticipantsProps> = ({
 const DaftarHadir = () => {
   const navigate = useNavigate();
   const satkerContext = useSatkerConfigContext();
-  const masterSpreadsheetId = satkerContext?.getUserSatkerSheetId('masterorganik') || DEFAULT_MASTER_SPREADSHEET_ID;
   const daftarHadirSheetId = satkerContext?.getUserSatkerSheetId('daftarhadir') || DEFAULT_TARGET_SPREADSHEET_ID;
   const CONSTANTS = getConstantsWithDynamicTarget(daftarHadirSheetId);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOrganik, setSelectedOrganik] = useState<Option[]>([]);
   const [selectedMitra, setSelectedMitra] = useState<Option[]>([]);
-  const [organikList, setOrganikList] = useState<Option[]>([]);
-  const [mitraList, setMitraList] = useState<Option[]>([]);
-  const [loadingOrganik, setLoadingOrganik] = useState(false);
-  const [loadingMitra, setLoadingMitra] = useState(false);
+
+  // Get organik and mitra data from hooks (already satker-aware)
+  const { data: organikDataFromHook, loading: loadingOrganik } = useOrganikBPS();
+  const { data: mitraDataFromHook, loading: loadingMitra } = useMitraStatistik();
+
+  // Transform hook data to Option format
+  const organikList: Option[] = useMemo(() => 
+    organikDataFromHook.map(item => ({
+      id: item.nip,
+      name: item.name,
+      jabatan: item.jabatan
+    })) || [],
+    [organikDataFromHook]
+  );
+
+  const mitraList: Option[] = useMemo(() => 
+    mitraDataFromHook.map(item => ({
+      id: `mitra-${item.nik}`,
+      name: item.name,
+      kecamatan: item.kecamatan
+    })) || [],
+    [mitraDataFromHook]
+  );
 
   const { fetchSheetData } = useSheetData();
 
@@ -816,58 +835,7 @@ const DaftarHadir = () => {
     }
   }, [watchedKRO, setValue]);
 
-  // Fetch initial data dengan loading state
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        setLoadingOrganik(true);
-        setLoadingMitra(true);
-
-        // Fetch organik
-        const organikRows = await fetchSheetData(
-          masterSpreadsheetId,
-          `${CONSTANTS.SHEET_NAMES.ORGANIK}!A:E`
-        );
-        if (organikRows.length > 1) {
-          const organikData = organikRows.slice(1).map((row: any[]) => ({
-            id: row[1] || '',
-            name: row[3] || '',
-            jabatan: row[4] || ''
-          })).filter((item: any) => item.id && item.name);
-          setOrganikList(organikData);
-        }
-        setLoadingOrganik(false);
-
-        // Fetch mitra
-        const mitraRows = await fetchSheetData(
-          masterSpreadsheetId,
-          `${CONSTANTS.SHEET_NAMES.MITRA}!A:H`
-        );
-        if (mitraRows.length > 1) {
-          const mitraData = mitraRows.slice(1).map((row: any[]) => ({
-            id: `mitra-${row[1]}` || '',
-            name: row[2] || '',
-            kecamatan: row[7] || ''
-          })).filter((item: any) => item.id && item.name);
-          setMitraList(mitraData);
-        }
-        setLoadingMitra(false);
-      } catch (error) {
-        console.error("Error fetching initial data:", error);
-        toast({
-          variant: "destructive",
-          title: "Gagal memuat data",
-          description: "Terjadi kesalahan saat memuat data peserta"
-        });
-        setLoadingOrganik(false);
-        setLoadingMitra(false);
-      }
-    };
-
-    fetchInitialData();
-  }, [fetchSheetData, masterSpreadsheetId]);
-
-  // Update selected organik and mitra
+  // Update selected organik and mitra when watched values change
   useEffect(() => {
     const updatedOrganik = (watchedOrganik || [])
       .map(id => organikList.find(item => item.id === id))
