@@ -18,6 +18,10 @@ export function useNotifications() {
   const userRole = currentUser?.role || '';
   const userSatker = currentUser?.satker || '';
 
+  // Check if satker config is ready
+  const satkerConfigReady = satkerContext?.configs && satkerContext.configs.length > 0;
+  console.log(`[useNotifications] satkerContext ready: ${satkerConfigReady}, configs length: ${satkerContext?.configs?.length || 0}`);
+
   // Function to check if role matches target role
   const roleMatches = (userRole: string, targetRoles: string[]): boolean => {
     return targetRoles.some(targetRole => {
@@ -289,9 +293,9 @@ export function useNotifications() {
 
   // Main fetch function
   const fetchAllNotifications = useCallback(async () => {
-    console.log(`[fetchAllNotifications] Starting - currentUser=${!!currentUser}, userSatker=${userSatker}, userRole=${userRole}`);
-    if (!currentUser || !userSatker) {
-      console.log('[fetchAllNotifications] Skipping - no currentUser or userSatker');
+    console.log(`[fetchAllNotifications] Starting - currentUser=${!!currentUser}, userSatker=${userSatker}, satkerConfigReady=${satkerConfigReady}`);
+    if (!currentUser || !userSatker || !satkerConfigReady) {
+      console.log('[fetchAllNotifications] Skipping - no currentUser, userSatker, or satkerConfig not ready');
       return;
     }
 
@@ -310,19 +314,13 @@ export function useNotifications() {
     } catch (error) {
       console.error('Error in fetchAllNotifications:', error);
     }
-  }, [currentUser, userSatker, userRole, notificationsContext, fetchPencairanNotifications, fetchSBMLNotifications]);
-
-  // Initial fetch on mount
-  useEffect(() => {
-    console.log('[useNotifications] Initial mount - calling fetchAllNotifications');
-    fetchAllNotifications();
-  }, [fetchAllNotifications]);
+  }, [currentUser, userSatker, userRole, satkerConfigReady, notificationsContext, fetchPencairanNotifications, fetchSBMLNotifications]);
 
   // Setup polling
   useEffect(() => {
-    console.log(`[useNotifications] Setup polling - currentUser=${!!currentUser}, userSatker=${userSatker}`);
-    if (!currentUser || !userSatker) {
-      console.log('[useNotifications] Skipping polling - no currentUser or userSatker');
+    console.log(`[useNotifications] Setup polling - currentUser=${!!currentUser}, userSatker=${userSatker}, satkerConfigReady=${satkerConfigReady}`);
+    if (!currentUser || !userSatker || !satkerConfigReady) {
+      console.log('[useNotifications] Skipping polling - no currentUser, userSatker, or satkerConfig not ready');
       return;
     }
 
@@ -343,5 +341,5 @@ export function useNotifications() {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [currentUser, userSatker, fetchAllNotifications]);
+  }, [currentUser, userSatker, satkerConfigReady, fetchAllNotifications]);
 }
