@@ -9,13 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatPeriode, bulanOptions, getTahunOptions, getCurrentPeriod, formatNIP } from '@/hooks/use-sikostik-data';
-import { RekapDashboard } from '@/types/sikostik';
+import { RekapDashboard, LimitAnggota } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
 export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: string) => void }) => {
   const {
     loading,
     error,
     fetchRekapDashboard,
+    fetchLimitAnggota,
     userSheetId
   } = useSikostikData();
   const currentPeriod = getCurrentPeriod();
@@ -23,11 +24,16 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
   const [selectedBulan, setSelectedBulan] = useState(currentPeriod.bulan);
   const [selectedTahun, setSelectedTahun] = useState(currentPeriod.tahun);
   const [rekapData, setRekapData] = useState<RekapDashboard[]>([]);
+  const [limitData, setLimitData] = useState<LimitAnggota[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const loadData = async () => {
     setIsLoading(true);
-    const data = await fetchRekapDashboard(selectedBulan, selectedTahun);
-    setRekapData(data);
+    const [rekap, limit] = await Promise.all([
+      fetchRekapDashboard(selectedBulan, selectedTahun),
+      fetchLimitAnggota(),
+    ]);
+    setRekapData(rekap);
+    setLimitData(limit);
     setIsLoading(false);
   };
   useEffect(() => {
@@ -135,9 +141,15 @@ export const RekapAnggota = ({ onSelectMember }: { onSelectMember?: (anggotaId: 
                     <TableCell className="text-right">{formatCurrency(member.saldoAkhirbulanLainlain)}</TableCell>
                     <TableCell className="text-right font-semibold text-primary">{formatCurrency(member.totalSimpanan)}</TableCell>
                     <TableCell className="text-right">
-                      <span className={cn(member.saldoPiutang > 0 ? 'text-destructive' : 'text-success')}>
-                        {formatCurrency(member.saldoPiutang)}
-                      </span>
+                      {(() => {
+                        const limitInfo = limitData.find(l => l.anggotaId === member.anggotaId);
+                        const saldoPiutang = limitInfo?.saldoPiutang ?? 0;
+                        return (
+                          <span className={cn(saldoPiutang > 0 ? 'text-destructive' : 'text-success')}>
+                            {formatCurrency(saldoPiutang)}
+                          </span>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>)}
               </TableBody>
