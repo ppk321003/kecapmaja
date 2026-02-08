@@ -13,6 +13,7 @@ export interface Notification {
   status?: string;
   createdAt: Date;
   actionUrl?: string;
+  displayTime?: string; // Formatted time for display (e.g., "update: 08:44 - 06/02/2026")
 }
 
 export interface PencairanNotification extends Notification {

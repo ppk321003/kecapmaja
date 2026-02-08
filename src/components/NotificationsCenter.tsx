@@ -52,7 +52,13 @@ export function NotificationsCenter() {
     return <CheckCircle2 className="h-4 w-4 text-green-500" />;
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date, displayTime?: string) => {
+    // If displayTime is provided (formatted time for pencairan), use it
+    if (displayTime) {
+      return displayTime;
+    }
+    
+    // Otherwise use relative time format
     const now = new Date();
     const diffMs = now.getTime() - new Date(date).getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -130,7 +136,7 @@ export function NotificationsCenter() {
                             <p className="font-medium text-sm text-foreground line-clamp-2">
                               {notif.title}
                             </p>
-                            <p className="text-sm text-foreground/80 mt-1 line-clamp-2">
+                            <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap">
                               {notif.message}
                             </p>
                           </div>
@@ -146,7 +152,7 @@ export function NotificationsCenter() {
                           </button>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1.5">
-                          {formatTime(notif.createdAt)}
+                          {formatTime(notif.createdAt, notif.displayTime)}
                         </p>
                       </div>
                     </div>
