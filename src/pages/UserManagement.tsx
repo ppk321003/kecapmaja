@@ -81,7 +81,8 @@ interface UserData {
   username: string;
   password: string;
   role: string;
-  lastLogin: string;
+  lastLoginUTC: string;      // ISO format untuk sorting (lebih reliable)
+  lastLoginDisplay: string;  // IDN format untuk tampilan user
   satker: string;
 }
 
@@ -89,7 +90,8 @@ interface GroupedUserData {
   role: string;
   usernames: string[];
   satkers: string[];
-  lastLogin: string;
+  lastLoginUTC: string;       // ISO format untuk sorting
+  lastLoginDisplay: string;   // IDN format untuk tampilan
   isOnline: boolean;
   allRows: UserData[]; // Menyimpan semua user dalam group ini
 }
@@ -125,47 +127,6 @@ export default function UserManagement() {
   const isSuperAdmin = user?.satker === "3210"; // PPK 3210 is super admin
   const userSatker = user?.satker || "";
 
-  // Parse IDN datetime format: "HH:MM:SS - DD/MM/YYYY"
-  const parseIDNDateTime = (dateStr: string): number => {
-    if (!dateStr || typeof dateStr !== "string") return 0;
-    
-    const trimmed = dateStr.trim();
-    if (!trimmed) return 0;
-    
-    try {
-      // More flexible regex to handle various spacing
-      // Match: HH:MM:SS or HH:MM, with optional spaces around dash, then DD/MM/YYYY
-      const match = trimmed.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      
-      if (!match) {
-        // If regex doesn't match, log for debugging and return 0
-        console.warn("Failed to parse date:", { dateStr: trimmed, match });
-        return 0;
-      }
-      
-      const hours = parseInt(match[1], 10);
-      const minutes = parseInt(match[2], 10);
-      const seconds = match[3] ? parseInt(match[3], 10) : 0;
-      const day = parseInt(match[4], 10);
-      const month = parseInt(match[5], 10);
-      const year = parseInt(match[6], 10);
-      
-      const date = new Date(year, month - 1, day, hours, minutes, seconds);
-      const timestamp = date.getTime();
-      
-      // Debug log
-      if (isNaN(timestamp)) {
-        console.warn("Invalid date parsed:", { dateStr: trimmed, hours, minutes, seconds, day, month, year });
-        return 0;
-      }
-      
-      return timestamp;
-    } catch (e) {
-      console.warn("Error parsing date:", { dateStr: trimmed, error: e });
-      return 0;
-    }
-  };
-
   useEffect(() => {
     if (isPPK) {
       fetchUsers();
@@ -192,8 +153,9 @@ export default function UserManagement() {
           role: user.role.trim(),
           usernames: [user.username],
           satkers: [user.satker],
-          lastLogin: user.lastLogin,
-          isOnline: isUserOnline(user.lastLogin),
+          lastLoginUTC: user.lastLoginUTC,
+          lastLoginDisplay: user.lastLoginDisplay,
+          isOnline: isUserOnline(user.lastLoginUTC),
           allRows: [user]
         });
       } else {
@@ -210,12 +172,21 @@ export default function UserManagement() {
         }
         
         // Update lastLogin ke yang paling baru
-        if (user.lastLogin) {
-          if (existing.lastLogin) {
-            const existingTimestamp = parseIDNDateTime(existing.lastLogin);
-            const newTimestamp = parseIDNDateTime(user.lastLogin);
-            if (newTimestamp > existingTimestamp) {
-              existing.lastLogin = user.lastLogin;
+        if (user.lastLoginUTC) {
+          if (existing.lastLoginUTC) {
+            const existingDate = new Date(existing.lastLoginUTC);
+            const newDate = new Date(user.lastLoginUTC);
+            if (newDate > existingDate) {
+              existing.lastLoginUTC = user.lastLoginUTC;
+              existing.lastLoginDisplay = user.lastLoginDisplay;
+              existing.isOnline = isUserOnline(user.lastLoginUTC);
+            }
+          } else {
+            existing.lastLoginUTC = user.lastLoginUTC;
+            existing.lastLoginDisplay = user.lastLoginDisplay;
+            existing.isOnline = isUserOnline(user.lastLoginUTC);
+          }
+        }
               existing.isOnline = isUserOnline(user.lastLogin);
             }
           } else {
@@ -254,7 +225,8 @@ export default function UserManagement() {
           username: row[0]?.trim() || "",
           password: row[1]?.trim() || "",
           role: row[2]?.trim() || "",
-          lastLogin: row[3]?.trim() || "",
+          lastLoginUTC: row[3]?.trim() || "",      // ISO format dari column D
+          lastLoginDisplay: row[4]?.trim() || "",  // IDN format dari column E
           satker: row[5]?.trim() || ""
         })).filter((u: UserData) => u.username && u.role); // Filter baris kosong
 
@@ -271,10 +243,10 @@ export default function UserManagement() {
     }
   };
 
-  const isUserOnline = (lastLogin: string): boolean => {
-    if (!lastLogin) return false;
+  const isUserOnline = (lastLoginUTC: string): boolean => {
+    if (!lastLoginUTC) return false;
     try {
-      const lastLoginDate = new Date(lastLogin);
+      const lastLoginDate = new Date(lastLoginUTC);
       const now = new Date();
       const diffMinutes = (now.getTime() - lastLoginDate.getTime()) / (1000 * 60);
       return diffMinutes <= 30; // Online jika login dalam 30 menit terakhir
@@ -283,26 +255,16 @@ export default function UserManagement() {
     }
   };
 
-  const formatLastLogin = (lastLogin: string): string => {
-    if (!lastLogin) return "Belum pernah login";
-    try {
-      const date = new Date(lastLogin);
-      return date.toLocaleString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    } catch {
-      return lastLogin;
-    }
+  const formatLastLogin = (lastLoginDisplay: string): string => {
+    if (!lastLoginDisplay) return "Belum pernah login";
+    // lastLoginDisplay sudah dalam format idiomatic dari spreadsheet
+    return lastLoginDisplay;
   };
 
-  const getTimeSinceLogin = (lastLogin: string): string => {
-    if (!lastLogin) return "";
+  const getTimeSinceLogin = (lastLoginUTC: string): string => {
+    if (!lastLoginUTC) return "";
     try {
-      const lastLoginDate = new Date(lastLogin);
+      const lastLoginDate = new Date(lastLoginUTC);
       const now = new Date();
       const diffMs = now.getTime() - lastLoginDate.getTime();
       const diffMinutes = Math.floor(diffMs / (1000 * 60));
@@ -516,9 +478,9 @@ export default function UserManagement() {
           bValue = b.isOnline ? 1 : 0;
           break;
         case "lastLogin":
-          // Parse IDN datetime format: "HH:MM:SS - DD/MM/YYYY"
-          aValue = parseIDNDateTime(a.lastLogin);
-          bValue = parseIDNDateTime(b.lastLogin);
+          // Use UTC format (ISO) untuk sorting yang akurat
+          aValue = a.lastLoginUTC ? new Date(a.lastLoginUTC).getTime() : 0;
+          bValue = b.lastLoginUTC ? new Date(b.lastLoginUTC).getTime() : 0;
           break;
         default:
           return 0;
@@ -567,7 +529,7 @@ export default function UserManagement() {
     : users.filter(u => u.satker === userSatker);
 
   // Hitung total user dan online count dari visible users
-  const onlineCount = visibleUsers.filter(u => isUserOnline(u.lastLogin)).length;
+  const onlineCount = visibleUsers.filter(u => isUserOnline(u.lastLoginUTC)).length;
 
   // Hitung total role dari visible users
   const totalRoles = new Set(visibleUsers.map(u => u.role.trim())).size;
@@ -966,11 +928,11 @@ export default function UserManagement() {
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5 text-sm">
                               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                              {formatLastLogin(group.lastLogin)}
+                              {formatLastLogin(group.lastLoginDisplay)}
                             </div>
-                            {group.lastLogin && (
+                            {group.lastLoginUTC && (
                               <p className="text-xs text-muted-foreground">
-                                {getTimeSinceLogin(group.lastLogin)}
+                                {getTimeSinceLogin(group.lastLoginUTC)}
                               </p>
                             )}
                           </div>
