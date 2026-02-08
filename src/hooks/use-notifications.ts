@@ -113,32 +113,45 @@ export function useNotifications() {
 
         let targetRoles: string[] = [];
         let message = '';
+        let title = 'Pencairan - Pengajuan Baru';
 
         // Map actual statuses to notification rules
         // incomplete_sm, incomplete_staff, incomplete_finance = incomplete, needs completion
-        if (status?.includes('incomplete') || status === 'draft' || status === 'reject_bendahara') {
+        if (status?.includes('incomplete') || status === 'draft') {
           targetRoles = ['Fungsi']; // Any role containing "Fungsi"
-          message = `${judul} masih belum dilengkapi`;
+          message = `${judul} masih belum dilengkapi\n${displayTime}`;
         }
-        // Pending at bendahara or rejected by PPK
-        else if (status === 'pending_bendahara' || status === 'reject_ppk') {
+        // Rejected by bendahara, PPK, or PPSPM - needs correction
+        else if (status === 'reject_bendahara' || status === 'reject_ppk' || status === 'reject_ppspm') {
+          title = 'Pencairan - Pengajuan Ditolak';
+          if (status === 'reject_bendahara') {
+            targetRoles = ['Fungsi'];
+          } else if (status === 'reject_ppk') {
+            targetRoles = ['Bendahara'];
+          } else if (status === 'reject_ppspm') {
+            targetRoles = ['PPK'];
+          }
+          message = `${judul} ditolak. Mohon segera memperbaiki\n${displayTime}`;
+        }
+        // Pending at bendahara
+        else if (status === 'pending_bendahara') {
           targetRoles = ['Bendahara'];
-          message = `Tugas bendahara ${judul} harus diperiksa`;
+          message = `Tugas bendahara ${judul} harus diperiksa\n${displayTime}`;
         }
-        // Pending at PPK or rejected by PPSPM
-        else if (status === 'pending_ppk' || status === 'reject_ppspm') {
+        // Pending at PPK
+        else if (status === 'pending_ppk') {
           targetRoles = ['PPK'];
-          message = `${judul} untuk diperiksa`;
+          message = `${judul} untuk diperiksa\n${displayTime}`;
         }
         // Pending at PPSPM
         else if (status === 'pending_ppspm') {
           targetRoles = ['PPSPM'];
-          message = `${judul} untuk diperiksa`;
+          message = `${judul} untuk diperiksa\n${displayTime}`;
         }
         // Sent to KPPN
         else if (status === 'sent_kppn') {
           targetRoles = ['Arsip'];
-          message = `${judul} untuk di arsipkan`;
+          message = `${judul} untuk di arsipkan\n${displayTime}`;
         }
 
         if (targetRoles.length > 0) {
@@ -149,9 +162,9 @@ export function useNotifications() {
             const notif: PencairanNotification = {
               id: `pencairan-${submissionId}`,
               type: 'pencairan',
-              title: 'Pencairan - Pengajuan Baru',
+              title,
               message,
-              priority: status === 'pending_ppspm' ? 'high' : 'medium',
+              priority: status === 'pending_ppspm' ? 'high' : (status?.includes('reject') ? 'high' : 'medium'),
               targetRoles,
               relatedId: submissionId,
               status: status as any,
@@ -278,24 +291,9 @@ export function useNotifications() {
         }
         
         // Create one notification per periode, combining all petugas
-        petugarByPeriode.forEach((petugas, periode) => {
-          const notif: SBMLNotification = {
-            id: `sbml-periode-${periode}`,
-            type: 'sbml_spk',
-            title: 'Cek SBML - Tanda Tangan Dibutuhkan',
-            message: `Periode SPK-BAST ${periode}`,
-            priority: 'high',
-            targetRoles: [],
-            relatedId: `periode-${periode}`,
-            createdAt: new Date(),
-            namaPetugas: petugas.join(', '),
-            periode,
-            sheetName: 'Cek SBML',
-            actionUrl: '/spk-bast/entri-sbml',
-          };
-          notifs.push(notif);
-          console.log(`[fetchSBMLNotifications] Added grouped SBML notification for ${periode}: ${petugas.length} petugas`);
-        });
+        // SBML CEKTD notifications are NOT displayed - only Rekap SPK-BAST is shown
+        // petugarByPeriode is still collected but notifications are skipped
+        console.log(`[fetchSBMLNotifications] Cek SBML TTTD notifications suppressed - only Rekap SPK-BAST will be displayed`);
         
         console.log(`[fetchSBMLNotifications] All TTD statuses found in SBML:`, Array.from(allTtdStatuses));
       }
@@ -380,7 +378,7 @@ export function useNotifications() {
           const notif: SBMLNotification = {
             id: `rekap-periode-${periode}`,
             type: 'sbml_spk',
-            title: 'Rekap SPK-BAST - Tanda Tangan Dibutuhkan',
+            title: 'Rekap SPK-BAST - TTD Mitra Belum Lengkap',
             message: `Periode SPK-BAST ${periode}`,
             priority: 'high',
             targetRoles: [],
@@ -421,7 +419,8 @@ export function useNotifications() {
       const sbmlNotifs = await fetchSBMLNotifications();
       console.log(`[fetchAllNotifications] SBML: ${sbmlNotifs.length} notifications`);
       
-      const allNotifs = [...pencairanNotifs, ...sbmlNotifs];
+      // Show TTD notifications first, then Pencairan
+      const allNotifs = [...sbmlNotifs, ...pencairanNotifs];
       console.log(`[fetchAllNotifications] Total: ${allNotifs.length} notifications to set`);
       
       notificationsContext._setNotifications(allNotifs);
