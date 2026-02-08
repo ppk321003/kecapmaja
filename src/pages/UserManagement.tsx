@@ -277,6 +277,31 @@ export default function UserManagement() {
     }
   };
 
+  // Parse IDN datetime format: "HH:MM:SS - DD/MM/YYYY"
+  const parseIDNDateTime = (dateStr: string): number => {
+    if (!dateStr || !dateStr.trim()) return 0;
+    try {
+      // Match format: "HH:MM:SS - DD/MM/YYYY"
+      const match = dateStr.match(/(\d{1,2}):(\d{2}):(\d{2})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (!match) return 0;
+      
+      const [, hours, minutes, seconds, day, month, year] = match;
+      const date = new Date(
+        parseInt(year),
+        parseInt(month) - 1, // Month is 0-indexed
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+        parseInt(seconds)
+      );
+      
+      // Check if date is valid
+      return isNaN(date.getTime()) ? 0 : date.getTime();
+    } catch {
+      return 0;
+    }
+  };
+
   const resetForm = () => {
     setFormUsername("");
     setFormPassword("");
@@ -517,31 +542,6 @@ export default function UserManagement() {
       // Set new column and default to ascending
       setSortColumn(column);
       setSortDirection("asc");
-    }
-  };
-
-  // Parse IDN datetime format: "HH:MM:SS - DD/MM/YYYY"
-  const parseIDNDateTime = (dateStr: string): number => {
-    if (!dateStr || !dateStr.trim()) return 0;
-    try {
-      // Match format: "HH:MM:SS - DD/MM/YYYY"
-      const match = dateStr.match(/(\d{1,2}):(\d{2}):(\d{2})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (!match) return 0;
-      
-      const [, hours, minutes, seconds, day, month, year] = match;
-      const date = new Date(
-        parseInt(year),
-        parseInt(month) - 1, // Month is 0-indexed
-        parseInt(day),
-        parseInt(hours),
-        parseInt(minutes),
-        parseInt(seconds)
-      );
-      
-      // Check if date is valid
-      return isNaN(date.getTime()) ? 0 : date.getTime();
-    } catch {
-      return 0;
     }
   };
 
