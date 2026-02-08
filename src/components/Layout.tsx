@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import { NotificationsCenter } from "@/components/NotificationsCenter";
+import { useNotifications } from "@/hooks/use-notifications";
 
 interface LayoutProps {
   children: ReactNode;
@@ -12,6 +14,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
+  useNotifications(); // Initialize notifications polling
 
   return (
     <SidebarProvider>
@@ -27,6 +30,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <div className="flex items-center gap-4">
               <ThemeSelector />
+              <NotificationsCenter />
               <div className="flex items-center gap-2">
                 <div className="text-right">
                   <p className="text-sm font-medium text-primary-foreground">{user?.username}</p>
