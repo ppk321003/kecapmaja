@@ -240,8 +240,9 @@ export function useNotifications() {
         const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status') && !h?.toLowerCase().includes('ttd'));
         const idxTtd = headers.findIndex((h: string) => h?.toLowerCase().includes('status ttd') || h?.toLowerCase().includes('status') && h?.toLowerCase().includes('ttd'));
         const idxPeriode = 2; // Column C - Periode
+        const idxStatusNotif = 24; // Column Y - Status Notif
         
-        console.log(`[fetchSBMLNotifications] Header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}(C)`);
+        console.log(`[fetchSBMLNotifications] Header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}(C), statusNotif:${idxStatusNotif}(Y)`);
 
         // Collect all unique TTD statuses found
         const allTtdStatuses = new Set<string>();
@@ -256,6 +257,17 @@ export function useNotifications() {
           const status = row[idxStatus]?.toString().toLowerCase().trim();
           const ttdRaw = row[idxTtd]?.toString().toLowerCase().trim();
           const periode = row[idxPeriode]?.toString() || 'Unknown';
+          const statusNotifRaw = row[idxStatusNotif]?.toString().toLowerCase().trim() || '';
+
+          // Check Status Notif (column Y) - only process if contains 'sudah'
+          // If blank or 'belum', skip this row
+          const statusNotifValues = statusNotifRaw?.split('|').map(s => s.trim()) || [];
+          const hasSudahNotif = statusNotifValues.some(s => s.includes('sudah'));
+          
+          if (!hasSudahNotif && statusNotifRaw !== '') {
+            console.log(`[fetchSBMLNotifications] SBML Row ${i}: Skip - Status Notif is blank or 'belum': "${statusNotifRaw}"`);
+            continue;
+          }
 
           // Handle pipe-separated values (multiple signers) - extract unique statuses
           const ttdStatuses = ttdRaw?.split('|').map(s => s.trim()) || [];
@@ -268,7 +280,7 @@ export function useNotifications() {
           );
           
           if (hasPendingTtd) {
-            console.log(`[fetchSBMLNotifications] SBML Row ${i}: nama=${nama}, ttd=${ttdRaw}, periode=${periode}`);
+            console.log(`[fetchSBMLNotifications] SBML Row ${i}: nama=${nama}, ttd=${ttdRaw}, statusNotif=${statusNotifRaw}, periode=${periode}`);
             // Group by periode
             if (!petugarByPeriode.has(periode)) {
               petugarByPeriode.set(periode, []);
@@ -326,8 +338,9 @@ export function useNotifications() {
         const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status') && !h?.toLowerCase().includes('ttd'));
         const idxTtd = headers.findIndex((h: string) => h?.toLowerCase().includes('status ttd') || h?.toLowerCase().includes('status') && h?.toLowerCase().includes('ttd'));
         const idxPeriode = headers.findIndex((h: string) => h?.toLowerCase().includes('periode') || h?.toLowerCase().includes('bulan'));
+        const idxStatusNotif = 24; // Column Y - Status Notif
 
-        console.log(`[fetchSBMLNotifications] Rekap header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}`);
+        console.log(`[fetchSBMLNotifications] Rekap header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}, statusNotif:${idxStatusNotif}(Y)`);
 
         // Collect all unique TTD statuses found
         const allRekCapTtdStatuses = new Set<string>();
@@ -342,6 +355,17 @@ export function useNotifications() {
           const status = row[idxStatus]?.toString().toLowerCase().trim();
           const ttdRaw = row[idxTtd]?.toString().toLowerCase().trim();
           const periode = row[idxPeriode]?.toString() || 'Unknown';
+          const statusNotifRaw = row[idxStatusNotif]?.toString().toLowerCase().trim() || '';
+
+          // Check Status Notif (column Y) - only process if contains 'sudah'
+          // If blank or 'belum', skip this row
+          const statusNotifValues = statusNotifRaw?.split('|').map(s => s.trim()) || [];
+          const hasSudahNotif = statusNotifValues.some(s => s.includes('sudah'));
+          
+          if (!hasSudahNotif && statusNotifRaw !== '') {
+            console.log(`[fetchSBMLNotifications] Rekap Row ${i}: Skip - Status Notif is blank or 'belum': "${statusNotifRaw}"`);
+            continue;
+          }
 
           // Handle pipe-separated values (multiple signers) - extract unique statuses
           const ttdStatuses = ttdRaw?.split('|').map(s => s.trim()) || [];
@@ -354,7 +378,7 @@ export function useNotifications() {
           );
           
           if (hasPendingTtd) {
-            console.log(`[fetchSBMLNotifications] Rekap Row ${i}: nama=${nama}, ttd=${ttdRaw}, periode=${periode}`);
+            console.log(`[fetchSBMLNotifications] Rekap Row ${i}: nama=${nama}, ttd=${ttdRaw}, statusNotif=${statusNotifRaw}, periode=${periode}`);
             // Group by periode
             if (!rekapPetuargByPeriode.has(periode)) {
               rekapPetuargByPeriode.set(periode, []);
