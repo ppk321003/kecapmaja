@@ -54,7 +54,7 @@ export function useNotifications() {
         body: {
           spreadsheetId: pencairanSheetId,
           operation: 'read',
-          range: 'Pengajuan!A:N',
+          range: 'data!A:N',
         },
       });
 
@@ -188,13 +188,13 @@ export function useNotifications() {
 
       const notifs: Notification[] = [];
 
-      // Fetch Cek SBML sheet
-      console.log(`[fetchSBMLNotifications] Fetching Cek SBML...`);
+      // Fetch signature data from Sheet1
+      console.log(`[fetchSBMLNotifications] Fetching TTD data from Sheet1...`);
       const { data: sbmlData, error: sbmlError } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: spkBastSheetId,
           operation: 'read',
-          range: 'Cek SBML!A:F',
+          range: 'Sheet1!A:Z',
         },
       });
 
@@ -265,15 +265,10 @@ export function useNotifications() {
         console.log(`[fetchSBMLNotifications] All TTD statuses found in SBML:`, Array.from(allTtdStatuses));
       }
 
-      // Fetch Rekap SPK-BAST sheet
-      console.log(`[fetchSBMLNotifications] Fetching Rekap SPK-BAST...`);
-      const { data: rekapData, error: rekapError } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          spreadsheetId: spkBastSheetId,
-          operation: 'read',
-          range: 'Rekap SPK-BAST!A:F',
-        },
-      });
+      // Fetch Rekap SPK-BAST data (reuse Sheet1 data from above)
+      console.log(`[fetchSBMLNotifications] Reusing Sheet1 data for rekap analysis...`);
+      const rekapData = sbmlData; // Reuse the same data to reduce API calls
+      const rekapError = sbmlError;
 
       if (rekapError) {
         console.error('[fetchSBMLNotifications] Rekap Error:', rekapError);
