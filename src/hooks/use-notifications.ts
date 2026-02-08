@@ -139,7 +139,7 @@ export function useNotifications() {
         
         // Use timestamp text as-is from database
         let updateTime = new Date();
-        let displayTime = updateTimeStr?.trim() ? `update: ${updateTimeStr.trim()}` : 'Baru saja';
+        let displayTime = updateTimeStr?.trim() ? `Update terakhir: ${updateTimeStr.trim()}` : 'Baru saja';
         
         console.log(`[fetchPencairanNotifications] Row ${i}: id=${submissionId}, title=${judul}, status=${status}, updateTimeStr="${updateTimeStr}", displayTime="${displayTime}"`);
 
