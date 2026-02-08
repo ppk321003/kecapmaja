@@ -22,17 +22,31 @@ export function useNotifications() {
   const userRole = currentUser?.role || '';
   const userSatker = currentUser?.satker || '';
 
+  // Map full role names to abbreviations
+  const normalizeRole = (role: string): string => {
+    const lowerRole = role.toLowerCase();
+    // Map full names to abbreviations
+    if (lowerRole.includes('bendahara')) return 'Bendahara';
+    if (lowerRole.includes('pengawas') || lowerRole.includes('ppk')) return 'PPK';
+    if (lowerRole.includes('pejabat penandatangan') || lowerRole.includes('ppspm')) return 'PPSPM';
+    if (lowerRole.includes('kppn')) return 'KPPN';
+    if (lowerRole.includes('arsip')) return 'Arsip';
+    if (lowerRole.includes('fungsi')) return 'Fungsi';
+    return role; // Return original if no mapping
+  };
+
   // Check if satker config is ready
   const satkerConfigReady = satkerContext?.configs && satkerContext.configs.length > 0;
   console.log(`[useNotifications] satkerContext ready: ${satkerConfigReady}, configs length: ${satkerContext?.configs?.length || 0}`);
 
   // Function to check if role matches target role
   const roleMatches = (userRole: string, targetRoles: string[]): boolean => {
+    const normalizedUserRole = normalizeRole(userRole);
     return targetRoles.some(targetRole => {
       if (targetRole.includes('Fungsi')) {
-        return userRole.includes('Fungsi');
+        return normalizedUserRole.includes('Fungsi') || userRole.includes('Fungsi');
       }
-      return userRole === targetRole;
+      return normalizedUserRole === targetRole || userRole === targetRole;
     });
   };
 
@@ -189,7 +203,8 @@ export function useNotifications() {
 
         if (targetRoles.length > 0) {
           const matches = roleMatches(userRole, targetRoles);
-          console.log(`[fetchPencairanNotifications] Row ${i}: status=${status}, judul=${judul}, targetRoles=${targetRoles}, userRole=${userRole}, matches=${matches}`);
+          const normalizedUserRole = normalizeRole(userRole);
+          console.log(`[fetchPencairanNotifications] Row ${i}: status=${status}, judul=${judul}, targetRoles=${targetRoles}, userRole=${userRole}, normalizedUserRole=${normalizedUserRole}, matches=${matches}`);
           
           if (matches) {
             const notif: PencairanNotification = {
@@ -232,8 +247,9 @@ export function useNotifications() {
       }
 
       // Check if user is in excluded roles
-      if (userRole === 'PPSPM' || userRole === 'PPK' || userRole === 'Arsip') {
-        console.log(`[fetchSBMLNotifications] User role ${userRole} is excluded`);
+      const normalizedUserRole = normalizeRole(userRole);
+      if (normalizedUserRole === 'PPSPM' || normalizedUserRole === 'PPK' || normalizedUserRole === 'Arsip') {
+        console.log(`[fetchSBMLNotifications] User role ${userRole} (normalized: ${normalizedUserRole}) is excluded`);
         return [];
       }
 
