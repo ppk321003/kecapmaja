@@ -27,7 +27,7 @@ export function useNotifications() {
     const lowerRole = role.toLowerCase();
     // Map full names to abbreviations
     if (lowerRole.includes('bendahara')) return 'Bendahara';
-    if (lowerRole.includes('pengawas') || lowerRole.includes('ppk')) return 'PPK';
+    if (lowerRole.includes('pejabat pembuat komitmen')) return 'PPK';
     if (lowerRole.includes('pejabat penandatangan') || lowerRole.includes('ppspm')) return 'PPSPM';
     if (lowerRole.includes('kppn')) return 'KPPN';
     if (lowerRole.includes('arsip')) return 'Arsip';
