@@ -594,6 +594,29 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
             )}
           </Card>
 
+          {financialAnalysis && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <CardTitle>Penggunaan Limit</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Limit Terpakai</span>
+                    <span className="font-medium">{financialAnalysis.limitUtilization.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={financialAnalysis.limitUtilization} className="h-2" />
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(safeLimit.saldoPiutang)} dari {formatCurrency(safeLimit.limitPinjaman)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="flex items-center gap-2 bg-card p-4 rounded-lg border">
             <Calendar className="h-5 w-5 text-muted-foreground" />
             <span className="font-medium">Periode:</span>
@@ -712,29 +735,6 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
             </Card>
           </div>
 
-          {financialAnalysis && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-                  <CardTitle>Penggunaan Limit</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Limit Terpakai</span>
-                    <span className="font-medium">{financialAnalysis.limitUtilization.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={financialAnalysis.limitUtilization} className="h-2" />
-                  <p className="text-xs text-muted-foreground">
-                    {formatCurrency(safeLimit.saldoPiutang)} dari {formatCurrency(safeLimit.limitPinjaman)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           <Card>
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -749,50 +749,6 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
             </CardHeader>
             
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Banknote className="h-5 w-5 text-destructive" />
-                    <span className="font-semibold">Total Peminjaman</span>
-                  </div>
-                  <p className="text-2xl font-bold text-destructive">
-                    {formatCurrency(yearlyTotalsPeminjamanPengambilan.pinjamanBulanIni)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {activeMonthsCountPeminjamanPengambilan} bulan dengan peminjaman
-                  </p>
-                </div>
-                
-                <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <PiggyBank className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Total Pengambilan Simpanan</span>
-                  </div>
-                  <p className="text-2xl font-bold text-primary">
-                    {formatCurrency(yearlyTotalsPeminjamanPengambilan.totalPengambilan)}
-                  </p>
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>Pokok: {formatCurrency(yearlyTotalsPeminjamanPengambilan.pengambilanPokok)}</span>
-                    <span>Wajib: {formatCurrency(yearlyTotalsPeminjamanPengambilan.pengambilanWajib)}</span>
-                  </div>
-                </div>
-                
-                <div className="bg-accent/10 p-4 rounded-lg border border-accent/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="h-5 w-5 text-accent" />
-                    <span className="font-semibold">Aktivitas</span>
-                  </div>
-                  <p className="text-2xl font-bold text-accent">
-                    {activeMonthsCountPeminjamanPengambilan} bulan
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {historyDisplayData.length > 0 
-                      ? `${activeMonthsCountPeminjamanPengambilan} dari 12 bulan ada transaksi`
-                      : 'Tidak ada data transaksi'}
-                  </p>
-                </div>
-              </div>
-
               {isLoadingHistory ? (
                 <div className="space-y-2">
                   <Skeleton className="h-8 w-full" />
@@ -987,36 +943,6 @@ export const RekapIndividu = ({ selectedAnggotaId: propSelectedAnggotaId }: { se
             </CardHeader>
             
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <PiggyBank className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Total Simpanan</span>
-                  </div>
-                  <p className="text-2xl font-bold text-primary">
-                    {formatCurrency(yearlyTotalsSimpanan.totalSimpanan)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {activeMonthsCountSimpanan} bulan dengan simpanan
-                  </p>
-                </div>
-                
-                <div className="bg-accent/10 p-4 rounded-lg border border-accent/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="h-5 w-5 text-accent" />
-                    <span className="font-semibold">Aktivitas</span>
-                  </div>
-                  <p className="text-2xl font-bold text-accent">
-                    {activeMonthsCountSimpanan} bulan
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {historyDisplayData.length > 0 
-                      ? `${activeMonthsCountSimpanan} dari 12 bulan ada simpanan`
-                      : 'Tidak ada data simpanan'}
-                  </p>
-                </div>
-              </div>
-
               {isLoadingHistory ? (
                 <div className="space-y-2">
                   <Skeleton className="h-8 w-full" />
