@@ -7,6 +7,7 @@ import { Notification, PencairanNotification, SBMLNotification } from '@/types/n
 
 const POLLING_INTERVAL = 300000; // 5 minutes - reduced frequency to respect Google Sheets API quota
 const MIN_REQUEST_INTERVAL = 60000; // 1 minute - minimum time between requests to debounce
+const QUOTA_EXCEEDED_BACKOFF = 600000; // 10 minutes - wait longer after hitting quota (429)
 
 export function useNotifications() {
   const { user } = useAuth();
@@ -66,25 +67,10 @@ export function useNotifications() {
       
       // Check for quota exceeded error (429)
       if (data?.error?.code === 429) {
-        console.warn('[fetchPencairanNotifications] Google Sheets API quota exceeded (429)');
+        console.warn('[fetchPencairanNotifications] Google Sheets API quota exceeded (429) - will backoff for 10 minutes');
         quotaExceededRef.current = true;
-        // Add a system notification about quota
-        const quotaNotif: Notification = {
-          id: 'system-quota-exceeded',
-          type: 'system',
-          title: 'API Quota Habis',
-          message: 'Google Sheets API quota terlampaui. Notifikasi akan diupdate setelah 1 menit.',
-          priority: 'high',
-          targetRoles: [],
-          relatedId: 'system',
-          createdAt: new Date(),
-          actionUrl: '',
-        };
-        notificationsContext._setNotifications([quotaNotif]);
         return [];
       }
-      
-      quotaExceededRef.current = false;
       
       if (!data?.values) {
         console.log('[fetchPencairanNotifications] No data returned - values is', data?.values);
@@ -215,8 +201,11 @@ export function useNotifications() {
       if (sbmlError) {
         console.error('[fetchSBMLNotifications] SBML Error:', sbmlError);
       } else if (sbmlData?.error?.code === 429) {
-        console.warn('[fetchSBMLNotifications] Google Sheets API quota exceeded (429)');
+        console.warn('[fetchSBMLNotifications] Google Sheets API quota exceeded (429) - will backoff for 10 minutes');
         quotaExceededRef.current = true;
+        // Early return to avoid further API calls when quota is exceeded
+        console.log('[fetchSBMLNotifications] Total SBML notifications: 0 (quota exceeded)');
+        return notifs;
       } else if (!sbmlData?.values) {
         console.log('[fetchSBMLNotifications] No SBML data returned - values is', sbmlData?.values);
         console.log('[fetchSBMLNotifications] SBML API response:', JSON.stringify(sbmlData, null, 2));
@@ -289,8 +278,11 @@ export function useNotifications() {
       if (rekapError) {
         console.error('[fetchSBMLNotifications] Rekap Error:', rekapError);
       } else if (rekapData?.error?.code === 429) {
-        console.warn('[fetchSBMLNotifications] Google Sheets API quota exceeded (429)');
+        console.warn('[fetchSBMLNotifications] Google Sheets API quota exceeded (429) - will backoff for 10 minutes');
         quotaExceededRef.current = true;
+        // Early return when quota is exceeded
+        console.log('[fetchSBMLNotifications] Total SBML notifications: 0 (quota exceeded)');
+        return notifs;
       } else if (!rekapData?.values) {
         console.log('[fetchSBMLNotifications] No Rekap data returned - values is', rekapData?.values);
         console.log('[fetchSBMLNotifications] Rekap API response:', JSON.stringify(rekapData, null, 2));
@@ -366,14 +358,21 @@ export function useNotifications() {
       return;
     }
 
-    // Debounce: don't fetch if last fetch was less than 1 minute ago
+    // Determine debounce interval based on quota status
+    const debounceInterval = quotaExceededRef.current ? QUOTA_EXCEEDED_BACKOFF : MIN_REQUEST_INTERVAL;
+    
+    // Debounce: don't fetch if last fetch was less than debounce time ago
     const now = Date.now();
-    if (now - lastFetchRef.current < MIN_REQUEST_INTERVAL) {
-      console.log(`[fetchAllNotifications] Skipping - last fetch was ${Math.round((now - lastFetchRef.current) / 1000)}s ago, waiting ${Math.round((MIN_REQUEST_INTERVAL - (now - lastFetchRef.current)) / 1000)}s more`);
+    if (now - lastFetchRef.current < debounceInterval) {
+      const waitTime = Math.round((debounceInterval - (now - lastFetchRef.current)) / 1000);
+      console.log(`[fetchAllNotifications] Skipping - last fetch was ${Math.round((now - lastFetchRef.current) / 1000)}s ago, waiting ${waitTime}s more (backoff: ${debounceInterval / 60000}m)`);
       return;
     }
 
     lastFetchRef.current = now;
+    
+    // Reset quota flag at start of fetch cycle - will be set if any API call hits 429
+    quotaExceededRef.current = false;
 
     try {
       const pencairanNotifs = await fetchPencairanNotifications();
