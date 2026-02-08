@@ -187,13 +187,6 @@ export default function UserManagement() {
             existing.isOnline = isUserOnline(user.lastLoginUTC);
           }
         }
-              existing.isOnline = isUserOnline(user.lastLogin);
-            }
-          } else {
-            existing.lastLogin = user.lastLogin;
-            existing.isOnline = isUserOnline(user.lastLogin);
-          }
-        }
         
         existing.allRows.push(user);
       }
@@ -364,7 +357,7 @@ export default function UserManagement() {
           spreadsheetId: USERS_SPREADSHEET_ID,
           operation: "update",
           range: `user!A${selectedUser.rowIndex}:F${selectedUser.rowIndex}`,
-          values: [[formUsername, formPassword, formRole, selectedUser.lastLogin, "", formSatker]]
+          values: [[formUsername, formPassword, formRole, selectedUser.lastLoginUTC, "", formSatker]]
         }
       });
 
