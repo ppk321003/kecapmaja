@@ -87,9 +87,9 @@ export function useNotifications() {
       const idxStatus = 6; // Column G
       const idxJudul = headers.findIndex((h: string) => h?.toLowerCase().includes('uraian') || h?.toLowerCase().includes('judul') || h?.toLowerCase().includes('pengajuan'));
       const idxId = headers.findIndex((h: string) => h?.toLowerCase().includes('id'));
-      const idxUpdateTime = headers.findIndex((h: string) => h?.toLowerCase().includes('update') || h?.toLowerCase().includes('waktu') || h?.toLowerCase().includes('terakhir'));
+      const idxUpdateTime = 16; // Column Q (16 = 0-indexed)
 
-      console.log(`[fetchPencairanNotifications] Using fixed column indices - status:${idxStatus}(col G), judul:${idxJudul}, id:${idxId}, updateTime:${idxUpdateTime}`);
+      console.log(`[fetchPencairanNotifications] Using column indices - status:${idxStatus}(G), judul:${idxJudul}, id:${idxId}, updateTime:${idxUpdateTime}(Q)`);
 
       // Collect all unique statuses found
       const allStatuses = new Set<string>();
@@ -105,14 +105,24 @@ export function useNotifications() {
         const submissionId = row[idxId]?.toString() || `pencairan-${i}`;
         const updateTimeStr = row[idxUpdateTime]?.toString() || '';
         
-        // Parse update time - try to convert to Date
+        // Parse update time - try multiple formats
         let updateTime = new Date();
-        if (updateTimeStr) {
-          const parsed = new Date(updateTimeStr);
+        if (updateTimeStr && updateTimeStr.trim()) {
+          // Try direct Date parse first
+          let parsed = new Date(updateTimeStr);
+          if (isNaN(parsed.getTime())) {
+            // Try parsing as DD/MM/YYYY or DD-MM-YYYY
+            const match = updateTimeStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+            if (match) {
+              const [, day, month, year] = match;
+              parsed = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            }
+          }
           if (!isNaN(parsed.getTime())) {
             updateTime = parsed;
           }
         }
+        console.log(`[fetchPencairanNotifications] Row ${i}: updateTimeStr="${updateTimeStr}", parsed=${updateTime.toISOString()}`);
 
         let targetRoles: string[] = [];
         let message = '';
@@ -229,12 +239,14 @@ export function useNotifications() {
         const idxNama = headers.findIndex((h: string) => h?.toLowerCase().includes('nama'));
         const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status') && !h?.toLowerCase().includes('ttd'));
         const idxTtd = headers.findIndex((h: string) => h?.toLowerCase().includes('status ttd') || h?.toLowerCase().includes('status') && h?.toLowerCase().includes('ttd'));
-        const idxPeriode = headers.findIndex((h: string) => h?.toLowerCase().includes('periode') || h?.toLowerCase().includes('bulan'));
-
-        console.log(`[fetchSBMLNotifications] Header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}`);
+        const idxPeriode = 2; // Column C - Periode
+        
+        console.log(`[fetchSBMLNotifications] Header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}(C)`);
 
         // Collect all unique TTD statuses found
         const allTtdStatuses = new Set<string>();
+        // Map to group petugas by periode
+        const petugarByPeriode = new Map<string, string[]>();
 
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
@@ -243,7 +255,7 @@ export function useNotifications() {
           const nama = row[idxNama]?.toString() || '';
           const status = row[idxStatus]?.toString().toLowerCase().trim();
           const ttdRaw = row[idxTtd]?.toString().toLowerCase().trim();
-          const periode = row[idxPeriode]?.toString() || new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+          const periode = row[idxPeriode]?.toString() || 'Unknown';
 
           // Handle pipe-separated values (multiple signers) - extract unique statuses
           const ttdStatuses = ttdRaw?.split('|').map(s => s.trim()) || [];
@@ -257,24 +269,33 @@ export function useNotifications() {
           
           if (hasPendingTtd) {
             console.log(`[fetchSBMLNotifications] SBML Row ${i}: nama=${nama}, ttd=${ttdRaw}, periode=${periode}`);
-            const notif: SBMLNotification = {
-              id: `sbml-${i}-${nama}`,
-              type: 'sbml_spk',
-              title: 'SPK-BAST - Tanda Tangan Dibutuhkan',
-              message: `${nama} belum ttd SPK BAST ${periode}`,
-              priority: 'high',
-              targetRoles: [], // Will be checked at user level
-              relatedId: `${nama}-${periode}`,
-              createdAt: new Date(),
-              namaPetugas: nama,
-              periode,
-              sheetName: 'Cek SBML',
-              actionUrl: '/spk-bast/entri-sbml',
-            };
-            notifs.push(notif);
-            console.log(`[fetchSBMLNotifications] Added SBML notification: ${notif.id}`);
+            // Group by periode
+            if (!petugarByPeriode.has(periode)) {
+              petugarByPeriode.set(periode, []);
+            }
+            petugarByPeriode.get(periode)?.push(nama);
           }
         }
+        
+        // Create one notification per periode, combining all petugas
+        petugarByPeriode.forEach((petugas, periode) => {
+          const notif: SBMLNotification = {
+            id: `sbml-periode-${periode}`,
+            type: 'sbml_spk',
+            title: 'SPK-BAST - Tanda Tangan Mitra Dibutuhkan',
+            message: `Periode SPK-BAST ${periode}\n${petugas.join(', ')}`,
+            priority: 'high',
+            targetRoles: [],
+            relatedId: `periode-${periode}`,
+            createdAt: new Date(),
+            namaPetugas: petugas.join(', '),
+            periode,
+            sheetName: 'Cek SBML',
+            actionUrl: '/spk-bast/entri-sbml',
+          };
+          notifs.push(notif);
+          console.log(`[fetchSBMLNotifications] Added grouped SBML notification for ${periode}: ${petugas.length} petugas`);
+        });
         
         console.log(`[fetchSBMLNotifications] All TTD statuses found in SBML:`, Array.from(allTtdStatuses));
       }
@@ -310,6 +331,8 @@ export function useNotifications() {
 
         // Collect all unique TTD statuses found
         const allRekCapTtdStatuses = new Set<string>();
+        // Map to group petugas by periode
+        const rekapPetuargByPeriode = new Map<string, string[]>();
 
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
@@ -318,7 +341,7 @@ export function useNotifications() {
           const nama = row[idxNama]?.toString() || '';
           const status = row[idxStatus]?.toString().toLowerCase().trim();
           const ttdRaw = row[idxTtd]?.toString().toLowerCase().trim();
-          const periode = row[idxPeriode]?.toString() || new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+          const periode = row[idxPeriode]?.toString() || 'Unknown';
 
           // Handle pipe-separated values (multiple signers) - extract unique statuses
           const ttdStatuses = ttdRaw?.split('|').map(s => s.trim()) || [];
@@ -332,24 +355,33 @@ export function useNotifications() {
           
           if (hasPendingTtd) {
             console.log(`[fetchSBMLNotifications] Rekap Row ${i}: nama=${nama}, ttd=${ttdRaw}, periode=${periode}`);
-            const notif: SBMLNotification = {
-              id: `rekap-${i}-${nama}`,
-              type: 'sbml_spk',
-              title: 'SPK-BAST - Tanda Tangan Dibutuhkan',
-              message: `${nama} belum ttd SPK BAST ${periode}`,
-              priority: 'high',
-              targetRoles: [],
-              relatedId: `${nama}-${periode}`,
-              createdAt: new Date(),
-              namaPetugas: nama,
-              periode,
-              sheetName: 'Rekap SPK-BAST',
-              actionUrl: '/spk-bast/rekap-spk',
-            };
-            notifs.push(notif);
-            console.log(`[fetchSBMLNotifications] Added Rekap notification: ${notif.id}`);
+            // Group by periode
+            if (!rekapPetuargByPeriode.has(periode)) {
+              rekapPetuargByPeriode.set(periode, []);
+            }
+            rekapPetuargByPeriode.get(periode)?.push(nama);
           }
         }
+        
+        // Create one notification per periode, combining all petugas
+        rekapPetuargByPeriode.forEach((petugas, periode) => {
+          const notif: SBMLNotification = {
+            id: `rekap-periode-${periode}`,
+            type: 'sbml_spk',
+            title: 'SPK-BAST - Tanda Tangan Mitra Dibutuhkan',
+            message: `Periode SPK-BAST ${periode}\n${petugas.join(', ')}`,
+            priority: 'high',
+            targetRoles: [],
+            relatedId: `periode-${periode}`,
+            createdAt: new Date(),
+            namaPetugas: petugas.join(', '),
+            periode,
+            sheetName: 'Rekap SPK-BAST',
+            actionUrl: '/spk-bast/rekap-spk',
+          };
+          notifs.push(notif);
+          console.log(`[fetchSBMLNotifications] Added grouped Rekap notification for ${periode}: ${petugas.length} petugas`);
+        });
         
         console.log(`[fetchSBMLNotifications] All TTD statuses found in Rekap:`, Array.from(allRekCapTtdStatuses));
       }
