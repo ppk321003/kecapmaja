@@ -81,12 +81,12 @@ export function useNotifications() {
       const headers = rows[0] || [];
       const notifs: Notification[] = [];
 
-      // Column indices
-      const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status'));
-      const idxJudul = headers.findIndex((h: string) => h?.toLowerCase().includes('uraian') || h?.toLowerCase().includes('judul'));
+      // Column indices - Status Pengajuan is in column G (index 6)
+      const idxStatus = 6; // Column G
+      const idxJudul = headers.findIndex((h: string) => h?.toLowerCase().includes('uraian') || h?.toLowerCase().includes('judul') || h?.toLowerCase().includes('pengajuan'));
       const idxId = headers.findIndex((h: string) => h?.toLowerCase().includes('id'));
 
-      console.log(`[fetchPencairanNotifications] Header indices - status:${idxStatus}, judul:${idxJudul}, id:${idxId}`);
+      console.log(`[fetchPencairanNotifications] Using fixed column indices - status:${idxStatus}(col G), judul:${idxJudul}, id:${idxId}`);
 
       // Collect all unique statuses found
       const allStatuses = new Set<string>();
@@ -215,10 +215,10 @@ export function useNotifications() {
 
         const idxNama = headers.findIndex((h: string) => h?.toLowerCase().includes('nama') || h?.toLowerCase().includes('petugas'));
         const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status'));
-        const idxTtd = headers.findIndex((h: string) => h?.toLowerCase().includes('ttd'));
+        const idxTtd = 23; // Column X - Status TTD
         const idxPeriode = headers.findIndex((h: string) => h?.toLowerCase().includes('periode') || h?.toLowerCase().includes('bulan'));
 
-        console.log(`[fetchSBMLNotifications] Header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}`);
+        console.log(`[fetchSBMLNotifications] Header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}(col X), periode:${idxPeriode}`);
 
         // Collect all unique TTD statuses found
         const allTtdStatuses = new Set<string>();
@@ -287,10 +287,10 @@ export function useNotifications() {
 
         const idxNama = headers.findIndex((h: string) => h?.toLowerCase().includes('nama') || h?.toLowerCase().includes('petugas'));
         const idxStatus = headers.findIndex((h: string) => h?.toLowerCase().includes('status'));
-        const idxTtd = headers.findIndex((h: string) => h?.toLowerCase().includes('ttd'));
+        const idxTtd = 23; // Column X - Status TTD
         const idxPeriode = headers.findIndex((h: string) => h?.toLowerCase().includes('periode') || h?.toLowerCase().includes('bulan'));
 
-        console.log(`[fetchSBMLNotifications] Rekap header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}`);
+        console.log(`[fetchSBMLNotifications] Rekap header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}(col X), periode:${idxPeriode}`);
 
         // Collect all unique TTD statuses found
         const allRekCapTtdStatuses = new Set<string>();
