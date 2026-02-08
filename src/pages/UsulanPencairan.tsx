@@ -259,10 +259,7 @@ export default function UsulanPencairan() {
                   Anda saat ini login sebagai <strong>{currentUser.role}</strong>.
                 </p>
                 <p>
-                  Untuk melakukan pengajuan SPJ, Anda harus menggunakan akun dengan role <strong>Ketua Tim</strong> atau <strong>Fungsi</strong> (Fungsi Sosial, Fungsi Neraca, Fungsi Produksi, Fungsi Distribusi, atau Fungsi IPDS).
-                </p>
-                <p className="pt-1">
-                  Silakan hubungi administrator jika Anda perlu mengubah role akun Anda.
+                  Untuk melakukan pengajuan SPJ, Anda harus menggunakan akun dengan role <strong>Ketua Tim</strong> atau <strong>Fungsi.</strong> Silakan hubungi administrator jika Anda perlu mengubah role akun Anda.
                 </p>
               </div>
             </div>
