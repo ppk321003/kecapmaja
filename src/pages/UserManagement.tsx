@@ -54,7 +54,10 @@ import {
   UserPlus,
   Shield,
   Eye,
-  EyeOff
+  EyeOff,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 
 const USERS_SPREADSHEET_ID = "1kVxQHL3TPfDKJ1ZnZ_fxJECGctc1UBjU_8E--9UK938";
@@ -113,6 +116,8 @@ export default function UserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filterRole, setFilterRole] = useState<string>("all");
   const [filterSatker, setFilterSatker] = useState<string>("all");
+  const [sortColumn, setSortColumn] = useState<string>("role");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const itemsPerPage = 10;
   
   // Check if current user is PPK
@@ -447,6 +452,49 @@ export default function UserManagement() {
         ) ||
         group.role.toLowerCase().includes(searchTerm.toLowerCase())
       );
+    })
+    .sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortColumn) {
+        case "username":
+          aValue = a.usernames[0] || "";
+          bValue = b.usernames[0] || "";
+          break;
+        case "role":
+          aValue = a.role || "";
+          bValue = b.role || "";
+          break;
+        case "satker":
+          aValue = a.satkers[0] || "";
+          bValue = b.satkers[0] || "";
+          break;
+        case "status":
+          aValue = a.isOnline ? 1 : 0;
+          bValue = b.isOnline ? 1 : 0;
+          break;
+        case "lastLogin":
+          aValue = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
+          bValue = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
+          break;
+        default:
+          return 0;
+      }
+
+      // String comparison for text fields
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortDirection === "asc" 
+          ? aValue.localeCompare(bValue, "id-ID") 
+          : bValue.localeCompare(aValue, "id-ID");
+      }
+
+      // Numeric comparison
+      if (sortDirection === "asc") {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
     });
 
   // Calculate pagination
@@ -457,6 +505,18 @@ export default function UserManagement() {
   // Reset to first page when filters change
   const handleFilterChange = () => {
     setCurrentPage(1);
+  };
+
+  // Handle sort column change
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Set new column and default to ascending
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
   };
 
   // Filter users berdasarkan satker (kecuali super admin)
@@ -706,11 +766,91 @@ export default function UserManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">No</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Satker</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Terakhir Login</TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort("username")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Username
+                      {sortColumn === "username" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort("role")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Role
+                      {sortColumn === "role" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort("satker")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Satker
+                      {sortColumn === "satker" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort("status")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Status
+                      {sortColumn === "status" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort("lastLogin")}
+                  >
+                    <div className="flex items-center gap-2">
+                      Terakhir Login
+                      {sortColumn === "lastLogin" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
