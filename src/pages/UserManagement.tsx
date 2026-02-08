@@ -875,8 +875,11 @@ export default function UserManagement() {
                       userData => userData.username.toLowerCase() === user?.username.toLowerCase()
                     );
                     
+                    // Create unique key combining role and satkers
+                    const groupKey = `${group.role}|${group.satkers.join(',')}`;
+                    
                     return (
-                      <TableRow key={group.role} className={isCurrentUserInGroup ? "bg-primary/5" : ""}>
+                      <TableRow key={groupKey} className={isCurrentUserInGroup ? "bg-primary/5" : ""}>
                         <TableCell className="font-medium">{startIndex + index + 1}</TableCell>
                         <TableCell>
                           <div className="space-y-1">
