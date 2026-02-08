@@ -93,6 +93,7 @@ export function useNotifications() {
       const idxUpdateTime = 16; // Column Q - Update Terakhir
 
       console.log(`[fetchPencairanNotifications] Using column indices - id:${idxId}(A), title:${idxTitle}(B), status:${idxStatus}(G), updateTime:${idxUpdateTime}(Q)`);
+      console.log(`[fetchPencairanNotifications] Status column (G) header: "${headers[idxStatus]}", UpdateTime column (Q) header: "${headers[idxUpdateTime]}"`);
 
       // Collect all unique statuses found
       const allStatuses = new Set<string>();
@@ -113,8 +114,10 @@ export function useNotifications() {
           if (i === 1) console.log(`[fetchPencairanNotifications] Detected NEW STRUCTURE (${row.length} cols), Update at Q(16)`);
         }
 
-        const status = row[idxStatus]?.toString().toLowerCase().trim();
+        const statusRaw = row[idxStatus]?.toString() || '';
+        const status = statusRaw.toLowerCase().trim();
         allStatuses.add(status);
+        console.log(`[fetchPencairanNotifications] Row ${i}: statusRaw="${statusRaw}", status="${status}"`);
         
         const judul = row[idxTitle]?.toString() || 'Pengajuan';
         const submissionId = row[idxId]?.toString() || `pencairan-${i}`;
@@ -131,51 +134,57 @@ export function useNotifications() {
         let title = 'Pencairan - Pengajuan Baru';
 
         // Map actual statuses to notification rules
-        // incomplete_* = Ditolak ke user (needs correction)
-        if (status === 'incomplete_sm' || status === 'draft') {
+        // incomplete_sm = Ditolak ke SM (needs correction by submitter)
+        if (status === 'incomplete_sm') {
+          title = 'Pencairan - Pengajuan Ditolak';
           targetRoles = ['Fungsi']; // Any role containing "Fungsi"
-          message = `${judul} masih belum dilengkapi\n${displayTime}`;
+          message = `${judul} ditolak. Mohon segera memperbaiki`;
+        }
+        // Draft status
+        else if (status === 'draft') {
+          targetRoles = ['Fungsi']; // Any role containing "Fungsi"
+          message = `${judul} masih belum dilengkapi`;
         }
         // Rejected by bendahara, PPK, or PPSPM - needs correction
         else if (status === 'incomplete_bendahara') {
           title = 'Pencairan - Pengajuan Ditolak';
           targetRoles = ['Bendahara'];
-          message = `${judul} ditolak. Mohon segera memperbaiki\n${displayTime}`;
+          message = `${judul} ditolak. Mohon segera memperbaiki`;
         }
         else if (status === 'incomplete_ppk') {
           title = 'Pencairan - Pengajuan Ditolak';
           targetRoles = ['PPK'];
-          message = `${judul} ditolak. Mohon segera memperbaiki\n${displayTime}`;
+          message = `${judul} ditolak. Mohon segera memperbaiki`;
         }
         else if (status === 'incomplete_ppspm') {
           title = 'Pencairan - Pengajuan Ditolak';
           targetRoles = ['PPSPM'];
-          message = `${judul} ditolak. Mohon segera memperbaiki\n${displayTime}`;
+          message = `${judul} ditolak. Mohon segera memperbaiki`;
         }
         else if (status === 'incomplete_kppn') {
           title = 'Pencairan - Pengajuan Ditolak';
           targetRoles = ['Arsip'];
-          message = `${judul} ditolak. Mohon segera memperbaiki\n${displayTime}`;
+          message = `${judul} ditolak. Mohon segera memperbaiki`;
         }
         // Pending at bendahara
         else if (status === 'pending_bendahara') {
           targetRoles = ['Bendahara'];
-          message = `Tugas bendahara ${judul} harus diperiksa\n${displayTime}`;
+          message = `Tugas bendahara ${judul} harus diperiksa`;
         }
         // Pending at PPK
         else if (status === 'pending_ppk') {
           targetRoles = ['PPK'];
-          message = `${judul} untuk diperiksa\n${displayTime}`;
+          message = `${judul} untuk diperiksa`;
         }
         // Pending at PPSPM
         else if (status === 'pending_ppspm') {
           targetRoles = ['PPSPM'];
-          message = `${judul} untuk diperiksa\n${displayTime}`;
+          message = `${judul} untuk diperiksa`;
         }
         // Sent to KPPN
         else if (status === 'sent_kppn') {
           targetRoles = ['Arsip'];
-          message = `${judul} untuk di arsipkan\n${displayTime}`;
+          message = `${judul} untuk di arsipkan`;
         }
 
         if (targetRoles.length > 0) {
