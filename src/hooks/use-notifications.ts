@@ -5,13 +5,16 @@ import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useNotificationsContext, NotificationsContextType } from '@/contexts/NotificationsContext';
 import { Notification, PencairanNotification, SBMLNotification } from '@/types/notifications';
 
-const POLLING_INTERVAL = 30000; // 30 seconds
+const POLLING_INTERVAL = 300000; // 5 minutes - reduced frequency to respect Google Sheets API quota
+const MIN_REQUEST_INTERVAL = 60000; // 1 minute - minimum time between requests to debounce
 
 export function useNotifications() {
   const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
   const notificationsContext = useNotificationsContext();
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchRef = useRef<number>(0);
+  const quotaExceededRef = useRef<boolean>(false);
 
   // Get current user data
   const currentUser = user ? user : null;
@@ -60,6 +63,28 @@ export function useNotifications() {
       }
 
       console.log('[fetchPencairanNotifications] API response:', JSON.stringify(data, null, 2));
+      
+      // Check for quota exceeded error (429)
+      if (data?.error?.code === 429) {
+        console.warn('[fetchPencairanNotifications] Google Sheets API quota exceeded (429)');
+        quotaExceededRef.current = true;
+        // Add a system notification about quota
+        const quotaNotif: Notification = {
+          id: 'system-quota-exceeded',
+          type: 'system',
+          title: 'API Quota Habis',
+          message: 'Google Sheets API quota terlampaui. Notifikasi akan diupdate setelah 1 menit.',
+          priority: 'high',
+          targetRoles: [],
+          relatedId: 'system',
+          createdAt: new Date(),
+          actionUrl: '',
+        };
+        notificationsContext._setNotifications([quotaNotif]);
+        return [];
+      }
+      
+      quotaExceededRef.current = false;
       
       if (!data?.values) {
         console.log('[fetchPencairanNotifications] No data returned - values is', data?.values);
@@ -189,6 +214,9 @@ export function useNotifications() {
 
       if (sbmlError) {
         console.error('[fetchSBMLNotifications] SBML Error:', sbmlError);
+      } else if (sbmlData?.error?.code === 429) {
+        console.warn('[fetchSBMLNotifications] Google Sheets API quota exceeded (429)');
+        quotaExceededRef.current = true;
       } else if (!sbmlData?.values) {
         console.log('[fetchSBMLNotifications] No SBML data returned - values is', sbmlData?.values);
         console.log('[fetchSBMLNotifications] SBML API response:', JSON.stringify(sbmlData, null, 2));
@@ -260,6 +288,9 @@ export function useNotifications() {
 
       if (rekapError) {
         console.error('[fetchSBMLNotifications] Rekap Error:', rekapError);
+      } else if (rekapData?.error?.code === 429) {
+        console.warn('[fetchSBMLNotifications] Google Sheets API quota exceeded (429)');
+        quotaExceededRef.current = true;
       } else if (!rekapData?.values) {
         console.log('[fetchSBMLNotifications] No Rekap data returned - values is', rekapData?.values);
         console.log('[fetchSBMLNotifications] Rekap API response:', JSON.stringify(rekapData, null, 2));
@@ -335,6 +366,15 @@ export function useNotifications() {
       return;
     }
 
+    // Debounce: don't fetch if last fetch was less than 1 minute ago
+    const now = Date.now();
+    if (now - lastFetchRef.current < MIN_REQUEST_INTERVAL) {
+      console.log(`[fetchAllNotifications] Skipping - last fetch was ${Math.round((now - lastFetchRef.current) / 1000)}s ago, waiting ${Math.round((MIN_REQUEST_INTERVAL - (now - lastFetchRef.current)) / 1000)}s more`);
+      return;
+    }
+
+    lastFetchRef.current = now;
+
     try {
       const pencairanNotifs = await fetchPencairanNotifications();
       console.log(`[fetchAllNotifications] Pencairan: ${pencairanNotifs.length} notifications`);
@@ -364,8 +404,8 @@ export function useNotifications() {
     console.log('[useNotifications] Polling started - calling fetchAllNotifications immediately');
     fetchAllNotifications();
 
-    // Set up polling - every 30 seconds (when page is active)
-    console.log('[useNotifications] Setting interval for polling every 30 seconds');
+    // Set up polling - every 5 minutes (to respect Google Sheets API quota)
+    console.log('[useNotifications] Setting interval for polling every 5 minutes');
     pollIntervalRef.current = setInterval(() => {
       console.log('[useNotifications] Polling interval triggered');
       fetchAllNotifications();
