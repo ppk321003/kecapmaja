@@ -1482,10 +1482,8 @@ export default function RekapSPKBAST() {
                     {isPPK && (
                       <TableHead className="w-32 text-center">Notif Mitra</TableHead>
                     )}
-                    {/* Kolom Status TTD - untuk PPK dan Operator */}
-                    {canEditTTD && (
-                      <TableHead className="w-48 text-center">Status TTD</TableHead>
-                    )}
+                    {/* Kolom Status TTD - untuk semua role */}
+                    <TableHead className="w-48 text-center">Status TTD</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1600,25 +1598,25 @@ export default function RekapSPKBAST() {
                         </TableCell>
                       )}
 
-                      {canEditTTD && (
-                        <TableCell className="text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <Badge 
-                              variant={row.statusTTD === "Sudah ditandatangani" ? "default" : "destructive"} 
-                              className={`text-xs px-3 py-1 ${
-                                row.statusTTD === "Sudah ditandatangani" 
-                                  ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" 
-                                  : "bg-red-100 text-red-800 hover:bg-red-100 border-red-200"
-                              }`}
-                            >
-                              {row.statusTTD === "Sudah ditandatangani" ? (
-                                <CheckCircle className="h-3 w-3 mr-1 inline" />
-                              ) : (
-                                <XCircle className="h-3 w-3 mr-1 inline" />
-                              )}
-                              {row.statusTTD}
-                            </Badge>
-                            
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <Badge 
+                            variant={row.statusTTD === "Sudah ditandatangani" ? "default" : "destructive"} 
+                            className={`text-xs px-3 py-1 ${
+                              row.statusTTD === "Sudah ditandatangani" 
+                                ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200" 
+                                : "bg-red-100 text-red-800 hover:bg-red-100 border-red-200"
+                            }`}
+                          >
+                            {row.statusTTD === "Sudah ditandatangani" ? (
+                              <CheckCircle className="h-3 w-3 mr-1 inline" />
+                            ) : (
+                              <XCircle className="h-3 w-3 mr-1 inline" />
+                            )}
+                            {row.statusTTD}
+                          </Badge>
+                          
+                          {canEditTTD && (
                             <div className="flex items-center space-x-2">
                               <Switch 
                                 checked={row.statusTTD === "Sudah ditandatangani"} 
@@ -1635,9 +1633,9 @@ export default function RekapSPKBAST() {
                                 {row.statusTTD === "Sudah ditandatangani" ? "Batalkan" : "Tandatangani"}
                               </Label>
                             </div>
-                          </div>
-                        </TableCell>
-                      )}
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                   
@@ -1660,7 +1658,7 @@ export default function RekapSPKBAST() {
                       </TableCell>
                       <TableCell></TableCell>
                       {isPPK && <TableCell></TableCell>}
-                      {canEditTTD && <TableCell></TableCell>}
+                      <TableCell></TableCell>
                     </TableRow>
                   )}
                 </TableBody>
