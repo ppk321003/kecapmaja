@@ -54,7 +54,7 @@ export function useNotifications() {
         body: {
           spreadsheetId: pencairanSheetId,
           operation: 'read',
-          range: 'data!A:N',
+          range: 'data!A:Q', // Include column Q (Update Terakhir)
         },
       });
 
@@ -83,13 +83,16 @@ export function useNotifications() {
       const headers = rows[0] || [];
       const notifs: Notification[] = [];
 
-      // Column indices - Status Pengajuan is in column G (index 6)
+      // Column indices - use hardcoded indices based on sheet structure (A:Q = 17 columns)
+      // A(0)=ID, B(1)=Title, C(2)=Submitter, D(3)=Jenis, E(4)=Documents, F(5)=Notes, G(6)=Status
+      // H(7)=WaktuPengajuan, I(8)=WaktuBendahara, J(9)=WaktuPPK, K(10)=WaktuPPSPM, L(11)=WaktuKPPN
+      // M(12)=StatusBendahara, N(13)=StatusPPK, O(14)=StatusPPSPM, P(15)=StatusArsip, Q(16)=UpdateTerakhir
+      const idxId = 0; // Column A
+      const idxTitle = 1; // Column B
       const idxStatus = 6; // Column G
-      const idxJudul = headers.findIndex((h: string) => h?.toLowerCase().includes('uraian') || h?.toLowerCase().includes('judul') || h?.toLowerCase().includes('pengajuan'));
-      const idxId = headers.findIndex((h: string) => h?.toLowerCase().includes('id'));
-      const idxUpdateTime = 16; // Column Q (16 = 0-indexed)
+      const idxUpdateTime = 16; // Column Q - Update Terakhir
 
-      console.log(`[fetchPencairanNotifications] Using column indices - status:${idxStatus}(G), judul:${idxJudul}, id:${idxId}, updateTime:${idxUpdateTime}(Q)`);
+      console.log(`[fetchPencairanNotifications] Using column indices - id:${idxId}(A), title:${idxTitle}(B), status:${idxStatus}(G), updateTime:${idxUpdateTime}(Q)`);
 
       // Collect all unique statuses found
       const allStatuses = new Set<string>();
@@ -98,39 +101,60 @@ export function useNotifications() {
         const row = rows[i];
         if (!row || !row[idxStatus]) continue;
 
+        // Detect structure: OLD (16 cols, P=Update) or NEW (17+ cols, Q=Update)
+        let idxUpdateTimeActual = idxUpdateTime;
+        if (row.length <= 16) {
+          // OLD STRUCTURE - update is at column P (index 15)
+          idxUpdateTimeActual = 15;
+          if (i === 1) console.log(`[fetchPencairanNotifications] Detected OLD STRUCTURE (${row.length} cols), Update at P(15)`);
+        } else {
+          // NEW STRUCTURE - update is at column Q (index 16)
+          idxUpdateTimeActual = 16;
+          if (i === 1) console.log(`[fetchPencairanNotifications] Detected NEW STRUCTURE (${row.length} cols), Update at Q(16)`);
+        }
+
         const status = row[idxStatus]?.toString().toLowerCase().trim();
         allStatuses.add(status);
         
-        const judul = row[idxJudul]?.toString() || 'Pengajuan';
+        const judul = row[idxTitle]?.toString() || 'Pengajuan';
         const submissionId = row[idxId]?.toString() || `pencairan-${i}`;
-        const updateTimeStr = row[idxUpdateTime]?.toString() || '';
+        const updateTimeStr = row[idxUpdateTimeActual]?.toString() || '';
         
         // Use timestamp text as-is from database
         let updateTime = new Date();
         let displayTime = updateTimeStr?.trim() ? `update: ${updateTimeStr.trim()}` : 'Baru saja';
         
-        console.log(`[fetchPencairanNotifications] Row ${i}: updateTimeStr="${updateTimeStr}", displayTime="${displayTime}"`);
+        console.log(`[fetchPencairanNotifications] Row ${i}: id=${submissionId}, title=${judul}, status=${status}, updateTimeStr="${updateTimeStr}", displayTime="${displayTime}"`);
 
         let targetRoles: string[] = [];
         let message = '';
         let title = 'Pencairan - Pengajuan Baru';
 
         // Map actual statuses to notification rules
-        // incomplete_sm, incomplete_staff, incomplete_finance = incomplete, needs completion
-        if (status?.includes('incomplete') || status === 'draft') {
+        // incomplete_* = Ditolak ke user (needs correction)
+        if (status === 'incomplete_sm' || status === 'draft') {
           targetRoles = ['Fungsi']; // Any role containing "Fungsi"
           message = `${judul} masih belum dilengkapi\n${displayTime}`;
         }
         // Rejected by bendahara, PPK, or PPSPM - needs correction
-        else if (status === 'reject_bendahara' || status === 'reject_ppk' || status === 'reject_ppspm') {
+        else if (status === 'incomplete_bendahara') {
           title = 'Pencairan - Pengajuan Ditolak';
-          if (status === 'reject_bendahara') {
-            targetRoles = ['Fungsi'];
-          } else if (status === 'reject_ppk') {
-            targetRoles = ['Bendahara'];
-          } else if (status === 'reject_ppspm') {
-            targetRoles = ['PPK'];
-          }
+          targetRoles = ['Bendahara'];
+          message = `${judul} ditolak. Mohon segera memperbaiki\n${displayTime}`;
+        }
+        else if (status === 'incomplete_ppk') {
+          title = 'Pencairan - Pengajuan Ditolak';
+          targetRoles = ['PPK'];
+          message = `${judul} ditolak. Mohon segera memperbaiki\n${displayTime}`;
+        }
+        else if (status === 'incomplete_ppspm') {
+          title = 'Pencairan - Pengajuan Ditolak';
+          targetRoles = ['PPSPM'];
+          message = `${judul} ditolak. Mohon segera memperbaiki\n${displayTime}`;
+        }
+        else if (status === 'incomplete_kppn') {
+          title = 'Pencairan - Pengajuan Ditolak';
+          targetRoles = ['Arsip'];
           message = `${judul} ditolak. Mohon segera memperbaiki\n${displayTime}`;
         }
         // Pending at bendahara
@@ -164,7 +188,7 @@ export function useNotifications() {
               type: 'pencairan',
               title,
               message,
-              priority: status === 'pending_ppspm' ? 'high' : (status?.includes('reject') ? 'high' : 'medium'),
+              priority: (status?.includes('incomplete') || status === 'pending_ppspm') ? 'high' : 'medium',
               targetRoles,
               relatedId: submissionId,
               status: status as any,
