@@ -251,7 +251,7 @@ export default function UsulanPencairan() {
               <AlertCircle className="h-5 w-5 text-amber-600" />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-amber-900">
+              <h3 className="text-sm text-amber-900">
                 Perhatian: Anda saat ini login sebagai <strong>{currentUser.role}</strong>.
               </h3>
               <div className="mt-2 text-sm text-amber-800 space-y-1">
