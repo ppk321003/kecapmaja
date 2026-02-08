@@ -248,7 +248,7 @@ export function useNotifications() {
 
       // Check if user is in excluded roles
       const normalizedUserRole = normalizeRole(userRole);
-      if (normalizedUserRole === 'PPSPM' || normalizedUserRole === 'PPK' || normalizedUserRole === 'Arsip') {
+      if (normalizedUserRole === 'PPSPM' || normalizedUserRole === 'Arsip') {
         console.log(`[fetchSBMLNotifications] User role ${userRole} (normalized: ${normalizedUserRole}) is excluded`);
         return [];
       }
