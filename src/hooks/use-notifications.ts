@@ -79,19 +79,25 @@ export function useNotifications() {
 
       console.log(`[fetchPencairanNotifications] Header indices - status:${idxStatus}, judul:${idxJudul}, id:${idxId}`);
 
+      // Collect all unique statuses found
+      const allStatuses = new Set<string>();
+      
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         if (!row || !row[idxStatus]) continue;
 
         const status = row[idxStatus]?.toString().toLowerCase().trim();
+        allStatuses.add(status);
+        
         const judul = row[idxJudul]?.toString() || 'Pengajuan';
         const submissionId = row[idxId]?.toString() || `pencairan-${i}`;
 
         let targetRoles: string[] = [];
         let message = '';
 
-        // Draft or rejected by bendahara
-        if (status === 'draft' || status === 'reject_bendahara') {
+        // Map actual statuses to notification rules
+        // incomplete_sm, incomplete_staff, incomplete_finance = incomplete, needs completion
+        if (status?.includes('incomplete') || status === 'draft' || status === 'reject_bendahara') {
           targetRoles = ['Fungsi']; // Any role containing "Fungsi"
           message = `${judul} masih belum dilengkapi`;
         }
@@ -141,6 +147,7 @@ export function useNotifications() {
         }
       }
 
+      console.log(`[fetchPencairanNotifications] All statuses found in sheet:`, Array.from(allStatuses));
       console.log(`[fetchPencairanNotifications] Total notifications: ${notifs.length}`);
       return notifs;
     } catch (error) {
@@ -198,18 +205,27 @@ export function useNotifications() {
 
         console.log(`[fetchSBMLNotifications] Header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}`);
 
+        // Collect all unique TTD statuses found
+        const allTtdStatuses = new Set<string>();
+
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !row[idxNama]) continue;
 
           const nama = row[idxNama]?.toString() || '';
           const status = row[idxStatus]?.toString().toLowerCase().trim();
-          const ttd = row[idxTtd]?.toString().toLowerCase().trim();
+          const ttdRaw = row[idxTtd]?.toString().toLowerCase().trim();
           const periode = row[idxPeriode]?.toString() || new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
-          // Check if status indicates not signed yet
-          if (ttd === 'belum' || ttd === 'tidak' || status === 'belum ttd') {
-            console.log(`[fetchSBMLNotifications] SBML Row ${i}: nama=${nama}, ttd=${ttd}, periode=${periode}`);
+          // Handle pipe-separated values (multiple signers) - extract unique statuses
+          const ttdStatuses = ttdRaw?.split('|').map(s => s.trim()) || [];
+          ttdStatuses.forEach(t => allTtdStatuses.add(t));
+
+          // Check if ANY of the TTD statuses indicate not signed yet
+          const hasPendingTtd = ttdStatuses.some(t => t === 'belum' || t === 'tidak' || t.includes('belum ttd'));
+          
+          if (hasPendingTtd || status === 'belum ttd') {
+            console.log(`[fetchSBMLNotifications] SBML Row ${i}: nama=${nama}, ttd=${ttdRaw}, periode=${periode}`);
             const notif: SBMLNotification = {
               id: `sbml-${i}-${nama}`,
               type: 'sbml_spk',
@@ -228,6 +244,8 @@ export function useNotifications() {
             console.log(`[fetchSBMLNotifications] Added SBML notification: ${notif.id}`);
           }
         }
+        
+        console.log(`[fetchSBMLNotifications] All TTD statuses found in SBML:`, Array.from(allTtdStatuses));
       }
 
       // Fetch Rekap SPK-BAST sheet
@@ -258,18 +276,27 @@ export function useNotifications() {
 
         console.log(`[fetchSBMLNotifications] Rekap header indices - nama:${idxNama}, status:${idxStatus}, ttd:${idxTtd}, periode:${idxPeriode}`);
 
+        // Collect all unique TTD statuses found
+        const allRekCapTtdStatuses = new Set<string>();
+
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !row[idxNama]) continue;
 
           const nama = row[idxNama]?.toString() || '';
           const status = row[idxStatus]?.toString().toLowerCase().trim();
-          const ttd = row[idxTtd]?.toString().toLowerCase().trim();
+          const ttdRaw = row[idxTtd]?.toString().toLowerCase().trim();
           const periode = row[idxPeriode]?.toString() || new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
-          // Check if status indicates not signed yet
-          if (ttd === 'belum' || ttd === 'tidak' || status === 'belum ttd') {
-            console.log(`[fetchSBMLNotifications] Rekap Row ${i}: nama=${nama}, ttd=${ttd}, periode=${periode}`);
+          // Handle pipe-separated values (multiple signers) - extract unique statuses
+          const ttdStatuses = ttdRaw?.split('|').map(s => s.trim()) || [];
+          ttdStatuses.forEach(t => allRekCapTtdStatuses.add(t));
+
+          // Check if ANY of the TTD statuses indicate not signed yet
+          const hasPendingTtd = ttdStatuses.some(t => t === 'belum' || t === 'tidak' || t.includes('belum ttd'));
+          
+          if (hasPendingTtd || status === 'belum ttd') {
+            console.log(`[fetchSBMLNotifications] Rekap Row ${i}: nama=${nama}, ttd=${ttdRaw}, periode=${periode}`);
             const notif: SBMLNotification = {
               id: `rekap-${i}-${nama}`,
               type: 'sbml_spk',
@@ -288,6 +315,8 @@ export function useNotifications() {
             console.log(`[fetchSBMLNotifications] Added Rekap notification: ${notif.id}`);
           }
         }
+        
+        console.log(`[fetchSBMLNotifications] All TTD statuses found in Rekap:`, Array.from(allRekCapTtdStatuses));
       }
 
       console.log(`[fetchSBMLNotifications] Total SBML notifications: ${notifs.length}`);
