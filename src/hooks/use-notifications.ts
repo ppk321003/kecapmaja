@@ -105,41 +105,11 @@ export function useNotifications() {
         const submissionId = row[idxId]?.toString() || `pencairan-${i}`;
         const updateTimeStr = row[idxUpdateTime]?.toString() || '';
         
-        // Parse update time - try multiple formats
+        // Use timestamp text as-is from database
         let updateTime = new Date();
-        let displayTime = 'Baru saja';
+        let displayTime = updateTimeStr?.trim() ? `update: ${updateTimeStr.trim()}` : 'Baru saja';
         
-        if (updateTimeStr && updateTimeStr.trim()) {
-          // Try direct Date parse first
-          let parsed = new Date(updateTimeStr);
-          if (isNaN(parsed.getTime())) {
-            // Try parsing as DD/MM/YYYY or DD-MM-YYYY
-            const match = updateTimeStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-            if (match) {
-              const [, day, month, year] = match;
-              parsed = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-            }
-          }
-          
-          // Also try to parse time if available (HH:mm format)
-          let timeMatch = updateTimeStr.match(/(\d{1,2}):(\d{2})/);
-          let hour = '00';
-          let minute = '00';
-          if (timeMatch) {
-            hour = timeMatch[1].padStart(2, '0');
-            minute = timeMatch[2].padStart(2, '0');
-          }
-          
-          if (!isNaN(parsed.getTime())) {
-            updateTime = parsed;
-            // Format as: update: HH:mm - DD/MM/YYYY
-            const day = parsed.getDate().toString().padStart(2, '0');
-            const monthNum = (parsed.getMonth() + 1).toString().padStart(2, '0');
-            const year = parsed.getFullYear();
-            displayTime = `update: ${hour}:${minute} - ${day}/${monthNum}/${year}`;
-          }
-        }
-        console.log(`[fetchPencairanNotifications] Row ${i}: updateTimeStr="${updateTimeStr}", displayTime="${displayTime}", parsed=${updateTime.toISOString()}`);
+        console.log(`[fetchPencairanNotifications] Row ${i}: updateTimeStr="${updateTimeStr}", displayTime="${displayTime}"`);
 
         let targetRoles: string[] = [];
         let message = '';
@@ -312,8 +282,8 @@ export function useNotifications() {
           const notif: SBMLNotification = {
             id: `sbml-periode-${periode}`,
             type: 'sbml_spk',
-            title: 'SPK-BAST - Tanda Tangan Mitra Dibutuhkan',
-            message: `Periode SPK-BAST ${periode}\n${petugas.join(', ')}`,
+            title: 'Cek SBML - Tanda Tangan Dibutuhkan',
+            message: `Periode SPK-BAST ${periode}`,
             priority: 'high',
             targetRoles: [],
             relatedId: `periode-${periode}`,
@@ -410,8 +380,8 @@ export function useNotifications() {
           const notif: SBMLNotification = {
             id: `rekap-periode-${periode}`,
             type: 'sbml_spk',
-            title: 'SPK-BAST - Tanda Tangan Mitra Dibutuhkan',
-            message: `Periode SPK-BAST ${periode}\n${petugas.join(', ')}`,
+            title: 'Rekap SPK-BAST - Tanda Tangan Dibutuhkan',
+            message: `Periode SPK-BAST ${periode}`,
             priority: 'high',
             targetRoles: [],
             relatedId: `periode-${periode}`,
