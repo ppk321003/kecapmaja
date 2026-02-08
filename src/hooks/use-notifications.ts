@@ -145,45 +145,45 @@ export function useNotifications() {
 
         let targetRoles: string[] = [];
         let message = '';
-        let title = 'Pencairan - Pengajuan Baru';
+        let title = 'Sigap SPJ - Pengajuan Baru';
 
         // Map actual statuses to notification rules
         // incomplete_sm = Ditolak ke SM (needs correction by submitter)
         if (status === 'incomplete_sm') {
-          title = 'Pencairan - Pengajuan Ditolak';
+          title = 'Sigap SPJ - Pengajuan Ditolak';
           targetRoles = ['Fungsi']; // Any role containing "Fungsi"
-          message = `${judul} ditolak. Mohon segera memperbaiki`;
+          message = `${judul} ditolak Bendahara. Mohon untuk segera memperbaiki`;
         }
         // Draft status
         else if (status === 'draft') {
           targetRoles = ['Fungsi']; // Any role containing "Fungsi"
-          message = `${judul} masih belum dilengkapi`;
+          message = `${judul} masih belum dilengkapi Subjek Metter`;
         }
         // Rejected by bendahara, PPK, or PPSPM - needs correction
         else if (status === 'incomplete_bendahara') {
-          title = 'Pencairan - Pengajuan Ditolak';
+          title = 'Sigap SPJ - Pengajuan Ditolak';
           targetRoles = ['Bendahara'];
-          message = `${judul} ditolak. Mohon segera memperbaiki`;
+          message = `${judul} ditolak PPK. Mohon segera memperbaiki`;
         }
         else if (status === 'incomplete_ppk') {
-          title = 'Pencairan - Pengajuan Ditolak';
+          title = 'Sigap SPJ - Pengajuan Ditolak';
           targetRoles = ['PPK'];
-          message = `${judul} ditolak. Mohon segera memperbaiki`;
+          message = `${judul} ditolak PPSPM. Mohon segera memperbaiki`;
         }
         else if (status === 'incomplete_ppspm') {
-          title = 'Pencairan - Pengajuan Ditolak';
+          title = 'Sigap SPJ - Pengajuan Ditolak';
           targetRoles = ['PPSPM'];
-          message = `${judul} ditolak. Mohon segera memperbaiki`;
+          message = `${judul} ditolak KPPN. Mohon segera memperbaiki`;
         }
         else if (status === 'incomplete_kppn') {
-          title = 'Pencairan - Pengajuan Ditolak';
+          title = 'Sigap SPJ - Pengajuan Ditolak';
           targetRoles = ['Arsip'];
-          message = `${judul} ditolak. Mohon segera memperbaiki`;
+          message = `${judul} ditolak Arsip. Mohon segera memperbaiki`;
         }
         // Pending at bendahara
         else if (status === 'pending_bendahara') {
           targetRoles = ['Bendahara'];
-          message = `Tugas bendahara ${judul} harus diperiksa`;
+          message = `Harap periksa kelengkapan berkas dari pengajuan ${judul}`;
         }
         // Pending at PPK
         else if (status === 'pending_ppk') {
@@ -427,8 +427,8 @@ export function useNotifications() {
           const notif: SBMLNotification = {
             id: `rekap-periode-${periode}`,
             type: 'sbml_spk',
-            title: 'Rekap SPK-BAST - TTD Mitra Belum Lengkap',
-            message: `Periode SPK-BAST ${periode}`,
+            title: 'Rekap SPK-BAST - Tandatangan Mitra Belum Lengkap',
+            message: `Periode SPK-BAST ${periode}. Mohon bantuannya untuk mengingatkan terkait proses/kelengkapan dokumen.`,
             priority: 'high',
             targetRoles: [],
             relatedId: `periode-${periode}`,
