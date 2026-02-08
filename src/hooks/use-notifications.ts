@@ -5,8 +5,8 @@ import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useNotificationsContext, NotificationsContextType } from '@/contexts/NotificationsContext';
 import { Notification, PencairanNotification, SBMLNotification } from '@/types/notifications';
 
+const POLLING_INTERVAL = 3600000; // 1 hour - polling interval
 const MIN_REQUEST_INTERVAL = 60000; // 1 minute - minimum time between requests to debounce
-const QUOTA_EXCEEDED_BACKOFF = 600000; // 10 minutes - wait longer after hitting quota (429)
 
 export function useNotifications() {
   const { user } = useAuth();
@@ -14,6 +14,8 @@ export function useNotifications() {
   const notificationsContext = useNotificationsContext();
   const lastFetchRef = useRef<number>(0);
   const quotaExceededRef = useRef<boolean>(false);
+  const hasInitialFetchRef = useRef<boolean>(false);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get current user data
   const currentUser = user ? user : null;
@@ -368,20 +370,39 @@ export function useNotifications() {
     }
   }, [currentUser, userSatker, userRole, satkerConfigReady, notificationsContext, fetchPencairanNotifications, fetchSBMLNotifications]);
 
-  // Fetch notifications on page load/refresh (no polling)
+  // Fetch notifications on page load and set up polling every 1 hour
   useEffect(() => {
-    console.log(`[useNotifications] Setup - currentUser=${!!currentUser}, userSatker=${userSatker}, satkerConfigReady=${satkerConfigReady}`);
+    console.log(`[useNotifications] Effect triggered - currentUser=${!!currentUser}, userSatker=${userSatker}, satkerConfigReady=${satkerConfigReady}`);
+    
     if (!currentUser || !userSatker || !satkerConfigReady) {
       console.log('[useNotifications] Skipping - no currentUser, userSatker, or satkerConfig not ready');
       return;
     }
 
-    // Fetch immediately on page load
-    console.log('[useNotifications] Page loaded - fetching notifications now');
-    fetchAllNotifications();
+    // Only fetch once on initial mount + config ready
+    if (!hasInitialFetchRef.current) {
+      console.log('[useNotifications] Initial fetch on config ready');
+      hasInitialFetchRef.current = true;
+      fetchAllNotifications();
+    }
 
-    // NOTE: Removed polling interval - notifications only update when user refreshes the page
-    // This significantly reduces API calls and respects Google Sheets quota limits
+    // Set up polling interval - every 1 hour (only if not already set)
+    if (!pollIntervalRef.current) {
+      console.log('[useNotifications] Starting polling interval - 1 hour');
+      pollIntervalRef.current = setInterval(() => {
+        console.log('[useNotifications] Polling interval triggered - fetching...');
+        fetchAllNotifications();
+      }, POLLING_INTERVAL);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      console.log('[useNotifications] Cleanup on unmount');
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
     
-  }, [currentUser, userSatker, satkerConfigReady, fetchAllNotifications]);
+  }, [satkerConfigReady]); // Only depend on satkerConfigReady to prevent infinite loops
 }
