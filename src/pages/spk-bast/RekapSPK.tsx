@@ -1229,14 +1229,14 @@ export default function RekapSPKBAST() {
         </Card>
       )}
 
-      {/* Bulk Actions Card - untuk PPK dan Operator */}
-      {(isPPK || isOperator) && filteredAndSortedData.length > 0 && (
+      {/* Bulk Actions Card - hanya untuk PPK */}
+      {isPPK && filteredAndSortedData.length > 0 && (
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-base">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />
-                Aksi Massal {isOperator && !isPPK ? '(Operator)' : ''}
+                Aksi Massal
               </div>
               <Badge variant="secondary" className="text-sm">
                 {filteredAndSortedData.length} Data
