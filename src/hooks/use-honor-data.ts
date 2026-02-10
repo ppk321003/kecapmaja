@@ -191,7 +191,7 @@ export const useHonorData = () => {
               noKontrakSKST: nomorSK,
               namaKegiatan,
               waktuKegiatan,
-              output: realisasi.toString(), // realisasi sebagai output
+              output: 'Laporan', // Output adalah Laporan
               noSPM: '', // Kosong per requirement
               noSP2D: '', // Kosong per requirement
               satuanBiaya: formatCurrencyValue(hargaSatuan), // Formatted harga satuan
