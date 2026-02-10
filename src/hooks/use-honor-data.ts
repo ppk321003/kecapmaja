@@ -4,20 +4,44 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 
 interface HonorRow {
+  // Identitas Penerima
   no: number;
   namaPenerimaHonor: string;
+  nik: string;
+  
+  // Referensi Kegiatan
   noKontrakSKST: string;
+  tglSK: string;
+  jenisPekerjaan: string;
+  periode: string;
+  
+  // Waktu Kegiatan
   namaKegiatan: string;
-  waktuKegiatan: string;
-  output: string;
-  noSPM: string;
-  noSP2D: string;
+  tanggalMulai: string;
+  tanggalAkhir: string;
+  waktuKegiatan: string; // Duration like "1 Januari 2025 s/d 31 Januari 2025"
+  
+  // Finansial
   satuanBiaya: number; // Numeric value (harga satuan)
   jumlahWaktu: number; // Realisasi
   satuanWaktu: string; // Duration in days (e.g., "7 hari")
   totalBruto: number;
   pph: number;
   totalNetto: number;
+  
+  // Konfigurasi
+  target: string;
+  realisasi: string;
+  satuan: string;
+  komponenPOK: string;
+  koordinator: string;
+  bebanAnggaran: string;
+  
+  // Status & Output
+  output: string;
+  dikirimKePPK: string;
+  noSPM: string;
+  noSP2D: string;
 }
 
 interface HonorDataResult {
@@ -168,15 +192,24 @@ export const useHonorData = () => {
         rows.forEach((row: any[]) => {
           if (!row[0] || !row[2]) return; // Check periode exists
 
+          // All row data extraction (supporting all 27 columns)
           const periode = row[2] || ''; // Column C: periode
+          const jenisPekerjaan = row[3] || ''; // Column D: jenisPekerjaan
           const namaKegiatan = row[4] || ''; // Column E: namaKegiatan
           const nomorSK = row[5] || ''; // Column F: nomorSK
+          const tanggalSK = row[6] || ''; // Column G: tanggalSK
           const tanggalMulai = row[7] || ''; // Column H: tanggalMulai
           const tanggalAkhir = row[8] || ''; // Column I: tanggalAkhir
           const hargaSatuan = cleanNumberValue(row[9]); // Column J: hargaSatuan
           const satuan = row[10] || ''; // Column K: satuan
+          const koordinator = row[11] || ''; // Column L: koordinator
+          const komponenPOK = row[12] || ''; // Column M: komponenPOK
           const namaPetugasStr = row[13] || ''; // Column N: namaPetugas
+          const target = row[14] || ''; // Column O: target
           const realisasiStr = row[15] || ''; // Column P: realisasi
+          const bebanAnggaran = row[18] || ''; // Column S: bebanAnggaran
+          const dikirimKePPK = row[19] || ''; // Column T: dikirimKePPK
+          const nik = row[22] || ''; // Column W: nik
 
           // Extract tahun dari periode
           const periodeYear = parseInt(periode.match(/\d{4}/)?.[0] || tahun.toString());
@@ -202,20 +235,44 @@ export const useHonorData = () => {
             const satuanWaktuText = durationDays > 0 ? `${durationDays} hari` : '';
 
             honorRows.push({
+              // Identitas Penerima
               no: rowNo++,
               namaPenerimaHonor: nama,
+              nik,
+              
+              // Referensi Kegiatan
               noKontrakSKST: nomorSK,
+              tglSK: formatTanggalIndonesia(tanggalSK),
+              jenisPekerjaan,
+              periode,
+              
+              // Waktu Kegiatan
               namaKegiatan,
+              tanggalMulai: formatTanggalIndonesia(tanggalMulai),
+              tanggalAkhir: formatTanggalIndonesia(tanggalAkhir),
               waktuKegiatan,
-              output: 'Laporan', // Output adalah Laporan
-              noSPM: '', // Kosong per requirement
-              noSP2D: '', // Kosong per requirement
+              
+              // Finansial
               satuanBiaya: hargaSatuan, // Numeric value (harga satuan)
               jumlahWaktu: realisasi, // Realisasi
               satuanWaktu: satuanWaktuText, // Duration in days (e.g., "7 hari")
               totalBruto,
               pph,
-              totalNetto
+              totalNetto,
+              
+              // Konfigurasi
+              target,
+              realisasi: realisasiStr,
+              satuan,
+              komponenPOK,
+              koordinator,
+              bebanAnggaran,
+              
+              // Status & Output
+              output: 'Laporan', // Output adalah Laporan
+              dikirimKePPK,
+              noSPM: '', // Kosong per requirement
+              noSP2D: '' // Kosong per requirement
             });
           });
         });

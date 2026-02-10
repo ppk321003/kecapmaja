@@ -1,26 +1,41 @@
 import * as XLSX from 'xlsx';
+import { type ColumnConfig } from './honor-columns-config';
 
 interface HonorRow {
   no: number;
   namaPenerimaHonor: string;
+  nik: string;
   noKontrakSKST: string;
+  tglSK: string;
+  jenisPekerjaan: string;
+  periode: string;
   namaKegiatan: string;
+  tanggalMulai: string;
+  tanggalAkhir: string;
   waktuKegiatan: string;
-  output: string;
-  noSPM: string;
-  noSP2D: string;
-  satuanBiaya: string;
+  satuanBiaya: number;
   jumlahWaktu: number;
   satuanWaktu: string;
   totalBruto: number;
   pph: number;
   totalNetto: number;
+  target: string;
+  realisasi: string;
+  satuan: string;
+  komponenPOK: string;
+  koordinator: string;
+  bebanAnggaran: string;
+  output: string;
+  dikirimKePPK: string;
+  noSPM: string;
+  noSP2D: string;
 }
 
 interface GenerateExcelParams {
   rows: HonorRow[];
   satkerName: string;
   tahun: number;
+  columnsConfig?: ColumnConfig[];
 }
 
 const formatCurrency = (value: number): string => {
@@ -30,70 +45,96 @@ const formatCurrency = (value: number): string => {
   }).format(value);
 };
 
-export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelParams) => {
+const getColumnLabel = (key: string): string => {
+  const labelMap: Record<string, string> = {
+    no: 'No',
+    namaPenerimaHonor: 'Nama Penerima Honor',
+    nik: 'NIK',
+    noKontrakSKST: 'No. Kontrak/ST/SK',
+    tglSK: 'Tgl SK',
+    jenisPekerjaan: 'Jenis Pekerjaan',
+    periode: 'Periode',
+    namaKegiatan: 'Nama Kegiatan',
+    tanggalMulai: 'Tanggal Mulai',
+    tanggalAkhir: 'Tanggal Akhir',
+    waktuKegiatan: 'Waktu Kegiatan',
+    satuanBiaya: 'Satuan Biaya',
+    jumlahWaktu: 'Jumlah Waktu',
+    satuanWaktu: 'Satuan Waktu',
+    totalBruto: 'Total Bruto',
+    pph: 'PPH (Jika ada)',
+    totalNetto: 'Total Netto',
+    target: 'Target',
+    realisasi: 'Realisasi',
+    satuan: 'Satuan',
+    komponenPOK: 'Komponen POK',
+    koordinator: 'Koordinator',
+    bebanAnggaran: 'Beban Anggaran',
+    output: 'Output',
+    dikirimKePPK: 'Dikirim ke PPK',
+    noSPM: 'No SPM',
+    noSP2D: 'No SP2D'
+  };
+  return labelMap[key] || key;
+};
+
+// Determine if column is numeric
+const isNumericColumn = (key: string): boolean => {
+  return ['satuanBiaya', 'jumlahWaktu', 'totalBruto', 'pph', 'totalNetto'].includes(key);
+};
+
+// Extract value from row based on column key
+const getRowValue = (row: HonorRow, key: string): any => {
+  return (row as any)[key] ?? '';
+};
+
+export const generateHonorExcel = ({ 
+  rows, 
+  satkerName, 
+  tahun,
+  columnsConfig 
+}: GenerateExcelParams) => {
   // Create workbook
   const wb = XLSX.utils.book_new();
   
+  // Determine which columns to include
+  const enabledColumns = columnsConfig || [];
+  
+  // If no columns config provided or empty, use default (first 14 columns)
+  const defaultColumnKeys = [
+    'no', 'namaPenerimaHonor', 'noKontrakSKST', 'namaKegiatan', 'waktuKegiatan',
+    'output', 'noSPM', 'noSP2D', 'satuanBiaya', 'jumlahWaktu',
+    'satuanWaktu', 'totalBruto', 'pph', 'totalNetto'
+  ];
+  
+  const columnKeys = enabledColumns.length > 0 
+    ? enabledColumns.map(c => c.key as string)
+    : defaultColumnKeys;
+
   // Create title and header rows
   const titleRow = [`Rincian Honor Output Kegiatan Tahun ${tahun}`];
   const emptyRow = [];
-  const headerRow = [
-    'No',
-    'Nama Penerima Honor',
-    'No. Kontrak/ST/SK',
-    'Nama Kegiatan',
-    'Waktu Kegiatan',
-    'Output',
-    'No SPM',
-    'No SP2D',
-    'Satuan Biaya',
-    'Jumlah Waktu',
-    'Satuan Waktu',
-    'Total Bruto',
-    'PPH (Jika ada)',
-    'Total Netto'
-  ];
+  const headerRow = columnKeys.map(key => getColumnLabel(key));
 
-  // Prepare data rows - store numeric values, not formatted strings
-  const dataRows = rows.map(row => [
-    row.no,
-    row.namaPenerimaHonor,
-    row.noKontrakSKST,
-    row.namaKegiatan,
-    row.waktuKegiatan,
-    row.output,
-    row.noSPM,
-    row.noSP2D,
-    row.satuanBiaya, // Will be formatted as number
-    row.jumlahWaktu,
-    row.satuanWaktu, // Will be formatted as number in display
-    row.totalBruto, // Store numeric value
-    row.pph, // Store numeric value
-    row.totalNetto // Store numeric value
-  ]);
+  // Prepare data rows
+  const dataRows = rows.map(row =>
+    columnKeys.map(key => getRowValue(row, key))
+  );
 
-  // Calculate number of data rows (for formula in total row)
+  // Calculate row indices for formulas
   const dataRowCount = dataRows.length;
-  const firstDataRowIndex = 4; // Row 4 (1-based: row 5) is first data row (after title, empty, header, empty)
+  const firstDataRowIndex = 4; // Row 4 (1-based: row 5)
   const lastDataRowIndex = firstDataRowIndex + dataRowCount - 1;
 
-  // Create total row with formulas
-  const totalRow = [
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '', // Satuan Waktu - blank for total row
-    `=SUM(L${firstDataRowIndex + 1}:L${lastDataRowIndex + 1})`, // Total Bruto formula
-    `=SUM(M${firstDataRowIndex + 1}:M${lastDataRowIndex + 1})`, // PPH formula
-    `=SUM(N${firstDataRowIndex + 1}:N${lastDataRowIndex + 1})` // Total Netto formula
-  ];
+  // Create total row with formulas for numeric columns
+  const totalRow = columnKeys.map((key, colIndex) => {
+    if (isNumericColumn(key)) {
+      // Convert column index to Excel column letter (A, B, C, ... Z, AA, AB, etc.)
+      const colLetter = XLSX.utils.encode_col(colIndex);
+      return `=SUM(${colLetter}${firstDataRowIndex + 1}:${colLetter}${lastDataRowIndex + 1})`;
+    }
+    return '';
+  });
 
   // Combine all rows
   const allRows = [
@@ -108,23 +149,39 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
   // Create worksheet
   const ws = XLSX.utils.aoa_to_sheet(allRows);
 
-  // Set column widths
-  const columnWidths = [
-    { wch: 4 },   // No
-    { wch: 20 },  // Nama Penerima Honor
-    { wch: 18 },  // No. Kontrak/ST/SK
-    { wch: 25 },  // Nama Kegiatan
-    { wch: 25 },  // Waktu Kegiatan
-    { wch: 12 },  // Output
-    { wch: 15 },  // No SPM
-    { wch: 15 },  // No SP2D
-    { wch: 14 },  // Satuan Biaya
-    { wch: 12 },  // Jumlah Waktu
-    { wch: 12 },  // Satuan Waktu
-    { wch: 16 },  // Total Bruto
-    { wch: 16 },  // PPH
-    { wch: 16 }   // Total Netto
-  ];
+  // Set column widths dynamically based on number of columns
+  const columnWidths = columnKeys.map(key => {
+    const widthMap: Record<string, number> = {
+      no: 4,
+      namaPenerimaHonor: 20,
+      nik: 15,
+      noKontrakSKST: 18,
+      tglSK: 15,
+      jenisPekerjaan: 20,
+      periode: 15,
+      namaKegiatan: 25,
+      tanggalMulai: 18,
+      tanggalAkhir: 18,
+      waktuKegiatan: 25,
+      satuanBiaya: 14,
+      jumlahWaktu: 12,
+      satuanWaktu: 12,
+      totalBruto: 16,
+      pph: 16,
+      totalNetto: 16,
+      target: 12,
+      realisasi: 12,
+      satuan: 12,
+      komponenPOK: 16,
+      koordinator: 15,
+      bebanAnggaran: 15,
+      output: 12,
+      dikirimKePPK: 15,
+      noSPM: 15,
+      noSP2D: 15
+    };
+    return { wch: widthMap[key] || 12 };
+  });
 
   ws['!cols'] = columnWidths;
 
@@ -157,112 +214,56 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
     }
   }
 
-  // Format data rows with number formats
+  // Format data rows with dynamic column handling
   for (let i = 3; i < 3 + dataRowCount; i++) {
-    // Column I (Satuan Biaya) - index 8
-    const satCell = XLSX.utils.encode_cell({ r: i, c: 8 });
-    if (ws[satCell]) {
-      ws[satCell].z = '#,##0'; // Number format with thousands separator
-      ws[satCell].s = {
-        alignment: { horizontal: 'right' },
-        border: {
-          top: { style: 'thin', color: { rgb: 'D0CECE' } },
-          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
-          left: { style: 'thin', color: { rgb: 'D0CECE' } },
-          right: { style: 'thin', color: { rgb: 'D0CECE' } }
+    for (let j = 0; j < columnKeys.length; j++) {
+      const columnKey = columnKeys[j];
+      const cellRef = XLSX.utils.encode_cell({ r: i, c: j });
+      const cell = ws[cellRef];
+      
+      if (cell) {
+        // Apply number format for numeric columns
+        if (isNumericColumn(columnKey)) {
+          cell.z = '#,##0'; // Number format with thousands separator
         }
-      };
-    }
 
-    // Column J (Jumlah Waktu) - index 9
-    const jumlahCell = XLSX.utils.encode_cell({ r: i, c: 9 });
-    if (ws[jumlahCell]) {
-      ws[jumlahCell].z = '#,##0'; // Number format
-      ws[jumlahCell].s = {
-        alignment: { horizontal: 'right' },
-        border: {
-          top: { style: 'thin', color: { rgb: 'D0CECE' } },
-          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
-          left: { style: 'thin', color: { rgb: 'D0CECE' } },
-          right: { style: 'thin', color: { rgb: 'D0CECE' } }
-        }
-      };
-    }
-
-    // Column K (Satuan Waktu) - index 10 - display as text "XX hari"
-    const satuanCell = XLSX.utils.encode_cell({ r: i, c: 10 });
-    if (ws[satuanCell]) {
-      ws[satuanCell].s = {
-        alignment: { horizontal: 'right' },
-        border: {
-          top: { style: 'thin', color: { rgb: 'D0CECE' } },
-          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
-          left: { style: 'thin', color: { rgb: 'D0CECE' } },
-          right: { style: 'thin', color: { rgb: 'D0CECE' } }
-        }
-      };
-    }
-
-    // Column L (Total Bruto) - index 11
-    const bruttoCell = XLSX.utils.encode_cell({ r: i, c: 11 });
-    if (ws[bruttoCell]) {
-      ws[bruttoCell].z = '#,##0'; // Number format
-      ws[bruttoCell].s = {
-        alignment: { horizontal: 'right' },
-        border: {
-          top: { style: 'thin', color: { rgb: 'D0CECE' } },
-          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
-          left: { style: 'thin', color: { rgb: 'D0CECE' } },
-          right: { style: 'thin', color: { rgb: 'D0CECE' } }
-        }
-      };
-    }
-
-    // Column M (PPH) - index 12
-    const pphCell = XLSX.utils.encode_cell({ r: i, c: 12 });
-    if (ws[pphCell]) {
-      ws[pphCell].z = '#,##0'; // Number format
-      ws[pphCell].s = {
-        alignment: { horizontal: 'right' },
-        border: {
-          top: { style: 'thin', color: { rgb: 'D0CECE' } },
-          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
-          left: { style: 'thin', color: { rgb: 'D0CECE' } },
-          right: { style: 'thin', color: { rgb: 'D0CECE' } }
-        }
-      };
-    }
-
-    // Column N (Total Netto) - index 13
-    const nettoCell = XLSX.utils.encode_cell({ r: i, c: 13 });
-    if (ws[nettoCell]) {
-      ws[nettoCell].z = '#,##0'; // Number format
-      ws[nettoCell].s = {
-        alignment: { horizontal: 'right' },
-        border: {
-          top: { style: 'thin', color: { rgb: 'D0CECE' } },
-          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
-          left: { style: 'thin', color: { rgb: 'D0CECE' } },
-          right: { style: 'thin', color: { rgb: 'D0CECE' } }
-        }
-      };
+        // Apply cell styling
+        cell.s = {
+          alignment: { 
+            horizontal: isNumericColumn(columnKey) ? 'right' : 'left',
+            vertical: 'center'
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'D0CECE' } },
+            bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
+            left: { style: 'thin', color: { rgb: 'D0CECE' } },
+            right: { style: 'thin', color: { rgb: 'D0CECE' } }
+          }
+        };
+      }
     }
   }
 
   // Format total row
   const totalRowIndex = allRows.length - 1;
-  for (let i = 0; i < headerRow.length; i++) {
+  for (let i = 0; i < columnKeys.length; i++) {
     const cellRef = XLSX.utils.encode_cell({ r: totalRowIndex, c: i });
     const cell = ws[cellRef];
+    const columnKey = columnKeys[i];
+    
     if (cell) {
       // Apply number format for numeric columns in total row
-      if ((i >= 8 && i <= 9) || (i >= 11 && i <= 13)) {
-        cell.z = '#,##0'; // Number format (excluding column K which is text)
+      if (isNumericColumn(columnKey)) {
+        cell.z = '#,##0'; // Number format
       }
+
       cell.s = {
         font: { bold: true },
         fill: { fgColor: { rgb: 'E7E6E6' } },
-        alignment: { horizontal: i > 7 ? 'right' : 'left' },
+        alignment: { 
+          horizontal: isNumericColumn(columnKey) ? 'right' : 'left',
+          vertical: 'center'
+        },
         border: {
           top: { style: 'thin', color: { rgb: '000000' } },
           bottom: { style: 'thin', color: { rgb: '000000' } },
