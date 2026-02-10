@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import DownloadRekapHonor from "@/components/DownloadRekapHonor";
 interface SPKData {
   no: number;
   periode: string;
@@ -438,6 +439,21 @@ export default function DownloadSPKBAST() {
           Unduh dokumen Surat Perjanjian Kerja dan Berita Acara Serah Terima
         </p>
       </div>
+
+      {/* Section for Download Rekap Honor - visible only for PPK */}
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-1">Fitur Tambahan</h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Unduh rekap honor output kegiatan per tahun
+              </p>
+            </div>
+            <DownloadRekapHonor />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
