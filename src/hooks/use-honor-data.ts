@@ -12,9 +12,9 @@ interface HonorRow {
   output: string;
   noSPM: string;
   noSP2D: string;
-  satuanBiaya: string; // Formatted harga satuan (Rp)
+  satuanBiaya: number; // Numeric value (harga satuan)
   jumlahWaktu: number; // Realisasi
-  satuanWaktu: string; // Duration in days (e.g., "20 hari")
+  satuanWaktu: number; // Duration in days (numeric)
   totalBruto: number;
   pph: number;
   totalNetto: number;
@@ -80,13 +80,6 @@ const calculateDurationDays = (startDate: string, endDate: string): number => {
   } catch (e) {
     return 0;
   }
-};
-
-const formatCurrencyValue = (value: number): string => {
-  return new Intl.NumberFormat('id-ID', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value);
 };
 
 export const useHonorData = () => {
@@ -183,7 +176,6 @@ export const useHonorData = () => {
 
             // Calculate duration in days
             const durationDays = calculateDurationDays(tanggalMulai, tanggalAkhir);
-            const satuanWaktuText = durationDays > 0 ? `${durationDays} hari` : '';
 
             honorRows.push({
               no: rowNo++,
@@ -194,9 +186,9 @@ export const useHonorData = () => {
               output: 'Laporan', // Output adalah Laporan
               noSPM: '', // Kosong per requirement
               noSP2D: '', // Kosong per requirement
-              satuanBiaya: formatCurrencyValue(hargaSatuan), // Formatted harga satuan
+              satuanBiaya: hargaSatuan, // Numeric value (harga satuan)
               jumlahWaktu: realisasi, // Realisasi
-              satuanWaktu: satuanWaktuText, // Duration in days (e.g., "20 hari")
+              satuanWaktu: durationDays, // Duration in days (numeric)
               totalBruto,
               pph,
               totalNetto

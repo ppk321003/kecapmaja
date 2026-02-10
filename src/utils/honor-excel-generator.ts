@@ -54,7 +54,7 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
     'Total Netto'
   ];
 
-  // Prepare data rows
+  // Prepare data rows - store numeric values, not formatted strings
   const dataRows = rows.map(row => [
     row.no,
     row.namaPenerimaHonor,
@@ -64,19 +64,20 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
     row.output,
     row.noSPM,
     row.noSP2D,
-    row.satuanBiaya, // Already formatted as currency string
+    row.satuanBiaya, // Will be formatted as number
     row.jumlahWaktu,
-    row.satuanWaktu, // Duration in days (e.g., "20 hari")
-    formatCurrency(row.totalBruto),
-    formatCurrency(row.pph),
-    formatCurrency(row.totalNetto)
+    row.satuanWaktu, // Will be formatted as number in display
+    row.totalBruto, // Store numeric value
+    row.pph, // Store numeric value
+    row.totalNetto // Store numeric value
   ]);
 
-  // Calculate totals
-  const totalBruto = rows.reduce((sum, row) => sum + row.totalBruto, 0);
-  const totalPph = rows.reduce((sum, row) => sum + row.pph, 0);
-  const totalNetto = rows.reduce((sum, row) => sum + row.totalNetto, 0);
+  // Calculate number of data rows (for formula in total row)
+  const dataRowCount = dataRows.length;
+  const firstDataRowIndex = 4; // Row 4 (1-based: row 5) is first data row (after title, empty, header, empty)
+  const lastDataRowIndex = firstDataRowIndex + dataRowCount - 1;
 
+  // Create total row with formulas
   const totalRow = [
     '',
     '',
@@ -88,10 +89,10 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
     '',
     '',
     '',
-    'TOTAL',
-    formatCurrency(totalBruto),
-    formatCurrency(totalPph),
-    formatCurrency(totalNetto)
+    '', // Satuan Waktu - blank for total row
+    `=SUM(L${firstDataRowIndex + 1}:L${lastDataRowIndex + 1})`, // Total Bruto formula
+    `=SUM(M${firstDataRowIndex + 1}:M${lastDataRowIndex + 1})`, // PPH formula
+    `=SUM(N${firstDataRowIndex + 1}:N${lastDataRowIndex + 1})` // Total Netto formula
   ];
 
   // Combine all rows
@@ -156,15 +157,113 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
     }
   }
 
+  // Format data rows with number formats
+  for (let i = 3; i < 3 + dataRowCount; i++) {
+    // Column I (Satuan Biaya) - index 8
+    const satCell = XLSX.utils.encode_cell({ r: i, c: 8 });
+    if (ws[satCell]) {
+      ws[satCell].z = '#,##0'; // Number format with thousands separator
+      ws[satCell].s = {
+        alignment: { horizontal: 'right' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'D0CECE' } },
+          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
+          left: { style: 'thin', color: { rgb: 'D0CECE' } },
+          right: { style: 'thin', color: { rgb: 'D0CECE' } }
+        }
+      };
+    }
+
+    // Column J (Jumlah Waktu) - index 9
+    const jumlahCell = XLSX.utils.encode_cell({ r: i, c: 9 });
+    if (ws[jumlahCell]) {
+      ws[jumlahCell].z = '#,##0'; // Number format
+      ws[jumlahCell].s = {
+        alignment: { horizontal: 'right' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'D0CECE' } },
+          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
+          left: { style: 'thin', color: { rgb: 'D0CECE' } },
+          right: { style: 'thin', color: { rgb: 'D0CECE' } }
+        }
+      };
+    }
+
+    // Column K (Satuan Waktu) - index 10 - format as number (days)
+    const satuanCell = XLSX.utils.encode_cell({ r: i, c: 10 });
+    if (ws[satuanCell]) {
+      ws[satuanCell].z = '#,##0'; // Number format
+      ws[satuanCell].s = {
+        alignment: { horizontal: 'right' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'D0CECE' } },
+          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
+          left: { style: 'thin', color: { rgb: 'D0CECE' } },
+          right: { style: 'thin', color: { rgb: 'D0CECE' } }
+        }
+      };
+    }
+
+    // Column L (Total Bruto) - index 11
+    const bruttoCell = XLSX.utils.encode_cell({ r: i, c: 11 });
+    if (ws[bruttoCell]) {
+      ws[bruttoCell].z = '#,##0'; // Number format
+      ws[bruttoCell].s = {
+        alignment: { horizontal: 'right' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'D0CECE' } },
+          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
+          left: { style: 'thin', color: { rgb: 'D0CECE' } },
+          right: { style: 'thin', color: { rgb: 'D0CECE' } }
+        }
+      };
+    }
+
+    // Column M (PPH) - index 12
+    const pphCell = XLSX.utils.encode_cell({ r: i, c: 12 });
+    if (ws[pphCell]) {
+      ws[pphCell].z = '#,##0'; // Number format
+      ws[pphCell].s = {
+        alignment: { horizontal: 'right' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'D0CECE' } },
+          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
+          left: { style: 'thin', color: { rgb: 'D0CECE' } },
+          right: { style: 'thin', color: { rgb: 'D0CECE' } }
+        }
+      };
+    }
+
+    // Column N (Total Netto) - index 13
+    const nettoCell = XLSX.utils.encode_cell({ r: i, c: 13 });
+    if (ws[nettoCell]) {
+      ws[nettoCell].z = '#,##0'; // Number format
+      ws[nettoCell].s = {
+        alignment: { horizontal: 'right' },
+        border: {
+          top: { style: 'thin', color: { rgb: 'D0CECE' } },
+          bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
+          left: { style: 'thin', color: { rgb: 'D0CECE' } },
+          right: { style: 'thin', color: { rgb: 'D0CECE' } }
+        }
+      };
+    }
+  }
+
   // Format total row
   const totalRowIndex = allRows.length - 1;
   for (let i = 0; i < headerRow.length; i++) {
     const cellRef = XLSX.utils.encode_cell({ r: totalRowIndex, c: i });
     const cell = ws[cellRef];
     if (cell) {
+      // Apply number format for numeric columns in total row
+      if (i === 8 || i === 9 || i === 10 || i === 11 || i === 12 || i === 13) {
+        cell.z = '#,##0'; // Number format
+      }
       cell.s = {
         font: { bold: true },
         fill: { fgColor: { rgb: 'E7E6E6' } },
+        alignment: { horizontal: i > 7 ? 'right' : 'left' },
         border: {
           top: { style: 'thin', color: { rgb: '000000' } },
           bottom: { style: 'thin', color: { rgb: '000000' } },
@@ -173,27 +272,6 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
         }
       };
     }
-  }
-
-  // Format number columns with accounting format
-  const numberColumnIndices = [11, 12, 13]; // Columns for currency (Total Bruto, PPH, Total Netto)
-  for (let i = 3; i < allRows.length - 2; i++) {
-    numberColumnIndices.forEach(colIndex => {
-      const cellRef = XLSX.utils.encode_cell({ r: i, c: colIndex });
-      const cell = ws[cellRef];
-      if (cell) {
-        cell.s = {
-          alignment: { horizontal: 'right' },
-          font: { size: 10 },
-          border: {
-            top: { style: 'thin', color: { rgb: 'D0CECE' } },
-            bottom: { style: 'thin', color: { rgb: 'D0CECE' } },
-            left: { style: 'thin', color: { rgb: 'D0CECE' } },
-            right: { style: 'thin', color: { rgb: 'D0CECE' } }
-          }
-        };
-      }
-    });
   }
 
   ws['!frozenPane'] = { xSplit: 0, ySplit: 3 }; // Freeze header rows
