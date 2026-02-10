@@ -198,7 +198,7 @@ export default function DownloadRekapHonor() {
             </div>
 
             {/* Column Selector */}
-            <div className="space-y-2 border-t pt-4">
+            <div className="space-y-2 border-t pt-4 flex flex-col">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">Pilih Kolom</label>
                 <span className="text-xs text-gray-500">
@@ -206,53 +206,54 @@ export default function DownloadRekapHonor() {
                 </span>
               </div>
 
-              <Accordion type="multiple" className="w-full border rounded-md p-2">
-                {getAllGroupIds().map(groupId => {
-                  const groupColumns = getColumnsByGroup(groupId);
-                  const enabledCount = getGroupEnabledCount(groupId);
-                  const groupLabel = HONOR_COLUMN_GROUP_LABELS[groupId];
+              <div className="max-h-[300px] overflow-y-auto border rounded-md p-2">
+                <Accordion type="multiple" className="w-full">
+                  {getAllGroupIds().map(groupId => {
+                    const groupColumns = getColumnsByGroup(groupId);
+                    const enabledCount = getGroupEnabledCount(groupId);
+                    const groupLabel = HONOR_COLUMN_GROUP_LABELS[groupId];
+                    const allGroupEnabled = enabledCount === groupColumns.length;
 
-                  return (
-                    <AccordionItem key={groupId} value={groupId} className="border-0">
-                      <AccordionTrigger 
-                        className="py-2 hover:no-underline"
-                        onClick={() => toggleGroupColumns(groupId)}
-                      >
-                        <div className="flex items-center gap-2 flex-1">
-                          <Checkbox
-                            checked={enabledCount === groupColumns.length}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <span className="text-sm font-medium">{groupLabel}</span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            ({enabledCount}/{groupColumns.length})
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="space-y-2 pl-8 pb-2">
-                        {groupColumns.map(col => {
-                          const isEnabled = selectedColumns.find(c => c.key === col.key)?.enabled ?? col.enabled;
-                          return (
-                            <div key={col.key} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={col.key}
-                                checked={isEnabled}
-                                onCheckedChange={() => toggleColumn(col.key)}
-                              />
-                              <label
-                                htmlFor={col.key}
-                                className="text-sm cursor-pointer hover:text-blue-600"
-                              >
-                                {col.label}
-                              </label>
-                            </div>
-                          );
-                        })}
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
+                    return (
+                      <AccordionItem key={groupId} value={groupId} className="border-0">
+                        <AccordionTrigger className="py-2 hover:no-underline">
+                          <div className="flex items-center gap-2 flex-1">
+                            <Checkbox
+                              checked={allGroupEnabled}
+                              onCheckedChange={() => toggleGroupColumns(groupId)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <span className="text-sm font-medium">{groupLabel}</span>
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({enabledCount}/{groupColumns.length})
+                            </span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-2 pl-8 pb-2">
+                          {groupColumns.map(col => {
+                            const isEnabled = selectedColumns.find(c => c.key === col.key)?.enabled ?? col.enabled;
+                            return (
+                              <div key={col.key} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={col.key}
+                                  checked={isEnabled}
+                                  onCheckedChange={() => toggleColumn(col.key)}
+                                />
+                                <label
+                                  htmlFor={col.key}
+                                  className="text-sm cursor-pointer hover:text-blue-600"
+                                >
+                                  {col.label}
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              </div>
             </div>
           </div>
 

@@ -217,6 +217,7 @@ export const useHonorData = () => {
 
           const namaPetugasList = processMultipleValues(namaPetugasStr);
           const realisasiList = processMultipleValues(realisasiStr);
+          const targetList = processMultipleValues(target); // Parse target ke array
 
           // Create honor row for each worker
           namaPetugasList.forEach((nama: string, idx: number) => {
@@ -261,8 +262,8 @@ export const useHonorData = () => {
               totalNetto,
               
               // Konfigurasi
-              target,
-              realisasi: realisasiStr,
+              target: targetList[idx] || '', // Individual target value per nama
+              realisasi: realisasiList[idx] || '', // Individual realisasi value per nama
               satuan,
               komponenPOK,
               koordinator,
