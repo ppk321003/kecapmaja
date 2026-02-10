@@ -428,7 +428,7 @@ export function useNotifications() {
             id: `rekap-periode-${periode}`,
             type: 'sbml_spk',
             title: 'Rekap SPK-BAST - Tandatangan Mitra Belum Lengkap',
-            message: `Periode SPK-BAST ${periode}. Mohon bantuannya untuk mengingatkan terkait proses/kelengkapan dokumen.`,
+            message: `Periode SPK-BAST ${periode}. Mohon bantuannya untuk mengingatkan mitra terkait tanda tangan dokumen SPK–BAST yang belum lengkap.`,
             priority: 'high',
             targetRoles: [],
             relatedId: `periode-${periode}`,
