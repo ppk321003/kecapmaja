@@ -14,7 +14,7 @@ interface HonorRow {
   noSP2D: string;
   satuanBiaya: number; // Numeric value (harga satuan)
   jumlahWaktu: number; // Realisasi
-  satuanWaktu: number; // Duration in days (numeric)
+  satuanWaktu: string; // Duration in days (e.g., "7 hari")
   totalBruto: number;
   pph: number;
   totalNetto: number;
@@ -65,8 +65,31 @@ const formatTanggalIndonesia = (tanggal: string): string => {
 const calculateDurationDays = (startDate: string, endDate: string): number => {
   if (!startDate || !endDate) return 0;
   try {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    // Parse Indonesian date format (e.g., "25 Mei 2025")
+    const parseDateIndonesia = (dateStr: string): Date => {
+      const bulanMap: { [key: string]: number } = {
+        'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
+        'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
+      };
+      
+      const parts = dateStr.trim().split(' ');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0]);
+        const monthName = parts[1].toLowerCase();
+        const year = parseInt(parts[2]);
+        
+        const month = bulanMap[monthName];
+        if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+          return new Date(year, month, day);
+        }
+      }
+      
+      // Fallback: try native Date parsing
+      return new Date(dateStr);
+    };
+
+    const start = parseDateIndonesia(startDate);
+    const end = parseDateIndonesia(endDate);
     
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return 0;
@@ -176,6 +199,7 @@ export const useHonorData = () => {
 
             // Calculate duration in days
             const durationDays = calculateDurationDays(tanggalMulai, tanggalAkhir);
+            const satuanWaktuText = durationDays > 0 ? `${durationDays} hari` : '';
 
             honorRows.push({
               no: rowNo++,
@@ -188,7 +212,7 @@ export const useHonorData = () => {
               noSP2D: '', // Kosong per requirement
               satuanBiaya: hargaSatuan, // Numeric value (harga satuan)
               jumlahWaktu: realisasi, // Realisasi
-              satuanWaktu: durationDays, // Duration in days (numeric)
+              satuanWaktu: satuanWaktuText, // Duration in days (e.g., "7 hari")
               totalBruto,
               pph,
               totalNetto

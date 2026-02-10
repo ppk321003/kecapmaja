@@ -189,10 +189,9 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
       };
     }
 
-    // Column K (Satuan Waktu) - index 10 - format as number (days)
+    // Column K (Satuan Waktu) - index 10 - display as text "XX hari"
     const satuanCell = XLSX.utils.encode_cell({ r: i, c: 10 });
     if (ws[satuanCell]) {
-      ws[satuanCell].z = '#,##0'; // Number format
       ws[satuanCell].s = {
         alignment: { horizontal: 'right' },
         border: {
@@ -257,8 +256,8 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
     const cell = ws[cellRef];
     if (cell) {
       // Apply number format for numeric columns in total row
-      if (i === 8 || i === 9 || i === 10 || i === 11 || i === 12 || i === 13) {
-        cell.z = '#,##0'; // Number format
+      if ((i >= 8 && i <= 9) || (i >= 11 && i <= 13)) {
+        cell.z = '#,##0'; // Number format (excluding column K which is text)
       }
       cell.s = {
         font: { bold: true },
