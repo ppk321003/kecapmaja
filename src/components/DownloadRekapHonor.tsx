@@ -159,7 +159,7 @@ export default function DownloadRekapHonor() {
         className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
       >
         <FileDown className="h-4 w-4" />
-        Download Rekap Honor per Tahun
+        Download Rekap Tahunan
       </Button>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
