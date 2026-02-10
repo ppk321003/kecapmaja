@@ -64,9 +64,9 @@ export const generateHonorExcel = ({ rows, satkerName, tahun }: GenerateExcelPar
     row.output,
     row.noSPM,
     row.noSP2D,
-    row.satuanBiaya,
+    row.satuanBiaya, // Already formatted as currency string
     row.jumlahWaktu,
-    row.satuanWaktu,
+    row.satuanWaktu, // Duration in days (e.g., "20 hari")
     formatCurrency(row.totalBruto),
     formatCurrency(row.pph),
     formatCurrency(row.totalNetto)

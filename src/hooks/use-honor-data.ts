@@ -12,9 +12,9 @@ interface HonorRow {
   output: string;
   noSPM: string;
   noSP2D: string;
-  satuanBiaya: string;
-  jumlahWaktu: number;
-  satuanWaktu: string;
+  satuanBiaya: string; // Formatted harga satuan (Rp)
+  jumlahWaktu: number; // Realisasi
+  satuanWaktu: string; // Duration in days (e.g., "20 hari")
   totalBruto: number;
   pph: number;
   totalNetto: number;
@@ -60,6 +60,33 @@ const formatTanggalIndonesia = (tanggal: string): string => {
   } catch (e) {
     return tanggal;
   }
+};
+
+const calculateDurationDays = (startDate: string, endDate: string): number => {
+  if (!startDate || !endDate) return 0;
+  try {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return 0;
+    }
+    
+    // Calculate difference in days (inclusive of both start and end date)
+    const timeDiff = end.getTime() - start.getTime();
+    const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24)) + 1;
+    
+    return daysDiff > 0 ? daysDiff : 0;
+  } catch (e) {
+    return 0;
+  }
+};
+
+const formatCurrencyValue = (value: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
 };
 
 export const useHonorData = () => {
@@ -154,6 +181,10 @@ export const useHonorData = () => {
               ? `${formatTanggalIndonesia(tanggalMulai)} s/d ${formatTanggalIndonesia(tanggalAkhir)}`
               : '';
 
+            // Calculate duration in days
+            const durationDays = calculateDurationDays(tanggalMulai, tanggalAkhir);
+            const satuanWaktuText = durationDays > 0 ? `${durationDays} hari` : '';
+
             honorRows.push({
               no: rowNo++,
               namaPenerimaHonor: nama,
@@ -163,9 +194,9 @@ export const useHonorData = () => {
               output: realisasi.toString(), // realisasi sebagai output
               noSPM: '', // Kosong per requirement
               noSP2D: '', // Kosong per requirement
-              satuanBiaya: satuan,
-              jumlahWaktu: realisasi,
-              satuanWaktu: satuan,
+              satuanBiaya: formatCurrencyValue(hargaSatuan), // Formatted harga satuan
+              jumlahWaktu: realisasi, // Realisasi
+              satuanWaktu: satuanWaktuText, // Duration in days (e.g., "20 hari")
               totalBruto,
               pph,
               totalNetto
