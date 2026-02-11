@@ -1,5 +1,6 @@
 import React from "react";
 import { KuitansiStoreProfile } from "@/contexts/KuitansiStoreContext";
+import { formatNumberWithSeparator } from "@/lib/formatNumber";
 
 interface KuitansiReceiptProps {
   store: KuitansiStoreProfile;
@@ -24,9 +25,9 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
   const isCompactType = store.storeType === "compact";
 
   if (isCompactType) {
-    // COMPACT STYLE (PPK Satker 3210 - like Adreena)
+    // COMPACT STYLE (Adreena Store - like Adreena)
     return (
-      <div className="receipt-container bg-white border border-gray-300 rounded p-6 font-mono text-sm max-w-md">
+      <div className="receipt-container bg-white border border-gray-300 rounded p-6 font-mono text-xs max-w-md">
         {/* Header */}
         <div className="text-center border-b-2 border-dashed border-gray-400 pb-3 mb-4">
           <img
@@ -34,57 +35,62 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
             alt="Logo"
             className="h-16 mx-auto mb-2"
           />
-          <div className="font-bold">{store.storageName}</div>
+          <div className="font-bold text-sm">{store.storageName}</div>
           <div className="text-xs">{store.storeAddress}</div>
           <div className="text-xs">{store.storePhone}</div>
         </div>
 
         {/* Details */}
-        <div className="space-y-1 mb-4">
+        <div className="space-y-0.5 mb-3 text-xs">
           <div className="flex justify-between">
-            <span className="font-semibold">No. Kuitansi:</span>
-            <span>{kuitansi.no_kuitansi || "-"}</span>
+            <span>No. Kuitansi:</span>
+            <span className="font-semibold">{kuitansi.no_kuitansi || "-"}</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-semibold">Tanggal:</span>
+            <span>Tanggal:</span>
             <span>{kuitansi.tanggal || "-"}</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-semibold">Penerima:</span>
-            <span>{kuitansi.penerima || "-"}</span>
+            <span>Penerima:</span>
+            <span className="font-semibold">{kuitansi.penerima || "-"}</span>
           </div>
+        </div>
+
+        {/* Item Details Table */}
+        <div className="border-y-2 border-dashed border-gray-400 py-2 mb-3">
           {kuitansi.nama_barang && (
-            <div className="flex justify-between">
-              <span className="font-semibold">Barang:</span>
-              <span>{kuitansi.nama_barang}</span>
+            <div className="flex justify-between mb-1 text-xs">
+              <span>Barang:</span>
+              <span className="font-semibold">{kuitansi.nama_barang}</span>
             </div>
           )}
           {kuitansi.harga && (
-            <div className="flex justify-between">
-              <span className="font-semibold">Harga:</span>
-              <span>{kuitansi.harga}</span>
+            <div className="flex justify-between mb-1 text-xs">
+              <span>Harga:</span>
+              <span className="font-semibold">{formatNumberWithSeparator(kuitansi.harga)}</span>
             </div>
           )}
-        </div>
-
-        <div className="border-y-2 border-dashed border-gray-400 py-3 mb-4">
-          <div className="flex justify-between font-bold">
-            <span>{kuitansi.total ? "Total:" : "Jumlah:"}</span>
-            <span>{kuitansi.total || kuitansi.jumlah || "-"}</span>
+          <div className="flex justify-between mb-1 text-xs">
+            <span>Qty:</span>
+            <span className="font-semibold">{formatNumberWithSeparator(kuitansi.jumlah)}</span>
+          </div>
+          <div className="border-t border-dashed border-gray-400 pt-1 flex justify-between font-bold text-xs">
+            <span>TOTAL:</span>
+            <span>{kuitansi.total ? formatNumberWithSeparator(kuitansi.total) : formatNumberWithSeparator(kuitansi.jumlah)}</span>
           </div>
         </div>
 
         {kuitansi.keterangan && (
-          <div className="mb-4 text-xs">
-            <span className="font-semibold">Keterangan:</span>
+          <div className="mb-3 text-xs border-l-2 border-gray-400 pl-2">
+            <span className="font-semibold">Ket:</span>
             <p>{kuitansi.keterangan}</p>
           </div>
         )}
 
         {/* Footer */}
-        <div className="border-t-2 border-dashed border-gray-400 pt-3 text-center text-xs">
+        <div className="border-t-2 border-dashed border-gray-400 pt-2 text-center text-xs">
           <p className="font-semibold">{store.storeFooter}</p>
-          <p>{new Date().toLocaleDateString("id-ID")}</p>
+          <p className="text-xs mt-1">{new Date().toLocaleDateString("id-ID")}</p>
         </div>
       </div>
     );
@@ -115,50 +121,70 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
           <p className="text-sm text-gray-600">{store.storePhone}</p>
         </div>
 
-        {/* Details Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              Penerima
-            </h3>
-            <div className="border-t border-gray-200 pt-2">
-              <p className="font-medium">{kuitansi.penerima || "Pelanggan"}</p>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              Informasi Toko
-            </h3>
-            <div className="border-t border-gray-200 pt-2">
-              <p className="font-medium">{store.storageName}</p>
-              <p className="text-xs text-gray-600">{store.storeAddress}</p>
-            </div>
+        {/* Penerima */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Kepada:</h3>
+          <div className="border border-gray-200 rounded p-3 bg-gray-50">
+            <p className="font-medium text-gray-900">{kuitansi.penerima || "Pelanggan"}</p>
           </div>
         </div>
 
-        {/* Amount */}
+        {/* Items Table */}
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Detail Barang</h3>
-          <div className="bg-gray-50 border border-gray-200 rounded p-4 space-y-2">
-            {kuitansi.nama_barang && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Barang:</span>
-                <span className="font-medium">{kuitansi.nama_barang}</span>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Rincian Barang</h3>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b-2 border-gray-300 bg-gray-50">
+                <th className="text-left py-2 px-2 font-semibold text-gray-700">Keterangan</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700 w-20">Harga</th>
+                <th className="text-center py-2 px-2 font-semibold text-gray-700 w-16">Qty</th>
+                <th className="text-right py-2 px-2 font-semibold text-gray-700 w-24">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-200">
+                <td className="py-3 px-2">
+                  {kuitansi.nama_barang ? (
+                    <>
+                      <p className="font-medium text-gray-900">{kuitansi.nama_barang}</p>
+                      {kuitansi.keterangan && (
+                        <p className="text-xs text-gray-600 mt-1">{kuitansi.keterangan}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-gray-600">-</p>
+                  )}
+                </td>
+                <td className="text-right py-3 px-2 text-gray-900">
+                  {kuitansi.harga ? (
+                    <span className="font-medium">Rp {formatNumberWithSeparator(kuitansi.harga)}</span>
+                  ) : (
+                    <span className="text-gray-600">-</span>
+                  )}
+                </td>
+                <td className="text-center py-3 px-2 text-gray-900">
+                  <span className="font-medium">{formatNumberWithSeparator(kuitansi.jumlah)}</span>
+                </td>
+                <td className="text-right py-3 px-2 text-gray-900">
+                  <span className="font-semibold text-lg">Rp {kuitansi.total ? formatNumberWithSeparator(kuitansi.total) : formatNumberWithSeparator(kuitansi.jumlah)}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Total Summary */}
+        <div className="mb-6 border-t-2 border-b-2 border-gray-300 py-4">
+          <div className="flex justify-end">
+            <div className="w-64">
+              <div className="flex justify-between mb-2 text-sm text-gray-600">
+                <span>Subtotal:</span>
+                <span>Rp {kuitansi.total ? formatNumberWithSeparator(kuitansi.total) : formatNumberWithSeparator(kuitansi.jumlah)}</span>
               </div>
-            )}
-            {kuitansi.harga && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Harga Satuan:</span>
-                <span className="font-medium">{kuitansi.harga}</span>
+              <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t border-gray-300">
+                <span>Total:</span>
+                <span>Rp {kuitansi.total ? formatNumberWithSeparator(kuitansi.total) : formatNumberWithSeparator(kuitansi.jumlah)}</span>
               </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Qty:</span>
-              <span className="font-medium">{kuitansi.jumlah}</span>
-            </div>
-            <div className="border-t border-gray-300 pt-2 flex justify-between text-lg font-bold">
-              <span>Total:</span>
-              <span className="text-gray-900">{kuitansi.total || kuitansi.jumlah || "-"}</span>
             </div>
           </div>
         </div>

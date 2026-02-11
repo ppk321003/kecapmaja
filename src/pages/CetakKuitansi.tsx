@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useKuitansi } from "@/contexts/KuitansiContext";
 import { useKuitansiStore } from "@/contexts/KuitansiStoreContext";
 import KuitansiStoreSelector from "@/components/KuitansiStoreSelector";
+import { formatNumberWithSeparator } from "@/lib/formatNumber";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -377,9 +378,9 @@ const CetakKuitansi: React.FC = () => {
                         <TableCell className="font-medium text-sm">{item.no_kuitansi || "-"}</TableCell>
                         <TableCell className="text-sm">{item.penerima || "-"}</TableCell>
                         <TableCell className="text-sm">{item.nama_barang || "-"}</TableCell>
-                        <TableCell className="text-right text-sm">{item.harga || "-"}</TableCell>
-                        <TableCell className="text-center text-sm">{item.jumlah || "-"}</TableCell>
-                        <TableCell className="text-right text-sm font-semibold">{item.total || "-"}</TableCell>
+                        <TableCell className="text-right text-sm">{item.harga ? `Rp ${formatNumberWithSeparator(item.harga)}` : "-"}</TableCell>
+                        <TableCell className="text-center text-sm">{item.jumlah ? formatNumberWithSeparator(item.jumlah) : "-"}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{item.total ? `Rp ${formatNumberWithSeparator(item.total)}` : "-"}</TableCell>
                         <TableCell className="text-sm">{item.tanggal || "-"}</TableCell>
                         <TableCell className="text-center">
                           <Button

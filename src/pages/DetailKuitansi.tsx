@@ -177,9 +177,29 @@ const DetailKuitansiPage: React.FC = () => {
       const element = receiptRef.current;
       if (!element) return;
 
+      // Wait for images to load
+      const images = element.querySelectorAll("img");
+      const imageLoadPromises = Array.from(images).map((img) => {
+        return new Promise<void>((resolve) => {
+          if ((img as HTMLImageElement).complete) {
+            resolve();
+          } else {
+            img.addEventListener("load", () => resolve());
+            img.addEventListener("error", () => resolve());
+            // Set timeout in case image fails to load
+            setTimeout(resolve, 2000);
+          }
+        });
+      });
+
+      await Promise.all(imageLoadPromises);
+
       const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
       });
 
       const imgData = canvas.toDataURL("image/png");
