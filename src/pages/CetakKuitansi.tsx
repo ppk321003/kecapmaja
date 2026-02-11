@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useKuitansi } from "@/contexts/KuitansiContext";
 import { useKuitansiStore } from "@/contexts/KuitansiStoreContext";
+import KuitansiStoreSelector from "@/components/KuitansiStoreSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -200,16 +201,19 @@ const CetakKuitansi: React.FC = () => {
             <Download className="h-4 w-4" />
             Download CSV
           </Button>
-          
-          {/* Settings Dialog */}
-          <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2 ml-auto">
-                <Settings className="h-4 w-4" />
-                Pengaturan
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
+
+          <div className="flex gap-2 ml-auto">
+            <KuitansiStoreSelector />
+            
+            {/* Settings Dialog */}
+            <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  Pengaturan
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Pengaturan Kuitansi</DialogTitle>
                 <DialogDescription>
@@ -308,7 +312,8 @@ const CetakKuitansi: React.FC = () => {
                 </form>
               </Form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         {/* Search Bar */}

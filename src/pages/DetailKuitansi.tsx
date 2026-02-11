@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useKuitansi } from "@/contexts/KuitansiContext";
 import { useKuitansiStore } from "@/contexts/KuitansiStoreContext";
+import KuitansiReceipt from "@/components/KuitansiReceipt";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -325,58 +326,8 @@ const DetailKuitansiPage: React.FC = () => {
 
         {/* Receipt */}
         <div className="bg-white rounded-lg border shadow-sm p-8">
-          <div
-            ref={receiptRef}
-            className="max-w-full bg-white p-8 border border-gray-300 rounded"
-          >
-            {/* Header */}
-            <div className="text-center border-b-2 border-dashed border-gray-400 pb-4 mb-4">
-              <img
-                src="/lovable-uploads/fbf25b87-5923-42c4-a574-1fc45fe58e7c.png"
-                alt="Logo"
-                className="h-16 mx-auto mb-2"
-              />
-              <h2 className="text-xl font-bold">KUITANSI/NOTA</h2>
-              <p className="text-sm font-semibold text-gray-800">{storeProfile.storageName}</p>
-              <p className="text-xs text-gray-600">{storeProfile.storeAddress}</p>
-              <p className="text-xs text-gray-600">{storeProfile.storePhone}</p>
-            </div>
-
-            {/* Details */}
-            <div className="space-y-2 mb-4 text-sm">
-              <div className="flex justify-between">
-                <span className="font-semibold">No. Kuitansi:</span>
-                <span>{kuitansi.no_kuitansi || "-"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-semibold">Tanggal:</span>
-                <span>{kuitansi.tanggal || "-"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-semibold">Penerima:</span>
-                <span>{kuitansi.penerima || "-"}</span>
-              </div>
-            </div>
-
-            <div className="border-t-2 border-b-2 border-dashed border-gray-400 py-4 mb-4">
-              <div className="flex justify-between text-lg font-bold">
-                <span>Jumlah:</span>
-                <span>{kuitansi.jumlah || "-"}</span>
-              </div>
-            </div>
-
-            {kuitansi.keterangan && (
-              <div className="mb-4 text-sm">
-                <span className="font-semibold">Keterangan:</span>
-                <p className="mt-1 text-gray-700">{kuitansi.keterangan}</p>
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="border-t-2 border-dashed border-gray-400 pt-4 text-center text-xs text-gray-600">
-              <p className="font-semibold">{storeProfile.storeFooter || "Terima kasih atas kepercayaan Anda"}</p>
-              <p>{new Date().toLocaleDateString("id-ID")}</p>
-            </div>
+          <div ref={receiptRef} className="max-w-full">
+            <KuitansiReceipt store={storeProfile} kuitansi={kuitansi} />
           </div>
         </div>
       </div>

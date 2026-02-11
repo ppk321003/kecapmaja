@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useKuitansi } from "@/contexts/KuitansiContext";
+import { useKuitansiStore } from "@/contexts/KuitansiStoreContext";
+import KuitansiStoreSelector from "@/components/KuitansiStoreSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +34,7 @@ const BuatKuitansi: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addKuitansi } = useKuitansi();
+  const { storeProfile } = useKuitansiStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check authorization
@@ -72,18 +75,21 @@ const BuatKuitansi: React.FC = () => {
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex items-center gap-3">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/cetak-kuitansi")}
-            size="sm"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Buat Kuitansi Baru</h1>
-            <p className="text-gray-600">PPK Satker 3210</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/cetak-kuitansi")}
+              size="sm"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Buat Kuitansi Baru</h1>
+              <p className="text-gray-600">{storeProfile.storageName}</p>
+            </div>
           </div>
+          <KuitansiStoreSelector />
         </div>
 
         {/* Form */}
