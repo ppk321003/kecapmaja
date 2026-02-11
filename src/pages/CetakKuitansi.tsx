@@ -53,7 +53,7 @@ const CetakKuitansi: React.FC = () => {
         return;
       }
 
-      const headers = ["no_kuitansi", "penerima", "jumlah", "tanggal"];
+      const headers = ["no_kuitansi", "penerima", "jumlah", "keterangan", "tanggal"];
       const rows = filteredData.map((item) =>
         headers
           .map((col) => {
@@ -176,10 +176,11 @@ const CetakKuitansi: React.FC = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[150px]">No. Kuitansi</TableHead>
-                      <TableHead>Tanggal</TableHead>
+                      <TableHead className="w-[120px]">No. Kuitansi</TableHead>
                       <TableHead>Penerima</TableHead>
                       <TableHead className="text-right">Jumlah</TableHead>
+                      <TableHead>Keterangan</TableHead>
+                      <TableHead className="w-[100px]">Tanggal</TableHead>
                       <TableHead className="w-[100px] text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -187,9 +188,10 @@ const CetakKuitansi: React.FC = () => {
                     {filteredData.map((item, idx) => (
                       <TableRow key={idx}>
                         <TableCell className="font-medium">{item.no_kuitansi || "-"}</TableCell>
-                        <TableCell>{item.tanggal || "-"}</TableCell>
                         <TableCell>{item.penerima || "-"}</TableCell>
                         <TableCell className="text-right">{item.jumlah || "-"}</TableCell>
+                        <TableCell className="text-sm text-gray-600">{item.keterangan || "-"}</TableCell>
+                        <TableCell>{item.tanggal || "-"}</TableCell>
                         <TableCell className="text-center">
                           <Button
                             variant="ghost"
