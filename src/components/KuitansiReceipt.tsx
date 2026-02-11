@@ -27,14 +27,9 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
   if (isCompactType) {
     // COMPACT STYLE (Adreena Store - like Adreena)
     return (
-      <div className="receipt-container bg-white border border-gray-300 rounded p-6 font-mono text-xs max-w-md">
+      <div className="receipt-container bg-white border border-gray-300 rounded p-6 font-mono text-xs max-w-md relative">
         {/* Header */}
         <div className="text-center border-b-2 border-dashed border-gray-400 pb-3 mb-4">
-          <img
-            src={`/lovable-uploads/${store.storeLogoId}.png`}
-            alt="Logo"
-            className="h-16 mx-auto mb-2"
-          />
           <div className="font-bold text-sm">{store.storageName}</div>
           <div className="text-xs">{store.storeAddress}</div>
           <div className="text-xs">{store.storePhone}</div>
@@ -92,14 +87,33 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
           <p className="font-semibold">{store.storeFooter}</p>
           <p className="text-xs mt-1">{new Date().toLocaleDateString("id-ID")}</p>
         </div>
+
+        {/* Logo - Bottom Right */}
+        <div className="absolute bottom-3 right-3">
+          <img
+            src={`/lovable-uploads/${store.storeLogoId}.png`}
+            alt="Logo"
+            className="h-12 w-12 object-contain opacity-70"
+            crossOrigin="anonymous"
+          />
+        </div>
       </div>
     );
   } else {
     // PROFESSIONAL STYLE (Alzena Point - like invoice)
     return (
-      <div className="receipt-container bg-white border border-gray-200 rounded-lg p-6" id="receipt">
+      <div className="receipt-container bg-white border border-gray-200 rounded-lg p-6 relative" id="receipt">
+        {/* Logo - Top Right */}
+        <div className="absolute top-4 right-4">
+          <img
+            src={`/lovable-uploads/${store.storeLogoId}.png`}
+            alt="Logo"
+            className="h-16 w-16 object-contain opacity-80"
+            crossOrigin="anonymous"
+          />
+        </div>
         {/* Header */}
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex justify-between items-start mb-6 pr-20">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">KUITANSI/NOTA</h1>
             <p className="text-gray-600 mt-1">{store.storageName}</p>
