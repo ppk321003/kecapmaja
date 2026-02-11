@@ -77,6 +77,11 @@ const DetailKuitansiPage: React.FC = () => {
               border-bottom: 1px dashed #000;
               padding-bottom: 8px;
             }
+            .receipt-logo {
+              max-width: 100px;
+              height: auto;
+              margin-bottom: 8px;
+            }
             .receipt-title { 
               font-weight: bold; 
               font-size: 14px;
@@ -115,6 +120,7 @@ const DetailKuitansiPage: React.FC = () => {
         <body>
           <div class="receipt-container">
             <div class="receipt-header">
+              <img src="/lovable-uploads/fbf25b87-5923-42c4-a574-1fc45fe58e7c.png" alt="Logo" class="receipt-logo">
               <div class="receipt-title">KUITANSI/NOTA</div>
               <div>PPK Satker 3210</div>
             </div>
@@ -321,6 +327,11 @@ const DetailKuitansiPage: React.FC = () => {
           >
             {/* Header */}
             <div className="text-center border-b-2 border-dashed border-gray-400 pb-4 mb-4">
+              <img
+                src="/lovable-uploads/fbf25b87-5923-42c4-a574-1fc45fe58e7c.png"
+                alt="Logo"
+                className="h-16 mx-auto mb-2"
+              />
               <h2 className="text-xl font-bold">KUITANSI/NOTA</h2>
               <p className="text-sm text-gray-600">PPK Satker 3210</p>
             </div>
