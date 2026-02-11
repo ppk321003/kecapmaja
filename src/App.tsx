@@ -7,6 +7,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { SatkerConfigProvider } from "./contexts/SatkerConfigContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
+import { KuitansiProvider } from "./contexts/KuitansiContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import Login from "./pages/Login";
@@ -48,6 +49,8 @@ import UserManagement from "./pages/UserManagement";
 import Sikostik28 from "./pages/Sikostik28";
 import CetakKuitansi from "./pages/CetakKuitansi";
 import BuatKuitansi from "./pages/BuatKuitansi";
+import DetailKuitansi from "./pages/DetailKuitansi";
+import EditKuitansi from "./pages/EditKuitansi";
 
 const queryClient = new QueryClient();
 
@@ -56,7 +59,8 @@ const App = () => (
     <ThemeProvider>
       <AuthProvider>
         <SatkerConfigProvider>
-          <NotificationsProvider>
+          <KuitansiProvider>
+            <NotificationsProvider>
             <TooltipProvider>
               <Toaster />
               <Sonner />
@@ -98,12 +102,15 @@ const App = () => (
             <Route path="/sikostik28" element={<ProtectedRoute><Layout><Sikostik28 /></Layout></ProtectedRoute>} />
             <Route path="/cetak-kuitansi" element={<ProtectedRoute><Layout><CetakKuitansi /></Layout></ProtectedRoute>} />
             <Route path="/buat-kuitansi" element={<ProtectedRoute><Layout><BuatKuitansi /></Layout></ProtectedRoute>} />
+            <Route path="/detail-kuitansi/:id" element={<ProtectedRoute><Layout><DetailKuitansi /></Layout></ProtectedRoute>} />
+            <Route path="/edit-kuitansi/:id" element={<ProtectedRoute><Layout><EditKuitansi /></Layout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
             </TooltipProvider>
-          </NotificationsProvider>
+            </NotificationsProvider>
+          </KuitansiProvider>
         </SatkerConfigProvider>
       </AuthProvider>
     </ThemeProvider>

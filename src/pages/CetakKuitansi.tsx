@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
-import { useKuitansiData } from "@/hooks/use-kuitansi-data";
+import { useKuitansi } from "@/contexts/KuitansiContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,38 +12,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, RotateCcw, Download, Printer } from "lucide-react";
+import { Plus, RotateCcw, Download, Printer, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
 const CetakKuitansi: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const satkerContext = useSatkerConfigContext();
+  const { kuitansiList, isLoading } = useKuitansi();
   const [searchTerm, setSearchTerm] = useState("");
 
   // Check authorization
   const isAuthorized = user?.role === "Pejabat Pembuat Komitmen" && user?.satker === "3210";
 
-  // Get sheet ID
-  const sheetId = satkerContext?.configs?.find(c => c.satker_id === "3210")?.kuitansi_sheet_id;
-  
-  // Fetch kuitansi data
-  const { data: kuitansiList, loading: kuitansiLoading } = useKuitansiData(sheetId);
-
   if (!isAuthorized) {
     return <Navigate to="/" replace />;
-  }
-
-  if (!sheetId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="bg-white rounded-lg border border-yellow-200 p-8 max-w-md w-full shadow-sm">
-          <h1 className="text-2xl font-bold text-yellow-600 mb-4">Konfigurasi Diperlukan</h1>
-          <p className="text-gray-600">Sheet ID kuitansi belum dikonfigurasi. Hubungi administrator.</p>
-        </div>
-      </div>
-    );
   }
 
   // Filter data berdasarkan search term
@@ -59,10 +41,12 @@ const CetakKuitansi: React.FC = () => {
     );
   }, [kuitansiList, searchTerm]);
 
-  // Get visible columns (first 6)
+  // Get visible columns (first 5)
   const visibleColumns = useMemo(() => {
     if (!kuitansiList || kuitansiList.length === 0) return [];
-    return Object.keys(kuitansiList[0]).slice(0, 6);
+    return Object.keys(kuitansiList[0])
+      .filter((key) => key !== "id")
+      .slice(0, 5);
   }, [kuitansiList]);
 
   const handlePrint = () => {
@@ -157,14 +141,14 @@ const CetakKuitansi: React.FC = () => {
         </div>
 
         {/* Loading State */}
-        {kuitansiLoading && (
+        {isLoading && (
           <div className="text-center py-10">
             <p className="text-gray-600">Memuat data kuitansi...</p>
           </div>
         )}
 
         {/* No Data State */}
-        {!kuitansiLoading && (!kuitansiList || kuitansiList.length === 0) && (
+        {!isLoading && (!kuitansiList || kuitansiList.length === 0) && (
           <div className="bg-white rounded-lg border p-8 text-center">
             <p className="text-gray-600 mb-4">Tidak ada data kuitansi ditemukan</p>
             <Button
@@ -177,7 +161,7 @@ const CetakKuitansi: React.FC = () => {
         )}
 
         {/* Data Table */}
-        {!kuitansiLoading && kuitansiList && kuitansiList.length > 0 && (
+        {!isLoading && kuitansiList && kuitansiList.length > 0 && (
           <>
             {filteredData.length === 0 ? (
               <div className="bg-white rounded-lg border p-8 text-center space-y-4">
@@ -202,6 +186,7 @@ const CetakKuitansi: React.FC = () => {
                           {col.replace(/_/g, " ")}
                         </TableHead>
                       ))}
+                      <TableHead className="text-center bg-gray-50">AKSI</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -212,6 +197,19 @@ const CetakKuitansi: React.FC = () => {
                             {item[col]?.toString() || "-"}
                           </TableCell>
                         ))}
+                        <TableCell className="text-sm text-center">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              navigate(`/detail-kuitansi/${item.id}`)
+                            }
+                            className="gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            Lihat
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
