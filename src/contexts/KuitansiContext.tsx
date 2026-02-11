@@ -40,61 +40,73 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Load kuitansi from Google Sheets on mount
   useEffect(() => {
-    if (sheetId && user?.role === "Pejabat Pembuat Komitmen" && user?.satker === "3210") {
+    if (!sheetId) {
+      console.warn("KuitansiProvider: sheetId not available");
+      setIsLoading(false);
+      return;
+    }
+    if (user?.role === "Pejabat Pembuat Komitmen" && user?.satker === "3210") {
+      console.log("KuitansiProvider: Loading kuitansi");
       loadKuitansi();
     } else {
+      console.warn("KuitansiProvider: User not authorized");
       setIsLoading(false);
     }
   }, [sheetId, user?.role, user?.satker]);
 
   const loadKuitansi = async () => {
+    if (!sheetId) {
+      console.warn("sheetId not available");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
+      console.log("Loading kuitansi from sheet:", sheetId);
+      
       const { data, error } = await supabase.functions.invoke(
         "google-sheets",
         {
           body: {
             action: "read",
             spreadsheetId: sheetId,
-            range: "Sheet1!A:X",
+            range: "Sheet1!A1:E1000",
           },
         }
       );
 
       if (error) {
         console.error("Error loading kuitansi:", error);
-        toast.error("Gagal memuat data kuitansi");
+        toast.error("Gagal memuat data kuitansi: " + (error.message || "Unknown error"));
         return;
       }
 
-      if (data?.values && Array.isArray(data.values)) {
-        const headers = data.values[0] || [
-          "no_kuitansi",
-          "penerima",
-          "jumlah",
-          "keterangan",
-          "tanggal",
-        ];
-        const rows = data.values.slice(1);
-
-        const formattedData: Kuitansi[] = rows.map((row: any[], idx: number) => {
-          const obj: any = { id: `row_${idx}` };
-          headers.forEach((header: string, colIdx: number) => {
-            obj[header] = row[colIdx] || "";
-          });
-          return obj as Kuitansi;
-        });
-
-        // Add unique IDs based on no_kuitansi
-        const uniqueData = formattedData.map((item, idx) => ({
-          ...item,
-          id:
-            item.no_kuitansi ||
-            `kuitansi_${Date.now()}_${idx}`,
-        }));
-
-        setKuitansiList(uniqueData);
+      if (!data?.values || !Array.isArray(data.values) || data.values.length === 0) {
+        console.log("No data found in sheet");
+        setKuitansiList([]);
+        return;
       }
+
+      const headers = data.values[0] || [
+        "no_kuitansi",
+        "penerima",
+        "jumlah",
+        "keterangan",
+        "tanggal",
+      ];
+      const rows = data.values.slice(1).filter((row: any[]) => row.length > 0 && row.some((cell: any) => cell));
+
+      const formattedData: Kuitansi[] = rows.map((row: any[], idx: number) => {
+        const obj: any = { id: `${row[0] || `row_${idx}`}` };
+        headers.forEach((header: string, colIdx: number) => {
+          obj[header] = row[colIdx] || "";
+        });
+        return obj as Kuitansi;
+      });
+
+      console.log("Loaded kuitansi:", formattedData.length, "items");
+      setKuitansiList(formattedData);
     } catch (error) {
       console.error("Error loading kuitansi:", error);
       toast.error("Gagal memuat data kuitansi");
@@ -104,6 +116,11 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addKuitansi = async (data: Omit<Kuitansi, "id">) => {
+    if (!sheetId) {
+      toast.error("Sheet ID tidak tersedia");
+      throw new Error("Sheet ID not available");
+    }
+
     try {
       const newRow = [
         data.no_kuitansi,
@@ -113,7 +130,9 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
         data.tanggal,
       ];
 
-      const { error } = await supabase.functions.invoke("google-sheets", {
+      console.log("Adding kuitansi:", newRow, "to sheet:", sheetId);
+
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           action: "append",
           spreadsheetId: sheetId,
@@ -122,18 +141,27 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Append error:", error);
+        throw error;
+      }
 
+      console.log("Append result:", result);
       toast.success("Kuitansi berhasil dibuat");
       await loadKuitansi();
     } catch (error) {
       console.error("Error adding kuitansi:", error);
-      toast.error("Gagal menyimpan kuitansi");
+      toast.error("Gagal menyimpan kuitansi: " + (error instanceof Error ? error.message : "Unknown error"));
       throw error;
     }
   };
 
   const updateKuitansi = async (id: string, data: Partial<Kuitansi>) => {
+    if (!sheetId) {
+      toast.error("Sheet ID tidak tersedia");
+      throw new Error("Sheet ID not available");
+    }
+
     try {
       const kuitansiIndex = kuitansiList.findIndex((k) => k.id === id);
       if (kuitansiIndex === -1) throw new Error("Kuitansi tidak ditemukan");
@@ -151,7 +179,9 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
         updatedKuitansi.tanggal,
       ];
 
-      const rowIndex = kuitansiIndex + 2; // +1 for header, +1 for A1:E1
+      const rowIndex = kuitansiIndex + 2;
+
+      console.log("Updating kuitansi at row:", rowIndex, "with:", newRow);
 
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -168,19 +198,24 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
       await loadKuitansi();
     } catch (error) {
       console.error("Error updating kuitansi:", error);
-      toast.error("Gagal memperbarui kuitansi");
+      toast.error("Gagal memperbarui kuitansi: " + (error instanceof Error ? error.message : "Unknown error"));
       throw error;
     }
   };
 
   const deleteKuitansi = async (id: string) => {
+    if (!sheetId) {
+      toast.error("Sheet ID tidak tersedia");
+      throw new Error("Sheet ID not available");
+    }
+
     try {
       const kuitansiIndex = kuitansiList.findIndex((k) => k.id === id);
       if (kuitansiIndex === -1) throw new Error("Kuitansi tidak ditemukan");
 
-      // Since Google Sheets doesn't have a direct delete row function,
-      // we'll clear the row instead
       const rowIndex = kuitansiIndex + 2;
+
+      console.log("Deleting kuitansi at row:", rowIndex);
 
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
@@ -197,7 +232,7 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
       await loadKuitansi();
     } catch (error) {
       console.error("Error deleting kuitansi:", error);
-      toast.error("Gagal menghapus kuitansi");
+      toast.error("Gagal menghapus kuitansi: " + (error instanceof Error ? error.message : "Unknown error"));
       throw error;
     }
   };
