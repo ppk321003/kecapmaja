@@ -2,8 +2,10 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useKuitansi } from "@/contexts/KuitansiContext";
+import { useKuitansiStore } from "@/contexts/KuitansiStoreContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -12,18 +14,87 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, RotateCcw, Download, Printer } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormDescription,
+  FormMessage,
+} from "@/components/ui/form";
+import { Plus, RotateCcw, Download, Printer, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { KuitansiStoreProfile } from "@/contexts/KuitansiStoreContext";
+
+const formSchema = z.object({
+  storageName: z.string().min(1, "Nama toko harus diisi"),
+  storeAddress: z.string().min(1, "Alamat toko harus diisi"),
+  storePhone: z.string().min(1, "Nomor telepon harus diisi"),
+  storeEmail: z.string().email("Email tidak valid").optional().or(z.literal("")),
+  storeFooter: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 const CetakKuitansi: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { kuitansiList, isLoading } = useKuitansi();
+  const { storeProfile, updateStoreProfile } = useKuitansiStore();
   const [searchTerm, setSearchTerm] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Check authorization
   const isAuthorized = user?.role === "Pejabat Pembuat Komitmen" && user?.satker === "3210";
+
+  // Settings form
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      storageName: storeProfile.storageName,
+      storeAddress: storeProfile.storeAddress,
+      storePhone: storeProfile.storePhone,
+      storeEmail: storeProfile.storeEmail || "",
+      storeFooter: storeProfile.storeFooter || "",
+    },
+  });
+
+  const onSubmit = (data: FormValues) => {
+    updateStoreProfile({
+      storageName: data.storageName,
+      storeAddress: data.storeAddress,
+      storePhone: data.storePhone,
+      storeEmail: data.storeEmail || "",
+      storeFooter: data.storeFooter || "",
+    });
+    setIsSettingsOpen(false);
+  };
+
+  // Reset form when dialog opens
+  React.useEffect(() => {
+    if (isSettingsOpen) {
+      form.reset({
+        storageName: storeProfile.storageName,
+        storeAddress: storeProfile.storeAddress,
+        storePhone: storeProfile.storePhone,
+        storeEmail: storeProfile.storeEmail || "",
+        storeFooter: storeProfile.storeFooter || "",
+      });
+    }
+  }, [isSettingsOpen, storeProfile, form]);
 
   if (!isAuthorized) {
     return <Navigate to="/" replace />;
@@ -100,7 +171,7 @@ const CetakKuitansi: React.FC = () => {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Cetak Kuitansi</h1>
-          <p className="text-gray-600">Kelola dan cetak kuitansi untuk PPK Satker 3210</p>
+          <p className="text-gray-600">{storeProfile.storageName}</p>
         </div>
 
         {/* Action Buttons */}
@@ -129,6 +200,115 @@ const CetakKuitansi: React.FC = () => {
             <Download className="h-4 w-4" />
             Download CSV
           </Button>
+          
+          {/* Settings Dialog */}
+          <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2 ml-auto">
+                <Settings className="h-4 w-4" />
+                Pengaturan
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Pengaturan Kuitansi</DialogTitle>
+                <DialogDescription>
+                  Konfigurasi informasi toko pada nota kuitansi
+                </DialogDescription>
+              </DialogHeader>
+
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="storageName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nama Toko</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nama toko" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="storeAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Alamat Toko</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Alamat" {...field} className="resize-none" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="storePhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nomor Telepon</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nomor telepon" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="storeEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email (Opsional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Email" type="email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="storeFooter"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pesan Footer (Opsional)</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Pesan footer" {...field} className="resize-none" />
+                        </FormControl>
+                        <FormDescription>
+                          Pesan di bagian bawah nota
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-2 pt-4">
+                    <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                      Simpan
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsSettingsOpen(false)}
+                      className="flex-1"
+                    >
+                      Batal
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Search Bar */}

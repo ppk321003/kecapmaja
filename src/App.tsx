@@ -8,6 +8,7 @@ import { SatkerConfigProvider } from "./contexts/SatkerConfigContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
 import { KuitansiProvider } from "./contexts/KuitansiContext";
+import { KuitansiStoreProvider } from "./contexts/KuitansiStoreContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import Login from "./pages/Login";
@@ -59,8 +60,9 @@ const App = () => (
     <ThemeProvider>
       <AuthProvider>
         <SatkerConfigProvider>
-          <KuitansiProvider>
-            <NotificationsProvider>
+          <KuitansiStoreProvider>
+            <KuitansiProvider>
+              <NotificationsProvider>
             <TooltipProvider>
               <Toaster />
               <Sonner />
@@ -110,7 +112,8 @@ const App = () => (
         </BrowserRouter>
             </TooltipProvider>
             </NotificationsProvider>
-          </KuitansiProvider>
+            </KuitansiProvider>
+          </KuitansiStoreProvider>
         </SatkerConfigProvider>
       </AuthProvider>
     </ThemeProvider>

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useKuitansi } from "@/contexts/KuitansiContext";
+import { useKuitansiStore } from "@/contexts/KuitansiStoreContext";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -22,6 +23,7 @@ const DetailKuitansiPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getKuitansi, deleteKuitansi } = useKuitansi();
+  const { storeProfile } = useKuitansiStore();
   const receiptRef = useRef<HTMLDivElement>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -122,7 +124,9 @@ const DetailKuitansiPage: React.FC = () => {
             <div class="receipt-header">
               <img src="/lovable-uploads/fbf25b87-5923-42c4-a574-1fc45fe58e7c.png" alt="Logo" class="receipt-logo">
               <div class="receipt-title">KUITANSI/NOTA</div>
-              <div>PPK Satker 3210</div>
+              <div class="text-sm font-semibold">${storeProfile.storageName}</div>
+              <div class="text-xs text-gray-700">${storeProfile.storeAddress}</div>
+              <div class="text-xs text-gray-700">${storeProfile.storePhone}</div>
             </div>
             
             <div class="receipt-divider"></div>
@@ -155,7 +159,7 @@ const DetailKuitansiPage: React.FC = () => {
             <div class="receipt-divider"></div>
             
             <div class="receipt-footer">
-              <p>Terima kasih telah menggunakan layanan kami</p>
+              <p>${storeProfile.storeFooter || "Terima kasih atas kepercayaan Anda"}</p>
               <p>${new Date().toLocaleDateString("id-ID")}</p>
             </div>
           </div>
@@ -333,7 +337,9 @@ const DetailKuitansiPage: React.FC = () => {
                 className="h-16 mx-auto mb-2"
               />
               <h2 className="text-xl font-bold">KUITANSI/NOTA</h2>
-              <p className="text-sm text-gray-600">PPK Satker 3210</p>
+              <p className="text-sm font-semibold text-gray-800">{storeProfile.storageName}</p>
+              <p className="text-xs text-gray-600">{storeProfile.storeAddress}</p>
+              <p className="text-xs text-gray-600">{storeProfile.storePhone}</p>
             </div>
 
             {/* Details */}
@@ -368,7 +374,7 @@ const DetailKuitansiPage: React.FC = () => {
 
             {/* Footer */}
             <div className="border-t-2 border-dashed border-gray-400 pt-4 text-center text-xs text-gray-600">
-              <p>Terima kasih telah menggunakan layanan kami</p>
+              <p className="font-semibold">{storeProfile.storeFooter || "Terima kasih atas kepercayaan Anda"}</p>
               <p>{new Date().toLocaleDateString("id-ID")}</p>
             </div>
           </div>
