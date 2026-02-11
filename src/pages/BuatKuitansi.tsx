@@ -24,7 +24,10 @@ import { Navigate } from "react-router-dom";
 const formSchema = z.object({
   no_kuitansi: z.string().min(1, "Nomor kuitansi harus diisi"),
   penerima: z.string().min(1, "Penerima harus diisi"),
+  nama_barang: z.string().optional(),
+  harga: z.string().optional(),
   jumlah: z.string().min(1, "Jumlah harus diisi"),
+  total: z.string().optional(),
   keterangan: z.string().optional(),
 });
 
@@ -45,7 +48,10 @@ const BuatKuitansi: React.FC = () => {
     defaultValues: {
       no_kuitansi: "",
       penerima: "",
+      nama_barang: "",
+      harga: "",
       jumlah: "",
+      total: "",
       keterangan: "",
     },
   });
@@ -60,7 +66,10 @@ const BuatKuitansi: React.FC = () => {
       await addKuitansi({
         no_kuitansi: data.no_kuitansi,
         penerima: data.penerima,
+        nama_barang: data.nama_barang,
+        harga: data.harga,
         jumlah: data.jumlah,
+        total: data.total,
         keterangan: data.keterangan,
         tanggal: new Date().toLocaleDateString('id-ID'),
       });
@@ -124,12 +133,53 @@ const BuatKuitansi: React.FC = () => {
 
               <FormField
                 control={form.control}
-                name="jumlah"
+                name="nama_barang"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Jumlah</FormLabel>
+                    <FormLabel>Nama Barang (Opsional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Jumlah nominal" {...field} />
+                      <Input placeholder="Misal: Catering, Buku, dll" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="harga"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Harga (Opsional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Harga satuan" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="jumlah"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Jumlah/Qty</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Jumlah" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="total"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Total (Opsional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Total nominal" {...field} />
                     </FormControl>
                   </FormItem>
                 )}

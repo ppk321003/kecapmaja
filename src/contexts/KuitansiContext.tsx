@@ -8,7 +8,10 @@ export interface Kuitansi {
   [key: string]: any;
   no_kuitansi: string;
   penerima: string;
+  nama_barang?: string;
+  harga?: string;
   jumlah: string;
+  total?: string;
   keterangan?: string;
   tanggal: string;
   id?: string;
@@ -79,7 +82,7 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
           body: {
             operation: "read",
             spreadsheetId: sheetId,
-            range: "Sheet1!A1:E1000",
+            range: "Sheet1!A1:H1000",
           },
         }
       );
@@ -99,7 +102,10 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
       const rawHeaders = data.values[0] || [
         "No. Kuitansi",
         "Penerima",
+        "Nama Barang",
+        "Harga",
         "Jumlah",
+        "Total",
         "Keterangan",
         "Tanggal",
       ];
@@ -139,7 +145,10 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
       const newRow = [
         data.no_kuitansi,
         data.penerima,
+        data.nama_barang || "",
+        data.harga || "",
         data.jumlah,
+        data.total || "",
         data.keterangan || "",
         data.tanggal,
       ];
@@ -150,7 +159,7 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
         body: {
           operation: "append",
           spreadsheetId: sheetId,
-          range: "Sheet1!A:E",
+          range: "Sheet1!A:H",
           values: [newRow],
         },
       });

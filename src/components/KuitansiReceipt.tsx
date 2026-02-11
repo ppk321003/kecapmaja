@@ -6,7 +6,10 @@ interface KuitansiReceiptProps {
   kuitansi: {
     no_kuitansi: string;
     penerima: string;
+    nama_barang?: string;
+    harga?: string;
     jumlah: string;
+    total?: string;
     keterangan?: string;
     tanggal: string;
   };
@@ -50,12 +53,24 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
             <span className="font-semibold">Penerima:</span>
             <span>{kuitansi.penerima || "-"}</span>
           </div>
+          {kuitansi.nama_barang && (
+            <div className="flex justify-between">
+              <span className="font-semibold">Barang:</span>
+              <span>{kuitansi.nama_barang}</span>
+            </div>
+          )}
+          {kuitansi.harga && (
+            <div className="flex justify-between">
+              <span className="font-semibold">Harga:</span>
+              <span>{kuitansi.harga}</span>
+            </div>
+          )}
         </div>
 
         <div className="border-y-2 border-dashed border-gray-400 py-3 mb-4">
           <div className="flex justify-between font-bold">
-            <span>Jumlah:</span>
-            <span>{kuitansi.jumlah || "-"}</span>
+            <span>{kuitansi.total ? "Total:" : "Jumlah:"}</span>
+            <span>{kuitansi.total || kuitansi.jumlah || "-"}</span>
           </div>
         </div>
 
@@ -123,13 +138,27 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
 
         {/* Amount */}
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Jumlah</h3>
-          <div className="bg-gray-50 border border-gray-200 rounded p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700">Total:</span>
-              <span className="text-2xl font-bold text-gray-900">
-                {kuitansi.jumlah}
-              </span>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Detail Barang</h3>
+          <div className="bg-gray-50 border border-gray-200 rounded p-4 space-y-2">
+            {kuitansi.nama_barang && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Barang:</span>
+                <span className="font-medium">{kuitansi.nama_barang}</span>
+              </div>
+            )}
+            {kuitansi.harga && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Harga Satuan:</span>
+                <span className="font-medium">{kuitansi.harga}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Qty:</span>
+              <span className="font-medium">{kuitansi.jumlah}</span>
+            </div>
+            <div className="border-t border-gray-300 pt-2 flex justify-between text-lg font-bold">
+              <span>Total:</span>
+              <span className="text-gray-900">{kuitansi.total || kuitansi.jumlah || "-"}</span>
             </div>
           </div>
         </div>

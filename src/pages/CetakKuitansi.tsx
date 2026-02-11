@@ -125,7 +125,7 @@ const CetakKuitansi: React.FC = () => {
         return;
       }
 
-      const headers = ["no_kuitansi", "penerima", "jumlah", "keterangan", "tanggal"];
+      const headers = ["no_kuitansi", "penerima", "nama_barang", "harga", "jumlah", "total", "keterangan", "tanggal"];
       const rows = filteredData.map((item) =>
         headers
           .map((col) => {
@@ -361,22 +361,26 @@ const CetakKuitansi: React.FC = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[120px]">No. Kuitansi</TableHead>
+                      <TableHead className="w-[100px]">No. Kuitansi</TableHead>
                       <TableHead>Penerima</TableHead>
-                      <TableHead className="text-right">Jumlah</TableHead>
-                      <TableHead>Keterangan</TableHead>
-                      <TableHead className="w-[100px]">Tanggal</TableHead>
-                      <TableHead className="w-[100px] text-center">Aksi</TableHead>
+                      <TableHead>Nama Barang</TableHead>
+                      <TableHead className="text-right">Harga</TableHead>
+                      <TableHead className="text-center">Qty</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="w-[80px]">Tanggal</TableHead>
+                      <TableHead className="w-[80px] text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredData.map((item, idx) => (
                       <TableRow key={idx}>
-                        <TableCell className="font-medium">{item.no_kuitansi || "-"}</TableCell>
-                        <TableCell>{item.penerima || "-"}</TableCell>
-                        <TableCell className="text-right">{item.jumlah || "-"}</TableCell>
-                        <TableCell className="text-sm text-gray-600">{item.keterangan || "-"}</TableCell>
-                        <TableCell>{item.tanggal || "-"}</TableCell>
+                        <TableCell className="font-medium text-sm">{item.no_kuitansi || "-"}</TableCell>
+                        <TableCell className="text-sm">{item.penerima || "-"}</TableCell>
+                        <TableCell className="text-sm">{item.nama_barang || "-"}</TableCell>
+                        <TableCell className="text-right text-sm">{item.harga || "-"}</TableCell>
+                        <TableCell className="text-center text-sm">{item.jumlah || "-"}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold">{item.total || "-"}</TableCell>
+                        <TableCell className="text-sm">{item.tanggal || "-"}</TableCell>
                         <TableCell className="text-center">
                           <Button
                             variant="ghost"
