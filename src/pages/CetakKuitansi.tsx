@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo, useRef, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { useKuitansiData } from "@/hooks/use-kuitansi-data";
@@ -14,7 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Printer, RotateCcw, Download } from "lucide-react";
-import { useState } from "react";
 import { toast } from "sonner";
 
 interface KuitansiItem {
@@ -22,22 +21,22 @@ interface KuitansiItem {
 }
 
 const CetakKuitansi: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
+  const printRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isPrinting, setIsPrinting] = useState(false);
   const [selectedItem, setSelectedItem] = useState<KuitansiItem | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  // Check role dan satker
+  // Check role dan satker - PPK satker 3210
   const isAuthorized = useMemo(() => {
     if (!user) return false;
-    const ppkRoles = ["ppk", "PPK"];
+    const ppkRoles = ["Pejabat Pembuat Komitmen", "PPK", "ppk"];
     const targetSatker = "3210";
     return ppkRoles.includes(user.role) && user.satker === targetSatker;
   }, [user]);
 
-  // Get sheet ID for kuitansi
+  // Get sheet ID from satker_config kolom X (kuitansi_sheet_id)
   const sheetId = useMemo(() => {
     if (!satkerContext?.configs) return null;
     const config = satkerContext.configs.find(c => c.satker_id === "3210");
@@ -58,162 +57,177 @@ const CetakKuitansi: React.FC = () => {
     });
   }, [kuitansiData, searchTerm]);
 
+  // Handle print
   const handlePrint = (item: KuitansiItem) => {
     setSelectedItem(item);
-    setIsPrinting(true);
+    setIsPreviewOpen(true);
     
-    // Delay untuk memastikan data ter-render di preview
+    // Delay untuk render component preview
     setTimeout(() => {
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         toast.error("Pop-up diblokir. Harap aktifkan pop-up untuk mencetak.");
-        setIsPrinting(false);
         return;
       }
 
-      const receiptContent = document.getElementById('kuitansi-preview');
-      if (!receiptContent) {
-        toast.error("Tidak dapat menemukan data kuitansi untuk dicetak");
-        setIsPrinting(false);
+      const previewContent = printRef.current;
+      if (!previewContent) {
+        toast.error("Tidak dapat menemukan preview kuitansi");
         return;
       }
 
+      const printContent = previewContent.innerHTML;
+      
       printWindow.document.write(`
+        <!DOCTYPE html>
         <html>
           <head>
-            <title>Kuitansi ${item.nomor || 'Nota'}</title>
+            <meta charset="UTF-8">
+            <title>Kuitansi ${item.no_kuitansi || item.nomor || 'Nota'}</title>
             <style>
-              body { 
-                font-family: 'Courier New', monospace; 
-                font-size: 12px; 
-                margin: 0; 
-                padding: 10px; 
-                background-color: #ffffff;
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
               }
-              .kuitansi-container { 
-                width: 210mm; 
-                margin: 0 auto; 
-                padding: 10px;
+              body {
+                font-family: 'Arial', sans-serif;
+                font-size: 11px;
+                color: #000;
+                line-height: 1.4;
               }
-              .header { 
-                text-align: center; 
-                margin-bottom: 10px; 
+              .kuitansi-preview {
+                width: 210mm;
+                height: 297mm;
+                margin: 0 auto;
+                padding: 15mm;
+                background: white;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 10mm;
+                border-bottom: 2px solid #000;
+                padding-bottom: 5mm;
+              }
+              .header h1 {
+                font-size: 16px;
+                font-weight: bold;
+                margin-bottom: 3mm;
+              }
+              .content {
+                margin: 10mm 0;
+              }
+              .row {
+                display: flex;
+                margin: 3mm 0;
+              }
+              .label {
+                width: 30%;
                 font-weight: bold;
               }
-              .divider { 
-                border-top: 1px dashed #000; 
-                margin: 8px 0; 
+              .value {
+                width: 70%;
               }
-              .content { 
-                margin: 8px 0; 
+              .divider {
+                border-top: 1px solid #000;
+                margin: 5mm 0;
               }
-              .row { 
-                display: flex; 
-                justify-content: space-between; 
-                margin: 4px 0;
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 5mm 0;
               }
-              .label { 
-                width: 40%; 
+              th {
+                border: 1px solid #000;
+                padding: 3mm;
+                text-align: left;
+                font-weight: bold;
+                background-color: #f0f0f0;
               }
-              .value { 
-                width: 60%; 
-                text-align: right;
+              td {
+                border: 1px solid #000;
+                padding: 3mm;
               }
-              .footer { 
-                text-align: center; 
-                margin-top: 15px; 
+              .footer {
+                margin-top: 15mm;
+                text-align: center;
                 font-size: 10px;
               }
-              table { 
-                width: 100%; 
-                border-collapse: collapse; 
-              }
-              th, td { 
-                border: 1px solid #000; 
-                padding: 4px; 
-                text-align: left;
-              }
-              th { 
-                background-color: #f0f0f0; 
-                font-weight: bold;
+              @media print {
+                body {
+                  margin: 0;
+                  padding: 0;
+                }
               }
             </style>
           </head>
           <body>
-            ${receiptContent.innerHTML}
+            <div class="kuitansi-preview">
+              ${printContent}
+            </div>
           </body>
         </html>
       `);
       
       printWindow.document.close();
       printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-      setIsPrinting(false);
+      
+      // Delay sebelum print untuk memastikan konten ter-render
+      setTimeout(() => {
+        printWindow.print();
+        setTimeout(() => {
+          printWindow.close();
+          setIsPreviewOpen(false);
+        }, 100);
+      }, 250);
     }, 100);
   };
 
-  const handleDownloadPDF = async (item: KuitansiItem) => {
+  // Handle download CSV
+  const handleDownloadCSV = (item: KuitansiItem) => {
     try {
-      toast.info("Fitur unduh PDF sedang diproses...");
-      // Siapkan data untuk di-download sebagai CSV
+      const headers = Object.keys(item);
+      const values = Object.values(item).map(v => {
+        const str = (v || '').toString();
+        return `"${str.replace(/"/g, '""')}"`;
+      });
+      
       const csvContent = [
-        Object.keys(item).join(","),
-        Object.values(item).map(v => `"${v}"`).join(",")
+        headers.join(","),
+        values.join(",")
       ].join("\n");
       
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.setAttribute("href", url);
-      link.setAttribute("download", `Kuitansi_${item.nomor || 'nota'}.csv`);
+      link.setAttribute("download", `Kuitansi_${item.no_kuitansi || item.nomor || 'nota'}.csv`);
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      toast.success("File berhasil diunduh sebagai CSV");
+      toast.success("File CSV berhasil diunduh");
     } catch (error) {
-      console.error("Error downloading file:", error);
-      toast.error("Gagal mengunduh file. Silakan coba lagi.");
+      console.error("Error downloading CSV:", error);
+      toast.error("Gagal mengunduh file CSV.");
     }
   };
 
   // Not authorized
   if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="bg-white rounded-lg border border-red-200 p-8 max-w-md w-full shadow-sm">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Akses Ditolak</h1>
-          <p className="text-gray-600 mb-6">
-            Maaf, fitur pencetakan kuitansi/nota hanya tersedia untuk PPK satker 3210.
-          </p>
-          <Button 
-            onClick={() => navigate("/")}
-            className="w-full"
-          >
-            Kembali ke Beranda
-          </Button>
-        </div>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
-  // Check if sheet ID is configured
+  // No sheet ID configured
   if (!loading && !sheetId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="bg-white rounded-lg border border-yellow-200 p-8 max-w-md w-full shadow-sm">
           <h1 className="text-2xl font-bold text-yellow-600 mb-4">Konfigurasi Diperlukan</h1>
-          <p className="text-gray-600 mb-6">
-            Halaman pencetakan kuitansi/nota belum dikonfigurasi. Hubungi administrator untuk menambahkan sheet ID kuitansi di kolom X (satker_config) untuk satker 3210.
+          <p className="text-gray-600">
+            Sheet ID kuitansi belum dikonfigurasi di kolom X (satker_config) untuk satker 3210. Hubungi administrator.
           </p>
-          <Button 
-            onClick={() => navigate("/")}
-            className="w-full"
-          >
-            Kembali ke Beranda
-          </Button>
         </div>
       </div>
     );
@@ -225,7 +239,7 @@ const CetakKuitansi: React.FC = () => {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Pencetakan Kuitansi/Nota</h1>
-          <p className="text-gray-600">Cetak dan kelola kuitansi/nota untuk satker 3210</p>
+          <p className="text-gray-600">Pilih kuitansi untuk dicetak (PPK Satker 3210)</p>
         </div>
 
         {/* Search Bar */}
@@ -265,48 +279,46 @@ const CetakKuitansi: React.FC = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {/* Dinamis header berdasarkan kolom yang ada */}
+                      {/* Tampilkan 6 kolom pertama */}
                       {kuitansiData.length > 0 && 
                         Object.keys(kuitansiData[0])
-                          .slice(0, 8) // Tampilkan 8 kolom pertama saja untuk tempilan yang rapih
+                          .slice(0, 6)
                           .map(key => (
-                            <TableHead key={key} className="capitalize">
-                              {key.replace(/_/g, ' ')}
+                            <TableHead key={key} className="capitalize text-xs">
+                              {key.replace(/_/g, ' ').toUpperCase()}
                             </TableHead>
                           ))
                       }
-                      <TableHead className="w-[150px] text-center">Aksi</TableHead>
+                      <TableHead className="w-[200px] text-center text-xs">AKSI</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredData.map((item, index) => (
-                      <TableRow key={index}>
+                      <TableRow key={index} className="text-sm">
                         {Object.entries(item)
-                          .slice(0, 8)
+                          .slice(0, 6)
                           .map(([key, value]) => (
-                            <TableCell key={key} className="text-sm">
+                            <TableCell key={key} className="text-xs">
                               {value?.toString() || '-'}
                             </TableCell>
                           ))
                         }
-                        <TableCell className="text-center space-x-2">
+                        <TableCell className="text-xs space-x-2 flex gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant="default"
                             onClick={() => handlePrint(item)}
-                            disabled={isPrinting}
-                            className="mr-2"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                           >
-                            <Printer className="h-4 w-4 mr-1" />
+                            <Printer className="h-3 w-3 mr-1" />
                             Cetak
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleDownloadPDF(item)}
-                            className="mr-2"
+                            onClick={() => handleDownloadCSV(item)}
                           >
-                            <Download className="h-4 w-4 mr-1" />
+                            <Download className="h-3 w-3 mr-1" />
                             CSV
                           </Button>
                         </TableCell>
@@ -335,30 +347,42 @@ const CetakKuitansi: React.FC = () => {
         )}
       </div>
 
-      {/* Hidden preview for print */}
-      {selectedItem && (
-        <div id="kuitansi-preview" style={{ display: 'none' }}>
-          <div className="kuitansi-container">
-            <div className="header">
-              KUITANSI / NOTA
-            </div>
-            <div className="divider"></div>
-            <div className="content">
-              {Object.entries(selectedItem).map(([key, value]) => (
-                <div key={key} className="row">
-                  <div className="label">{key}:</div>
-                  <div className="value">{value?.toString() || '-'}</div>
-                </div>
-              ))}
-            </div>
-            <div className="divider"></div>
-            <div className="footer">
-              <p>Dicetak pada: {new Date().toLocaleString('id-ID')}</p>
-              <p>Satker 3210</p>
-            </div>
-          </div>
+      {/* Hidden Preview for Print */}
+      {selectedItem && isPreviewOpen && (
+        <div ref={printRef} style={{ display: 'none' }}>
+          <KuitansiPreview item={selectedItem} />
         </div>
       )}
+    </div>
+  );
+};
+
+// Component untuk preview kuitansi
+const KuitansiPreview: React.FC<{ item: KuitansiItem }> = ({ item }) => {
+  const keys = Object.keys(item).slice(0, 20); // Tampilkan 20 kolom pertama
+  
+  return (
+    <div className="kuitansi-preview">
+      <div className="header">
+        <h1>KUITANSI / NOTA</h1>
+        <p>Nomor: {item.no_kuitansi || item.nomor || '-'}</p>
+      </div>
+      
+      <div className="content">
+        {keys.map((key, idx) => (
+          <div key={idx} className="row">
+            <div className="label">{key.replace(/_/g, ' ').toUpperCase()}:</div>
+            <div className="value">{item[key]?.toString() || '-'}</div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="divider"></div>
+      
+      <div className="footer">
+        <p>Dicetak pada: {new Date().toLocaleString('id-ID')}</p>
+        <p>Satker 3210 - PPK</p>
+      </div>
     </div>
   );
 };
