@@ -27,16 +27,16 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
   if (isCompactType) {
     // COMPACT STYLE (Adreena Store - like Adreena)
     return (
-      <div className="receipt-container bg-white border border-gray-300 rounded p-6 font-mono text-xs max-w-md relative">
+      <div className="receipt-container bg-white border border-gray-300 rounded p-6 font-mono text-sm max-w-2xl relative">
         {/* Header */}
-        <div className="text-center border-b-2 border-dashed border-gray-400 pb-3 mb-4">
-          <div className="font-bold text-sm">{store.storageName}</div>
-          <div className="text-xs">{store.storeAddress}</div>
-          <div className="text-xs">{store.storePhone}</div>
+        <div className="text-center border-b-2 border-dashed border-gray-400 pb-4 mb-6">
+          <div className="font-bold text-2xl mb-2">{store.storageName}</div>
+          <div className="text-sm">{store.storeAddress}</div>
+          <div className="text-sm">{store.storePhone}</div>
         </div>
 
         {/* Details */}
-        <div className="space-y-0.5 mb-3 text-xs">
+        <div className="space-y-1 mb-6 text-sm">
           <div className="flex justify-between">
             <span>No. Kuitansi:</span>
             <span className="font-semibold">{kuitansi.no_kuitansi || "-"}</span>
@@ -52,48 +52,48 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
         </div>
 
         {/* Item Details Table */}
-        <div className="border-y-2 border-dashed border-gray-400 py-2 mb-3">
+        <div className="border-y-2 border-dashed border-gray-400 py-4 mb-6">
           {kuitansi.nama_barang && (
-            <div className="flex justify-between mb-1 text-xs">
+            <div className="flex justify-between mb-2 text-sm">
               <span>Barang:</span>
               <span className="font-semibold">{kuitansi.nama_barang}</span>
             </div>
           )}
           {kuitansi.harga && (
-            <div className="flex justify-between mb-1 text-xs">
+            <div className="flex justify-between mb-2 text-sm">
               <span>Harga:</span>
               <span className="font-semibold">{formatNumberWithSeparator(kuitansi.harga)}</span>
             </div>
           )}
-          <div className="flex justify-between mb-1 text-xs">
+          <div className="flex justify-between mb-2 text-sm">
             <span>Qty:</span>
             <span className="font-semibold">{formatNumberWithSeparator(kuitansi.jumlah)}</span>
           </div>
-          <div className="border-t border-dashed border-gray-400 pt-1 flex justify-between font-bold text-xs">
+          <div className="border-t border-dashed border-gray-400 pt-2 flex justify-between font-bold text-lg">
             <span>TOTAL:</span>
             <span>{kuitansi.total ? formatNumberWithSeparator(kuitansi.total) : formatNumberWithSeparator(kuitansi.jumlah)}</span>
           </div>
         </div>
 
         {kuitansi.keterangan && (
-          <div className="mb-3 text-xs border-l-2 border-gray-400 pl-2">
-            <span className="font-semibold">Ket:</span>
+          <div className="mb-6 text-sm border-l-4 border-gray-400 pl-3">
+            <span className="font-semibold">Keterangan:</span>
             <p>{kuitansi.keterangan}</p>
           </div>
         )}
 
         {/* Footer */}
-        <div className="border-t-2 border-dashed border-gray-400 pt-2 text-center text-xs">
+        <div className="border-t-2 border-dashed border-gray-400 pt-4 text-center text-sm">
           <p className="font-semibold">{store.storeFooter}</p>
-          <p className="text-xs mt-1">{new Date().toLocaleDateString("id-ID")}</p>
+          <p className="text-sm mt-2">{new Date().toLocaleDateString("id-ID")}</p>
         </div>
 
         {/* Logo - Bottom Right */}
-        <div className="absolute bottom-3 right-3">
+        <div className="absolute bottom-4 right-4">
           <img
             src={`/lovable-uploads/${store.storeLogoId}.png`}
             alt="Logo"
-            className="h-12 w-12 object-contain opacity-70"
+            className="h-20 w-20 object-contain opacity-70"
             crossOrigin="anonymous"
           />
         </div>
@@ -103,17 +103,17 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
     // PROFESSIONAL STYLE (Alzena Point - like invoice)
     return (
       <div className="receipt-container bg-white border border-gray-200 rounded-lg p-6 relative" id="receipt">
-        {/* Logo - Top Right */}
-        <div className="absolute top-4 right-4">
+        {/* Logo - Bottom Right */}
+        <div className="absolute bottom-4 right-4">
           <img
             src={`/lovable-uploads/${store.storeLogoId}.png`}
             alt="Logo"
-            className="h-16 w-16 object-contain opacity-80"
+            className="h-20 w-20 object-contain opacity-80"
             crossOrigin="anonymous"
           />
         </div>
         {/* Header */}
-        <div className="flex justify-between items-start mb-6 pr-20">
+        <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">KUITANSI/NOTA</h1>
             <p className="text-gray-600 mt-1">{store.storageName}</p>
@@ -216,7 +216,7 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
         )}
 
         {/* Footer */}
-        <div className="border-t border-gray-200 pt-4 mt-6">
+        <div className="border-t border-gray-200 pt-4 mt-6 pb-24">
           <div className="text-center">
             <p className="text-xs font-semibold text-gray-700">
               {store.storeFooter}

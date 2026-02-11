@@ -30,7 +30,7 @@ export const defaultKuitansiStores: KuitansiStoreProfile[] = [
     storePhone: "No. Telepon Adreena",
     storeEmail: "",
     storeFooter: "Terima kasih atas kepercayaan Anda",
-    storeLogoId: "fbf25b87-5923-42c4-a574-1fc45fe58e7c",
+    storeLogoId: "7c3e6dd6-4c74-4738-a182-0aa8daefc1d9",
     storeType: "compact",
   },
   {
@@ -40,7 +40,7 @@ export const defaultKuitansiStores: KuitansiStoreProfile[] = [
     storePhone: "085351881777",
     storeEmail: "",
     storeFooter: "Terima kasih telah berbelanja di Alzena Point",
-    storeLogoId: "7c3e6dd6-4c74-4738-a182-0aa8daefc1d9",
+    storeLogoId: "fbf25b87-5923-42c4-a574-1fc45fe58e7c",
     storeType: "professional",
   },
 ];
