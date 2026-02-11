@@ -28,6 +28,7 @@ export interface SatkerConfig {
   linkers_sheet_id?: string;
   kecaptobendahara_sheet_id?: string;
   generatespj_sheet_id?: string;
+  kuitansi_sheet_id?: string;
 }
 
 /**
@@ -46,7 +47,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:W`, // 23 kolom (semua sheet IDs termasuk generatespj_sheet_id)
+            range: `${sheetName}!A:X`, // 24 kolom (semua sheet IDs termasuk kuitansi_sheet_id)
           },
         });
         
@@ -99,6 +100,7 @@ export function useSatkerConfig() {
           linkers_sheet_id: row[20]?.trim() || '',
           kecaptobendahara_sheet_id: row[21]?.trim() || '',
           generatespj_sheet_id: row[22]?.trim() || '',
+          kuitansi_sheet_id: row[23]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
@@ -121,7 +123,7 @@ export function useSatkerConfig() {
 export function getSheetIdBySatkerAndModule(
   configs: SatkerConfig[] | undefined,
   satker_id: string,
-  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara'
+  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara' | 'kuitansi'
 ): string | null {
   if (!configs) {
     console.warn(`[getSheetIdBySatkerAndModule] Configs is undefined, cannot find satker ${satker_id}`);
@@ -155,6 +157,7 @@ export function getSheetIdBySatkerAndModule(
     uh: 'uh_sheet_id',
     linkers: 'linkers_sheet_id',
     kecaptobendahara: 'kecaptobendahara_sheet_id',
+    kuitansi: 'kuitansi_sheet_id',
   };
 
   const sheetId = config[moduleKeyMap[module]];
