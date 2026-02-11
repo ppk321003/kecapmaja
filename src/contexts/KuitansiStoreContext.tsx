@@ -24,10 +24,10 @@ interface KuitansiStoreContextType {
 
 export const defaultKuitansiStores: KuitansiStoreProfile[] = [
   {
-    id: "ppk-store-3210",
-    storageName: "PPK Satker 3210",
-    storeAddress: "Alamat PPK Satker 3210",
-    storePhone: "No. Telepon PPK",
+    id: "adreena-store",
+    storageName: "Adreena Store",
+    storeAddress: "Alamat Adreena Store",
+    storePhone: "No. Telepon Adreena",
     storeEmail: "",
     storeFooter: "Terima kasih atas kepercayaan Anda",
     storeLogoId: "fbf25b87-5923-42c4-a574-1fc45fe58e7c",
@@ -56,7 +56,7 @@ export const KuitansiStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   const [availableStores, setAvailableStores] = useState<KuitansiStoreProfile[]>(
     defaultKuitansiStores
   );
-  const [activeStoreId, setActiveStoreId] = useState<string>("ppk-store-3210");
+  const [activeStoreId, setActiveStoreId] = useState<string>("adreena-store");
   const [isLoading, setIsLoading] = useState(true);
 
   const storeProfile =

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useKuitansi } from "@/contexts/KuitansiContext";
@@ -14,7 +14,7 @@ import {
   FormItem,
   FormLabel,
 } from "@/components/ui/form";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +32,22 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+// Helper function to generate no_kuitansi unique per store
+const generateKuitansiNumber = (storeId: string): string => {
+  const storePrefix = storeId === "adreena-store" ? "ADS" : "ALZ";
+  const timestamp = Date.now().toString().slice(-5); // Last 5 digits of timestamp
+  const random = Math.floor(Math.random() * 9000) + 1000; // 4-digit random (1000-9999)
+  return `${storePrefix}-${timestamp}-${random}`;
+};
+
+// Helper function to calculate total
+const calculateTotal = (harga: string, qty: string): string => {
+  const h = parseFloat(harga) || 0;
+  const q = parseFloat(qty) || 0;
+  if (h === 0 || q === 0) return "";
+  return (h * q).toString();
+};
 
 const BuatKuitansi: React.FC = () => {
   const navigate = useNavigate();
@@ -55,6 +71,30 @@ const BuatKuitansi: React.FC = () => {
       keterangan: "",
     },
   });
+
+  // Initialize no_kuitansi on mount
+  useEffect(() => {
+    const newNo = generateKuitansiNumber(storeProfile.id);
+    form.setValue("no_kuitansi", newNo);
+  }, [storeProfile.id, form]);
+
+  // Watch harga and jumlah to auto-calculate total
+  const hargaValue = form.watch("harga");
+  const jumlahValue = form.watch("jumlah");
+
+  useEffect(() => {
+    if (hargaValue && jumlahValue) {
+      const calculatedTotal = calculateTotal(hargaValue, jumlahValue);
+      form.setValue("total", calculatedTotal);
+    }
+  }, [hargaValue, jumlahValue, form]);
+
+  // Handler untuk regenerate nomor kuitansi
+  const handleRegenerateNumber = () => {
+    const newNo = generateKuitansiNumber(storeProfile.id);
+    form.setValue("no_kuitansi", newNo);
+    toast.success("Nomor kuitansi diperbarui");
+  };
 
   if (!isAuthorized) {
     return <Navigate to="/" replace />;
@@ -110,10 +150,26 @@ const BuatKuitansi: React.FC = () => {
                 name="no_kuitansi"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nomor Kuitansi</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Misal: KUI-001" {...field} />
-                    </FormControl>
+                    <FormLabel>Nomor Kuitansi (Auto-Generated)</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl className="flex-1">
+                        <Input 
+                          placeholder="Akan dibuat otomatis" 
+                          {...field} 
+                          readOnly
+                          className="bg-gray-100 cursor-not-allowed"
+                        />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRegenerateNumber}
+                        className="px-3"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </FormItem>
                 )}
               />
@@ -150,9 +206,13 @@ const BuatKuitansi: React.FC = () => {
                   name="harga"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Harga (Opsional)</FormLabel>
+                      <FormLabel>Harga Satuan</FormLabel>
                       <FormControl>
-                        <Input placeholder="Harga satuan" {...field} />
+                        <Input 
+                          placeholder="Contoh: 10000" 
+                          {...field}
+                          type="number"
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -163,9 +223,13 @@ const BuatKuitansi: React.FC = () => {
                   name="jumlah"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Jumlah/Qty</FormLabel>
+                      <FormLabel>Qty/Jumlah</FormLabel>
                       <FormControl>
-                        <Input placeholder="Jumlah" {...field} />
+                        <Input 
+                          placeholder="Contoh: 5" 
+                          {...field}
+                          type="number"
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -177,9 +241,14 @@ const BuatKuitansi: React.FC = () => {
                 name="total"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Total (Opsional)</FormLabel>
+                    <FormLabel>Total (Auto-Calculate)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Total nominal" {...field} />
+                      <Input 
+                        placeholder="Hitung otomatis dari Harga × Qty" 
+                        {...field}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed font-semibold text-gray-700"
+                      />
                     </FormControl>
                   </FormItem>
                 )}
