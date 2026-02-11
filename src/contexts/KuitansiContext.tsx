@@ -54,6 +54,14 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [sheetId, user?.role, user?.satker]);
 
+  const normalizeHeader = (header: string): string => {
+    return header
+      .toLowerCase()
+      .replace(/\./g, "")
+      .replace(/\s+/g, "_")
+      .trim();
+  };
+
   const loadKuitansi = async () => {
     if (!sheetId) {
       console.warn("sheetId not available");
@@ -88,13 +96,17 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-      const headers = data.values[0] || [
-        "no_kuitansi",
-        "penerima",
-        "jumlah",
-        "keterangan",
-        "tanggal",
+      const rawHeaders = data.values[0] || [
+        "No. Kuitansi",
+        "Penerima",
+        "Jumlah",
+        "Keterangan",
+        "Tanggal",
       ];
+      
+      // Normalize headers to lowercase with underscores
+      const headers = rawHeaders.map(normalizeHeader);
+      
       const rows = data.values.slice(1).filter((row: any[]) => row.length > 0 && row.some((cell: any) => cell));
 
       const formattedData: Kuitansi[] = rows.map((row: any[], idx: number) => {
@@ -106,6 +118,8 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       console.log("Loaded kuitansi:", formattedData.length, "items");
+      console.log("Headers:", headers);
+      console.log("Sample data:", formattedData[0]);
       setKuitansiList(formattedData);
     } catch (error) {
       console.error("Error loading kuitansi:", error);
