@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { useKuitansiData } from "@/hooks/use-kuitansi-data";
@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Printer, RotateCcw, Download } from "lucide-react";
+import { Printer, RotateCcw, Download, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface KuitansiItem {
@@ -21,6 +21,7 @@ interface KuitansiItem {
 }
 
 const CetakKuitansi: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
   const printRef = useRef<HTMLDivElement>(null);
@@ -240,6 +241,17 @@ const CetakKuitansi: React.FC = () => {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Pencetakan Kuitansi/Nota</h1>
           <p className="text-gray-600">Pilih kuitansi untuk dicetak (PPK Satker 3210)</p>
+        </div>
+
+        {/* Tombol Buat Kuitansi */}
+        <div className="mb-6">
+          <Button
+            onClick={() => navigate("/buat-kuitansi")}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Buat Kuitansi Baru
+          </Button>
         </div>
 
         {/* Search Bar */}

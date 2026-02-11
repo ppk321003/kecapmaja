@@ -47,6 +47,7 @@ import UsulanPencairan from "./pages/UsulanPencairan";
 import UserManagement from "./pages/UserManagement";
 import Sikostik28 from "./pages/Sikostik28";
 import CetakKuitansi from "./pages/CetakKuitansi";
+import BuatKuitansi from "./pages/BuatKuitansi";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,7 @@ const App = () => (
             <Route path="/user-management" element={<ProtectedRoute><Layout><UserManagement /></Layout></ProtectedRoute>} />
             <Route path="/sikostik28" element={<ProtectedRoute><Layout><Sikostik28 /></Layout></ProtectedRoute>} />
             <Route path="/cetak-kuitansi" element={<ProtectedRoute><Layout><CetakKuitansi /></Layout></ProtectedRoute>} />
+            <Route path="/buat-kuitansi" element={<ProtectedRoute><Layout><BuatKuitansi /></Layout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>

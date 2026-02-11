@@ -19,6 +19,7 @@ import {
   UsersRound,
   PiggyBank,
   Receipt,
+  Plus,
 } from "lucide-react";
 
 import {
@@ -432,22 +433,40 @@ export function AppSidebar() {
 
                 {/* MENU CETAK KUITANSI - Only visible for PPK Satker 3210 */}
                 {isSatker3210 && user?.role === "Pejabat Pembuat Komitmen" && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/cetak-kuitansi"
-                        end
-                        className={({ isActive }) =>
-                          isActive
-                            ? "text-white font-semibold transition-all duration-200"
-                            : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <Receipt className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">Cetak Kuitansi</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to="/cetak-kuitansi"
+                          end
+                          className={({ isActive }) =>
+                            isActive
+                              ? "text-white font-semibold transition-all duration-200"
+                              : "text-white/90 hover:text-white transition-all duration-200"
+                          }
+                        >
+                          <Receipt className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                          {open && <span className="font-medium">Cetak Kuitansi</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to="/buat-kuitansi"
+                          end
+                          className={({ isActive }) =>
+                            isActive
+                              ? "text-white font-semibold transition-all duration-200"
+                              : "text-white/90 hover:text-white transition-all duration-200"
+                          }
+                        >
+                          <Plus className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                          {open && <span className="font-medium">Buat Kuitansi</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </>
                 )}
 
                 {/* MENU E-DOKUMEN */}
