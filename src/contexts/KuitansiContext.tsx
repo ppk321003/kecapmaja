@@ -69,7 +69,7 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
         "google-sheets",
         {
           body: {
-            action: "read",
+            operation: "read",
             spreadsheetId: sheetId,
             range: "Sheet1!A1:E1000",
           },
@@ -134,7 +134,7 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const { data: result, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          action: "append",
+          operation: "append",
           spreadsheetId: sheetId,
           range: "Sheet1!A:E",
           values: [newRow],
@@ -185,7 +185,7 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          action: "update",
+          operation: "update",
           spreadsheetId: sheetId,
           range: `Sheet1!A${rowIndex}:E${rowIndex}`,
           values: [newRow],
@@ -219,7 +219,7 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          action: "update",
+          operation: "update",
           spreadsheetId: sheetId,
           range: `Sheet1!A${rowIndex}:E${rowIndex}`,
           values: [["", "", "", "", ""]],

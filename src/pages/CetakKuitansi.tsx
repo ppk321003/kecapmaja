@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, RotateCcw, Download, Printer, Eye } from "lucide-react";
+import { Plus, RotateCcw, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
@@ -41,14 +41,6 @@ const CetakKuitansi: React.FC = () => {
     );
   }, [kuitansiList, searchTerm]);
 
-  // Get visible columns (first 5)
-  const visibleColumns = useMemo(() => {
-    if (!kuitansiList || kuitansiList.length === 0) return [];
-    return Object.keys(kuitansiList[0])
-      .filter((key) => key !== "id")
-      .slice(0, 5);
-  }, [kuitansiList]);
-
   const handlePrint = () => {
     window.print();
     toast.success("Dialog cetak sudah dibuka");
@@ -61,7 +53,7 @@ const CetakKuitansi: React.FC = () => {
         return;
       }
 
-      const headers = visibleColumns;
+      const headers = ["no_kuitansi", "penerima", "jumlah", "tanggal"];
       const rows = filteredData.map((item) =>
         headers
           .map((col) => {
@@ -92,13 +84,23 @@ const CetakKuitansi: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="text-center py-10">
+          <p className="text-gray-600">Memuat data kuitansi...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Cetak Kuitansi/Nota</h1>
-          <p className="text-gray-600">PPK Satker 3210</p>
+          <h1 className="text-3xl font-bold text-gray-900">Cetak Kuitansi</h1>
+          <p className="text-gray-600">Kelola dan cetak kuitansi untuk PPK Satker 3210</p>
         </div>
 
         {/* Action Buttons */}
@@ -140,13 +142,6 @@ const CetakKuitansi: React.FC = () => {
           />
         </div>
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="text-center py-10">
-            <p className="text-gray-600">Memuat data kuitansi...</p>
-          </div>
-        )}
-
         {/* No Data State */}
         {!isLoading && (!kuitansiList || kuitansiList.length === 0) && (
           <div className="bg-white rounded-lg border p-8 text-center">
@@ -181,33 +176,30 @@ const CetakKuitansi: React.FC = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {visibleColumns.map((col, idx) => (
-                        <TableHead key={idx} className="capitalize bg-gray-50">
-                          {col.replace(/_/g, " ")}
-                        </TableHead>
-                      ))}
-                      <TableHead className="text-center bg-gray-50">AKSI</TableHead>
+                      <TableHead className="w-[150px]">No. Kuitansi</TableHead>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead>Penerima</TableHead>
+                      <TableHead className="text-right">Jumlah</TableHead>
+                      <TableHead className="w-[100px] text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredData.map((item, idx) => (
                       <TableRow key={idx}>
-                        {visibleColumns.map((col, colIdx) => (
-                          <TableCell key={colIdx} className="text-sm">
-                            {item[col]?.toString() || "-"}
-                          </TableCell>
-                        ))}
-                        <TableCell className="text-sm text-center">
+                        <TableCell className="font-medium">{item.no_kuitansi || "-"}</TableCell>
+                        <TableCell>{item.tanggal || "-"}</TableCell>
+                        <TableCell>{item.penerima || "-"}</TableCell>
+                        <TableCell className="text-right">{item.jumlah || "-"}</TableCell>
+                        <TableCell className="text-center">
                           <Button
+                            variant="ghost"
                             size="sm"
-                            variant="outline"
                             onClick={() =>
                               navigate(`/detail-kuitansi/${item.id}`)
                             }
-                            className="gap-2"
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                           >
-                            <Eye className="h-4 w-4" />
-                            Lihat
+                            Detail
                           </Button>
                         </TableCell>
                       </TableRow>
