@@ -1,5 +1,10 @@
+// @ts-ignore - Deno imports and types
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore - ESM imports
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+
+// @ts-ignore - Deno types
+declare const Deno: any;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +17,7 @@ interface SheetOperation {
   range?: string;
   values?: any[][];
   rowIndex?: number;
+  sheetName?: string;
 }
 
 async function getAccessToken() {
@@ -144,7 +150,39 @@ async function getAccessToken() {
   return tokenData.access_token;
 }
 
-serve(async (req) => {
+async function getSheetIdByName(spreadsheetId: string, accessToken: string, sheetName: string): Promise<number> {
+  console.log(`Getting sheet ID for sheet name: ${sheetName}`);
+  try {
+    const response = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+    const data = await response.json();
+    
+    if (!data.sheets) {
+      console.warn('No sheets found in spreadsheet, defaulting to sheet ID 0');
+      return 0;
+    }
+    
+    const sheet = data.sheets.find((s: any) => s.properties.title === sheetName);
+    if (!sheet) {
+      console.warn(`Sheet "${sheetName}" not found, defaulting to sheet ID 0. Available sheets:`, data.sheets.map((s: any) => s.properties.title));
+      return 0;
+    }
+    
+    const sheetId = sheet.properties.sheetId;
+    console.log(`Found sheet "${sheetName}" with ID: ${sheetId}`);
+    return sheetId;
+  } catch (error) {
+    console.error('Error getting sheet ID:', error);
+    console.warn('Defaulting to sheet ID 0');
+    return 0;
+  }
+}
+
+serve(async (req: Request) => {
   console.log('Google Sheets function invoked');
   
   if (req.method === 'OPTIONS') {
@@ -155,7 +193,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log('Request body:', JSON.stringify(body));
     
-    const { spreadsheetId, operation, range, values, rowIndex }: SheetOperation = body;
+    const { spreadsheetId, operation, range, values, rowIndex, sheetName }: SheetOperation = body;
     
     console.log('Getting access token...');
     const accessToken = await getAccessToken();
@@ -248,7 +286,14 @@ serve(async (req) => {
 
     if (operation === 'delete' && rowIndex !== undefined) {
       console.log(`Deleting row ${rowIndex}`);
-      const sheetId = 0; // Default sheet ID
+      
+      // Get the correct sheet ID based on the sheet name
+      const sheetId = sheetName 
+        ? await getSheetIdByName(spreadsheetId, accessToken, sheetName)
+        : 0; // Default to first sheet if no sheet name provided
+      
+      console.log(`Using sheet ID: ${sheetId}`);
+      
       const response = await fetch(
         `${baseUrl}:batchUpdate`,
         {
@@ -273,6 +318,12 @@ serve(async (req) => {
       );
       const data = await response.json();
       console.log('Delete response:', JSON.stringify(data));
+      
+      if (!response.ok) {
+        console.error('Delete failed:', data);
+        throw new Error(`Delete failed: ${JSON.stringify(data)}`);
+      }
+      
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

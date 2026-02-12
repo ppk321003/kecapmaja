@@ -89,14 +89,15 @@ export default function Linkers() {
         const parsed = rows.slice(1)
           .filter((row: any[]) => row[0]) // Filter out empty rows
           .map((row: any[], idx: number) => ({
-            id: idx.toString(),
+            id: `${idx}-${row[0]}`, // Use unique ID combining index and title to handle duplicates
             originalRowIndex: idx + 2, // Store original row index in sheet (1-indexed, +2 for header)
             judul: row[0] || "",
             deskripsi: row[1] || "",
             link: row[2] || "",
             icon: row[3] || "FileText"
           }));
-        setLinksData(parsed.sort((a, b) => a.judul.localeCompare(b.judul)));
+        // Don't sort here - maintain original order from sheet to preserve row indices
+        setLinksData(parsed);
       } else {
         setLinksData([]);
       }
@@ -147,27 +148,27 @@ export default function Linkers() {
     try {
       if (editingId !== null) {
         // Update existing
-        const updateIndex = linksData.findIndex(l => l.id === editingId);
-        if (updateIndex >= 0) {
-          const rowNumber = updateIndex + 2; // +2 because of header row
-          const { error } = await supabase.functions.invoke("google-sheets", {
-            body: {
-              spreadsheetId: linkersSheetId,
-              operation: "update",
-              range: `${sheetName}!A${rowNumber}:D${rowNumber}`,
-              values: [[formData.judul, formData.deskripsi, formData.link, formData.icon]]
-            }
-          });
-
-          if (error) throw error;
-          
-          const newData = [...linksData];
-          newData[updateIndex] = { ...newData[updateIndex], ...formData };
-          newData.sort((a, b) => a.judul.localeCompare(b.judul));
-          setLinksData(newData);
-          
-          toast({ title: "Berhasil", description: "Data linker berhasil diperbarui" });
+        const itemToUpdate = linksData.find(l => l.id === editingId);
+        if (!itemToUpdate) {
+          throw new Error("Item not found");
         }
+        
+        const rowNumber = itemToUpdate.originalRowIndex; // Use the original row index
+        const { error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: linkersSheetId,
+            operation: "update",
+            range: `${sheetName}!A${rowNumber}:D${rowNumber}`,
+            values: [[formData.judul, formData.deskripsi, formData.link, formData.icon]]
+          }
+        });
+
+        if (error) throw error;
+        
+        toast({ title: "Berhasil", description: "Data linker berhasil diperbarui" });
+        // Re-fetch to ensure data consistency
+        setDialogOpen(false);
+        await fetchLinkers();
       } else {
         // Add new
         const { error } = await supabase.functions.invoke("google-sheets", {
@@ -181,13 +182,11 @@ export default function Linkers() {
 
         if (error) throw error;
         
-        const newData = [...linksData, { id: linksData.length.toString(), ...formData }];
-        newData.sort((a, b) => a.judul.localeCompare(b.judul));
-        setLinksData(newData);
-        
         toast({ title: "Berhasil", description: "Data linker berhasil ditambahkan" });
+        // Re-fetch to ensure data consistency
+        setDialogOpen(false);
+        await fetchLinkers();
       }
-      setDialogOpen(false);
     } catch (error) {
       console.error("Error saving linker:", error);
       toast({
@@ -205,18 +204,23 @@ export default function Linkers() {
         throw new Error("Item not found");
       }
       
+      console.log("Deleting row:", itemToDelete.originalRowIndex);
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: linkersSheetId,
           operation: "delete",
-          rowIndex: itemToDelete.originalRowIndex
+          rowIndex: itemToDelete.originalRowIndex,
+          sheetName: sheetName // Pass the sheet name to identify the correct sheet
         }
       });
 
       if (error) throw error;
       
-      setLinksData(linksData.filter(l => l.id !== deletingData.id));
       toast({ title: "Berhasil", description: "Data linker berhasil dihapus" });
+      setDeleteDialogOpen(false);
+      setDeletingData(null);
+      // Re-fetch to ensure data consistency
+      await fetchLinkers();
     } catch (error) {
       console.error("Error deleting linker:", error);
       toast({
@@ -224,7 +228,6 @@ export default function Linkers() {
         title: "Gagal",
         description: "Gagal menghapus data linker"
       });
-    } finally {
       setDeleteDialogOpen(false);
       setDeletingData(null);
     }
@@ -270,7 +273,9 @@ export default function Linkers() {
 
       {/* Grid Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 gap-6 max-w-[2400px] mx-auto">
-        {linksData.map((link, index) => {
+        {linksData
+          .sort((a, b) => a.judul.localeCompare(b.judul)) // Sort only for display
+          .map((link, index) => {
           const IconComponent = iconOptions.find(opt => opt.name === link.icon)?.icon || FileText;
           const accent = accentColors[index % accentColors.length];
           const lighterBg = accent.replace("500", "100").replace("600", "200");
