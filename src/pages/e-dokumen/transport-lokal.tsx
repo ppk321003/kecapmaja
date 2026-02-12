@@ -400,22 +400,26 @@ const TransportLokal = () => {
       }).join(" | ");
 
       // Format data sesuai struktur spreadsheet
+      const satkerConfig = satkerContext?.getUserSatkerConfig();
+      const satkerId = satkerConfig?.satker_id || "";
+      
       const rowData = [
         sequenceNumber, // Kolom 1: No
         transportLokalId, // Kolom 2: Id (trl-yymmxxx)
-        data.namaKegiatan, // Kolom 3: Nama Kegiatan
-        data.detil || "", // Kolom 4: Detil
-        programName, // Kolom 5: Program
-        kegiatanName, // Kolom 6: Kegiatan
-        kroName, // Kolom 7: KRO
-        roName, // Kolom 8: RO
-        komponenName, // Kolom 9: Komponen
-        akunName, // Kolom 10: Akun
-        formatTanggalIndonesia(data.tanggalSpj), // Kolom 11: Tanggal (SPJ)
-        pembuatDaftarName, // Kolom 12: Pembuat Daftar
-        transportOrganik.map(org => org.nama).filter(Boolean).join(" | "), // Kolom 13: Organik
-        transportMitra.map(mitra => mitra.nama).filter(Boolean).join(" | "), // Kolom 14: Mitra Statistik
-        rincianKeseluruhan // Kolom 15: Rincian Keseluruhan
+        satkerId, // Kolom 3: Satker ID
+        data.namaKegiatan, // Kolom 4: Nama Kegiatan
+        data.detil || "", // Kolom 5: Detil
+        programName, // Kolom 6: Program
+        kegiatanName, // Kolom 7: Kegiatan
+        kroName, // Kolom 8: KRO
+        roName, // Kolom 9: RO
+        komponenName, // Kolom 10: Komponen
+        akunName, // Kolom 11: Akun
+        formatTanggalIndonesia(data.tanggalSpj), // Kolom 12: Tanggal (SPJ)
+        pembuatDaftarName, // Kolom 13: Pembuat Daftar
+        transportOrganik.map(org => org.nama).filter(Boolean).join(" | "), // Kolom 14: Organik
+        transportMitra.map(mitra => mitra.nama).filter(Boolean).join(" | "), // Kolom 15: Mitra Statistik
+        rincianKeseluruhan // Kolom 16: Rincian Keseluruhan
       ];
 
       console.log('📋 Final transport lokal data array:', rowData);

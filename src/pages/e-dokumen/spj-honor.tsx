@@ -194,7 +194,7 @@ const useSubmitSPJHonorToSheets = (targetSheetId: string = DEFAULT_TARGET_SPREAD
       console.log('📤 [SPJHonor] Submitting to Google Sheets:', {
         spreadsheetId: targetSheetId,
         sheetName: SHEET_NAME,
-        range: `${SHEET_NAME}!A:R`,
+        range: `${SHEET_NAME}!A:S`,
         valuesLength: data.length,
         dataPreview: data.slice(0, 3)
       });
@@ -203,7 +203,7 @@ const useSubmitSPJHonorToSheets = (targetSheetId: string = DEFAULT_TARGET_SPREAD
         body: {
           spreadsheetId: targetSheetId,
           operation: "append",
-          range: `${SHEET_NAME}!A:R`, // A:R = 18 kolom sesuai header
+          range: `${SHEET_NAME}!A:S`, // A:S = 19 kolom sesuai header (termasuk satker_id)
           values: [data]
         }
       });
@@ -561,26 +561,30 @@ const SPJHonor = () => {
       const honorDetailsFormatted = formatHonorDetailsForSheets();
       const grandTotal = calculateGrandTotal();
 
-      // 4. Construct row data sesuai HEADER (18 kolom: A:R)
-      // Header: Id | Nama Kegiatan | Detil | Jenis | Program | Kegiatan | KRO | RO | Komponen | Akun | Tanggal (SPJ) | Pembuat Daftar | Organik | Mitra Statistik | Rincian Keseluruhan | Status | Link
+      // 4. Construct row data sesuai HEADER (19 kolom: A:S)
+      // Header: Id | Satker ID | Nama Kegiatan | Detil | Jenis | Program | Kegiatan | KRO | RO | Komponen | Akun | Tanggal (SPJ) | Pembuat Daftar | Organik | Mitra Statistik | Rincian Keseluruhan | Status | Link
+      const satkerConfig = satkerContext?.getUserSatkerConfig();
+      const satkerId = satkerConfig?.satker_id || "";
+      
       const rowData = [
         spjId,                             // Kolom A: Id (spj-yymmxxx)
-        formData.namaKegiatan,             // Kolom B: Nama Kegiatan
-        formData.detil || "",              // Kolom C: Detil
-        jenisName,                         // Kolom D: Jenis
-        programName,                       // Kolom E: Program
-        kegiatanName,                      // Kolom F: Kegiatan
-        kroName,                           // Kolom G: KRO
-        roName,                            // Kolom H: RO
-        komponenName,                      // Kolom I: Komponen
-        akunName,                          // Kolom J: Akun
-        formatTanggalIndonesia(formData.tanggalSpj), // Kolom K: Tanggal (SPJ)
-        pembuatDaftarName,                 // Kolom L: Pembuat Daftar
-        honorOrganik.map(h => organikMap[h.personId] || "").filter(Boolean).join(" | "), // Kolom M: Organik
-        honorMitra.map(m => mitraMap[m.personId] || "").filter(Boolean).join(" | "), // Kolom N: Mitra Statistik
-        honorDetailsFormatted,             // Kolom O: Rincian Keseluruhan
-        "",                               // Kolom P: Status (kosong dulu)
-        ""                                // Kolom Q: Link (kosong dulu)
+        satkerId,                          // Kolom B: Satker ID
+        formData.namaKegiatan,             // Kolom C: Nama Kegiatan
+        formData.detil || "",              // Kolom D: Detil
+        jenisName,                         // Kolom E: Jenis
+        programName,                       // Kolom F: Program
+        kegiatanName,                      // Kolom G: Kegiatan
+        kroName,                           // Kolom H: KRO
+        roName,                            // Kolom I: RO
+        komponenName,                      // Kolom J: Komponen
+        akunName,                          // Kolom K: Akun
+        formatTanggalIndonesia(formData.tanggalSpj), // Kolom L: Tanggal (SPJ)
+        pembuatDaftarName,                 // Kolom M: Pembuat Daftar
+        honorOrganik.map(h => organikMap[h.personId] || "").filter(Boolean).join(" | "), // Kolom N: Organik
+        honorMitra.map(m => mitraMap[m.personId] || "").filter(Boolean).join(" | "), // Kolom O: Mitra Statistik
+        honorDetailsFormatted,             // Kolom P: Rincian Keseluruhan
+        "",                               // Kolom Q: Status (kosong dulu)
+        ""                                // Kolom R: Link (kosong dulu)
         // TOTAL 17 kolom? Mari kita hitung: A-Q = 17 kolom
         // Tapi header ada 17 item? Mari kita buat 17 kolom dulu
       ];
@@ -588,7 +592,7 @@ const SPJHonor = () => {
       console.log('📋 [SPJHonor] Final data array:', rowData);
       console.log('🔢 [SPJHonor] Total columns:', rowData.length);
       console.log('🆔 [SPJHonor] SPJ ID:', spjId);
-      console.log('📊 [SPJHonor] Range yang akan digunakan:', `${SHEET_NAME}!A:Q`);
+      console.log('📊 [SPJHonor] Range yang akan digunakan:', `${SHEET_NAME}!A:R`);
 
       // 5. Submit ke Google Sheets
       console.log('🚀 [SPJHonor] Calling submitData...');

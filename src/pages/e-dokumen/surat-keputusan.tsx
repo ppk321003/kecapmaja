@@ -1043,10 +1043,13 @@ const SuratKeputusan = () => {
       const selectedPembuat = organikList.find(o => o.id === data.pembuatDaftar);
 
       const kegiatanFormatted = formatKegiatanForSpreadsheet(data.kegiatanList as KegiatanItem[]);
+      const satkerConfig = satkerContext?.getUserSatkerConfig();
+      const satkerId = satkerConfig?.satker_id || "";
 
       const rowData = [
         sequenceNumber,
         skId,
+        satkerId,
         data.nomorSuratKeputusan,
         data.tentang,
         data.menimbangKesatu,

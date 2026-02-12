@@ -300,25 +300,29 @@ const UangHarianTransport = () => {
       const pembuatDaftarName = organikList.find(o => o.id === data.pembuatDaftar)?.name || data.pembuatDaftar;
 
       // Format data sesuai struktur spreadsheet
+      const satkerConfig = satkerContext?.getUserSatkerConfig();
+      const satkerId = satkerConfig?.satker_id || "";
+      
       const rowData = [
         sequenceNumber, // Kolom 1: No
         uangHarianTransportId, // Kolom 2: Id (uht-yymmxxx)
-        data.namaKegiatan, // Kolom 3: Nama Kegiatan
-        data.detil || "", // Kolom 4: Detil
-        data.jenis, // Kolom 5: Jenis
-        programName, // Kolom 6: Program
-        kegiatanName, // Kolom 7: Kegiatan
-        kroName, // Kolom 8: KRO
-        roName, // Kolom 9: RO
-        komponenName, // Kolom 10: Komponen
-        akunName, // Kolom 11: Akun
-        data.trainingCenter, // Kolom 12: Training Center
-        formatTanggalIndonesia(data.tanggalMulai), // Kolom 13: Tanggal Mulai
-        formatTanggalIndonesia(data.tanggalSelesai), // Kolom 14: Tanggal Selesai
-        formatTanggalIndonesia(data.tanggalSpj), // Kolom 15: Tanggal (SPJ)
-        pembuatDaftarName, // Kolom 16: Pembuat Daftar
-        selectedOrganik.map(org => org.name).join(" | "), // Kolom 17: Organik
-        selectedMitra.map(mitra => mitra.name).join(" | ") // Kolom 18: Mitra Statistik
+        satkerId, // Kolom 3: Satker ID
+        data.namaKegiatan, // Kolom 4: Nama Kegiatan
+        data.detil || "", // Kolom 5: Detil
+        data.jenis, // Kolom 6: Jenis
+        programName, // Kolom 7: Program
+        kegiatanName, // Kolom 8: Kegiatan
+        kroName, // Kolom 9: KRO
+        roName, // Kolom 10: RO
+        komponenName, // Kolom 11: Komponen
+        akunName, // Kolom 12: Akun
+        data.trainingCenter, // Kolom 13: Training Center
+        formatTanggalIndonesia(data.tanggalMulai), // Kolom 14: Tanggal Mulai
+        formatTanggalIndonesia(data.tanggalSelesai), // Kolom 15: Tanggal Selesai
+        formatTanggalIndonesia(data.tanggalSpj), // Kolom 16: Tanggal (SPJ)
+        pembuatDaftarName, // Kolom 17: Pembuat Daftar
+        selectedOrganik.map(org => org.name).join(" | "), // Kolom 18: Organik
+        selectedMitra.map(mitra => mitra.name).join(" | ") // Kolom 19: Mitra Statistik
       ];
 
       console.log('📋 Final uang harian transport data array:', rowData);

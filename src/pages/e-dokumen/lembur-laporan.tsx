@@ -287,19 +287,23 @@ const LemburLaporan = () => {
       const lemburId = await generateLemburId(targetSheetId);
 
       // Format data sesuai dengan header spreadsheet
+      const satkerConfig = satkerContext?.getUserSatkerConfig();
+      const satkerId = satkerConfig?.satker_id || "";
+      
       const rowData = [
         sequenceNumber, // Kolom 1: No
         lemburId, // Kolom 2: Id (lmbr-yymmxxx)
-        data.nomorSuratTugasLembur, // Kolom 3: Nomor Surat Tugas Lembur
-        formatTanggalIndonesia(data.tanggalSuratTugasLembur), // Kolom 4: Tanggal Surat Tugas Lembur
-        data.tujuanPelaksanaan, // Kolom 5: Kegiatan
-        selectedOrganik.map(id => getOrganikName(id)).join(" | "), // Kolom 6: Organik
-        formatTanggalIndonesia(data.tanggalPelaksanaan), // Kolom 7: Tanggal Pelaksanaan
-        data.uraianKegiatan.join(" | "), // Kolom 8: Uraian Kegiatan
-        data.outputHasil.join(" | "), // Kolom 9: Output Hasil
-        getOrganikName(data.pembuatDaftar), // Kolom 10: Pembuat daftar
-        "", // Kolom 11: Status
-        "" // Kolom 12: Link
+        satkerId, // Kolom 3: Satker ID
+        data.nomorSuratTugasLembur, // Kolom 4: Nomor Surat Tugas Lembur
+        formatTanggalIndonesia(data.tanggalSuratTugasLembur), // Kolom 5: Tanggal Surat Tugas Lembur
+        data.tujuanPelaksanaan, // Kolom 6: Kegiatan
+        selectedOrganik.map(id => getOrganikName(id)).join(" | "), // Kolom 7: Organik
+        formatTanggalIndonesia(data.tanggalPelaksanaan), // Kolom 8: Tanggal Pelaksanaan
+        data.uraianKegiatan.join(" | "), // Kolom 9: Uraian Kegiatan
+        data.outputHasil.join(" | "), // Kolom 10: Output Hasil
+        getOrganikName(data.pembuatDaftar), // Kolom 11: Pembuat daftar
+        "", // Kolom 12: Status
+        "" // Kolom 13: Link
       ];
 
       console.log('📋 Final lembur data array:', rowData);

@@ -444,32 +444,36 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
       const kuitansiId = await generateKuitansiId(targetSheetId);
       
       // TRANSFORM DATA KE ARRAY SESUAI URUTAN HEADER SPREADSHEET
+      const satkerConfig = satkerContext?.getUserSatkerConfig();
+      const satkerId = satkerConfig?.satker_id || "";
+      
       const rowData = [
         sequenceNumber, // Kolom 1: No (urut)
         kuitansiId, // Kolom 2: id (kui-yymmxxx)
-        values.nomorSuratTugas, // Kolom 3: Nomor Surat Tugas
-        formatTanggalIndonesia(values.tanggalSuratTugas), // Kolom 4: Tanggal Surat Tugas
-        values.namaPelaksana, // Kolom 5: Pelaksana Perjalanan Dinas
-        values.tujuanPerjalanan, // Kolom 6: Tujuan Pelaksanaan Perjalanan Dinas
-        values.kabupatenKota || "", // Kolom 7: Kab/Kota Tujuan
-        values.namaTempatTujuan || "", // Kolom 8: Nama Tempat Tujuan
-        formatTanggalIndonesia(values.tanggalBerangkat), // Kolom 9: Tanggal Berangkat
-        formatTanggalIndonesia(values.tanggalKembali), // Kolom 10: Tanggal Kembali
-        formatTanggalIndonesia(values.tanggalPengajuan), // Kolom 11: Tanggal Pengajuan
-        programsMap[values.program] || values.program, // Kolom 12: Program (hanya nama)
-        kegiatanMap[values.kegiatan] || values.kegiatan, // Kolom 13: Kegiatan (hanya nama)
-        kroMap[values.kro] || values.kro, // Kolom 14: KRO (hanya nama)
-        roMap[values.ro] || values.ro, // Kolom 15: RO (hanya nama)
-        komponenMap[values.komponen] || values.komponen, // Kolom 16: Komponen (hanya nama)
-        akunMap[values.akun] || values.akun, // Kolom 17: Akun (hanya nama)
-        formatCurrency(values.biayaTransport), // Kolom 18: Biaya Transport Kab/Kota Tujuan (PP)
-        formatCurrency(values.biayaBBM), // Kolom 19: Biaya Pembelian BBM/Tol (PP)
-        formatCurrency(values.biayaPenginapan), // Kolom 20: Biaya Penginapan/Hotel
-        values.jenisPerjalanan, // Kolom 21: Jenis Perjalanan Dinas
-        // Kolom 22-51: 30 fields untuk kecamatan (10 kecamatan × 3 field)
+        satkerId, // Kolom 3: Satker ID
+        values.nomorSuratTugas, // Kolom 4: Nomor Surat Tugas
+        formatTanggalIndonesia(values.tanggalSuratTugas), // Kolom 5: Tanggal Surat Tugas
+        values.namaPelaksana, // Kolom 6: Pelaksana Perjalanan Dinas
+        values.tujuanPerjalanan, // Kolom 7: Tujuan Pelaksanaan Perjalanan Dinas
+        values.kabupatenKota || "", // Kolom 8: Kab/Kota Tujuan
+        values.namaTempatTujuan || "", // Kolom 9: Nama Tempat Tujuan
+        formatTanggalIndonesia(values.tanggalBerangkat), // Kolom 10: Tanggal Berangkat
+        formatTanggalIndonesia(values.tanggalKembali), // Kolom 11: Tanggal Kembali
+        formatTanggalIndonesia(values.tanggalPengajuan), // Kolom 12: Tanggal Pengajuan
+        programsMap[values.program] || values.program, // Kolom 13: Program (hanya nama)
+        kegiatanMap[values.kegiatan] || values.kegiatan, // Kolom 14: Kegiatan (hanya nama)
+        kroMap[values.kro] || values.kro, // Kolom 15: KRO (hanya nama)
+        roMap[values.ro] || values.ro, // Kolom 16: RO (hanya nama)
+        komponenMap[values.komponen] || values.komponen, // Kolom 17: Komponen (hanya nama)
+        akunMap[values.akun] || values.akun, // Kolom 18: Akun (hanya nama)
+        formatCurrency(values.biayaTransport), // Kolom 19: Biaya Transport Kab/Kota Tujuan (PP)
+        formatCurrency(values.biayaBBM), // Kolom 20: Biaya Pembelian BBM/Tol (PP)
+        formatCurrency(values.biayaPenginapan), // Kolom 21: Biaya Penginapan/Hotel
+        values.jenisPerjalanan, // Kolom 22: Jenis Perjalanan Dinas
+        // Kolom 23-52: 30 fields untuk kecamatan (10 kecamatan × 3 field)
         ...generateKecamatanArray(kecamatanDetails),
-        "", // Kolom 52: Status
-        "" // Kolom 53: Link
+        "", // Kolom 53: Status
+        "" // Kolom 54: Link
       ];
 
       console.log('📋 Final kuitansi data array:', rowData);

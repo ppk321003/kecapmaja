@@ -840,9 +840,13 @@ const KuitansiTransportLokal = () => {
     const mitraRates = mitraDetails.map(detail => detail.rate).filter(Boolean).join(" | ");
     const mitraTanggal = mitraDetails.map(detail => formatTanggalIndonesia(detail.tanggalPelaksanaan)).filter(Boolean).join(" | ");
 
+    const satkerConfig = satkerContext?.getUserSatkerConfig();
+    const satkerId = satkerConfig?.satker_id || "";
+
     return [
       sequenceNumber.toString(),
       kuitansiId,
+      satkerId,
       data.tujuanPelaksanaan,
       data.nomorSuratTugas,
       formatTanggalIndonesia(data.tanggalSuratTugas),

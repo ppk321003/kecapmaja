@@ -730,28 +730,32 @@ const KerangkaAcuanKerja = () => {
       }
 
       // Susun rowData sesuai header spreadsheet - DENGAN NOMOR URUT DI KOLOM PERTAMA
+      const satkerConfig = satkerContext?.getUserSatkerConfig();
+      const satkerId = satkerConfig?.satker_id || "";
+      
       const rowData = [
         sequenceNumber, // Kolom 1: Nomor Urut
         kakId, // Kolom 2: ID KAK
-        formData.jenisKak, // Kolom 3: Jenis KAK
-        formData.jenisPaketMeeting, // Kolom 4: Jenis Paket Meeting
-        programNama, // Kolom 5: Program Pembebanan (NAMA dari kolom C sheet program)
-        kegiatanNama, // Kolom 6: Kegiatan (NAMA dari kolom D sheet kegiatan)
-        kroNama, // Kolom 7: Kode Rincian Output (NAMA dari kolom D sheet kro)
-        roNama, // Kolom 8: Rincian Output (NAMA dari kolom D sheet ro)
-        komponenNama, // Kolom 9: Komponen Output (NAMA dari kolom C sheet komponen)
-        akunNama, // Kolom 10: Akun (NAMA dari kolom C sheet akun)
-        formData.paguAnggaran, // Kolom 11: Pagu Anggaran
-        formatTanggalIndonesia(formData.tanggalPengajuanKAK), // Kolom 12: Tanggal Pengajuan KAK
-        formatTanggalIndonesia(formData.tanggalMulaiKegiatan), // Kolom 13: Tanggal Mulai Kegiatan
-        formatTanggalIndonesia(formData.tanggalAkhirKegiatan), // Kolom 14: Tanggal Akhir Kegiatan
-        formData.pembuatDaftar, // Kolom 15: Pembuat Daftar
-        ...kegiatanData, // Kolom 16-75: 60 fields untuk detail kegiatan (15 kegiatan × 4 field)
-        formData.jumlahGelombang, // Kolom 76: Jumlah Gelombang
-        ...waveData, // Kolom 77-106: 30 fields untuk wave dates (15 gelombang × 2 tanggal)
-        "", // Kolom 107: Tanggal Pelaksanaan Gelombang
-        "", // Kolom 108: Status
-        "" // Kolom 109: Link
+        satkerId, // Kolom 3: Satker ID
+        formData.jenisKak, // Kolom 4: Jenis KAK
+        formData.jenisPaketMeeting, // Kolom 5: Jenis Paket Meeting
+        programNama, // Kolom 6: Program Pembebanan (NAMA dari kolom C sheet program)
+        kegiatanNama, // Kolom 7: Kegiatan (NAMA dari kolom D sheet kegiatan)
+        kroNama, // Kolom 8: Kode Rincian Output (NAMA dari kolom D sheet kro)
+        roNama, // Kolom 9: Rincian Output (NAMA dari kolom D sheet ro)
+        komponenNama, // Kolom 10: Komponen Output (NAMA dari kolom C sheet komponen)
+        akunNama, // Kolom 11: Akun (NAMA dari kolom C sheet akun)
+        formData.paguAnggaran, // Kolom 12: Pagu Anggaran
+        formatTanggalIndonesia(formData.tanggalPengajuanKAK), // Kolom 13: Tanggal Pengajuan KAK
+        formatTanggalIndonesia(formData.tanggalMulaiKegiatan), // Kolom 14: Tanggal Mulai Kegiatan
+        formatTanggalIndonesia(formData.tanggalAkhirKegiatan), // Kolom 15: Tanggal Akhir Kegiatan
+        formData.pembuatDaftar, // Kolom 16: Pembuat Daftar
+        ...kegiatanData, // Kolom 17-76: 60 fields untuk detail kegiatan (15 kegiatan × 4 field)
+        formData.jumlahGelombang, // Kolom 77: Jumlah Gelombang
+        ...waveData, // Kolom 78-107: 30 fields untuk wave dates (15 gelombang × 2 tanggal)
+        "", // Kolom 108: Tanggal Pelaksanaan Gelombang
+        "", // Kolom 109: Status
+        "" // Kolom 110: Link
       ];
 
       console.log("📋 Final data to submit:", {
