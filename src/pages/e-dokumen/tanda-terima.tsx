@@ -54,7 +54,7 @@ const TandaTerima = () => {
           body: {
             spreadsheetId: targetSheetId,
             operation: "append",
-            range: `${SHEET_NAME}!A:AQ`,
+            range: `${SHEET_NAME}!A:AR`,
             values: [data]
           }
         });
@@ -292,16 +292,20 @@ const TandaTerima = () => {
       }
 
       // Format data sesuai struktur spreadsheet
+      const satkerConfig = satkerContext?.getUserSatkerConfig();
+      const satkerId = satkerConfig?.satker_id || "";
+      
       const rowData = [
         sequenceNumber, // Kolom 1: No
         tandaTerimaId, // Kolom 2: Id (tt-yymmxxx)
-        data.namaKegiatan, // Kolom 3: Nama Kegiatan
-        data.detail || "", // Kolom 4: Detail Kegiatan
-        formatTanggalIndonesia(new Date(data.tanggalPembuatanDaftar)), // Kolom 5: Tanggal Pembuatan Daftar
-        pembuatDaftar?.name || data.pembuatDaftar, // Kolom 6: Pembuat Daftar
-        organikNames, // Kolom 7: Organik
-        mitraNames, // Kolom 8: Mitra Statistik
-        ...itemsArray // Kolom 9-53: 15 items × 3 fields = 45 fields
+        satkerId, // Kolom 3: Satker ID
+        data.namaKegiatan, // Kolom 4: Nama Kegiatan
+        data.detail || "", // Kolom 5: Detail Kegiatan
+        formatTanggalIndonesia(new Date(data.tanggalPembuatanDaftar)), // Kolom 6: Tanggal Pembuatan Daftar
+        pembuatDaftar?.name || data.pembuatDaftar, // Kolom 7: Pembuat Daftar
+        organikNames, // Kolom 8: Organik
+        mitraNames, // Kolom 9: Mitra Statistik
+        ...itemsArray // Kolom 10-54: 15 items × 3 fields = 45 fields
       ];
 
       console.log('📋 Final tanda terima data array:', rowData);

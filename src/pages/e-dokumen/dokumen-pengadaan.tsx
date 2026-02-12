@@ -73,7 +73,7 @@ const useSubmitPengadaanToSheets = (targetSheetId: string) => {
         body: {
           spreadsheetId: targetSheetId,
           operation: "append",
-          range: `${SHEET_NAME}!A:AC`,
+          range: `${SHEET_NAME}!A:AD`,
           values: [data]
         }
       });
@@ -240,38 +240,42 @@ const DokumenPengadaan = () => {
       const pengadaanId = await generatePengadaanId(targetSheetId);
 
       // Format data sesuai dengan header spreadsheet
+      const satkerConfig = satkerContext?.getUserSatkerConfig();
+      const satkerId = satkerConfig?.satker_id || "";
+      
       const rowData = [
         sequenceNumber, // Kolom 1: No
         pengadaanId, // Kolom 2: Id (pbj-yymmxxx)
-        formValues.kodeKegiatan, // Kolom 3: Kode Kegiatan
-        formValues.namaPaket, // Kolom 4: Nama Paket Pengadaan
-        formatTanggalIndonesia(formValues.tanggalMulai), // Kolom 5: Tanggal Mulai Pelaksanaan
-        formatTanggalIndonesia(formValues.tanggalSelesai), // Kolom 6: Tanggal Selesai Pelaksanaan
-        formValues.spesifikasiTeknis, // Kolom 7: Spesifikasi Teknis
-        formValues.volume, // Kolom 8: Volume
-        formValues.satuan, // Kolom 9: Satuan
-        formatCurrency(formValues.hargaSatuanAwal), // Kolom 10: Harga Satuan Awal
-        formatCurrency(formValues.hargaSatuanSetelahNego), // Kolom 11: Harga Satuan Setelah Nego
-        formValues.metodePengadaan, // Kolom 12: Metode Pengadaan
-        formValues.bentukKontrak, // Kolom 13: Bentuk/Bukti Kontrak
-        formValues.jenisKontrak, // Kolom 14: Jenis Kontrak
-        formValues.caraPembayaran, // Kolom 15: Cara Pembayaran
-        formValues.uangMuka, // Kolom 16: Uang Muka
-        formValues.nomorFormulirPermintaan, // Kolom 17: Nomor Formulir Permintaan
-        formatTanggalIndonesia(formValues.tanggalFormulirPermintaan), // Kolom 18: Tanggal Formulir Permintaan
-        formatTanggalIndonesia(formValues.tanggalKak), // Kolom 19: Tanggal Kerangka Acuan Kerja (KAK)
-        formValues.nomorKertasKerjaHPS, // Kolom 20: Nomor Kertas Kerja Penyusunan HPS
-        formValues.namaPenyedia, // Kolom 21: Penyedia Barang/Jasa
-        formValues.namaPerwakilan, // Kolom 22: Nama Perwakilan Penyedia
-        formValues.jabatan, // Kolom 23: Jabatan
-        formValues.alamatPenyedia, // Kolom 24: Alamat Penyedia
-        formValues.namaBank, // Kolom 25: Bank Penyedia
-        formValues.nomorRekening, // Kolom 26: No Rek Penyedia
-        formValues.atasNamaRekening, // Kolom 27: Atas Nama Rekening
-        formValues.npwpPenyedia, // Kolom 28: NPWP Penyedia
-        formValues.nomorSuratPenawaranHarga, // Kolom 29: Nomor Surat Penawaran
-        formValues.nomorSuratPermintaanPembayaran, // Kolom 30: Nomor Surat Permohonan Pembayaran
-        formValues.nomorInvoice // Kolom 31: Nomor Invoice Pembayaran
+        satkerId, // Kolom 3: Satker ID
+        formValues.kodeKegiatan, // Kolom 4: Kode Kegiatan
+        formValues.namaPaket, // Kolom 5: Nama Paket Pengadaan
+        formatTanggalIndonesia(formValues.tanggalMulai), // Kolom 6: Tanggal Mulai Pelaksanaan
+        formatTanggalIndonesia(formValues.tanggalSelesai), // Kolom 7: Tanggal Selesai Pelaksanaan
+        formValues.spesifikasiTeknis, // Kolom 8: Spesifikasi Teknis
+        formValues.volume, // Kolom 9: Volume
+        formValues.satuan, // Kolom 10: Satuan
+        formatCurrency(formValues.hargaSatuanAwal), // Kolom 11: Harga Satuan Awal
+        formatCurrency(formValues.hargaSatuanSetelahNego), // Kolom 12: Harga Satuan Setelah Nego
+        formValues.metodePengadaan, // Kolom 13: Metode Pengadaan
+        formValues.bentukKontrak, // Kolom 14: Bentuk/Bukti Kontrak
+        formValues.jenisKontrak, // Kolom 15: Jenis Kontrak
+        formValues.caraPembayaran, // Kolom 16: Cara Pembayaran
+        formValues.uangMuka, // Kolom 17: Uang Muka
+        formValues.nomorFormulirPermintaan, // Kolom 18: Nomor Formulir Permintaan
+        formatTanggalIndonesia(formValues.tanggalFormulirPermintaan), // Kolom 19: Tanggal Formulir Permintaan
+        formatTanggalIndonesia(formValues.tanggalKak), // Kolom 20: Tanggal Kerangka Acuan Kerja (KAK)
+        formValues.nomorKertasKerjaHPS, // Kolom 21: Nomor Kertas Kerja Penyusunan HPS
+        formValues.namaPenyedia, // Kolom 22: Penyedia Barang/Jasa
+        formValues.namaPerwakilan, // Kolom 23: Nama Perwakilan Penyedia
+        formValues.jabatan, // Kolom 24: Jabatan
+        formValues.alamatPenyedia, // Kolom 25: Alamat Penyedia
+        formValues.namaBank, // Kolom 26: Bank Penyedia
+        formValues.nomorRekening, // Kolom 27: No Rek Penyedia
+        formValues.atasNamaRekening, // Kolom 28: Atas Nama Rekening
+        formValues.npwpPenyedia, // Kolom 29: NPWP Penyedia
+        formValues.nomorSuratPenawaranHarga, // Kolom 30: Nomor Surat Penawaran
+        formValues.nomorSuratPermintaanPembayaran, // Kolom 31: Nomor Surat Permohonan Pembayaran
+        formValues.nomorInvoice // Kolom 32: Nomor Invoice Pembayaran
       ];
 
       console.log('📋 Final pengadaan data array:', rowData);
