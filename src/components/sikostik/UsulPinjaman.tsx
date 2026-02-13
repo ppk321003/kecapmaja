@@ -7,19 +7,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Search, RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, HandCoins, FileText, AlertTriangle, Plus } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, HandCoins, FileText, AlertTriangle, Plus, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatNIP, parseNIP, getRetirementStatusText } from '@/hooks/use-sikostik-data';
 import { UsulPinjaman as UsulPinjamanType } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
 import { FormPengajuanPinjaman } from './FormPengajuanPinjaman';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const UsulPinjaman = () => {
-  const { loading, error, fetchUsulPinjaman } = useSikostikData();
+  const { loading, error, fetchUsulPinjaman, updateUsulPinjamanStatus } = useSikostikData();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [usulData, setUsulData] = useState<UsulPinjamanType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formOpen, setFormOpen] = useState(false);
+  const [isApproving, setIsApproving] = useState<string | null>(null);
+
+  const isApprover = user?.role === 'Pejabat Pembuat Komitmen' || user?.role === 'operator';
 
   const loadData = async () => {
     setIsLoading(true);
@@ -31,6 +36,30 @@ export const UsulPinjaman = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleApprove = async (proposalId: string) => {
+    setIsApproving(proposalId);
+    try {
+      await updateUsulPinjamanStatus(proposalId, 'Disetujui');
+      await loadData(); // Reload data after update
+    } catch (err) {
+      console.error('Error approving proposal:', err);
+    } finally {
+      setIsApproving(null);
+    }
+  };
+
+  const handleReject = async (proposalId: string) => {
+    setIsApproving(proposalId);
+    try {
+      await updateUsulPinjamanStatus(proposalId, 'Ditolak');
+      await loadData(); // Reload data after update
+    } catch (err) {
+      console.error('Error rejecting proposal:', err);
+    } finally {
+      setIsApproving(null);
+    }
+  };
 
   const filteredData = useMemo(() => {
     let result = usulData;
@@ -240,69 +269,124 @@ export const UsulPinjaman = () => {
                       <TableCell>{item.tanggalUsul ? new Date(item.tanggalUsul).toLocaleDateString('id-ID') : '-'}</TableCell>
                       <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
                       <TableCell className="text-center">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm"><FileText className="h-4 w-4" /></Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-lg">
-                            <DialogHeader>
-                              <DialogTitle>Detail Usul Pinjaman</DialogTitle>
-                              <DialogDescription>ID: {item.id}</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <p className="text-sm text-muted-foreground">Pengusul</p>
-                                  <p className="font-medium">{item.nama}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-muted-foreground">NIP</p>
-                                  <p className="font-mono text-sm">{formatNIP(item.nip)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-muted-foreground">Jumlah Pinjaman</p>
-                                  <p className="font-bold text-lg text-primary">{formatCurrency(item.jumlahPinjaman)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-muted-foreground">Cicilan/Bulan</p>
-                                  <p className="font-bold">{formatCurrency(item.cicilanPokok)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-muted-foreground">Jangka Waktu</p>
-                                  <p className="font-medium">{item.jangkaWaktu} bulan</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-muted-foreground">Status</p>
-                                  {getStatusBadge(item.status)}
-                                </div>
-                              </div>
-                              
-                              {nipInfo?.isNearRetirement && (
-                                <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
-                                  <div className="flex items-center gap-2 text-yellow-600">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <span className="text-sm font-medium">Mendekati Pensiun</span>
+                        <div className="flex items-center justify-center gap-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm"><FileText className="h-4 w-4" /></Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-lg">
+                              <DialogHeader>
+                                <DialogTitle>Detail Usul Pinjaman</DialogTitle>
+                                <DialogDescription>ID: {item.id}</DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Pengusul</p>
+                                    <p className="font-medium">{item.nama}</p>
                                   </div>
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    Sisa masa kerja: {getRetirementStatusText(nipInfo.remainingWorkMonths)}
-                                  </p>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">NIP</p>
+                                    <p className="font-mono text-sm">{formatNIP(item.nip)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Jumlah Pinjaman</p>
+                                    <p className="font-bold text-lg text-primary">{formatCurrency(item.jumlahPinjaman)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Cicilan/Bulan</p>
+                                    <p className="font-bold">{formatCurrency(item.cicilanPokok)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Jangka Waktu</p>
+                                    <p className="font-medium">{item.jangkaWaktu} bulan</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Status</p>
+                                    {getStatusBadge(item.status)}
+                                  </div>
                                 </div>
-                              )}
-                              
-                              <div>
-                                <p className="text-sm text-muted-foreground">Tujuan Pinjaman</p>
-                                <p className="font-medium">{item.tujuanPinjaman}</p>
-                              </div>
-                              
-                              {item.keterangan && (
+                                
+                                {nipInfo?.isNearRetirement && (
+                                  <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                                    <div className="flex items-center gap-2 text-yellow-600">
+                                      <AlertTriangle className="h-4 w-4" />
+                                      <span className="text-sm font-medium">Mendekati Pensiun</span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                      Sisa masa kerja: {getRetirementStatusText(nipInfo.remainingWorkMonths)}
+                                    </p>
+                                  </div>
+                                )}
+                                
                                 <div>
-                                  <p className="text-sm text-muted-foreground">Keterangan</p>
-                                  <p className="font-medium">{item.keterangan}</p>
+                                  <p className="text-sm text-muted-foreground">Tujuan Pinjaman</p>
+                                  <p className="font-medium">{item.tujuanPinjaman}</p>
                                 </div>
-                              )}
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                                
+                                {item.keterangan && (
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Keterangan</p>
+                                    <p className="font-medium">{item.keterangan}</p>
+                                  </div>
+                                )}
+                                
+                                {/* Action Buttons for Approvers */}
+                                {isApprover && (item.status === 'Proses') && (
+                                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
+                                    <p className="text-sm font-semibold mb-3">Aksi Persetujuan</p>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="flex-1 gap-2"
+                                        onClick={() => handleApprove(item.id)}
+                                        disabled={isApproving === item.id}
+                                      >
+                                        <ThumbsUp className="h-4 w-4" />
+                                        Setujui
+                                      </Button>
+                                      <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="flex-1 gap-2"
+                                        onClick={() => handleReject(item.id)}
+                                        disabled={isApproving === item.id}
+                                      >
+                                        <ThumbsDown className="h-4 w-4" />
+                                        Tolak
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          {isApprover && (item.status === 'Proses') && (
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => handleApprove(item.id)}
+                                disabled={isApproving === item.id}
+                                title="Setujui"
+                              >
+                                <ThumbsUp className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleReject(item.id)}
+                                disabled={isApproving === item.id}
+                                title="Tolak"
+                              >
+                                <ThumbsDown className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

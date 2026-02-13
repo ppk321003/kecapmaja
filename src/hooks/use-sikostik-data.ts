@@ -687,6 +687,82 @@ export const useSikostikData = () => {
     }
   }, [appendToSheet]);
 
+  // Update proposal status (Approve/Reject)
+  const updateProposalStatus = useCallback(async (
+    sheetName: string,
+    proposalId: string,
+    newStatus: string,
+    statusColumnIndex: number = 9 // Default: column J (index 9)
+  ): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch all data to find the row
+      const allData = await fetchSheet(sheetName, SIKOSTIK_SPREADSHEET_ID);
+      
+      // Find the row with matching id
+      const rowIndex = allData.findIndex((row: any) => {
+        const rowId = row.id || row.ID || Object.values(row)[0];
+        return String(rowId).trim() === String(proposalId).trim();
+      });
+      
+      if (rowIndex === -1) {
+        throw new Error(`Proposal with ID ${proposalId} not found`);
+      }
+      
+      // Row number in sheets is rowIndex + 2 (header is row 1, data starts at row 2)
+      const sheetRowNumber = rowIndex + 2;
+      const columnLetter = String.fromCharCode(65 + statusColumnIndex); // A=65
+      const range = `${sheetName}!${columnLetter}${sheetRowNumber}`;
+      
+      console.log(`Updating ${sheetName} row ${sheetRowNumber} (${range}) with status: ${newStatus}`);
+      
+      // Update the status
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SIKOSTIK_SPREADSHEET_ID,
+          operation: "update",
+          range: range,
+          values: [[newStatus]]
+        }
+      });
+      
+      if (error) {
+        throw new Error(error.message || 'Failed to update proposal');
+      }
+      
+      return true;
+    } catch (err: any) {
+      console.error(`Error updating ${sheetName} status:`, err);
+      setError(err.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchSheet]);
+
+  // Specific update functions for each proposal type
+  const updateUsulPinjamanStatus = useCallback(async (
+    proposalId: string,
+    newStatus: 'Disetujui' | 'Ditolak'
+  ): Promise<boolean> => {
+    return updateProposalStatus('usul_pinjaman', proposalId, newStatus, 9); // Column J
+  }, [updateProposalStatus]);
+
+  const updateUsulPerubahanStatus = useCallback(async (
+    proposalId: string,
+    newStatus: 'Disetujui' | 'Ditolak'
+  ): Promise<boolean> => {
+    return updateProposalStatus('usul_perubahan', proposalId, newStatus, 9); // Column J
+  }, [updateProposalStatus]);
+
+  const updateUsulPengambilanStatus = useCallback(async (
+    proposalId: string,
+    newStatus: 'Disetujui' | 'Ditolak'
+  ): Promise<boolean> => {
+    return updateProposalStatus('usul_pengambilan', proposalId, newStatus, 8); // Column I
+  }, [updateProposalStatus]);
+
   return {
     loading,
     error,
@@ -699,6 +775,9 @@ export const useSikostikData = () => {
     submitUsulPinjaman,
     submitUsulPerubahan,
     submitUsulPengambilan,
+    updateUsulPinjamanStatus,
+    updateUsulPerubahanStatus,
+    updateUsulPengambilanStatus,
     userSheetId
   };
   

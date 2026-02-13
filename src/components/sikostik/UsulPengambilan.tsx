@@ -6,11 +6,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Search, RefreshCw, AlertCircle, Plus, FileText, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, Plus, FileText, Clock, CheckCircle, XCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useSikostikData, formatCurrency, formatNIP } from '@/hooks/use-sikostik-data';
 import { UsulPengambilan as UsulPengambilanType } from '@/types/sikostik';
 import { cn } from '@/lib/utils';
 import { FormPengajuanPengambilan } from './FormPengajuanPengambilan';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const UsulPengambilan = () => {
   const { 
@@ -18,8 +19,10 @@ export const UsulPengambilan = () => {
     error, 
     fetchAnggotaMaster,
     fetchRekapDashboard,
-    fetchUsulPengambilan 
+    fetchUsulPengambilan,
+    updateUsulPengambilanStatus
   } = useSikostikData();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [usulData, setUsulData] = useState<UsulPengambilanType[]>([]);
   const [anggotaMasterData, setAnggotaMasterData] = useState([]);
@@ -27,6 +30,9 @@ export const UsulPengambilan = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formOpen, setFormOpen] = useState(false);
+  const [isApproving, setIsApproving] = useState<string | null>(null);
+
+  const isApprover = user?.role === 'Pejabat Pembuat Komitmen' || user?.role === 'operator';
 
   const loadData = async () => {
     setIsLoading(true);
@@ -48,6 +54,30 @@ export const UsulPengambilan = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleApprove = async (proposalId: string) => {
+    setIsApproving(proposalId);
+    try {
+      await updateUsulPengambilanStatus(proposalId, 'Disetujui');
+      await loadData(); // Reload data after update
+    } catch (err) {
+      console.error('Error approving proposal:', err);
+    } finally {
+      setIsApproving(null);
+    }
+  };
+
+  const handleReject = async (proposalId: string) => {
+    setIsApproving(proposalId);
+    try {
+      await updateUsulPengambilanStatus(proposalId, 'Ditolak');
+      await loadData(); // Reload data after update
+    } catch (err) {
+      console.error('Error rejecting proposal:', err);
+    } finally {
+      setIsApproving(null);
+    }
+  };
 
   const filteredData = useMemo(() => {
     let result = usulData;
@@ -226,12 +256,13 @@ export const UsulPengambilan = () => {
                   <TableHead className="font-semibold">Alasan</TableHead>
                   <TableHead className="font-semibold">Tanggal Usul</TableHead>
                   <TableHead className="font-semibold">Status</TableHead>
+                  <TableHead className="font-semibold text-center">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       Tidak ada data pengajuan pengambilan
                     </TableCell>
                   </TableRow>
@@ -265,6 +296,116 @@ export const UsulPengambilan = () => {
                         <span className={cn('px-2 py-1 rounded-md text-sm font-medium inline-block', getStatusColor(item.status))}>
                           {item.status}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm"><FileText className="h-4 w-4" /></Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-lg">
+                              <DialogHeader>
+                                <DialogTitle>Detail Usul Pengambilan</DialogTitle>
+                                <DialogDescription>ID: {item.id}</DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Nama Anggota</p>
+                                    <p className="font-medium">{item.nama}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">NIP</p>
+                                    <p className="font-mono text-sm">{formatNIP(item.nip)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Jenis Pengambilan</p>
+                                    <p className="font-medium">{item.jenisPengambilan}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Jumlah</p>
+                                    <p className="font-bold text-lg text-orange-600">{formatCurrency(item.jumlahPengambilan)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Tanggal Usul</p>
+                                    <p className="text-sm">{item.tanggalUsul ? new Date(item.tanggalUsul).toLocaleDateString('id-ID') : '-'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Status</p>
+                                    <span className={cn('px-2 py-1 rounded-md text-sm font-medium inline-block', getStatusColor(item.status))}>
+                                      {item.status}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Alasan Pengambilan</p>
+                                  <p className="font-medium">{item.alasanPengambilan || '-'}</p>
+                                </div>
+
+                                {item.keterangan && (
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Keterangan</p>
+                                    <p className="font-medium">{item.keterangan}</p>
+                                  </div>
+                                )}
+
+                                {/* Action Buttons for Approvers */}
+                                {isApprover && (item.status === 'Proses') && (
+                                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
+                                    <p className="text-sm font-semibold mb-3">Aksi Persetujuan</p>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="flex-1 gap-2"
+                                        onClick={() => handleApprove(item.id)}
+                                        disabled={isApproving === item.id}
+                                      >
+                                        <ThumbsUp className="h-4 w-4" />
+                                        Setujui
+                                      </Button>
+                                      <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="flex-1 gap-2"
+                                        onClick={() => handleReject(item.id)}
+                                        disabled={isApproving === item.id}
+                                      >
+                                        <ThumbsDown className="h-4 w-4" />
+                                        Tolak
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          {isApprover && (item.status === 'Proses') && (
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => handleApprove(item.id)}
+                                disabled={isApproving === item.id}
+                                title="Setujui"
+                              >
+                                <ThumbsUp className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleReject(item.id)}
+                                disabled={isApproving === item.id}
+                                title="Tolak"
+                              >
+                                <ThumbsDown className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
