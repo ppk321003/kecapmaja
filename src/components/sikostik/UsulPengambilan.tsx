@@ -298,12 +298,11 @@ export const UsulPengambilan = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm"><FileText className="h-4 w-4" /></Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-lg">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm"><FileText className="h-4 w-4" /></Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-lg">
                               <DialogHeader>
                                 <DialogTitle>Detail Usul Pengambilan</DialogTitle>
                                 <DialogDescription>ID: {item.id}</DialogDescription>
@@ -380,32 +379,7 @@ export const UsulPengambilan = () => {
                                 )}
                               </div>
                             </DialogContent>
-                          </Dialog>
-                          {isApprover && (
-                            <>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                onClick={() => handleApprove(item.id)}
-                                disabled={isApproving === item.id}
-                                title="Setujui"
-                              >
-                                <ThumbsUp className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleReject(item.id)}
-                                disabled={isApproving === item.id}
-                                title="Tolak"
-                              >
-                                <ThumbsDown className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                        </Dialog>
                       </TableCell>
                     </TableRow>
                   ))
