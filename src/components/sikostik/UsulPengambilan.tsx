@@ -351,7 +351,7 @@ export const UsulPengambilan = () => {
                                 )}
 
                                 {/* Action Buttons for Approvers */}
-                                {isApprover && (item.status === 'Proses') && (
+                                {isApprover && (
                                   <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
                                     <p className="text-sm font-semibold mb-3">Aksi Persetujuan</p>
                                     <div className="flex gap-2">
@@ -381,7 +381,7 @@ export const UsulPengambilan = () => {
                               </div>
                             </DialogContent>
                           </Dialog>
-                          {isApprover && (item.status === 'Proses') && (
+                          {isApprover && (
                             <>
                               <Button 
                                 variant="ghost" 
