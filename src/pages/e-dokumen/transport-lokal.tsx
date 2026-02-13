@@ -401,12 +401,10 @@ const TransportLokal = () => {
 
       // Format data sesuai struktur spreadsheet
       const satkerConfig = satkerContext?.getUserSatkerConfig();
-      const satkerId = satkerConfig?.satker_id || "";
       
       const rowData = [
         sequenceNumber, // Kolom 1: No
-        transportLokalId, // Kolom 2: Id (trl-yymmxxx)
-        satkerId, // Kolom 3: Satker ID
+        transportLokalId, // Kolom 2: Id (tl-yymmxxx)
         data.namaKegiatan, // Kolom 4: Nama Kegiatan
         data.detil || "", // Kolom 5: Detil
         programName, // Kolom 6: Program

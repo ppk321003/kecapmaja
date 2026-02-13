@@ -270,12 +270,10 @@ const SuratPernyataan = () => {
 
     // Siapkan data untuk spreadsheet sesuai urutan header
     const satkerConfig = satkerContext?.getUserSatkerConfig();
-    const satkerId = satkerConfig?.satker_id || "";
     
     return [
       sequenceNumber.toString(), // No
       suratPernyataanId, // Id (format: super-yymmxxx)
-      satkerId, // Satker ID
       data.jenisSuratPernyataan, // Jenis Surat Pernyataan
       organikNames, // Organik
       mitraNames, // Mitra Statistik

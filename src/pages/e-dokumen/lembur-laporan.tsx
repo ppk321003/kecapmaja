@@ -288,12 +288,10 @@ const LemburLaporan = () => {
 
       // Format data sesuai dengan header spreadsheet
       const satkerConfig = satkerContext?.getUserSatkerConfig();
-      const satkerId = satkerConfig?.satker_id || "";
       
       const rowData = [
         sequenceNumber, // Kolom 1: No
         lemburId, // Kolom 2: Id (lmbr-yymmxxx)
-        satkerId, // Kolom 3: Satker ID
         data.nomorSuratTugasLembur, // Kolom 4: Nomor Surat Tugas Lembur
         formatTanggalIndonesia(data.tanggalSuratTugasLembur), // Kolom 5: Tanggal Surat Tugas Lembur
         data.tujuanPelaksanaan, // Kolom 6: Kegiatan

@@ -241,12 +241,10 @@ const DokumenPengadaan = () => {
 
       // Format data sesuai dengan header spreadsheet
       const satkerConfig = satkerContext?.getUserSatkerConfig();
-      const satkerId = satkerConfig?.satker_id || "";
       
       const rowData = [
         sequenceNumber, // Kolom 1: No
         pengadaanId, // Kolom 2: Id (pbj-yymmxxx)
-        satkerId, // Kolom 3: Satker ID
         formValues.kodeKegiatan, // Kolom 4: Kode Kegiatan
         formValues.namaPaket, // Kolom 5: Nama Paket Pengadaan
         formatTanggalIndonesia(formValues.tanggalMulai), // Kolom 6: Tanggal Mulai Pelaksanaan

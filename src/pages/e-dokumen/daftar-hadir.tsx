@@ -880,12 +880,10 @@ const DaftarHadir = () => {
 
       const pembuatDaftar = organikList.find(item => item.id === data.pembuatDaftar);
       const satkerConfig = satkerContext?.getUserSatkerConfig();
-      const satkerId = satkerConfig?.satker_id || "";
       
       const rowData = [
         sequenceNumber,
         daftarHadirId,
-        satkerId,
         data.namaKegiatan,
         data.detil || "",
         data.jenis,

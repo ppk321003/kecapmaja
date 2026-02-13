@@ -731,12 +731,10 @@ const KerangkaAcuanKerja = () => {
 
       // Susun rowData sesuai header spreadsheet - DENGAN NOMOR URUT DI KOLOM PERTAMA
       const satkerConfig = satkerContext?.getUserSatkerConfig();
-      const satkerId = satkerConfig?.satker_id || "";
       
       const rowData = [
         sequenceNumber, // Kolom 1: Nomor Urut
         kakId, // Kolom 2: ID KAK
-        satkerId, // Kolom 3: Satker ID
         formData.jenisKak, // Kolom 4: Jenis KAK
         formData.jenisPaketMeeting, // Kolom 5: Jenis Paket Meeting
         programNama, // Kolom 6: Program Pembebanan (NAMA dari kolom C sheet program)

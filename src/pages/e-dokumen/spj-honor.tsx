@@ -562,13 +562,11 @@ const SPJHonor = () => {
       const grandTotal = calculateGrandTotal();
 
       // 4. Construct row data sesuai HEADER (19 kolom: A:S)
-      // Header: Id | Satker ID | Nama Kegiatan | Detil | Jenis | Program | Kegiatan | KRO | RO | Komponen | Akun | Tanggal (SPJ) | Pembuat Daftar | Organik | Mitra Statistik | Rincian Keseluruhan | Status | Link
+      // Header: Id | Nama Kegiatan | Detil | Jenis | Program | Kegiatan | KRO | RO | Komponen | Akun | Tanggal (SPJ) | Pembuat Daftar | Organik | Mitra Statistik | Rincian Keseluruhan | Status | Link
       const satkerConfig = satkerContext?.getUserSatkerConfig();
-      const satkerId = satkerConfig?.satker_id || "";
       
       const rowData = [
         spjId,                             // Kolom A: Id (spj-yymmxxx)
-        satkerId,                          // Kolom B: Satker ID
         formData.namaKegiatan,             // Kolom C: Nama Kegiatan
         formData.detil || "",              // Kolom D: Detil
         jenisName,                         // Kolom E: Jenis

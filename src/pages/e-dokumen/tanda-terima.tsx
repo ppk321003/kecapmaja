@@ -293,12 +293,10 @@ const TandaTerima = () => {
 
       // Format data sesuai struktur spreadsheet
       const satkerConfig = satkerContext?.getUserSatkerConfig();
-      const satkerId = satkerConfig?.satker_id || "";
       
       const rowData = [
         sequenceNumber, // Kolom 1: No
         tandaTerimaId, // Kolom 2: Id (tt-yymmxxx)
-        satkerId, // Kolom 3: Satker ID
         data.namaKegiatan, // Kolom 4: Nama Kegiatan
         data.detail || "", // Kolom 5: Detail Kegiatan
         formatTanggalIndonesia(new Date(data.tanggalPembuatanDaftar)), // Kolom 6: Tanggal Pembuatan Daftar

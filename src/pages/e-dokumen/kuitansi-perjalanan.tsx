@@ -445,12 +445,10 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
       
       // TRANSFORM DATA KE ARRAY SESUAI URUTAN HEADER SPREADSHEET
       const satkerConfig = satkerContext?.getUserSatkerConfig();
-      const satkerId = satkerConfig?.satker_id || "";
       
       const rowData = [
         sequenceNumber, // Kolom 1: No (urut)
         kuitansiId, // Kolom 2: id (kui-yymmxxx)
-        satkerId, // Kolom 3: Satker ID
         values.nomorSuratTugas, // Kolom 4: Nomor Surat Tugas
         formatTanggalIndonesia(values.tanggalSuratTugas), // Kolom 5: Tanggal Surat Tugas
         values.namaPelaksana, // Kolom 6: Pelaksana Perjalanan Dinas

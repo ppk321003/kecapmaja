@@ -301,12 +301,10 @@ const UangHarianTransport = () => {
 
       // Format data sesuai struktur spreadsheet
       const satkerConfig = satkerContext?.getUserSatkerConfig();
-      const satkerId = satkerConfig?.satker_id || "";
       
       const rowData = [
         sequenceNumber, // Kolom 1: No
         uangHarianTransportId, // Kolom 2: Id (uht-yymmxxx)
-        satkerId, // Kolom 3: Satker ID
         data.namaKegiatan, // Kolom 4: Nama Kegiatan
         data.detil || "", // Kolom 5: Detil
         data.jenis, // Kolom 6: Jenis
