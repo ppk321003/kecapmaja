@@ -18,6 +18,7 @@ import { formatCurrency } from '@/utils/bahanrevisi-calculations';
 import BahanRevisiFilter from './BahanRevisiFilter';
 import BahanRevisiBudgetTable from './BahanRevisiBudgetTable';
 import BahanRevisiRingkasan from './BahanRevisiRingkasan';
+import RPDTable from './RPDTable';
 import BudgetChangesConclusion from './BudgetChangesConclusion';
 import BudgetChangesSummary from './BudgetChangesSummary';
 import { BudgetChangesTable } from './BudgetChangesTable';
@@ -327,14 +328,15 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
             {/* Tab: RPD (Rencana Penarikan Dana) */}
             <TabsContent value="rpd" className="space-y-4">
-              <Card className="p-8">
-                <div className="text-center text-slate-500">
-                  <p>Fitur RPD sedang dalam pengembangan</p>
-                  <p className="text-sm mt-2">
-                    Total RPD Items: {rpdItems.length}
-                  </p>
-                </div>
-              </Card>
+              <RPDTable 
+                filters={filters}
+                items={rpdItems}
+                loading={isLoadingData}
+                onUpdateItem={async (id, updates) => {
+                  // Handle RPD item updates via spreadsheet
+                  // TODO: Implement RPD update functionality
+                }}
+              />
             </TabsContent>
 
             {/* Tab: Ringkasan */}
