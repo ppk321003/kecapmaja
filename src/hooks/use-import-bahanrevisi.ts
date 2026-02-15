@@ -58,6 +58,7 @@ export const useImportBahanRevisi = ({
       errors.push({
         type: 'validation',
         message: `Ketidaksesuaian jumlah items: ${budgetItems.length} budget items vs ${rpdItems.length} RPD items`,
+        details: ['Setiap baris data harus menghasilkan budget item dan RPD item yang sesuai. Periksa apakah ada baris dengan data yang incomplete atau hilang.'],
       });
     }
 
@@ -170,6 +171,7 @@ export const useImportBahanRevisi = ({
       ]);
 
       // Upload budget items
+      console.log('[uploadToGoogleSheets] Uploading', budgetItemsData.length, 'budget items...');
       const budgetResult = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: sheetId,
@@ -180,10 +182,19 @@ export const useImportBahanRevisi = ({
       });
 
       if (budgetResult.error) {
-        throw new Error(`Gagal upload budget items: ${budgetResult.error.message}`);
+        console.error('[uploadToGoogleSheets] Budget items error:', budgetResult.error);
+        throw new Error(`Gagal upload budget items: ${JSON.stringify(budgetResult.error)}`);
       }
+      
+      if (budgetResult.data?.error) {
+        console.error('[uploadToGoogleSheets] Budget items data error:', budgetResult.data.error);
+        throw new Error(`Gagal upload budget items: ${budgetResult.data.error}`);
+      }
+      
+      console.log('[uploadToGoogleSheets] Budget items uploaded successfully');
 
       // Upload RPD items
+      console.log('[uploadToGoogleSheets] Uploading', rpdItemsData.length, 'RPD items...');
       const rpdResult = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: sheetId,
@@ -194,7 +205,13 @@ export const useImportBahanRevisi = ({
       });
 
       if (rpdResult.error) {
-        throw new Error(`Gagal upload RPD items: ${rpdResult.error.message}`);
+        console.error('[uploadToGoogleSheets] RPD items error:', rpdResult.error);
+        throw new Error(`Gagal upload RPD items: ${JSON.stringify(rpdResult.error)}`);
+      }
+      
+      if (rpdResult.data?.error) {
+        console.error('[uploadToGoogleSheets] RPD items data error:', rpdResult.data.error);
+        throw new Error(`Gagal upload RPD items: ${rpdResult.data.error}`);
       }
 
       console.log(
@@ -301,10 +318,21 @@ export const useImportBahanRevisi = ({
               message: e,
             }))
           );
+          
+          // Show warning toast for processing errors
+          toast({
+            title: 'Peringatan Processing',
+            description: `${processErrors.length} error ditemukan saat memproses data: ${processErrors.slice(0, 2).join('; ')}${processErrors.length > 2 ? '...' : ''}`,
+            variant: 'destructive',
+          });
+          setIsImporting(false);
+          return;
         }
 
         // Upload to Google Sheets
+        console.log('[handleImportFile] Starting upload to Google Sheets...');
         await uploadToGoogleSheets(budgetItems, rpdItems);
+        console.log('[handleImportFile] Upload completed successfully');
 
         // Call success callback
         onImportSuccess(budgetItems, rpdItems);

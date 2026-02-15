@@ -43,13 +43,22 @@ const BahanRevisiExcelImportExport: React.FC<BahanRevisiExcelImportExportProps> 
   smallText = false,
 }) => {
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
+  const [importResult, setImportResult] = React.useState<{
+    success: boolean;
+    message: string;
+    details?: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { isImporting, validationErrors, handleImportFile, clearErrors } =
     useImportBahanRevisi({
       sheetId,
       onImportSuccess: (budgetItems, rpdItems) => {
-        setIsImportDialogOpen(false);
+        setImportResult({
+          success: true,
+          message: `✓ Import berhasil!`,
+          details: `${budgetItems.length} budget items dan ${rpdItems.length} RPD items berhasil tersimpan ke Google Sheets.`,
+        });
         clearErrors();
         onImportSuccess(budgetItems, rpdItems);
       },
@@ -181,7 +190,13 @@ const BahanRevisiExcelImportExport: React.FC<BahanRevisiExcelImportExportProps> 
       )}
 
       {/* Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setImportResult(null);
+          clearErrors();
+        }
+        setIsImportDialogOpen(open);
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Import Data dari Excel</DialogTitle>
@@ -191,9 +206,21 @@ const BahanRevisiExcelImportExport: React.FC<BahanRevisiExcelImportExportProps> 
           </DialogHeader>
 
           <div className="space-y-4">
+            {importResult && (
+              <Alert variant={importResult.success ? "default" : "destructive"} className={`text-sm ${importResult.success ? 'bg-green-50 border-green-200' : ''}`}>
+                <AlertCircle className={`h-4 w-4 ${importResult.success ? 'text-green-600' : ''}`} />
+                <AlertDescription className={importResult.success ? 'text-green-800' : ''}>
+                  <div className="font-medium">{importResult.message}</div>
+                  {importResult.details && (
+                    <div className="text-xs mt-1">{importResult.details}</div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {validationErrors.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-red-700">Validation Errors:</h4>
+                <h4 className="font-semibold text-sm text-red-700">Validation Errors ({validationErrors.length}):</h4>
                 {validationErrors.map((error, idx) => (
                   <Alert key={idx} variant="destructive" className="text-sm">
                     <AlertCircle className="h-4 w-4" />
@@ -219,36 +246,53 @@ const BahanRevisiExcelImportExport: React.FC<BahanRevisiExcelImportExportProps> 
               </div>
             )}
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-              <p className="text-blue-900 font-medium mb-2">Panduan Import:</p>
-              <ul className="text-blue-800 space-y-1 text-xs list-disc ml-4">
-                <li>Gunakan template yang sudah diunduh</li>
-                <li>Isi semua kolom yang diperlukan (uraian, volume, harga, dll)</li>
-                <li>Isi kolom RPD bulanan (Januari - Desember) dengan nilai pencairan</li>
-                <li>Total RPD tidak boleh melebihi "Harga Satuan Menjadi"</li>
-                <li>Jangan ubah header atau urutan kolom</li>
-                <li>Simpan file dalam format Excel (.xlsx)</li>
-              </ul>
-            </div>
+            {!importResult && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+                <p className="text-blue-900 font-medium mb-2">Panduan Import:</p>
+                <ul className="text-blue-800 space-y-1 text-xs list-disc ml-4">
+                  <li>✓ Gunakan template yang sudah diunduh</li>
+                  <li>✓ Isi semua kolom hierarchy (Program, Kegiatan, Komponen, Akun)</li>
+                  <li>✓ Isi kolom volume, satuan, harga, dan uraian</li>
+                  <li><strong>Catatan: Kolom bulan (Jan-Des) <u>boleh kosong</u></strong> - isi melalui UI nanti</li>
+                  <li>✓ Jangan ubah header atau urutan kolom</li>
+                  <li>✓ Simpan file dalam format Excel (.xlsx)</li>
+                </ul>
+              </div>
+            )}
 
             <div className="flex gap-2">
-              <Button
-                onClick={triggerFileInput}
-                disabled={isImporting}
-                className="flex-1"
-              >
-                {isImporting ? 'Sedang diproses...' : 'Pilih File Excel'}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsImportDialogOpen(false);
-                  clearErrors();
-                }}
-                disabled={isImporting}
-              >
-                Batal
-              </Button>
+              {!importResult ? (
+                <>
+                  <Button
+                    onClick={triggerFileInput}
+                    disabled={isImporting}
+                    className="flex-1"
+                  >
+                    {isImporting ? 'Sedang diproses...' : 'Pilih File Excel'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsImportDialogOpen(false);
+                      clearErrors();
+                    }}
+                    disabled={isImporting}
+                  >
+                    Batal
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setIsImportDialogOpen(false);
+                    setImportResult(null);
+                    clearErrors();
+                  }}
+                >
+                  {importResult.success ? 'Selesai' : 'Coba Lagi'}
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
