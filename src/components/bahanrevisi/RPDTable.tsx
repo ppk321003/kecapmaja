@@ -11,8 +11,25 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface RPDItem {
   id: string;
+  program_pembebanan?: string;
+  kegiatan?: string;
+  komponen_output?: string;
+  sub_komponen?: string;
+  akun?: string;
   uraian: string;
-  jumlah_menjadi: number; // Total Pagu
+  total_pagu: number; // Total Pagu
+  jan?: number;
+  feb?: number;
+  mar?: number;
+  apr?: number;
+  may?: number;
+  jun?: number;
+  jul?: number;
+  aug?: number;
+  sep?: number;
+  oct?: number;
+  nov?: number;
+  dec?: number;
   januari?: number;
   februari?: number;
   maret?: number;
@@ -25,8 +42,9 @@ interface RPDItem {
   oktober?: number;
   november?: number;
   desember?: number;
-  jumlah_rpd?: number; // Total RPD
-  selisih?: number; // Sisa Anggaran
+  total_rpd?: number; // Total RPD
+  sisa_anggaran?: number; // Sisa Anggaran
+  status?: string;
 }
 
 interface RPDTableProps {
@@ -71,7 +89,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       if (!Array.isArray(safeItems)) return 0;
       return safeItems.reduce((sum, item) => {
         try {
-          return sum + (Number(item?.jumlah_menjadi) || 0);
+          return sum + (Number(item?.total_pagu) || 0);
         } catch {
           return sum;
         }
@@ -203,7 +221,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
           const matchesSearch = !searchTerm || uraian.toLowerCase().includes(searchLower);
           
           if (hideZeroBudget) {
-            return matchesSearch && (Number(item.jumlah_menjadi) || 0) !== 0;
+            return matchesSearch && (Number(item.total_pagu) || 0) !== 0;
           }
           
           return matchesSearch;
@@ -250,14 +268,14 @@ const RPDTable: React.FC<RPDTableProps> = ({
             fieldA = a[monthField as keyof RPDItem] || 0;
             fieldB = b[monthField as keyof RPDItem] || 0;
           } else if (sortField === 'total_rpd') {
-            fieldA = a.jumlah_rpd || 0;
-            fieldB = b.jumlah_rpd || 0;
+            fieldA = a.total_rpd || 0;
+            fieldB = b.total_rpd || 0;
           } else if (sortField === 'total_pagu') {
-            fieldA = a.jumlah_menjadi || 0;
-            fieldB = b.jumlah_menjadi || 0;
+            fieldA = a.total_pagu || 0;
+            fieldB = b.total_pagu || 0;
           } else if (sortField === 'selisih') {
-            fieldA = a.selisih || 0;
-            fieldB = b.selisih || 0;
+            fieldA = a.sisa_anggaran || 0;
+            fieldB = b.sisa_anggaran || 0;
           } else if (sortField === 'uraian') {
             fieldA = a.uraian;
             fieldB = b.uraian;
@@ -327,7 +345,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       if (!Array.isArray(safeItems)) return 0;
       return safeItems.reduce((sum, item) => {
         try {
-          return sum + (Number(item?.jumlah_rpd) || 0);
+          return sum + (Number(item?.total_rpd) || 0);
         } catch {
           return sum;
         }
@@ -356,8 +374,8 @@ const RPDTable: React.FC<RPDTableProps> = ({
   const getStatusClass = (item: RPDItem): string => {
     try {
       if (!item || typeof item !== 'object') return 'status-sisa';
-      const rpd = Number(item?.jumlah_rpd) || 0;
-      const pagu = Number(item?.jumlah_menjadi) || 0;
+      const rpd = Number(item?.total_rpd) || 0;
+      const pagu = Number(item?.total_pagu) || 0;
       
       if (rpd === pagu) {
         return 'status-ok';
@@ -373,8 +391,8 @@ const RPDTable: React.FC<RPDTableProps> = ({
   const getStatusText = (item: RPDItem): string => {
     try {
       if (!item || typeof item !== 'object') return '-';
-      const rpd = Number(item?.jumlah_rpd) || 0;
-      const pagu = Number(item?.jumlah_menjadi) || 0;
+      const rpd = Number(item?.total_rpd) || 0;
+      const pagu = Number(item?.total_pagu) || 0;
       
       if (rpd === pagu) {
         return 'OK';
@@ -688,14 +706,14 @@ const RPDTable: React.FC<RPDTableProps> = ({
                           <span className="line-clamp-2">{String(item.uraian || '')}</span>
                         </td>
                         <td className="pagu-cell fixed-column" style={{left: '380px'}}>
-                          {formatCurrency(Number(item.jumlah_menjadi) || 0)}
+                          {formatCurrency(Number(item.total_pagu) || 0)}
                         </td>
                         <td className="total-cell fixed-column" style={{left: '480px'}}>
-                          {formatCurrency(Number(item.jumlah_rpd) || 0)}
+                          {formatCurrency(Number(item.total_rpd) || 0)}
                         </td>
                         <td className="selisih-cell fixed-column" style={{left: '580px'}}>
-                          <span className={(Number(item.selisih) || 0) !== 0 ? 'text-red-500' : 'text-green-500'}>
-                            {formatCurrency(Number(item.selisih) || 0)}
+                          <span className={(Number(item.sisa_anggaran) || 0) !== 0 ? 'text-red-500' : 'text-green-500'}>
+                            {formatCurrency(Number(item.sisa_anggaran) || 0)}
                           </span>
                         </td>
                         {['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].map(month => (
