@@ -247,3 +247,169 @@ export const formatDate = (dateString?: string): string => {
 export const generateId = (): string => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
+/**
+ * Calculate amount (volume * price per unit)
+ * Adapted from reference implementation
+ */
+export const calculateAmount = (volume: number, pricePerUnit: number): number => {
+  return (volume || 0) * (pricePerUnit || 0);
+};
+
+/**
+ * Calculate difference with rounding
+ */
+export const calculateDifference = (amountAfter: number, amountBefore: number): number => {
+  return roundToThousands((amountAfter || 0) - (amountBefore || 0));
+};
+
+/**
+ * Determine item status based on volume and price changes
+ */
+export const updateItemStatus = (item: BudgetItem): BudgetItem => {
+  const updated = { ...item };
+  
+  // Check if unchanged
+  if (
+    item.volume_semula === item.volume_menjadi &&
+    item.satuan_semula === item.satuan_menjadi &&
+    item.harga_satuan_semula === item.harga_satuan_menjadi
+  ) {
+    updated.status = 'unchanged';
+  }
+  // Check if new (any field went from 0/empty to having a value)
+  else if (
+    (item.volume_semula === 0 && item.volume_menjadi > 0) ||
+    (item.satuan_semula === '' && item.satuan_menjadi !== '') ||
+    (item.harga_satuan_semula === 0 && item.harga_satuan_menjadi > 0)
+  ) {
+    updated.status = 'new';
+  }
+  // Otherwise changed
+  else {
+    updated.status = 'changed';
+  }
+  
+  return updated;
+};
+
+/**
+ * Apply status determination to multiple items
+ */
+export const applyStatusToItems = (items: BudgetItem[]): BudgetItem[] => {
+  return items.map(item => updateItemStatus(item));
+};
+
+/**
+ * Calculate grand total by field
+ */
+export const calculateGrandTotal = (items: BudgetItem[], field: keyof BudgetItem): number => {
+  return roundToThousands(
+    items.reduce((sum, item) => {
+      const value = item[field];
+      return sum + (typeof value === 'number' ? value : 0);
+    }, 0)
+  );
+};
+
+/**
+ * Get statistics for items
+ */
+export const getItemStatistics = (items: BudgetItem[]) => {
+  return {
+    totalItems: items.length,
+    newItems: items.filter(i => i.status === 'new').length,
+    changedItems: items.filter(i => i.status === 'changed').length,
+    unchangedItems: items.filter(i => i.status === 'unchanged').length,
+    deletedItems: items.filter(i => i.status === 'deleted').length,
+    approvedItems: items.filter(i => i.approved_by).length,
+    needsApprovalItems: items.filter(item => needsApproval(item)).length,
+  };
+};
+
+/**
+ * Group items by a specific field
+ */
+export const groupItemsByField = (
+  items: BudgetItem[], 
+  field: keyof BudgetItem
+): Map<string, BudgetItem[]> => {
+  const grouped = new Map<string, BudgetItem[]>();
+  
+  items.forEach(item => {
+    const key = String(item[field] || 'Unknown');
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+    grouped.get(key)!.push(item);
+  });
+  
+  return grouped;
+};
+
+/**
+ * Convert JSON to CSV format for export
+ */
+export const convertToCSV = (items: BudgetItem[], headers: (keyof BudgetItem)[]): string => {
+  const headerRow = headers.join(',');
+  const dataRows = items.map(item =>
+    headers.map(header => {
+      const value = item[header];
+      // Escape CSV values
+      if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    }).join(',')
+  );
+  
+  return [headerRow, ...dataRows].join('\n');
+};
+
+/**
+ * Export items to CSV file
+ */
+export const exportToCSV = (items: BudgetItem[], filename: string, headers: (keyof BudgetItem)[]) => {
+  const csv = convertToCSV(items, headers);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+};
+
+/**
+ * Parse CSV file to items array
+ */
+export const parseCSV = async (file: File): Promise<Record<string, string>[]> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n');
+        if (lines.length < 2) {
+          resolve([]);
+          return;
+        }
+        
+        const headers = lines[0].split(',').map(h => h.trim());
+        const data = lines.slice(1)
+          .filter(line => line.trim())
+          .map(line => {
+            const values = line.split(',').map(v => v.trim());
+            const record: Record<string, string> = {};
+            headers.forEach((header, index) => {
+              record[header] = values[index] || '';
+            });
+            return record;
+          });
+        
+        resolve(data);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+};

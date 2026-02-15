@@ -2,7 +2,7 @@
  * Custom hook untuk membaca data Bahan Revisi Anggaran dari Google Sheets
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   BudgetItem, 
@@ -15,7 +15,19 @@ import {
   Akun,
   BahanRevisiFilters
 } from '@/types/bahanrevisi';
-import { filterBudgetItems, getFilteredDropdownValues } from '@/utils/bahanrevisi-calculations';
+import { filterBudgetItems, getFilteredDropdownValues, roundToThousands } from '@/utils/bahanrevisi-calculations';
+
+// Summary types untuk analisis data berdasarkan berbagai dimensi
+export type BudgetSummary = {
+  label: string;
+  totalSemula: number;
+  totalMenjadi: number;
+  totalSelisih: number;
+  itemCount: number;
+  changedItemCount: number;
+  newItemCount: number;
+  type: 'komponen' | 'akun' | 'program' | 'kegiatan' | 'rincian' | 'sub_komponen' | 'account_group';
+};
 
 interface UseBahanRevisiDataProps {
   sheetId: string | null;
@@ -359,6 +371,216 @@ const fetchAkuns = async (sheetId: string): Promise<Akun[]> => {
 };
 
 /**
+ * Helper: Calculate summary data by different dimensions
+ */
+const calculateSummaryByKomponen = (items: BudgetItem[]): BudgetSummary[] => {
+  const summaryMap = new Map<string, BudgetSummary>();
+
+  items.forEach(item => {
+    const key = item.komponen_output || 'Unknown';
+    const existing = summaryMap.get(key) || {
+      label: key,
+      totalSemula: 0,
+      totalMenjadi: 0,
+      totalSelisih: 0,
+      itemCount: 0,
+      changedItemCount: 0,
+      newItemCount: 0,
+      type: 'komponen' as const,
+    };
+
+    existing.totalSemula = roundToThousands(existing.totalSemula + (item.jumlah_semula || 0));
+    existing.totalMenjadi = roundToThousands(existing.totalMenjadi + (item.jumlah_menjadi || 0));
+    existing.totalSelisih = roundToThousands(existing.totalSelisih + (item.selisih || 0));
+    existing.itemCount++;
+    if (item.status === 'changed') existing.changedItemCount++;
+    if (item.status === 'new') existing.newItemCount++;
+
+    summaryMap.set(key, existing);
+  });
+
+  return Array.from(summaryMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+};
+
+const calculateSummaryByAkun = (items: BudgetItem[]): BudgetSummary[] => {
+  const summaryMap = new Map<string, BudgetSummary>();
+
+  items.forEach(item => {
+    const key = item.akun || 'Unknown';
+    const existing = summaryMap.get(key) || {
+      label: `${key} - ${item.account_group_name || ''}`.trim(),
+      totalSemula: 0,
+      totalMenjadi: 0,
+      totalSelisih: 0,
+      itemCount: 0,
+      changedItemCount: 0,
+      newItemCount: 0,
+      type: 'akun' as const,
+    };
+
+    existing.totalSemula = roundToThousands(existing.totalSemula + (item.jumlah_semula || 0));
+    existing.totalMenjadi = roundToThousands(existing.totalMenjadi + (item.jumlah_menjadi || 0));
+    existing.totalSelisih = roundToThousands(existing.totalSelisih + (item.selisih || 0));
+    existing.itemCount++;
+    if (item.status === 'changed') existing.changedItemCount++;
+    if (item.status === 'new') existing.newItemCount++;
+
+    summaryMap.set(key, existing);
+  });
+
+  return Array.from(summaryMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+};
+
+const calculateSummaryByProgram = (items: BudgetItem[]): BudgetSummary[] => {
+  const summaryMap = new Map<string, BudgetSummary>();
+
+  items.forEach(item => {
+    const key = item.program_pembebanan || 'Unknown';
+    const existing = summaryMap.get(key) || {
+      label: key,
+      totalSemula: 0,
+      totalMenjadi: 0,
+      totalSelisih: 0,
+      itemCount: 0,
+      changedItemCount: 0,
+      newItemCount: 0,
+      type: 'program' as const,
+    };
+
+    existing.totalSemula = roundToThousands(existing.totalSemula + (item.jumlah_semula || 0));
+    existing.totalMenjadi = roundToThousands(existing.totalMenjadi + (item.jumlah_menjadi || 0));
+    existing.totalSelisih = roundToThousands(existing.totalSelisih + (item.selisih || 0));
+    existing.itemCount++;
+    if (item.status === 'changed') existing.changedItemCount++;
+    if (item.status === 'new') existing.newItemCount++;
+
+    summaryMap.set(key, existing);
+  });
+
+  return Array.from(summaryMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+};
+
+const calculateSummaryByKegiatan = (items: BudgetItem[]): BudgetSummary[] => {
+  const summaryMap = new Map<string, BudgetSummary>();
+
+  items.forEach(item => {
+    const key = item.kegiatan || 'Unknown';
+    const existing = summaryMap.get(key) || {
+      label: key,
+      totalSemula: 0,
+      totalMenjadi: 0,
+      totalSelisih: 0,
+      itemCount: 0,
+      changedItemCount: 0,
+      newItemCount: 0,
+      type: 'kegiatan' as const,
+    };
+
+    existing.totalSemula = roundToThousands(existing.totalSemula + (item.jumlah_semula || 0));
+    existing.totalMenjadi = roundToThousands(existing.totalMenjadi + (item.jumlah_menjadi || 0));
+    existing.totalSelisih = roundToThousands(existing.totalSelisih + (item.selisih || 0));
+    existing.itemCount++;
+    if (item.status === 'changed') existing.changedItemCount++;
+    if (item.status === 'new') existing.newItemCount++;
+
+    summaryMap.set(key, existing);
+  });
+
+  return Array.from(summaryMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+};
+
+/**
+ * Helper: Update budget item in Google Sheets
+ */
+const updateBudgetItemInSheet = async (sheetId: string, itemId: string, updates: Partial<BudgetItem>) => {
+  try {
+    const result = await supabase.functions.invoke('google-sheets', {
+      body: {
+        spreadsheetId: sheetId,
+        operation: 'update',
+        range: 'budget_items',
+        itemId,
+        data: updates,
+      },
+    });
+
+    if (result.error) throw result.error;
+    return result.data;
+  } catch (err) {
+    console.error('[updateBudgetItemInSheet] Error:', err);
+    throw err;
+  }
+};
+
+/**
+ * Helper: Update RPD item in Google Sheets
+ */
+const updateRPDItemInSheet = async (sheetId: string, itemId: string, monthValues: Partial<RPDItem>) => {
+  try {
+    const result = await supabase.functions.invoke('google-sheets', {
+      body: {
+        spreadsheetId: sheetId,
+        operation: 'update',
+        range: 'rpd_items',
+        itemId,
+        data: monthValues,
+      },
+    });
+
+    if (result.error) throw result.error;
+    return result.data;
+  } catch (err) {
+    console.error('[updateRPDItemInSheet] Error:', err);
+    throw err;
+  }
+};
+
+/**
+ * Helper: Import budget items (bulk insert)
+ */
+const importBudgetItems = async (sheetId: string, items: Partial<BudgetItem>[]) => {
+  try {
+    const result = await supabase.functions.invoke('google-sheets', {
+      body: {
+        spreadsheetId: sheetId,
+        operation: 'append',
+        range: 'budget_items',
+        data: items,
+      },
+    });
+
+    if (result.error) throw result.error;
+    console.log(`[importBudgetItems] Successfully imported ${items.length} items`);
+    return result.data;
+  } catch (err) {
+    console.error('[importBudgetItems] Error:', err);
+    throw err;
+  }
+};
+
+/**
+ * Helper: Delete budget item from Google Sheets
+ */
+const deleteBudgetItem = async (sheetId: string, itemId: string) => {
+  try {
+    const result = await supabase.functions.invoke('google-sheets', {
+      body: {
+        spreadsheetId: sheetId,
+        operation: 'delete',
+        range: 'budget_items',
+        itemId,
+      },
+    });
+
+    if (result.error) throw result.error;
+    return result.data;
+  } catch (err) {
+    console.error('[deleteBudgetItem] Error:', err);
+    throw err;
+  }
+};
+
+/**
  * Hook untuk fetch budget items dengan filtering
  */
 export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBahanRevisiDataProps) => {
@@ -449,6 +671,37 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
   // Convert error to string message if it exists
   const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : null;
 
+  // Calculate summary data
+  const summaryByKomponen = budgetItemsQuery.data ? calculateSummaryByKomponen(budgetItemsQuery.data) : [];
+  const summaryByAkun = budgetItemsQuery.data ? calculateSummaryByAkun(budgetItemsQuery.data) : [];
+  const summaryByProgram = budgetItemsQuery.data ? calculateSummaryByProgram(budgetItemsQuery.data) : [];
+  const summaryByKegiatan = budgetItemsQuery.data ? calculateSummaryByKegiatan(budgetItemsQuery.data) : [];
+
+  // Overall statistics
+  const totalBudgetSemula = budgetItemsQuery.data 
+    ? roundToThousands(budgetItemsQuery.data.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0))
+    : 0;
+  
+  const totalBudgetMenjadi = budgetItemsQuery.data
+    ? roundToThousands(budgetItemsQuery.data.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0))
+    : 0;
+
+  const totalSelisih = budgetItemsQuery.data
+    ? roundToThousands(budgetItemsQuery.data.reduce((sum, item) => sum + (item.selisih || 0), 0))
+    : 0;
+
+  const totalNewItems = budgetItemsQuery.data
+    ? budgetItemsQuery.data.filter(item => item.status === 'new').length
+    : 0;
+
+  const totalChangedItems = budgetItemsQuery.data
+    ? budgetItemsQuery.data.filter(item => item.status === 'changed').length
+    : 0;
+
+  const totalRPDAllocated = rpdItemsQuery.data
+    ? roundToThousands(rpdItemsQuery.data.reduce((sum, item) => sum + (item.total_rpd || 0), 0))
+    : 0;
+
   return {
     budgetItems: budgetItemsQuery.data || [],
     filteredBudgetItems: filteredBudgetItems || [],
@@ -463,6 +716,31 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     kegiatansOptions,
     isLoading,
     error: errorMessage,
+    
+    // Summary data
+    summaryByKomponen,
+    summaryByAkun,
+    summaryByProgram,
+    summaryByKegiatan,
+    
+    // Overall statistics
+    totalBudgetSemula,
+    totalBudgetMenjadi,
+    totalSelisih,
+    totalNewItems,
+    totalChangedItems,
+    totalRPDAllocated,
+    
+    // Operations
+    updateBudgetItem: (itemId: string, updates: Partial<BudgetItem>) => 
+      updateBudgetItemInSheet(sheetId!, itemId, updates),
+    updateRPDItem: (itemId: string, monthValues: Partial<RPDItem>) => 
+      updateRPDItemInSheet(sheetId!, itemId, monthValues),
+    importBudgetItems: (items: Partial<BudgetItem>[]) => 
+      importBudgetItems(sheetId!, items),
+    deleteBudgetItem: (itemId: string) => 
+      deleteBudgetItem(sheetId!, itemId),
+    
     refetch: async () => {
       await Promise.all([
         budgetItemsQuery.refetch(),
