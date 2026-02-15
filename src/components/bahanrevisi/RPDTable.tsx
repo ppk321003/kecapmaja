@@ -464,7 +464,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
           min="0"
         />
       ) : (
-        <span className="text-right block w-full">{formatCurrency(value, false)}</span>
+        <span className="text-right block w-full">{formatNumber(value, false)}</span>
       );
     } catch (e) {
       console.error('[RPDTable] Error in renderMonthValue:', e);
