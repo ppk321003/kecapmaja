@@ -24,6 +24,13 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Edit,
   Trash2,
   Check,
@@ -82,8 +89,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchUraian, setSearchUraian] = useState('');
-
-  const ITEMS_PER_PAGE = 20;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Filter items berdasarkan hideZeroPagu dan search uraian
   const filteredByZeroPagu = useMemo(() => {
@@ -133,9 +139,9 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   });
 
   // Pagination
-  const totalPages = Math.ceil(sortedItems.length / ITEMS_PER_PAGE);
-  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIdx = startIdx + ITEMS_PER_PAGE;
+  const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
+  const startIdx = (currentPage - 1) * itemsPerPage;
+  const endIdx = startIdx + itemsPerPage;
   const paginatedItems = sortedItems.slice(startIdx, endIdx);
 
   const getStatusBadge = (item: BudgetItem) => {
@@ -220,17 +226,20 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
           <Table className="text-xs">
             <TableHeader className="bg-slate-100 sticky top-0">
               <TableRow>
-                <TableHead className="w-12">#</TableHead>
-                <TableHead>Uraian</TableHead>
-                <TableHead>Program</TableHead>
-                <TableHead>Kegiatan</TableHead>
-                <TableHead>Komponen</TableHead>
-                <TableHead>Akun</TableHead>
+                <TableHead className="w-8">#</TableHead>
+                <TableHead className="min-w-48">Uraian</TableHead>
+                <TableHead className="text-center">Volume Semula</TableHead>
+                <TableHead className="text-center">Satuan Semula</TableHead>
+                <TableHead className="text-right">Harga Satuan Semula</TableHead>
                 <TableHead className="text-right">Jumlah Semula</TableHead>
+                <TableHead className="text-center">Volume Menjadi</TableHead>
+                <TableHead className="text-center">Satuan Menjadi</TableHead>
+                <TableHead className="text-right">Harga Satuan Menjadi</TableHead>
                 <TableHead className="text-right">Jumlah Menjadi</TableHead>
+                <TableHead className="text-right">Sisa Anggaran</TableHead>
                 <TableHead className="text-right">Selisih</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-24">Aksi</TableHead>
+                <TableHead className="text-center">Aksi SM/PJK</TableHead>
+                <TableHead className="text-center">Aksi PPK</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -241,22 +250,21 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                     needsApproval(item) ? 'bg-yellow-50' : isApproved(item) ? 'bg-green-50' : ''
                   }
                 >
-                  <TableCell className="font-medium">{startIdx + idx + 1}</TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    <span title={item.uraian}>{item.uraian}</span>
+                  <TableCell className="font-medium text-xs">{startIdx + idx + 1}</TableCell>
+                  <TableCell className="max-w-xs">
+                    <span title={item.uraian} className="line-clamp-2">{item.uraian}</span>
                   </TableCell>
-                  <TableCell className="text-xs">{item.program_pembebanan}</TableCell>
-                  <TableCell className="text-xs">{item.kegiatan}</TableCell>
-                  <TableCell className="text-xs">{item.komponen_output}</TableCell>
-                  <TableCell className="text-xs">{item.akun}</TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(item.jumlah_semula)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(item.jumlah_menjadi)}
-                  </TableCell>
+                  <TableCell className="text-center text-xs">{item.volume_semula}</TableCell>
+                  <TableCell className="text-center text-xs">{item.satuan_semula}</TableCell>
+                  <TableCell className="text-right text-xs">{formatCurrency(item.harga_satuan_semula)}</TableCell>
+                  <TableCell className="text-right text-xs">{formatCurrency(item.jumlah_semula)}</TableCell>
+                  <TableCell className="text-center text-xs">{item.volume_menjadi}</TableCell>
+                  <TableCell className="text-center text-xs">{item.satuan_menjadi}</TableCell>
+                  <TableCell className="text-right text-xs">{formatCurrency(item.harga_satuan_menjadi)}</TableCell>
+                  <TableCell className="text-right text-xs">{formatCurrency(item.jumlah_menjadi)}</TableCell>
+                  <TableCell className="text-right text-xs">{formatCurrency((item.jumlah_semula || 0) - (item.jumlah_menjadi || 0))}</TableCell>
                   <TableCell
-                    className={`text-right font-semibold ${
+                    className={`text-right text-xs font-semibold ${
                       calculateSelisih(item) > 0
                         ? 'text-green-600'
                         : calculateSelisih(item) < 0
@@ -266,37 +274,9 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                   >
                     {formatCurrency(calculateSelisih(item))}
                   </TableCell>
-                  <TableCell>{getStatusBadge(item)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 justify-end">
-                      {!isApproved(item) && !isRejected(item) && (
-                        <>
-                          {isAdmin && (
-                            <>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 text-green-600 hover:bg-green-100"
-                                onClick={() => onApprove?.(item.id, user?.username || '')}
-                                title="Approval"
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 text-red-600 hover:bg-red-100"
-                                onClick={() =>
-                                  setRejectDialog({ itemId: item.id, reason: '' })
-                                }
-                                title="Reject"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          )}
-                        </>
-                      )}
+                  {/* Aksi SM/PJK Column */}
+                  <TableCell className="text-center">
+                    <div className="flex gap-1 justify-center">
                       <Button
                         size="icon"
                         variant="ghost"
@@ -319,6 +299,44 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                       )}
                     </div>
                   </TableCell>
+                  {/* Aksi PPK Column */}
+                  <TableCell className="text-center">
+                    <div className="flex gap-1 justify-center">
+                      {!isApproved(item) && !isRejected(item) && isAdmin && (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-green-600 hover:bg-green-100"
+                            onClick={() => onApprove?.(item.id, user?.username || '')}
+                            title="Setujui"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-red-600 hover:bg-red-100"
+                            onClick={() =>
+                              setRejectDialog({ itemId: item.id, reason: '' })
+                            }
+                            title="Tolak"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {isApproved(item) && (
+                        <Badge variant="default" className="bg-green-600 text-xs">Disetujui</Badge>
+                      )}
+                      {isRejected(item) && (
+                        <Badge variant="destructive" className="text-xs">Ditolak</Badge>
+                      )}
+                      {needsApproval(item) && !isAdmin && (
+                        <Badge variant="secondary" className="text-xs">Menunggu</Badge>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -327,29 +345,49 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
       </Card>
 
       {/* Pagination Controls */}
-      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-slate-50 rounded border border-slate-200">
-        <div className="text-xs text-slate-600">
-          Menampilkan {startIdx + 1} sampai {Math.min(endIdx, sortedItems.length)} dari {sortedItems.length} items
+      <div className="flex flex-col gap-3 mt-4 p-4 bg-slate-50 rounded border border-slate-200">
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-slate-600">
+            Menampilkan {sortedItems.length > 0 ? startIdx + 1 : 0} dari {sortedItems.length} item
+            {hideZeroPagu && ' (menyembunyikan jumlah pagu 0)'}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-600">Tampilkan:</span>
+            <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+              setItemsPerPage(parseInt(value));
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-16 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
             className="gap-1"
           >
             <ChevronLeft className="h-4 w-4" />
             Sebelumnya
           </Button>
-          <div className="text-xs font-medium">
-            Halaman {currentPage} dari {totalPages}
+          <div className="text-xs font-medium px-2">
+            Halaman {currentPage} dari {totalPages || 1}
           </div>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(p => Math.min(totalPages || 1, p + 1))}
+            disabled={currentPage === totalPages || totalPages === 0}
             className="gap-1"
           >
             Selanjutnya
@@ -412,7 +450,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
             </div>
             <div>
               <span className="text-slate-600">Items per Halaman:</span>
-              <p className="font-semibold text-slate-900">{ITEMS_PER_PAGE}</p>
+              <p className="font-semibold text-slate-900">{itemsPerPage}</p>
             </div>
           </div>
         </div>

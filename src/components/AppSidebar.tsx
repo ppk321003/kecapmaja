@@ -394,7 +394,15 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
-                {mainMenuItems.map((item) => (
+                {mainMenuItems
+                  .filter((item) => {
+                    // Only show Bahan Revisi Anggaran for PPK users
+                    if (item.title === "Bahan Revisi Anggaran") {
+                      return isPPK;
+                    }
+                    return true;
+                  })
+                  .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink
