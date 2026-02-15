@@ -178,18 +178,27 @@ export const useImportBahanRevisi = ({
 
       // Upload budget items
       console.log('[uploadToGoogleSheets] Uploading', budgetItemsData.length, 'budget items...');
+      console.log('[uploadToGoogleSheets] First budget item:', budgetItemsData[0]);
+      
       const budgetResult = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: sheetId,
           operation: 'append',
           range: 'budget_items',
-          data: budgetItemsData,
+          values: budgetItemsData,
         },
       });
 
+      console.log('[uploadToGoogleSheets] Budget result:', budgetResult);
+      
       if (budgetResult.error) {
         console.error('[uploadToGoogleSheets] Budget items error:', budgetResult.error);
         throw new Error(`Gagal upload budget items: ${JSON.stringify(budgetResult.error)}`);
+      }
+      
+      if (!budgetResult.data) {
+        console.error('[uploadToGoogleSheets] Budget result has no data:', budgetResult);
+        throw new Error('Gagal upload budget items: Supabase function returned no data');
       }
       
       if (budgetResult.data?.error) {
@@ -197,22 +206,31 @@ export const useImportBahanRevisi = ({
         throw new Error(`Gagal upload budget items: ${budgetResult.data.error}`);
       }
       
-      console.log('[uploadToGoogleSheets] Budget items uploaded successfully');
+      console.log('[uploadToGoogleSheets] Budget items response successful:', budgetResult.data);
 
       // Upload RPD items
       console.log('[uploadToGoogleSheets] Uploading', rpdItemsData.length, 'RPD items...');
+      console.log('[uploadToGoogleSheets] First RPD item:', rpdItemsData[0]);
+      
       const rpdResult = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: sheetId,
           operation: 'append',
           range: 'rpd_items',
-          data: rpdItemsData,
+          values: rpdItemsData,
         },
       });
 
+      console.log('[uploadToGoogleSheets] RPD result:', rpdResult);
+      
       if (rpdResult.error) {
         console.error('[uploadToGoogleSheets] RPD items error:', rpdResult.error);
         throw new Error(`Gagal upload RPD items: ${JSON.stringify(rpdResult.error)}`);
+      }
+      
+      if (!rpdResult.data) {
+        console.error('[uploadToGoogleSheets] RPD result has no data:', rpdResult);
+        throw new Error('Gagal upload RPD items: Supabase function returned no data');
       }
       
       if (rpdResult.data?.error) {
@@ -220,13 +238,7 @@ export const useImportBahanRevisi = ({
         throw new Error(`Gagal upload RPD items: ${rpdResult.data.error}`);
       }
 
-      console.log(
-        '[uploadToGoogleSheets] Successfully uploaded',
-        budgetItems.length,
-        'budget items and',
-        rpdItems.length,
-        'RPD items'
-      );
+      console.log('[uploadToGoogleSheets] RPD items response successful:', rpdResult.data);
     } catch (err) {
       console.error('[uploadToGoogleSheets] Error:', err);
       throw err;
@@ -339,6 +351,10 @@ export const useImportBahanRevisi = ({
         console.log('[handleImportFile] Starting upload to Google Sheets...');
         await uploadToGoogleSheets(budgetItems, rpdItems);
         console.log('[handleImportFile] Upload completed successfully');
+        
+        // Wait a moment for Google Sheets to process the write
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('[handleImportFile] Waited 2 seconds for Google Sheets to process');
 
         // Call success callback
         onImportSuccess(budgetItems, rpdItems);
