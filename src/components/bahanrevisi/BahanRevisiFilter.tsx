@@ -50,194 +50,308 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   setHideZeroPagu,
 }) => {
   // Build options from reference data (master sheets) like KAK.tsx does
+  // FALLBACK: If reference data is empty, derive from budgetItems
   
-  // Program Pembebanan options - from programs reference data
+  // Program Pembebanan options
   const programPembebananOptions = useMemo<SelectOption[]>(() => {
     try {
-      if (!programs || !Array.isArray(programs)) return [];
-      const result: SelectOption[] = [];
-      for (const p of programs) {
-        try {
-          if (!p || typeof p !== 'object' || !p.is_active) continue;
-          const val = String(p.name || '').trim();
-          const lbl = String(p.code ? String(p.code) + ' - ' : '') + String(p.name || '');
-          if (val && lbl.trim()) {
-            result.push({ value: val, label: lbl.trim() });
+      // Try to use programs reference data first
+      if (programs && Array.isArray(programs) && programs.length > 0) {
+        const result: SelectOption[] = [];
+        for (const p of programs) {
+          try {
+            if (!p || typeof p !== 'object' || !p.is_active) continue;
+            const val = String(p.name || '').trim();
+            const lbl = String(p.code ? String(p.code) + ' - ' : '') + String(p.name || '');
+            if (val && lbl.trim()) {
+              result.push({ value: val, label: lbl.trim() });
+            }
+          } catch (e) {
+            console.error('Error processing program:', p, e);
           }
-        } catch (e) {
-          console.error('Error processing program:', p, e);
         }
+        console.log('[Filter] Program options from reference:', result.length);
+        if (result.length > 0) return result;
       }
-      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+
+      // FALLBACK: Derive from budgetItems
+      console.log('[Filter] Using fallback: deriving program options from budgetItems');
+      const fallback: SelectOption[] = [];
+      const seen = new Set<string>();
+      for (const item of budgetItems) {
+        try {
+          const val = String(item.program_pembebanan || '').trim();
+          if (val && !seen.has(val)) {
+            seen.add(val);
+            fallback.push({ value: val, label: val });
+          }
+        } catch {}
+      }
+      return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
       console.error('Error building programPembebananOptions:', e);
       return [];
     }
-  }, [programs]);
+  }, [programs, budgetItems]);
 
   // Kegiatan options - filtered by selected program
   const kegiatanOptions = useMemo<SelectOption[]>(() => {
     try {
       if (!filters.program_pembebanan || typeof filters.program_pembebanan !== 'string') return [];
-      if (!kegiatans || !Array.isArray(kegiatans)) return [];
       
-      const relatedProgram = programs?.find(p => {
-        try {
-          return p && p.name && String(p.name) === String(filters.program_pembebanan);
-        } catch {
-          return false;
-        }
-      });
-      if (!relatedProgram) return [];
-
-      const result: SelectOption[] = [];
-      for (const k of kegiatans) {
-        try {
-          if (!k || typeof k !== 'object' || !k.is_active || k.program_id !== relatedProgram.id) continue;
-          const val = String(k.name || '').trim();
-          const lbl = String(k.code ? String(k.code) + ' - ' : '') + String(k.name || '');
-          if (val && lbl.trim()) {
-            result.push({ value: val, label: lbl.trim() });
+      // Try reference data first
+      if (kegiatans && Array.isArray(kegiatans) && kegiatans.length > 0) {
+        const relatedProgram = programs?.find(p => {
+          try {
+            return p && p.name && String(p.name) === String(filters.program_pembebanan);
+          } catch {
+            return false;
           }
-        } catch (e) {
-          console.error('Error processing kegiatan:', k, e);
+        });
+        if (relatedProgram) {
+          const result: SelectOption[] = [];
+          for (const k of kegiatans) {
+            try {
+              if (!k || typeof k !== 'object' || !k.is_active || k.program_id !== relatedProgram.id) continue;
+              const val = String(k.name || '').trim();
+              const lbl = String(k.code ? String(k.code) + ' - ' : '') + String(k.name || '');
+              if (val && lbl.trim()) {
+                result.push({ value: val, label: lbl.trim() });
+              }
+            } catch (e) {
+              console.error('Error processing kegiatan:', k, e);
+            }
+          }
+          console.log('[Filter] Kegiatan options from reference:', result.length);
+          if (result.length > 0) return result;
         }
       }
-      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+
+      // FALLBACK: Derive from budgetItems
+      console.log('[Filter] Using fallback: deriving kegiatan options from budgetItems');
+      const fallback: SelectOption[] = [];
+      const seen = new Set<string>();
+      for (const item of budgetItems) {
+        try {
+          if (String(item.program_pembebanan || '').trim() !== filters.program_pembebanan) continue;
+          const val = String(item.kegiatan || '').trim();
+          if (val && !seen.has(val)) {
+            seen.add(val);
+            fallback.push({ value: val, label: val });
+          }
+        } catch {}
+      }
+      return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
       console.error('Error building kegiatanOptions:', e);
       return [];
     }
-  }, [filters.program_pembebanan, kegiatans, programs]);
+  }, [filters.program_pembebanan, kegiatans, programs, budgetItems]);
 
   // Rincian Output options - filtered by selected kegiatan
   const rincianOutputOptions = useMemo<SelectOption[]>(() => {
     try {
       if (!filters.kegiatan || typeof filters.kegiatan !== 'string') return [];
-      if (!rincianOutputs || !Array.isArray(rincianOutputs)) return [];
       
-      const relatedKegiatan = kegiatans?.find(k => {
-        try {
-          return k && k.name && String(k.name) === String(filters.kegiatan);
-        } catch {
-          return false;
-        }
-      });
-      if (!relatedKegiatan) return [];
-
-      const result: SelectOption[] = [];
-      for (const r of rincianOutputs) {
-        try {
-          if (!r || typeof r !== 'object' || !r.is_active || r.kegiatan_id !== relatedKegiatan.id) continue;
-          const val = String(r.name || '').trim();
-          const lbl = String(r.code ? String(r.code) + ' - ' : '') + String(r.name || '');
-          if (val && lbl.trim()) {
-            result.push({ value: val, label: lbl.trim() });
+      // Try reference data first
+      if (rincianOutputs && Array.isArray(rincianOutputs) && rincianOutputs.length > 0) {
+        const relatedKegiatan = kegiatans?.find(k => {
+          try {
+            return k && k.name && String(k.name) === String(filters.kegiatan);
+          } catch {
+            return false;
           }
-        } catch (e) {
-          console.error('Error processing rincian output:', r, e);
+        });
+        if (relatedKegiatan) {
+          const result: SelectOption[] = [];
+          for (const r of rincianOutputs) {
+            try {
+              if (!r || typeof r !== 'object' || !r.is_active || r.kegiatan_id !== relatedKegiatan.id) continue;
+              const val = String(r.name || '').trim();
+              const lbl = String(r.code ? String(r.code) + ' - ' : '') + String(r.name || '');
+              if (val && lbl.trim()) {
+                result.push({ value: val, label: lbl.trim() });
+              }
+            } catch (e) {
+              console.error('Error processing rincian output:', r, e);
+            }
+          }
+          console.log('[Filter] Rincian Output options from reference:', result.length);
+          if (result.length > 0) return result;
         }
       }
-      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+
+      // FALLBACK: Derive from budgetItems
+      console.log('[Filter] Using fallback: deriving rincian output options from budgetItems');
+      const fallback: SelectOption[] = [];
+      const seen = new Set<string>();
+      for (const item of budgetItems) {
+        try {
+          if (String(item.kegiatan || '').trim() !== filters.kegiatan) continue;
+          const val = String(item.rincian_output || '').trim();
+          if (val && !seen.has(val)) {
+            seen.add(val);
+            fallback.push({ value: val, label: val });
+          }
+        } catch {}
+      }
+      return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
       console.error('Error building rincianOutputOptions:', e);
       return [];
     }
-  }, [filters.kegiatan, rincianOutputs, kegiatans]);
+  }, [filters.kegiatan, rincianOutputs, kegiatans, budgetItems]);
 
   // Komponen Output options - filtered by selected rincian output
   const komponenOutputOptions = useMemo<SelectOption[]>(() => {
     try {
       if (!filters.rincian_output || typeof filters.rincian_output !== 'string') return [];
-      if (!komponenOutputs || !Array.isArray(komponenOutputs)) return [];
       
-      const relatedRincian = rincianOutputs?.find(r => {
-        try {
-          return r && r.name && String(r.name) === String(filters.rincian_output);
-        } catch {
-          return false;
-        }
-      });
-      if (!relatedRincian) return [];
-
-      const result: SelectOption[] = [];
-      for (const k of komponenOutputs) {
-        try {
-          if (!k || typeof k !== 'object' || !k.is_active || k.rincian_output_id !== relatedRincian.id) continue;
-          const val = String(k.name || '').trim();
-          const lbl = String(k.code ? String(k.code) + ' - ' : '') + String(k.name || '');
-          if (val && lbl.trim()) {
-            result.push({ value: val, label: lbl.trim() });
+      // Try reference data first
+      if (komponenOutputs && Array.isArray(komponenOutputs) && komponenOutputs.length > 0) {
+        const relatedRincian = rincianOutputs?.find(r => {
+          try {
+            return r && r.name && String(r.name) === String(filters.rincian_output);
+          } catch {
+            return false;
           }
-        } catch (e) {
-          console.error('Error processing komponen output:', k, e);
+        });
+        if (relatedRincian) {
+          const result: SelectOption[] = [];
+          for (const k of komponenOutputs) {
+            try {
+              if (!k || typeof k !== 'object' || !k.is_active || k.rincian_output_id !== relatedRincian.id) continue;
+              const val = String(k.name || '').trim();
+              const lbl = String(k.code ? String(k.code) + ' - ' : '') + String(k.name || '');
+              if (val && lbl.trim()) {
+                result.push({ value: val, label: lbl.trim() });
+              }
+            } catch (e) {
+              console.error('Error processing komponen output:', k, e);
+            }
+          }
+          console.log('[Filter] Komponen Output options from reference:', result.length);
+          if (result.length > 0) return result;
         }
       }
-      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+
+      // FALLBACK: Derive from budgetItems
+      console.log('[Filter] Using fallback: deriving komponen output options from budgetItems');
+      const fallback: SelectOption[] = [];
+      const seen = new Set<string>();
+      for (const item of budgetItems) {
+        try {
+          if (String(item.rincian_output || '').trim() !== filters.rincian_output) continue;
+          const val = String(item.komponen_output || '').trim();
+          if (val && !seen.has(val)) {
+            seen.add(val);
+            fallback.push({ value: val, label: val });
+          }
+        } catch {}
+      }
+      return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
       console.error('Error building komponenOutputOptions:', e);
       return [];
     }
-  }, [filters.rincian_output, komponenOutputs, rincianOutputs]);
+  }, [filters.rincian_output, komponenOutputs, rincianOutputs, budgetItems]);
 
   // Sub Komponen options - filtered by selected komponen output
   const subKomponenOptions = useMemo<SelectOption[]>(() => {
     try {
       if (!filters.komponen_output || typeof filters.komponen_output !== 'string') return [];
-      if (!subKomponen || !Array.isArray(subKomponen)) return [];
       
-      const relatedKomponen = komponenOutputs?.find(k => {
-        try {
-          return k && k.name && String(k.name) === String(filters.komponen_output);
-        } catch {
-          return false;
-        }
-      });
-      if (!relatedKomponen) return [];
-
-      const result: SelectOption[] = [];
-      for (const s of subKomponen) {
-        try {
-          if (!s || typeof s !== 'object' || !s.is_active || s.komponen_output_id !== relatedKomponen.id) continue;
-          const val = String(s.name || '').trim();
-          const lbl = String(s.code ? String(s.code) + ' - ' : '') + String(s.name || '');
-          if (val && lbl.trim()) {
-            result.push({ value: val, label: lbl.trim() });
+      // Try reference data first
+      if (subKomponen && Array.isArray(subKomponen) && subKomponen.length > 0) {
+        const relatedKomponen = komponenOutputs?.find(k => {
+          try {
+            return k && k.name && String(k.name) === String(filters.komponen_output);
+          } catch {
+            return false;
           }
-        } catch (e) {
-          console.error('Error processing sub komponen:', s, e);
+        });
+        if (relatedKomponen) {
+          const result: SelectOption[] = [];
+          for (const s of subKomponen) {
+            try {
+              if (!s || typeof s !== 'object' || !s.is_active || s.komponen_output_id !== relatedKomponen.id) continue;
+              const val = String(s.name || '').trim();
+              const lbl = String(s.code ? String(s.code) + ' - ' : '') + String(s.name || '');
+              if (val && lbl.trim()) {
+                result.push({ value: val, label: lbl.trim() });
+              }
+            } catch (e) {
+              console.error('Error processing sub komponen:', s, e);
+            }
+          }
+          console.log('[Filter] Sub Komponen options from reference:', result.length);
+          if (result.length > 0) return result;
         }
       }
-      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+
+      // FALLBACK: Derive from budgetItems
+      console.log('[Filter] Using fallback: deriving sub komponen options from budgetItems');
+      const fallback: SelectOption[] = [];
+      const seen = new Set<string>();
+      for (const item of budgetItems) {
+        try {
+          if (String(item.komponen_output || '').trim() !== filters.komponen_output) continue;
+          const val = String(item.sub_komponen || '').trim();
+          if (val && !seen.has(val)) {
+            seen.add(val);
+            fallback.push({ value: val, label: val });
+          }
+        } catch {}
+      }
+      return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
       console.error('Error building subKomponenOptions:', e);
       return [];
     }
-  }, [filters.komponen_output, subKomponen, komponenOutputs]);
+  }, [filters.komponen_output, subKomponen, komponenOutputs, budgetItems]);
 
   // Akun options - all active akuns available
   const akunOptions = useMemo<SelectOption[]>(() => {
     try {
-      if (!akuns || !Array.isArray(akuns)) return [];
-      const result: SelectOption[] = [];
-      for (const a of akuns) {
-        try {
-          if (!a || typeof a !== 'object' || !a.is_active) continue;
-          const val = String(a.code || '').trim();
-          const lbl = String(a.code ? String(a.code) + ' - ' : '') + String(a.name || '');
-          if (val && lbl.trim()) {
-            result.push({ value: val, label: lbl.trim() });
+      // Try reference data first
+      if (akuns && Array.isArray(akuns) && akuns.length > 0) {
+        const result: SelectOption[] = [];
+        for (const a of akuns) {
+          try {
+            if (!a || typeof a !== 'object' || !a.is_active) continue;
+            // Use name as value (not code) to match budgetItems.akun
+            const val = String(a.name || '').trim();
+            const lbl = String(a.code ? String(a.code) + ' - ' : '') + String(a.name || '');
+            if (val && lbl.trim()) {
+              result.push({ value: val, label: lbl.trim() });
+            }
+          } catch (e) {
+            console.error('Error processing akun:', a, e);
           }
-        } catch (e) {
-          console.error('Error processing akun:', a, e);
         }
+        console.log('[Filter] Akun options from reference:', result.length);
+        if (result.length > 0) return result;
       }
-      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+
+      // FALLBACK: Derive from budgetItems
+      console.log('[Filter] Using fallback: deriving akun options from budgetItems');
+      const fallback: SelectOption[] = [];
+      const seen = new Set<string>();
+      for (const item of budgetItems) {
+        try {
+          const val = String(item.akun || '').trim();
+          if (val && !seen.has(val)) {
+            seen.add(val);
+            fallback.push({ value: val, label: val });
+          }
+        } catch {}
+      }
+      return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
       console.error('Error building akunOptions:', e);
       return [];
     }
-  }, [akuns]);
+  }, [akuns, budgetItems]);
 
   const handleReset = () => {
     setFilters({});

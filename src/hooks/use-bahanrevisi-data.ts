@@ -66,36 +66,48 @@ const fetchBudgetItems = async (sheetId: string): Promise<BudgetItem[]> => {
   // Skip header row dan map ke BudgetItem[] dengan struktur kolom baru
   const items: BudgetItem[] = rows.slice(1)
     .filter((row: string[]) => row[0]?.trim()) // Filter empty rows
-    .map((row: string[]) => ({
-      id: row[0]?.trim() || '',
-      program_pembebanan: row[1]?.trim() || '',
-      kegiatan: row[2]?.trim() || '',
-      rincian_output: row[3]?.trim() || '',
-      komponen_output: row[4]?.trim() || '',
-      sub_komponen: row[5]?.trim() || '',
-      akun: row[6]?.trim() || '',
-      uraian: row[7]?.trim() || '',
-      volume_semula: parseFloat(row[8]) || 0,
-      satuan_semula: row[9]?.trim() || '',
-      harga_satuan_semula: parseFloat(row[10]) || 0,
-      jumlah_semula: parseFloat(row[11]) || 0,
-      volume_menjadi: parseFloat(row[12]) || 0,
-      satuan_menjadi: row[13]?.trim() || '',
-      harga_satuan_menjadi: parseFloat(row[14]) || 0,
-      jumlah_menjadi: parseFloat(row[15]) || 0,
-      selisih: parseFloat(row[16]) || 0,
-      blokir: parseFloat(row[17]) || 0,
-      status: (row[18]?.trim() as any) || 'unchanged',
-      approved_by: row[19]?.trim(),
-      approved_date: row[20]?.trim(),
-      rejected_date: row[21]?.trim(),
-      submitted_by: row[22]?.trim() || '',
-      submitted_date: row[23]?.trim() || '',
-      updated_date: row[24]?.trim() || '',
-      notes: row[25]?.trim(),
-    }));
+    .map((row: string[], idx: number) => {
+      const item = {
+        id: row[0]?.trim() || '',
+        program_pembebanan: row[1]?.trim() || '',
+        kegiatan: row[2]?.trim() || '',
+        rincian_output: row[3]?.trim() || '',
+        komponen_output: row[4]?.trim() || '',
+        sub_komponen: row[5]?.trim() || '',
+        akun: row[6]?.trim() || '',
+        uraian: row[7]?.trim() || '',
+        volume_semula: parseFloat(row[8]) || 0,
+        satuan_semula: row[9]?.trim() || '',
+        harga_satuan_semula: parseFloat(row[10]) || 0,
+        jumlah_semula: parseFloat(row[11]) || 0,
+        volume_menjadi: parseFloat(row[12]) || 0,
+        satuan_menjadi: row[13]?.trim() || '',
+        harga_satuan_menjadi: parseFloat(row[14]) || 0,
+        jumlah_menjadi: parseFloat(row[15]) || 0,
+        selisih: parseFloat(row[16]) || 0,
+        blokir: parseFloat(row[17]) || 0,
+        status: (row[18]?.trim() as any) || 'unchanged',
+        approved_by: row[19]?.trim(),
+        approved_date: row[20]?.trim(),
+        rejected_date: row[21]?.trim(),
+        submitted_by: row[22]?.trim() || '',
+        submitted_date: row[23]?.trim() || '',
+        updated_date: row[24]?.trim() || '',
+        notes: row[25]?.trim(),
+      };
+      
+      if (idx === 0) {
+        console.log('[fetchBudgetItems] First item parsed:', item);
+        console.log('[fetchBudgetItems] Program:', item.program_pembebanan, 'Kegiatan:', item.kegiatan);
+      }
+      
+      return item;
+    });
 
   console.log(`[fetchBudgetItems] Loaded ${items.length} budget items`);
+  if (items.length > 0) {
+    console.log('[fetchBudgetItems] Sample item:', items[0]);
+  }
   return items;
 };
 
@@ -116,39 +128,61 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
   if (result.error) throw result.error;
 
   const rows = result.data?.values || [];
+  console.log('[fetchRPDItems] Raw rows:', rows.length, 'rows total');
+  if (rows.length > 0) {
+    console.log('[fetchRPDItems] Header row:', rows[0]);
+    if (rows.length > 1) {
+      console.log('[fetchRPDItems] First data row (raw):', rows[1]);
+    }
+  }
+  
   if (rows.length <= 1) return [];
 
   const items: RPDItem[] = rows.slice(1)
     .filter((row: string[]) => row[0]?.trim())
-    .map((row: string[]) => ({
-      id: row[0]?.trim() || '',
-      program_pembebanan: row[1]?.trim() || '',
-      kegiatan: row[2]?.trim() || '',
-      komponen_output: row[3]?.trim() || '',
-      sub_komponen: row[4]?.trim() || '',
-      akun: row[5]?.trim() || '',
-      uraian: row[6]?.trim() || '',
-      total_pagu: parseFloat(row[7]) || 0,
-      jan: parseFloat(row[8]) || 0,
-      feb: parseFloat(row[9]) || 0,
-      mar: parseFloat(row[10]) || 0,
-      apr: parseFloat(row[11]) || 0,
-      may: parseFloat(row[12]) || 0,
-      jun: parseFloat(row[13]) || 0,
-      jul: parseFloat(row[14]) || 0,
-      aug: parseFloat(row[15]) || 0,
-      sep: parseFloat(row[16]) || 0,
-      oct: parseFloat(row[17]) || 0,
-      nov: parseFloat(row[18]) || 0,
-      dec: parseFloat(row[19]) || 0,
-      total_rpd: parseFloat(row[20]) || 0,
-      sisa_anggaran: parseFloat(row[21]) || 0,
-      status: row[22]?.trim() || '',
-      modified_by: row[23]?.trim(),
-      modified_date: row[24]?.trim(),
-    }));
+    .map((row: string[], idx: number) => {
+      const item = {
+        id: row[0]?.trim() || '',
+        program_pembebanan: row[1]?.trim() || '',
+        kegiatan: row[2]?.trim() || '',
+        komponen_output: row[3]?.trim() || '',
+        sub_komponen: row[4]?.trim() || '',
+        akun: row[5]?.trim() || '',
+        uraian: row[6]?.trim() || '',
+        total_pagu: parseFloat(row[7]) || 0,
+        jan: parseFloat(row[8]) || 0,
+        feb: parseFloat(row[9]) || 0,
+        mar: parseFloat(row[10]) || 0,
+        apr: parseFloat(row[11]) || 0,
+        may: parseFloat(row[12]) || 0,
+        jun: parseFloat(row[13]) || 0,
+        jul: parseFloat(row[14]) || 0,
+        aug: parseFloat(row[15]) || 0,
+        sep: parseFloat(row[16]) || 0,
+        oct: parseFloat(row[17]) || 0,
+        nov: parseFloat(row[18]) || 0,
+        dec: parseFloat(row[19]) || 0,
+        total_rpd: parseFloat(row[20]) || 0,
+        sisa_anggaran: parseFloat(row[21]) || 0,
+        status: row[22]?.trim() || '',
+        modified_by: row[23]?.trim(),
+        modified_date: row[24]?.trim(),
+      };
+      
+      if (idx === 0) {
+        console.log('[fetchRPDItems] First item parsed:', item);
+        console.log('[fetchRPDItems] Column mapping check:');
+        console.log('  - row[7] (total_pagu):', row[7], '=> parsed as:', item.total_pagu);
+        console.log('  - row[20] (total_rpd):', row[20], '=> parsed as:', item.total_rpd);
+      }
+      
+      return item;
+    });
 
   console.log(`[fetchRPDItems] Loaded ${items.length} RPD items`);
+  if (items.length > 0) {
+    console.log('[fetchRPDItems] Sample item:', items[0]);
+  }
   return items;
 };
 
@@ -183,6 +217,9 @@ const fetchPrograms = async (sheetId: string): Promise<Program[]> => {
     }));
 
   console.log(`[fetchPrograms] Loaded ${programs.length} programs`);
+  if (programs.length > 0) {
+    console.log('[fetchPrograms] Sample programs:', programs.slice(0, 3));
+  }
   return programs;
 };
 
@@ -218,6 +255,9 @@ const fetchKegiatans = async (sheetId: string): Promise<Kegiatan[]> => {
     }));
 
   console.log(`[fetchKegiatans] Loaded ${kegiatans.length} kegiatans`);
+  if (kegiatans.length > 0) {
+    console.log('[fetchKegiatans] Sample:', kegiatans.slice(0, 2));
+  }
   return kegiatans;
 };
 
@@ -253,6 +293,9 @@ const fetchRincianOutputs = async (sheetId: string): Promise<RincianOutput[]> =>
     }));
 
   console.log(`[fetchRincianOutputs] Loaded ${outputs.length} rincian outputs`);
+  if (outputs.length > 0) {
+    console.log('[fetchRincianOutputs] Sample:', outputs.slice(0, 2));
+  }
   return outputs;
 };
 
@@ -288,6 +331,9 @@ const fetchKomponenOutputs = async (sheetId: string): Promise<KomponenOutput[]> 
     }));
 
   console.log(`[fetchKomponenOutputs] Loaded ${komponens.length} komponen outputs`);
+  if (komponens.length > 0) {
+    console.log('[fetchKomponenOutputs] Sample:', komponens.slice(0, 2));
+  }
   return komponens;
 };
 
@@ -323,6 +369,9 @@ const fetchSubKomponen = async (sheetId: string): Promise<SubKomponen[]> => {
     }));
 
   console.log(`[fetchSubKomponen] Loaded ${subKomponen.length} sub komponens`);
+  if (subKomponen.length > 0) {
+    console.log('[fetchSubKomponen] Sample:', subKomponen.slice(0, 2));
+  }
   return subKomponen;
 };
 
@@ -358,6 +407,9 @@ const fetchAkuns = async (sheetId: string): Promise<Akun[]> => {
     }));
 
   console.log(`[fetchAkuns] Loaded ${akuns.length} akuns`);
+  if (akuns.length > 0) {
+    console.log('[fetchAkuns] Sample:', akuns.slice(0, 3));
+  }
   return akuns;
 };
 
