@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { populateAllSheets } from '@/utils/bahanrevisi-population';
+import { populateAllSheets, verifyPopulatedData } from '@/utils/bahanrevisi-population';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 
 interface PopulationLog {
   sheet: string;
@@ -12,16 +14,13 @@ interface PopulationLog {
   rowsAdded?: number;
 }
 
-interface BahanRevisiDataPopulationProps {
-  satkerSheetId?: string;
-  onComplete?: (success: boolean) => void;
-}
-
-export default function BahanRevisiDataPopulation({ satkerSheetId, onComplete }: BahanRevisiDataPopulationProps) {
+export default function BahanRevisiDataPopulation() {
+  const satkerContext = useSatkerConfigContext();
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<PopulationLog[]>([]);
   const [completed, setCompleted] = useState(false);
-  const [showLogs, setShowLogs] = useState(false);
+  const [sheetId, setSheetId] = useState('');
 
   const sheets = [
     { name: 'programs', label: 'Master Programs' },
@@ -54,20 +53,23 @@ export default function BahanRevisiDataPopulation({ satkerSheetId, onComplete }:
   };
 
   const handlePopulateData = async () => {
-    if (!satkerSheetId) {
-      alert('⚠️ Sheet ID tidak tersedia');
+    const spreadsheetId = sheetId || satkerContext?.getUserSatkerSheetId('bahanrevisi');
+
+    if (!spreadsheetId) {
+      alert('⚠️ Sheet ID tidak ditemukan. Pastikan Anda telah setup satker_config dengan bahanrevisi_sheet_id');
       return;
     }
 
     setLoading(true);
     setCompleted(false);
-    setShowLogs(true);
     initializeLogs();
 
     try {
-      console.log('🚀 Mulai populate data:', satkerSheetId);
-      const results = await populateAllSheets(satkerSheetId);
+      console.log('🚀 Mulai populate data ke Sheet ID:', spreadsheetId);
 
+      const results = await populateAllSheets(spreadsheetId);
+
+      // Update logs dengan results
       for (const result of results) {
         const sheetLabel = sheets.find(s => s.name === result.sheet)?.label || result.sheet;
         if (result.success) {
@@ -78,16 +80,19 @@ export default function BahanRevisiDataPopulation({ satkerSheetId, onComplete }:
       }
 
       setCompleted(true);
-      const allSuccess = results.every(r => r.success);
-      onComplete?.(allSuccess);
+
+      // Verify some data
+      const verifyResults = await Promise.all([
+        verifyPopulatedData(spreadsheetId, 'programs'),
+        verifyPopulatedData(spreadsheetId, 'budget_items'),
+        verifyPopulatedData(spreadsheetId, 'rpd_items')
+      ]);
+
+      console.log('📊 Verification Results:', verifyResults);
 
     } catch (error: any) {
-      console.error('❌ Error:', error);
-      setLogs(prev => [...prev, {
-        sheet: 'FATAL ERROR',
-        status: 'error',
-        message: error instanceof Error ? error.message : String(error)
-      }]);
+      console.error('❌ Error saat populate:', error);
+      updateLog('all', 'error', `Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -96,93 +101,134 @@ export default function BahanRevisiDataPopulation({ satkerSheetId, onComplete }:
   const successCount = logs.filter(l => l.status === 'success').length;
   const errorCount = logs.filter(l => l.status === 'error').length;
 
-  if (!satkerSheetId) {
-    return null;
-  }
-
   return (
-    <div className="space-y-3">
-      <Button
-        onClick={handlePopulateData}
-        disabled={loading}
-        size="sm"
-        variant="outline"
-        className="gap-2 w-full"
-      >
-        {loading ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Mengisi data...
-          </>
-        ) : (
-          <>
-            <RefreshCw className="w-4 h-4" />
-            Isi Data Sample
-          </>
-        )}
-      </Button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Isi Data Sample
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Isi Data Sample Bahan Revisi Anggaran</DialogTitle>
+          <DialogDescription>
+            Populasi semua sheet dengan data sample untuk testing dan demo
+          </DialogDescription>
+        </DialogHeader>
 
-      {showLogs && (
-        <Card className="bg-slate-50">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">
-                Status ({successCount}/{sheets.length})
-              </CardTitle>
-              <button
-                onClick={() => setShowLogs(!showLogs)}
-                className="text-xs text-slate-500 hover:text-slate-700"
-              >
-                {showLogs ? 'Tutup' : 'Buka'}
-              </button>
-            </div>
-          </CardHeader>
-          {showLogs && (
-            <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
-              {logs.map((log, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-xs">
-                  <div className="mt-0.5 flex-shrink-0">
-                    {log.status === 'pending' && (
-                      <div className="w-3 h-3 rounded-full border border-slate-300" />
-                    )}
-                    {log.status === 'loading' && (
-                      <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
-                    )}
-                    {log.status === 'success' && (
-                      <CheckCircle2 className="w-3 h-3 text-green-500" />
-                    )}
-                    {log.status === 'error' && (
-                      <AlertCircle className="w-3 h-3 text-red-500" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{log.sheet}</div>
-                    <div className={`text-xs truncate ${
-                      log.status === 'error' ? 'text-red-600' :
-                      log.status === 'success' ? 'text-green-600' :
-                      'text-slate-500'
-                    }`}>
-                      {log.message}
+        <div className="space-y-4">
+          {/* Info Alert */}
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Utility ini akan mengisi 8 sheet (6 master + 2 transaksi) dengan sample data dari referensi bahanrevisi-3210
+            </AlertDescription>
+          </Alert>
+
+          {/* Sheet ID Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Sheet ID (Optional)</label>
+            <input
+              type="text"
+              placeholder="Biarkan kosong untuk menggunakan Sheet ID dari satker config"
+              value={sheetId}
+              onChange={(e) => setSheetId(e.target.value)}
+              disabled={loading}
+              className="w-full px-3 py-2 border rounded-md text-sm"
+            />
+          </div>
+
+          {/* Populate Button */}
+          <Button
+            onClick={handlePopulateData}
+            disabled={loading}
+            className="w-full gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sedang mengisi data...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Mulai Populate Data
+              </>
+            )}
+          </Button>
+
+          {/* Progress Logs */}
+          {logs.length > 0 && (
+            <Card className="bg-slate-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">
+                  Status Pengisian ({successCount}/{sheets.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {logs.map((log, idx) => (
+                  <div key={idx} className="flex items-start gap-3 text-sm">
+                    <div className="mt-0.5">
+                      {log.status === 'pending' && (
+                        <div className="w-4 h-4 rounded-full border-2 border-slate-300" />
+                      )}
+                      {log.status === 'loading' && (
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                      )}
+                      {log.status === 'success' && (
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      )}
+                      {log.status === 'error' && (
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">{log.sheet}</div>
+                      <div className={`text-xs ${
+                        log.status === 'error' ? 'text-red-600' :
+                        log.status === 'success' ? 'text-green-600' :
+                        'text-slate-500'
+                      }`}>
+                        {log.message}
+                        {log.rowsAdded && ` (+${log.rowsAdded} baris)`}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </CardContent>
+                ))}
+              </CardContent>
+            </Card>
           )}
-        </Card>
-      )}
 
-      {completed && (
-        <Alert className={errorCount === 0 ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}>
-          <CheckCircle2 className={`h-4 w-4 ${errorCount === 0 ? 'text-green-600' : 'text-yellow-600'}`} />
-          <AlertDescription className={`text-sm ${errorCount === 0 ? 'text-green-800' : 'text-yellow-800'}`}>
-            {errorCount === 0
-              ? `✅ Semua ${successCount} sheets berhasil!`
-              : `⚠️ ${successCount}/${sheets.length} berhasil. ${errorCount} gagal.`
-            }
-          </AlertDescription>
-        </Alert>
-      )}
-    </div>
+          {/* Completion Summary */}
+          {completed && (
+            <Alert className={errorCount === 0 ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}>
+              <CheckCircle2 className={`h-4 w-4 ${errorCount === 0 ? 'text-green-600' : 'text-yellow-600'}`} />
+              <AlertDescription className={errorCount === 0 ? 'text-green-800' : 'text-yellow-800'}>
+                {errorCount === 0
+                  ? `✅ Semua ${successCount} sheets berhasil diisi!`
+                  : `⚠️ ${successCount}/${sheets.length} sheets berhasil. ${errorCount} gagal.`
+                }
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Data Summary */}
+          {completed && (
+            <Card className="bg-blue-50 border-blue-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Data yang Diisi</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-1 text-slate-700">
+                <div>• 4 Budget Items (Status: new, changed, unchanged, deleted, rejected)</div>
+                <div>• 3 RPD Items (Rencana Anggaran Kas Bulanan)</div>
+                <div>• 4 Programs, 7 Kegiatans, 6 Rincian Outputs</div>
+                <div>• 6 Komponen Outputs, 6 Sub Komponen, 8 Akuns</div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

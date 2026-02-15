@@ -2,8 +2,7 @@
  * Custom hook untuk membaca data Bahan Revisi Anggaran dari Google Sheets
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   BudgetItem, 
@@ -363,13 +362,11 @@ const fetchAkuns = async (sheetId: string): Promise<Akun[]> => {
  * Hook untuk fetch budget items dengan filtering
  */
 export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBahanRevisiDataProps) => {
-  const queryClient = useQueryClient();
-
   const budgetItemsQuery = useQuery({
     queryKey: ['bahanrevisi-budget-items', sheetId],
     queryFn: () => fetchBudgetItems(sheetId!),
     enabled: enabled && !!sheetId,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const rpdItemsQuery = useQuery({
@@ -383,7 +380,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     queryKey: ['bahanrevisi-programs', sheetId],
     queryFn: () => fetchPrograms(sheetId!),
     enabled: enabled && !!sheetId,
-    staleTime: 1000 * 60 * 30,
+    staleTime: 1000 * 60 * 30, // 30 minutes (master data, less frequently changed)
   });
 
   const kegiatansQuery = useQuery({
@@ -421,59 +418,33 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     staleTime: 1000 * 60 * 30,
   });
 
-  // Filter budget items berdasarkan filters - memoized
-  const filteredBudgetItems = useMemo(() => {
-    if (!filters || !budgetItemsQuery.data) return budgetItemsQuery.data || [];
-    return filterBudgetItems(budgetItemsQuery.data, filters);
-  }, [filters, budgetItemsQuery.data]);
+  // Filter budget items berdasarkan filters
+  const filteredBudgetItems = filters && budgetItemsQuery.data 
+    ? filterBudgetItems(budgetItemsQuery.data, filters)
+    : budgetItemsQuery.data;
 
-  // Get dropdown options - memoized
-  const programsOptions = useMemo(() => {
-    if (!budgetItemsQuery.data) return [];
-    return Array.from(new Set(budgetItemsQuery.data.map(item => item.program_pembebanan))).sort();
-  }, [budgetItemsQuery.data]);
+  // Get dropdown options berdasarkan budget items
+  const programsOptions = budgetItemsQuery.data
+    ? Array.from(new Set(budgetItemsQuery.data.map(item => item.program_pembebanan))).sort()
+    : [];
 
-  const kegiatansOptions = useMemo(() => {
-    if (!filters?.program_pembebanan || !budgetItemsQuery.data) return [];
-    return budgetItemsQuery.data
-      .filter(item => item.program_pembebanan === filters.program_pembebanan)
-      .map(item => item.kegiatan)
-      .filter((v, i, a) => a.indexOf(v) === i)
-      .sort();
-  }, [filters?.program_pembebanan, budgetItemsQuery.data]);
+  const kegiatansOptions = filters?.program_pembebanan && budgetItemsQuery.data
+    ? budgetItemsQuery.data
+        .filter(item => item.program_pembebanan === filters.program_pembebanan)
+        .map(item => item.kegiatan)
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .sort()
+    : [];
 
-  const isLoading = useMemo(() => {
-    return budgetItemsQuery.isLoading || rpdItemsQuery.isLoading || 
-           programsQuery.isLoading || kegiatansQuery.isLoading ||
-           rincianOutputsQuery.isLoading || komponenOutputsQuery.isLoading ||
-           subKomponenQuery.isLoading || akunsQuery.isLoading;
-  }, [budgetItemsQuery.isLoading, rpdItemsQuery.isLoading, programsQuery.isLoading, 
-      kegiatansQuery.isLoading, rincianOutputsQuery.isLoading, komponenOutputsQuery.isLoading,
-      subKomponenQuery.isLoading, akunsQuery.isLoading]);
+  const isLoading = budgetItemsQuery.isLoading || rpdItemsQuery.isLoading || 
+                   programsQuery.isLoading || kegiatansQuery.isLoading ||
+                   rincianOutputsQuery.isLoading || komponenOutputsQuery.isLoading ||
+                   subKomponenQuery.isLoading || akunsQuery.isLoading;
 
-  const error = useMemo(() => {
-    return budgetItemsQuery.error || rpdItemsQuery.error || 
-           programsQuery.error || kegiatansQuery.error ||
-           rincianOutputsQuery.error || komponenOutputsQuery.error ||
-           subKomponenQuery.error || akunsQuery.error;
-  }, [budgetItemsQuery.error, rpdItemsQuery.error, programsQuery.error, 
-      kegiatansQuery.error, rincianOutputsQuery.error, komponenOutputsQuery.error,
-      subKomponenQuery.error, akunsQuery.error]);
-
-  // Refetch callback - safe to use in effects
-  const refetch = useCallback(() => {
-    if (sheetId) {
-      budgetItemsQuery.refetch();
-      rpdItemsQuery.refetch();
-      programsQuery.refetch();
-      kegiatansQuery.refetch();
-      rincianOutputsQuery.refetch();
-      komponenOutputsQuery.refetch();
-      subKomponenQuery.refetch();
-      akunsQuery.refetch();
-    }
-  }, [sheetId, budgetItemsQuery, rpdItemsQuery, programsQuery, kegiatansQuery, 
-      rincianOutputsQuery, komponenOutputsQuery, subKomponenQuery, akunsQuery]);
+  const error = budgetItemsQuery.error || rpdItemsQuery.error || 
+               programsQuery.error || kegiatansQuery.error ||
+               rincianOutputsQuery.error || komponenOutputsQuery.error ||
+               subKomponenQuery.error || akunsQuery.error;
 
   return {
     budgetItems: budgetItemsQuery.data || [],
@@ -489,6 +460,17 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     kegiatansOptions,
     isLoading,
     error: error as Error | null,
-    refetch
+    refetch: async () => {
+      await Promise.all([
+        budgetItemsQuery.refetch(),
+        rpdItemsQuery.refetch(),
+        programsQuery.refetch(),
+        kegiatansQuery.refetch(),
+        rincianOutputsQuery.refetch(),
+        komponenOutputsQuery.refetch(),
+        subKomponenQuery.refetch(),
+        akunsQuery.refetch(),
+      ]);
+    },
   };
 };
