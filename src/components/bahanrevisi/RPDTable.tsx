@@ -42,6 +42,18 @@ const RPDTable: React.FC<RPDTableProps> = ({
   loading = false,
   onUpdateItem 
 }) => {
+  // Safety check: ensure items is always an array
+  let safeItems: RPDItem[] = [];
+  try {
+    if (Array.isArray(items) && items.length > 0) {
+      safeItems = items.filter(item => item && typeof item === 'object' && item.id);
+    } else if (!Array.isArray(items)) {
+      console.warn('[RPDTable] items prop is not an array:', typeof items, items);
+    }
+  } catch (e) {
+    console.error('[RPDTable] Error processing items:', e, items);
+  }
+
   const { user } = useAuth();
   const canEdit = user?.role !== 'Pejabat Pembuat Komitmen'; // User roles can edit, PPK cannot
 
@@ -56,8 +68,8 @@ const RPDTable: React.FC<RPDTableProps> = ({
 
   const pagu = useMemo(() => {
     try {
-      if (!Array.isArray(items)) return 0;
-      return items.reduce((sum, item) => {
+      if (!Array.isArray(safeItems)) return 0;
+      return safeItems.reduce((sum, item) => {
         try {
           return sum + (Number(item?.jumlah_menjadi) || 0);
         } catch {
@@ -68,7 +80,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       console.error('[RPDTable] Error calculating pagu:', e);
       return 0;
     }
-  }, [items]);
+  }, [safeItems]);
 
   const handleEditChange = (id: string, field: string, value: string | number) => {
     let numValue: number;
@@ -173,12 +185,12 @@ const RPDTable: React.FC<RPDTableProps> = ({
 
   const filteredItems = useMemo(() => {
     try {
-      if (!Array.isArray(items)) {
-        console.warn('[RPDTable] items is not an array:', typeof items);
+      if (!Array.isArray(safeItems)) {
+        console.warn('[RPDTable] safeItems is not an array:', typeof safeItems);
         return [];
       }
       
-      return items.filter(item => {
+      return safeItems.filter(item => {
         try {
           // Defensive checks for item structure
           if (!item || typeof item !== 'object') {
@@ -204,7 +216,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       console.error('[RPDTable] Error in filteredItems:', e);
       return [];
     }
-  }, [items, searchTerm, hideZeroBudget]);
+  }, [safeItems, searchTerm, hideZeroBudget]);
 
   const sortedItems = useMemo(() => {
     try {
@@ -282,24 +294,24 @@ const RPDTable: React.FC<RPDTableProps> = ({
 
   const totalByMonth = useMemo(() => {
     try {
-      if (!Array.isArray(items)) return {
+      if (!Array.isArray(safeItems)) return {
         jan: 0, feb: 0, mar: 0, apr: 0, mei: 0, jun: 0,
         jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
       };
       
       return {
-        jan: items.reduce((sum, item) => sum + (Number(item?.januari) || 0), 0),
-        feb: items.reduce((sum, item) => sum + (Number(item?.februari) || 0), 0),
-        mar: items.reduce((sum, item) => sum + (Number(item?.maret) || 0), 0),
-        apr: items.reduce((sum, item) => sum + (Number(item?.april) || 0), 0),
-        mei: items.reduce((sum, item) => sum + (Number(item?.mei) || 0), 0),
-        jun: items.reduce((sum, item) => sum + (Number(item?.juni) || 0), 0),
-        jul: items.reduce((sum, item) => sum + (Number(item?.juli) || 0), 0),
-        aug: items.reduce((sum, item) => sum + (Number(item?.agustus) || 0), 0),
-        sep: items.reduce((sum, item) => sum + (Number(item?.september) || 0), 0),
-        oct: items.reduce((sum, item) => sum + (Number(item?.oktober) || 0), 0),
-        nov: items.reduce((sum, item) => sum + (Number(item?.november) || 0), 0),
-        dec: items.reduce((sum, item) => sum + (Number(item?.desember) || 0), 0)
+        jan: safeItems.reduce((sum, item) => sum + (Number(item?.januari) || 0), 0),
+        feb: safeItems.reduce((sum, item) => sum + (Number(item?.februari) || 0), 0),
+        mar: safeItems.reduce((sum, item) => sum + (Number(item?.maret) || 0), 0),
+        apr: safeItems.reduce((sum, item) => sum + (Number(item?.april) || 0), 0),
+        mei: safeItems.reduce((sum, item) => sum + (Number(item?.mei) || 0), 0),
+        jun: safeItems.reduce((sum, item) => sum + (Number(item?.juni) || 0), 0),
+        jul: safeItems.reduce((sum, item) => sum + (Number(item?.juli) || 0), 0),
+        aug: safeItems.reduce((sum, item) => sum + (Number(item?.agustus) || 0), 0),
+        sep: safeItems.reduce((sum, item) => sum + (Number(item?.september) || 0), 0),
+        oct: safeItems.reduce((sum, item) => sum + (Number(item?.oktober) || 0), 0),
+        nov: safeItems.reduce((sum, item) => sum + (Number(item?.november) || 0), 0),
+        dec: safeItems.reduce((sum, item) => sum + (Number(item?.desember) || 0), 0)
       };
     } catch (e) {
       console.error('[RPDTable] Error in totalByMonth:', e);
@@ -308,12 +320,12 @@ const RPDTable: React.FC<RPDTableProps> = ({
         jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
       };
     }
-  }, [items]);
+  }, [safeItems]);
 
   const grandTotal = useMemo(() => {
     try {
-      if (!Array.isArray(items)) return 0;
-      return items.reduce((sum, item) => {
+      if (!Array.isArray(safeItems)) return 0;
+      return safeItems.reduce((sum, item) => {
         try {
           return sum + (Number(item?.jumlah_rpd) || 0);
         } catch {
