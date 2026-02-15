@@ -54,7 +54,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const pagu = useMemo(() => items.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0), [items]);
+  const pagu = useMemo(() => items.reduce((sum, item) => sum + (Number(item.jumlah_menjadi) || 0), 0), [items]);
 
   const handleEditChange = (id: string, field: string, value: string | number) => {
     let numValue: number;
@@ -63,7 +63,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       const cleanValue = value.replace(/[^0-9.]/g, '');
       numValue = parseFloat(cleanValue) || 0;
     } else {
-      numValue = value as number;
+      numValue = Number(value) || 0;
     }
     
     if (numValue < 0) {
@@ -98,7 +98,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
         ...prev,
         [id]: {
           ...itemValues,
-          [apiField]: numValue
+          [apiField]: Number(numValue)
         }
       };
     });
@@ -116,18 +116,18 @@ const RPDTable: React.FC<RPDTableProps> = ({
 
     setEditingId(item.id);
     const monthValues = {
-      januari: item.januari || 0,
-      februari: item.februari || 0,
-      maret: item.maret || 0,
-      april: item.april || 0,
-      mei: item.mei || 0,
-      juni: item.juni || 0,
-      juli: item.juli || 0,
-      agustus: item.agustus || 0,
-      september: item.september || 0,
-      oktober: item.oktober || 0,
-      november: item.november || 0,
-      desember: item.desember || 0
+      januari: Number(item.januari) || 0,
+      februari: Number(item.februari) || 0,
+      maret: Number(item.maret) || 0,
+      april: Number(item.april) || 0,
+      mei: Number(item.mei) || 0,
+      juni: Number(item.juni) || 0,
+      juli: Number(item.juli) || 0,
+      agustus: Number(item.agustus) || 0,
+      september: Number(item.september) || 0,
+      oktober: Number(item.oktober) || 0,
+      november: Number(item.november) || 0,
+      desember: Number(item.desember) || 0
     };
     
     setEditValues(prev => ({
@@ -232,26 +232,28 @@ const RPDTable: React.FC<RPDTableProps> = ({
 
   const totalByMonth = useMemo(() => {
     return {
-      jan: items.reduce((sum, item) => sum + (item.januari || 0), 0),
-      feb: items.reduce((sum, item) => sum + (item.februari || 0), 0),
-      mar: items.reduce((sum, item) => sum + (item.maret || 0), 0),
-      apr: items.reduce((sum, item) => sum + (item.april || 0), 0),
-      mei: items.reduce((sum, item) => sum + (item.mei || 0), 0),
-      jun: items.reduce((sum, item) => sum + (item.juni || 0), 0),
-      jul: items.reduce((sum, item) => sum + (item.juli || 0), 0),
-      aug: items.reduce((sum, item) => sum + (item.agustus || 0), 0),
-      sep: items.reduce((sum, item) => sum + (item.september || 0), 0),
-      oct: items.reduce((sum, item) => sum + (item.oktober || 0), 0),
-      nov: items.reduce((sum, item) => sum + (item.november || 0), 0),
-      dec: items.reduce((sum, item) => sum + (item.desember || 0), 0)
+      jan: items.reduce((sum, item) => sum + (Number(item.januari) || 0), 0),
+      feb: items.reduce((sum, item) => sum + (Number(item.februari) || 0), 0),
+      mar: items.reduce((sum, item) => sum + (Number(item.maret) || 0), 0),
+      apr: items.reduce((sum, item) => sum + (Number(item.april) || 0), 0),
+      mei: items.reduce((sum, item) => sum + (Number(item.mei) || 0), 0),
+      jun: items.reduce((sum, item) => sum + (Number(item.juni) || 0), 0),
+      jul: items.reduce((sum, item) => sum + (Number(item.juli) || 0), 0),
+      aug: items.reduce((sum, item) => sum + (Number(item.agustus) || 0), 0),
+      sep: items.reduce((sum, item) => sum + (Number(item.september) || 0), 0),
+      oct: items.reduce((sum, item) => sum + (Number(item.oktober) || 0), 0),
+      nov: items.reduce((sum, item) => sum + (Number(item.november) || 0), 0),
+      dec: items.reduce((sum, item) => sum + (Number(item.desember) || 0), 0)
     };
   }, [items]);
 
   const grandTotal = useMemo(() => {
-    return items.reduce((sum, item) => sum + (item.jumlah_rpd || 0), 0);
+    return items.reduce((sum, item) => sum + (Number(item.jumlah_rpd) || 0), 0);
   }, [items]);
 
-  const sisaPagu = pagu - grandTotal;
+  const sisaPagu = useMemo(() => {
+    return Number(pagu) - Number(grandTotal);
+  }, [pagu, grandTotal]);
 
   const paginatedItems = pageSize === -1 
     ? sortedItems 
@@ -260,7 +262,10 @@ const RPDTable: React.FC<RPDTableProps> = ({
   const totalPages = pageSize === -1 ? 1 : Math.ceil(sortedItems.length / pageSize);
 
   const getStatusClass = (item: RPDItem): string => {
-    if ((item.jumlah_rpd || 0) === (item.jumlah_menjadi || 0)) {
+    const rpd = Number(item.jumlah_rpd) || 0;
+    const pagu = Number(item.jumlah_menjadi) || 0;
+    
+    if (rpd === pagu) {
       return 'status-ok';
     } else {
       return 'status-sisa';
@@ -268,7 +273,10 @@ const RPDTable: React.FC<RPDTableProps> = ({
   };
 
   const getStatusText = (item: RPDItem): string => {
-    if ((item.jumlah_rpd || 0) === (item.jumlah_menjadi || 0)) {
+    const rpd = Number(item.jumlah_rpd) || 0;
+    const pagu = Number(item.jumlah_menjadi) || 0;
+    
+    if (rpd === pagu) {
       return 'OK';
     } else {
       return 'Sisa';
@@ -294,15 +302,17 @@ const RPDTable: React.FC<RPDTableProps> = ({
     };
     
     const monthKey = monthMap[field];
-    const value = item[monthKey] as number || 0;
+    if (!monthKey) return <span>-</span>;
+    
+    const value = Number(item[monthKey]) || 0;
     const editValue = isEditing && editValues[item.id] 
-      ? editValues[item.id][monthKey as string] 
+      ? Number(editValues[item.id][monthKey as string]) || 0
       : value;
     
     return isEditing ? (
       <Input 
-        type="text"
-        value={editValue} 
+        type="number"
+        value={editValue.toString()} 
         onChange={(e) => handleEditChange(item.id, field, e.target.value)}
         className="w-full text-right px-2 py-1 h-7"
         min="0"
@@ -551,23 +561,23 @@ const RPDTable: React.FC<RPDTableProps> = ({
                 paginatedItems.map((item, index) => (
                   <tr key={item.id} className={`${index % 2 === 0 ? 'bg-slate-50' : ''} h-9`}>
                     <td className="text-center fixed-column" style={{left: '0px'}}>
-                      {(currentPage - 1) * (pageSize === -1 ? 0 : pageSize) + index + 1}
+                      {String((currentPage - 1) * (pageSize === -1 ? 0 : pageSize) + index + 1)}
                     </td>
                     <td className="status-cell fixed-column" style={{left: '30px'}}>
-                      <span className={getStatusClass(item)}>{getStatusText(item)}</span>
+                      <span className={getStatusClass(item)}>{String(getStatusText(item))}</span>
                     </td>
-                    <td className="description-cell fixed-column" style={{left: '80px'}} title={item.uraian}>
-                      <span className="line-clamp-2">{item.uraian}</span>
+                    <td className="description-cell fixed-column" style={{left: '80px'}} title={String(item.uraian || '')}>
+                      <span className="line-clamp-2">{String(item.uraian || '')}</span>
                     </td>
                     <td className="pagu-cell fixed-column" style={{left: '380px'}}>
-                      {formatCurrency(item.jumlah_menjadi || 0)}
+                      {formatCurrency(Number(item.jumlah_menjadi) || 0)}
                     </td>
                     <td className="total-cell fixed-column" style={{left: '480px'}}>
-                      {formatCurrency(item.jumlah_rpd || 0)}
+                      {formatCurrency(Number(item.jumlah_rpd) || 0)}
                     </td>
                     <td className="selisih-cell fixed-column" style={{left: '580px'}}>
-                      <span className={(item.selisih || 0) !== 0 ? 'text-red-500' : 'text-green-500'}>
-                        {formatCurrency(item.selisih || 0)}
+                      <span className={(Number(item.selisih) || 0) !== 0 ? 'text-red-500' : 'text-green-500'}>
+                        {formatCurrency(Number(item.selisih) || 0)}
                       </span>
                     </td>
                     {['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].map(month => (
@@ -610,11 +620,18 @@ const RPDTable: React.FC<RPDTableProps> = ({
                 <td className={`selisih-cell fixed-column ${sisaPagu !== 0 ? 'text-red-600' : 'text-green-600'}`} style={{left: '580px'}}>
                   {formatCurrency(sisaPagu)}
                 </td>
-                {Object.values(totalByMonth).map((total, idx) => (
-                  <td key={idx} className="month-cell">
-                    {formatCurrency(total, false)}
-                  </td>
-                ))}
+                <td className="month-cell">{formatCurrency(totalByMonth.jan, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.feb, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.mar, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.apr, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.mei, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.jun, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.jul, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.aug, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.sep, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.oct, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.nov, false)}</td>
+                <td className="month-cell">{formatCurrency(totalByMonth.dec, false)}</td>
                 <td></td>
               </tr>
             </tfoot>
