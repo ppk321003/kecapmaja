@@ -30,6 +30,7 @@ export interface BudgetItem {
   harga_satuan_menjadi: number;
   jumlah_menjadi: number; // auto: volume_menjadi * harga_satuan_menjadi
   selisih: number; // auto: jumlah_menjadi - jumlah_semula
+  blokir: number; // jumlah yang diblokir/terkunci (default: 0)
   status: BudgetItemStatus;
   approved_by?: string; // username PPK
   approved_date?: string; // ISO date string

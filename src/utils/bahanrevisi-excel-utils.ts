@@ -36,6 +36,7 @@ export const expectedColumns = {
   volumeMenjadi: ['volumemenjadi', 'volume menjadi', 'volume akhir'],
   satuanMenjadi: ['satuanmenjadi', 'satuan menjadi', 'satuan akhir'],
   hargaSatuanMenjadi: ['hargasatuanmenjadi', 'harga satuan menjadi', 'harga menjadi'],
+  blokir: ['blokir', 'blocked', 'blocked amount', 'locked amount', 'terkunci'],
 
   // RPD columns (monthly)
   januari: ['januari', 'jan', 'january'],
@@ -82,6 +83,7 @@ export const createBahanRevisiTemplate = (
     'Volume Menjadi',
     'Satuan Menjadi',
     'Harga Satuan Menjadi',
+    'Blokir',
     'Januari',
     'Februari',
     'Maret',
@@ -112,6 +114,7 @@ export const createBahanRevisiTemplate = (
       1,
       'Paket',
       1200000,
+      0,
       100000,
       100000,
       100000,
@@ -318,6 +321,10 @@ export const processBahanRevisiRows = (
           harga_satuan_menjadi: hargaSatuanMenjadi,
           jumlah_menjadi: jumlahMenjadi,
           selisih,
+          blokir:
+            columnIndices.blokir !== undefined
+              ? parseFloat(row[columnIndices.blokir]) || 0
+              : 0,
           status,
           submitted_by: 'import',
           submitted_date: new Date().toISOString(),
@@ -407,6 +414,7 @@ export const getFriendlyColumnNames = (columns: string[]): string => {
     volumeMenjadi: 'Volume Menjadi',
     satuanMenjadi: 'Satuan Menjadi',
     hargaSatuanMenjadi: 'Harga Satuan Menjadi',
+    blokir: 'Blokir',
   };
 
   return columns.map((col) => friendlyNames[col] || col).join(', ');
@@ -471,6 +479,7 @@ export const exportBahanRevisiExcel = (
       'Harga Satuan Menjadi',
       'Jumlah Menjadi',
       'Selisih',
+      'Blokir',
       'Status',
     ];
 
@@ -491,6 +500,7 @@ export const exportBahanRevisiExcel = (
       item.harga_satuan_menjadi || 0,
       item.jumlah_menjadi || 0,
       item.selisih || 0,
+      item.blokir || 0,
       item.status || '',
     ]);
 
@@ -510,6 +520,7 @@ export const exportBahanRevisiExcel = (
       { wch: 15 },
       { wch: 12 },
       { wch: 12 },
+      { wch: 15 },
       { wch: 15 },
       { wch: 15 },
       { wch: 15 },

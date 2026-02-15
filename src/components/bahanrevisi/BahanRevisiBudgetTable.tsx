@@ -237,6 +237,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                 <TableHead className="text-right">Harga Satuan Menjadi</TableHead>
                 <TableHead className="text-right">Jumlah Menjadi</TableHead>
                 <TableHead className="text-right">Sisa Anggaran</TableHead>
+                <TableHead className="text-right">Blokir</TableHead>
                 <TableHead className="text-right">Selisih</TableHead>
                 <TableHead className="text-center">Aksi SM/PJK</TableHead>
                 <TableHead className="text-center">Aksi PPK</TableHead>
@@ -263,6 +264,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                   <TableCell className="text-right text-xs">{formatCurrency(item.harga_satuan_menjadi)}</TableCell>
                   <TableCell className="text-right text-xs">{formatCurrency(item.jumlah_menjadi)}</TableCell>
                   <TableCell className="text-right text-xs">{formatCurrency((item.jumlah_semula || 0) - (item.jumlah_menjadi || 0))}</TableCell>
+                  <TableCell className="text-right text-xs font-semibold text-orange-600">{formatCurrency(item.blokir || 0)}</TableCell>
                   <TableCell
                     className={`text-right text-xs font-semibold ${
                       calculateSelisih(item) > 0

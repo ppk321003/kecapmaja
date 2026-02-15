@@ -92,16 +92,17 @@ const fetchBudgetItems = async (sheetId: string): Promise<BudgetItem[]> => {
       harga_satuan_menjadi: parseFloat(row[22]) || 0,
       jumlah_menjadi: parseFloat(row[23]) || 0,
       selisih: parseFloat(row[24]) || 0,
-      status: (row[25]?.trim() as any) || 'unchanged',
-      approved_by: row[26]?.trim(),
-      approved_date: row[27]?.trim(),
-      rejected_by: row[28]?.trim(),
-      rejected_date: row[29]?.trim(),
-      rejection_reason: row[30]?.trim(),
-      submitted_by: row[31]?.trim() || '',
-      submitted_date: row[32]?.trim() || '',
-      updated_date: row[33]?.trim() || '',
-      notes: row[34]?.trim(),
+      blokir: parseFloat(row[25]) || 0,
+      status: (row[26]?.trim() as any) || 'unchanged',
+      approved_by: row[27]?.trim(),
+      approved_date: row[28]?.trim(),
+      rejected_by: row[29]?.trim(),
+      rejected_date: row[30]?.trim(),
+      rejection_reason: row[31]?.trim(),
+      submitted_by: row[32]?.trim() || '',
+      submitted_date: row[33]?.trim() || '',
+      updated_date: row[34]?.trim() || '',
+      notes: row[35]?.trim(),
     }));
 
   console.log(`[fetchBudgetItems] Loaded ${items.length} budget items`);
@@ -702,6 +703,10 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     ? roundToThousands(rpdItemsQuery.data.reduce((sum, item) => sum + (item.total_rpd || 0), 0))
     : 0;
 
+  const totalBlokir = budgetItemsQuery.data
+    ? roundToThousands(budgetItemsQuery.data.reduce((sum, item) => sum + (item.blokir || 0), 0))
+    : 0;
+
   return {
     budgetItems: budgetItemsQuery.data || [],
     filteredBudgetItems: filteredBudgetItems || [],
@@ -727,6 +732,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     totalBudgetSemula,
     totalBudgetMenjadi,
     totalSelisih,
+    totalBlokir,
     totalNewItems,
     totalChangedItems,
     totalRPDAllocated,
