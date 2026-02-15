@@ -615,7 +615,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
                 <td className="fixed-column" style={{left: '0px'}}></td>
                 <td className="fixed-column" style={{left: '30px'}}></td>
                 <td className="fixed-column text-right" style={{left: '80px'}}>Total per Bulan</td>
-                <td className="pagu-cell fixed-column" style={{left: '380px'}}></td>
+                <td className="pagu-cell fixed-column" style={{left: '380px'}}>{formatCurrency(pagu)}</td>
                 <td className="total-cell fixed-column" style={{left: '480px'}}>{formatCurrency(grandTotal)}</td>
                 <td className={`selisih-cell fixed-column ${sisaPagu !== 0 ? 'text-red-600' : 'text-green-600'}`} style={{left: '580px'}}>
                   {formatCurrency(sisaPagu)}
