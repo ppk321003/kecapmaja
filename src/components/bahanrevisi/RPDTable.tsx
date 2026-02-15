@@ -336,7 +336,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       console.error('[RPDTable] Error calculating grandTotal:', e);
       return 0;
     }
-  }, [items]);
+  }, [safeItems]);
 
   const sisaPagu = useMemo(() => {
     try {
