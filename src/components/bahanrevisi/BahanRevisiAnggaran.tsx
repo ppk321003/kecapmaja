@@ -16,7 +16,6 @@ import { BahanRevisiFilters } from '@/types/bahanrevisi';
 import BahanRevisiFilter from './BahanRevisiFilter';
 import BahanRevisiBudgetTable from './BahanRevisiBudgetTable';
 import BahanRevisiRingkasan from './BahanRevisiRingkasan';
-import BahanRevisiDataPopulation from './BahanRevisiDataPopulation';
 import { toast } from '@/hooks/use-toast';
 
 interface BahanRevisiAnggaranProps {}
@@ -174,14 +173,11 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="space-y-2 flex justify-between items-start">
-        <div className="space-y-2 flex-1">
-          <h1 className="text-2xl font-bold text-slate-900">Bahan Revisi Anggaran</h1>
-          <p className="text-sm text-slate-600">
-            Kelola revisi pagu anggaran dengan sistem approval berjenjang
-          </p>
-        </div>
-        <BahanRevisiDataPopulation />
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold text-slate-900">Bahan Revisi Anggaran</h1>
+        <p className="text-sm text-slate-600">
+          Kelola revisi pagu anggaran dengan sistem approval berjenjang
+        </p>
       </div>
 
       {/* Loading State */}
