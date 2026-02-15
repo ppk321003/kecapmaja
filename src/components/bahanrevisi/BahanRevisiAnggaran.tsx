@@ -111,9 +111,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       status: 'new' as const,
       approved_by: undefined,
       approved_date: undefined,
-      rejected_by: undefined,
       rejected_date: undefined,
-      rejection_reason: undefined,
     };
 
     addItem(newItem as any);
@@ -176,12 +174,11 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       .map(item => ({
         id: item.id,
         pembebanan: [
-          item.program_code,
-          item.komponen_output_code,
-          item.sub_komponen_code,
-          'A',
-          item.akun_code
-        ].filter(Boolean).join('.'),
+          item.program_pembebanan,
+          item.komponen_output,
+          item.sub_komponen,
+          item.akun
+        ].filter(Boolean).join(' > '),
         uraian: item.uraian,
         detailPerubahan: getDetailPerubahan(item),
         jumlahSemula: item.jumlah_semula,
@@ -196,12 +193,11 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       .map(item => ({
         id: item.id,
         pembebanan: [
-          item.program_code,
-          item.komponen_output_code,
-          item.sub_komponen_code,
-          'A',
-          item.akun_code
-        ].filter(Boolean).join('.'),
+          item.program_pembebanan,
+          item.komponen_output,
+          item.sub_komponen,
+          item.akun
+        ].filter(Boolean).join(' > '),
         uraian: item.uraian,
         volume: item.volume_menjadi,
         satuan: item.satuan_menjadi,

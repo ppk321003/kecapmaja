@@ -28,6 +28,28 @@ export const roundToThousands = (value: number): number => {
 };
 
 /**
+ * Format date to Indonesia format: hh:mm - dd/mm/yy
+ */
+export const formatDateIndonesia = (dateString: string | null | undefined): string => {
+  if (!dateString) return '';
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    
+    return `${hours}:${minutes} - ${day}/${month}/${year}`;
+  } catch (e) {
+    return '';
+  }
+};
+
+/**
  * Calculate jumlah_semula (volume_semula * harga_satuan_semula)
  */
 export const calculateJumlahSemula = (volumeSemula: number, hargaSatuanSemula: number): number => {
@@ -85,12 +107,13 @@ export const calculateBudgetSummaryByGroup = (items: BudgetItem[]): BudgetSummar
   const groupMap = new Map<string, BudgetSummaryByGroup>();
 
   items.forEach(item => {
-    const groupKey = `${item.account_group}|${item.account_group_name}`;
+    // Group by akun (account) instead of removed account_group field
+    const groupKey = item.akun || 'Uncategorized';
     
     if (!groupMap.has(groupKey)) {
       groupMap.set(groupKey, {
-        account_group: item.account_group,
-        account_group_name: item.account_group_name,
+        account_group: groupKey,
+        account_group_name: groupKey,
         total_semula: 0,
         total_menjadi: 0,
         total_selisih: 0,
@@ -219,7 +242,7 @@ export const isApproved = (item: BudgetItem): boolean => {
  * Check if item is rejected
  */
 export const isRejected = (item: BudgetItem): boolean => {
-  return !!item.rejected_by && !!item.rejected_date;
+  return !!item.rejected_date;
 };
 
 /**

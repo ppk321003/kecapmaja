@@ -14,6 +14,7 @@ import {
   processBahanRevisiRows,
   getFriendlyColumnNames,
 } from '@/utils/bahanrevisi-excel-utils';
+import { formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
 
 interface UseImportBahanRevisiProps {
   sheetId: string | null;
@@ -121,7 +122,7 @@ export const useImportBahanRevisi = ({
     }
 
     try {
-      // Prepare budget items data for Google Sheets
+      // Prepare budget items data with all 26 columns for Google Sheets
       const budgetItemsData = budgetItems.map((item) => [
         item.id || '',
         item.program_pembebanan || '',
@@ -142,9 +143,12 @@ export const useImportBahanRevisi = ({
         item.selisih || 0,
         item.blokir || 0,
         item.status || '',
+        item.approved_by || '',
+        formatDateIndonesia(item.approved_date) || '',
+        formatDateIndonesia(item.rejected_date) || '',
         item.submitted_by || '',
-        item.submitted_date || '',
-        item.updated_date || '',
+        formatDateIndonesia(item.submitted_date) || '',
+        formatDateIndonesia(item.updated_date) || '',
         item.notes || '',
       ]);
 

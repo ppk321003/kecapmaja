@@ -7,19 +7,11 @@ export type BudgetItemStatus = 'new' | 'changed' | 'unchanged' | 'deleted';
 export interface BudgetItem {
   id: string; // unique identifier/timestamp
   program_pembebanan: string;
-  program_code: string;
   kegiatan: string;
-  kegiatan_code: string;
   rincian_output: string;
-  rincian_output_code: string;
   komponen_output: string;
-  komponen_output_code: string;
   sub_komponen: string;
-  sub_komponen_code: string;
   akun: string;
-  akun_code: string;
-  account_group: string; // e.g., "Gaji", "Operasional", "Modal"
-  account_group_name: string;
   uraian: string; // deskripsi detail item
   volume_semula: number;
   satuan_semula: string;
@@ -34,9 +26,7 @@ export interface BudgetItem {
   status: BudgetItemStatus;
   approved_by?: string; // username PPK
   approved_date?: string; // ISO date string
-  rejected_by?: string; // username PPK
   rejected_date?: string; // ISO date string
-  rejection_reason?: string;
   submitted_by: string; // username Fungsi xxx
   submitted_date: string; // ISO date string
   updated_date: string; // ISO date string

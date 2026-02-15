@@ -15,7 +15,7 @@ import {
   Akun,
   BahanRevisiFilters
 } from '@/types/bahanrevisi';
-import { filterBudgetItems, getFilteredDropdownValues, roundToThousands } from '@/utils/bahanrevisi-calculations';
+import { filterBudgetItems, getFilteredDropdownValues, roundToThousands, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
 
 // Summary types untuk analisis data berdasarkan berbagai dimensi
 export type BudgetSummary = {
@@ -48,7 +48,7 @@ const fetchBudgetItems = async (sheetId: string): Promise<BudgetItem[]> => {
     body: {
       spreadsheetId: sheetId,
       operation: 'read',
-      range: 'budget_items!A:AI', // A sampai AI (35 kolom)
+      range: 'budget_items!A:Z', // A sampai Z (26 kolom)
     },
   });
 
@@ -63,46 +63,36 @@ const fetchBudgetItems = async (sheetId: string): Promise<BudgetItem[]> => {
     return [];
   }
 
-  // Skip header row dan map ke BudgetItem[]
+  // Skip header row dan map ke BudgetItem[] dengan struktur kolom baru
   const items: BudgetItem[] = rows.slice(1)
     .filter((row: string[]) => row[0]?.trim()) // Filter empty rows
     .map((row: string[]) => ({
       id: row[0]?.trim() || '',
       program_pembebanan: row[1]?.trim() || '',
-      program_code: row[2]?.trim() || '',
-      kegiatan: row[3]?.trim() || '',
-      kegiatan_code: row[4]?.trim() || '',
-      rincian_output: row[5]?.trim() || '',
-      rincian_output_code: row[6]?.trim() || '',
-      komponen_output: row[7]?.trim() || '',
-      komponen_output_code: row[8]?.trim() || '',
-      sub_komponen: row[9]?.trim() || '',
-      sub_komponen_code: row[10]?.trim() || '',
-      akun: row[11]?.trim() || '',
-      akun_code: row[12]?.trim() || '',
-      account_group: row[13]?.trim() || '',
-      account_group_name: row[14]?.trim() || '',
-      uraian: row[15]?.trim() || '',
-      volume_semula: parseFloat(row[16]) || 0,
-      satuan_semula: row[17]?.trim() || '',
-      harga_satuan_semula: parseFloat(row[18]) || 0,
-      jumlah_semula: parseFloat(row[19]) || 0,
-      volume_menjadi: parseFloat(row[20]) || 0,
-      satuan_menjadi: row[21]?.trim() || '',
-      harga_satuan_menjadi: parseFloat(row[22]) || 0,
-      jumlah_menjadi: parseFloat(row[23]) || 0,
-      selisih: parseFloat(row[24]) || 0,
-      blokir: parseFloat(row[25]) || 0,
-      status: (row[26]?.trim() as any) || 'unchanged',
-      approved_by: row[27]?.trim(),
-      approved_date: row[28]?.trim(),
-      rejected_by: row[29]?.trim(),
-      rejected_date: row[30]?.trim(),
-      rejection_reason: row[31]?.trim(),
-      submitted_by: row[32]?.trim() || '',
-      submitted_date: row[33]?.trim() || '',
-      updated_date: row[34]?.trim() || '',
-      notes: row[35]?.trim(),
+      kegiatan: row[2]?.trim() || '',
+      rincian_output: row[3]?.trim() || '',
+      komponen_output: row[4]?.trim() || '',
+      sub_komponen: row[5]?.trim() || '',
+      akun: row[6]?.trim() || '',
+      uraian: row[7]?.trim() || '',
+      volume_semula: parseFloat(row[8]) || 0,
+      satuan_semula: row[9]?.trim() || '',
+      harga_satuan_semula: parseFloat(row[10]) || 0,
+      jumlah_semula: parseFloat(row[11]) || 0,
+      volume_menjadi: parseFloat(row[12]) || 0,
+      satuan_menjadi: row[13]?.trim() || '',
+      harga_satuan_menjadi: parseFloat(row[14]) || 0,
+      jumlah_menjadi: parseFloat(row[15]) || 0,
+      selisih: parseFloat(row[16]) || 0,
+      blokir: parseFloat(row[17]) || 0,
+      status: (row[18]?.trim() as any) || 'unchanged',
+      approved_by: row[19]?.trim(),
+      approved_date: row[20]?.trim(),
+      rejected_date: row[21]?.trim(),
+      submitted_by: row[22]?.trim() || '',
+      submitted_date: row[23]?.trim() || '',
+      updated_date: row[24]?.trim() || '',
+      notes: row[25]?.trim(),
     }));
 
   console.log(`[fetchBudgetItems] Loaded ${items.length} budget items`);

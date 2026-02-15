@@ -5,7 +5,7 @@
 
 import * as XLSX from 'xlsx';
 import { BudgetItem, RPDItem } from '@/types/bahanrevisi';
-import { formatCurrency, roundToThousands } from './bahanrevisi-calculations';
+import { formatCurrency, roundToThousands, formatDateIndonesia } from './bahanrevisi-calculations';
 
 // Normalized column names untuk matching
 export const normalizeColumnName = (name: string): string => {
@@ -463,6 +463,7 @@ export const exportBahanRevisiExcel = (
 ) => {
   try {
     const headers = [
+      'ID',
       'Program Pembebanan',
       'Kegiatan',
       'Rincian Output',
@@ -481,9 +482,17 @@ export const exportBahanRevisiExcel = (
       'Selisih',
       'Blokir',
       'Status',
+      'Approved By',
+      'Approved Date',
+      'Rejected Date',
+      'Submitted By',
+      'Submitted Date',
+      'Updated Date',
+      'Notes',
     ];
 
     const data = budgetItems.map((item) => [
+      item.id || '',
       item.program_pembebanan || '',
       item.kegiatan || '',
       item.rincian_output || '',
@@ -502,29 +511,44 @@ export const exportBahanRevisiExcel = (
       item.selisih || 0,
       item.blokir || 0,
       item.status || '',
+      item.approved_by || '',
+      formatDateIndonesia(item.approved_date),
+      formatDateIndonesia(item.rejected_date),
+      item.submitted_by || '',
+      formatDateIndonesia(item.submitted_date),
+      formatDateIndonesia(item.updated_date),
+      item.notes || '',
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
     worksheet['!cols'] = [
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 40 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 12 },
+      { wch: 12 },  // ID
+      { wch: 20 },  // Program Pembebanan
+      { wch: 20 },  // Kegiatan
+      { wch: 20 },  // Rincian Output
+      { wch: 20 },  // Komponen Output
+      { wch: 20 },  // Sub Komponen
+      { wch: 15 },  // Akun
+      { wch: 40 },  // Uraian
+      { wch: 12 },  // Volume Semula
+      { wch: 12 },  // Satuan Semula
+      { wch: 15 },  // Harga Satuan Semula
+      { wch: 15 },  // Jumlah Semula
+      { wch: 12 },  // Volume Menjadi
+      { wch: 12 },  // Satuan Menjadi
+      { wch: 15 },  // Harga Satuan Menjadi
+      { wch: 15 },  // Jumlah Menjadi
+      { wch: 15 },  // Selisih
+      { wch: 15 },  // Blokir
+      { wch: 12 },  // Status
+      { wch: 15 },  // Approved By
+      { wch: 16 },  // Approved Date
+      { wch: 16 },  // Rejected Date
+      { wch: 15 },  // Submitted By
+      { wch: 16 },  // Submitted Date
+      { wch: 16 },  // Updated Date
+      { wch: 40 },  // Notes
     ];
 
     applyWorksheetStyling(worksheet);
