@@ -227,11 +227,12 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
   };
 
   if (dataError) {
+    const errorText = typeof dataError === 'string' ? dataError : 'Unknown error occurred';
     return (
       <Alert variant="destructive" className="my-4">
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          Error mengambil data: {String(dataError || 'Unknown error')}
+          Error mengambil data: {errorText}
         </AlertDescription>
       </Alert>
     );

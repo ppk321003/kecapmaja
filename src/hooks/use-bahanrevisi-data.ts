@@ -669,8 +669,23 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
                rincianOutputsQuery.error || komponenOutputsQuery.error ||
                subKomponenQuery.error || akunsQuery.error;
 
-  // Convert error to string message if it exists
-  const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : null;
+  // Convert error to string message if it exists - be defensive to avoid rendering objects
+  let errorMessage: string | null = null;
+  if (error) {
+    try {
+      if (error instanceof Error) {
+        errorMessage = error.message || String(error);
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = (error as any).message || JSON.stringify(error);
+      } else {
+        errorMessage = String(error) || 'Unknown error occurred';
+      }
+    } catch (e) {
+      errorMessage = 'Error occurred while fetching data';
+    }
+  }
 
   // Calculate summary data
   const summaryByKomponen = budgetItemsQuery.data ? calculateSummaryByKomponen(budgetItemsQuery.data) : [];

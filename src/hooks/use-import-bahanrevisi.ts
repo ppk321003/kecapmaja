@@ -85,7 +85,10 @@ export const useImportBahanRevisi = ({
       errors.push({
         type: 'validation',
         message: `${rpdExcessItems.length} items memiliki total RPD melebihi target pagu`,
-        details: rpdExcessItems.slice(0, 3).map((item) => `${item.uraian}: ${item.total_rpd} > ${item.total_pagu}`),
+        details: rpdExcessItems.slice(0, 3).map((item) => {
+          const uraian = typeof item.uraian === 'string' ? item.uraian : String(item.uraian || 'Unknown');
+          return `${uraian}: ${item.total_rpd} > ${item.total_pagu}`;
+        }),
       });
     }
 
@@ -99,7 +102,10 @@ export const useImportBahanRevisi = ({
       errors.push({
         type: 'validation',
         message: `${negativeItems.length} items memiliki volume atau harga yang negatif`,
-        details: negativeItems.slice(0, 3).map((item) => item.uraian),
+        details: negativeItems.slice(0, 3).map((item) => {
+          const uraian = typeof item.uraian === 'string' ? item.uraian : String(item.uraian || 'Unknown');
+          return uraian;
+        }),
       });
     }
 
