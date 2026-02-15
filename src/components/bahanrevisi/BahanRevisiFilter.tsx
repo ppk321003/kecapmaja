@@ -36,6 +36,8 @@ interface BahanRevisiFilterProps {
   subKomponen: SubKomponen[];
   akuns: Akun[];
   loading?: boolean;
+  hideZeroPagu?: boolean;
+  setHideZeroPagu?: (hide: boolean) => void;
 }
 
 const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
@@ -49,6 +51,8 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   subKomponen,
   akuns,
   loading = false,
+  hideZeroPagu = false,
+  setHideZeroPagu,
 }) => {
   // Get unique values dari budget items untuk dropdown
   const programPembebananOptions = useMemo(() => {
@@ -317,6 +321,22 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        {/* Additional Filters */}
+        <div className="flex items-center gap-3 pt-3 border-t border-slate-200">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hideZeroPagu}
+              onChange={(e) => setHideZeroPagu?.(e.target.checked)}
+              disabled={loading}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+            />
+            <span className="text-xs font-medium text-slate-600">
+              Sembunyikan jumlah pagu = 0
+            </span>
+          </label>
         </div>
 
         {/* Active filters display */}

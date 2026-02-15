@@ -2,7 +2,7 @@
  * Budget Items Table Component untuk Bahan Revisi Anggaran
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -31,6 +31,8 @@ import {
   Plus,
   AlertCircle,
   ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   BudgetItem,
@@ -54,6 +56,7 @@ interface BahanRevisiBudgetTableProps {
   onDelete?: (itemId: string) => void;
   onApprove?: (itemId: string, approvedBy: string) => void;
   onReject?: (itemId: string, rejectedBy: string, reason: string) => void;
+  hideZeroPagu?: boolean;
 }
 
 const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
@@ -65,6 +68,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   onDelete,
   onApprove,
   onReject,
+  hideZeroPagu = false,
 }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'Pejabat Pembuat Komitmen';
@@ -76,6 +80,30 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
     itemId: string;
     reason: string;
   } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchUraian, setSearchUraian] = useState('');
+
+  const ITEMS_PER_PAGE = 20;
+
+  // Filter items berdasarkan hideZeroPagu dan search uraian
+  const filteredByZeroPagu = useMemo(() => {
+    let filtered = items;
+    
+    // Filter by zero pagu
+    if (hideZeroPagu) {
+      filtered = filtered.filter(item => item.jumlah_menjadi !== 0);
+    }
+    
+    // Filter by search uraian
+    if (searchUraian.trim()) {
+      const searchLower = searchUraian.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.uraian?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return filtered;
+  }, [items, hideZeroPagu, searchUraian]);
 
   const handleSort = (field: keyof BudgetItem) => {
     if (sortBy === field) {
@@ -86,7 +114,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
     }
   };
 
-  const sortedItems = [...items].sort((a, b) => {
+  const sortedItems = [...filteredByZeroPagu].sort((a, b) => {
     if (!sortBy) return 0;
     const aVal = a[sortBy];
     const bVal = b[sortBy];
@@ -103,6 +131,12 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
 
     return 0;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(sortedItems.length / ITEMS_PER_PAGE);
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIdx = startIdx + ITEMS_PER_PAGE;
+  const paginatedItems = sortedItems.slice(startIdx, endIdx);
 
   const getStatusBadge = (item: BudgetItem) => {
     if (isRejected(item)) {
@@ -142,39 +176,133 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
     );
   }
 
+  if (filteredByZeroPagu.length === 0 && hideZeroPagu) {
+    return (
+      <Card className="p-8">
+        <div className="flex items-center justify-center gap-2 text-slate-500">
+          <AlertCircle className="h-5 w-5" />
+          <span>Tidak ada data budget items dengan jumlah pagu lebih dari 0</span>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <>
+      {/* Search Input */}
+      <div className="mb-4 flex items-center gap-2">
+        <Input
+          type="text"
+          placeholder="Cari berdasarkan uraian..."
+          value={searchUraian}
+          onChange={(e) => {
+            setSearchUraian(e.target.value);
+            setCurrentPage(1); // Reset ke halaman 1 saat search
+          }}
+          className="flex-1"
+        />
+        {searchUraian && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSearchUraian('')}
+            className="text-xs"
+          >
+            <X className="h-4 w-4" />
+            Bersihkan
+          </Button>
+        )}
+      </div>
+
       <Card className="overflow-hidden">
-        {/* Summary Bar */}
-        <div className="bg-gradient-to-r from-blue-50 to-slate-50 p-3 border-b border-slate-200">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-            <div>
-              <span className="text-slate-600">Total Semula:</span>
-              <p className="font-semibold text-slate-900">
-                {formatCurrency(
-                  items.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0)
-                )}
-              </p>
+        {/* Summary Bar - 3 Columns */}
+        <div className="bg-white border-b border-slate-200">
+          <div className="grid grid-cols-3 divide-x divide-slate-200">
+            {/* Ringkasan Halaman */}
+            <div className="bg-blue-50 p-4">
+              <div className="text-sm font-semibold text-center text-blue-900 mb-3">
+                Ringkasan Halaman
+              </div>
+              <div className="space-y-2">
+                <div className="text-center">
+                  <p className="text-xs text-slate-600">Total Pagu Semula (Halaman):</p>
+                  <p className="font-bold text-slate-900 text-sm">
+                    {formatCurrency(
+                      paginatedItems.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0)
+                    )}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-slate-600">Total Pagu Menjadi (Halaman):</p>
+                  <p className="font-bold text-slate-900 text-sm">
+                    {formatCurrency(
+                      paginatedItems.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0)
+                    )}
+                  </p>
+                </div>
+                <div className="text-center text-red-600">
+                  <p className="text-xs text-slate-600">Total Selisih Pagu (Halaman):</p>
+                  <p className="font-bold text-sm">
+                    {formatCurrency(
+                      paginatedItems.reduce((sum, item) => sum + calculateSelisih(item), 0)
+                    )}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="text-slate-600">Total Menjadi:</span>
-              <p className="font-semibold text-slate-900">
-                {formatCurrency(
-                  items.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0)
-                )}
-              </p>
+
+            {/* Ringkasan Keseluruhan */}
+            <div className="p-4">
+              <div className="text-sm font-semibold text-center mb-3">
+                Ringkasan Keseluruhan
+              </div>
+              <div className="space-y-2">
+                <div className="text-center">
+                  <p className="text-xs text-slate-600">Total Pagu Semula (Keseluruhan):</p>
+                  <p className="font-bold text-slate-900 text-sm">
+                    {formatCurrency(
+                      filteredByZeroPagu.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0)
+                    )}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-slate-600">Total Pagu Menjadi (Keseluruhan):</p>
+                  <p className="font-bold text-slate-900 text-sm">
+                    {formatCurrency(
+                      filteredByZeroPagu.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0)
+                    )}
+                  </p>
+                </div>
+                <div className="text-center text-red-600">
+                  <p className="text-xs text-slate-600">Total Selisih Pagu (Keseluruhan):</p>
+                  <p className="font-bold text-sm">
+                    {formatCurrency(
+                      filteredByZeroPagu.reduce((sum, item) => sum + calculateSelisih(item), 0)
+                    )}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="text-slate-600">Total Selisih:</span>
-              <p className="font-semibold text-slate-900">
-                {formatCurrency(
-                  items.reduce((sum, item) => sum + calculateSelisih(item), 0)
-                )}
-              </p>
-            </div>
-            <div>
-              <span className="text-slate-600">Total Items:</span>
-              <p className="font-semibold text-slate-900">{items.length}</p>
+
+            {/* Info */}
+            <div className="bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-center mb-3">
+                Informasi
+              </div>
+              <div className="space-y-2 text-center text-xs">
+                <div>
+                  <p className="text-slate-600">Total Items (Filter):</p>
+                  <p className="font-bold text-slate-900">{filteredByZeroPagu.length}</p>
+                </div>
+                <div>
+                  <p className="text-slate-600">Halaman:</p>
+                  <p className="font-bold text-slate-900">{currentPage} dari {totalPages}</p>
+                </div>
+                <div>
+                  <p className="text-slate-600">Items per halaman:</p>
+                  <p className="font-bold text-slate-900">{ITEMS_PER_PAGE}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -198,14 +326,14 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedItems.map((item, idx) => (
+              {paginatedItems.map((item, idx) => (
                 <TableRow
                   key={item.id}
                   className={
                     needsApproval(item) ? 'bg-yellow-50' : isApproved(item) ? 'bg-green-50' : ''
                   }
                 >
-                  <TableCell className="font-medium">{idx + 1}</TableCell>
+                  <TableCell className="font-medium">{startIdx + idx + 1}</TableCell>
                   <TableCell className="max-w-xs truncate">
                     <span title={item.uraian}>{item.uraian}</span>
                   </TableCell>
@@ -289,6 +417,38 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
           </Table>
         </div>
       </Card>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-slate-50 rounded border border-slate-200">
+        <div className="text-xs text-slate-600">
+          Menampilkan {startIdx + 1} sampai {Math.min(endIdx, sortedItems.length)} dari {sortedItems.length} items
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="gap-1"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Sebelumnya
+          </Button>
+          <div className="text-xs font-medium">
+            Halaman {currentPage} dari {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="gap-1"
+          >
+            Selanjutnya
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
       {/* Add Button */}
       {onAdd && (

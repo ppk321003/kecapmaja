@@ -7,9 +7,10 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Loader } from 'lucide-react';
+import { AlertTriangle, Loader, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import { useBahanRevisiData } from '@/hooks/use-bahanrevisi-data';
 import { useBahanRevisiSubmit } from '@/hooks/use-bahanrevisi-submit';
 import { BahanRevisiFilters } from '@/types/bahanrevisi';
@@ -25,6 +26,8 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
   const { user } = useAuth();
   const [filters, setFilters] = useState<BahanRevisiFilters>({});
   const [selectedTab, setSelectedTab] = useState('anggaran');
+  const [filterExpanded, setFilterExpanded] = useState(false);
+  const [hideZeroPagu, setHideZeroPagu] = useState(false);
 
   // Get sheet ID untuk bahanrevisi module
   const sheetId = satkerConfig?.getUserSatkerSheetId('bahanrevisi');
@@ -190,19 +193,41 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
       {!isLoadingData && (
         <>
-          {/* Filter */}
-          <BahanRevisiFilter
-            filters={filters}
-            setFilters={setFilters}
-            budgetItems={budgetItems}
-            programs={programs}
-            kegiatans={kegiatans}
-            rincianOutputs={rincianOutputs}
-            komponenOutputs={komponenOutputs}
-            subKomponen={subKomponen}
-            akuns={akuns}
-            loading={isSubmitting}
-          />
+          {/* Filter - Collapsible */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFilterExpanded(!filterExpanded)}
+                className="w-full justify-between"
+              >
+                <span className="font-semibold">Filter Data</span>
+                {filterExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            
+            {filterExpanded && (
+              <BahanRevisiFilter
+                filters={filters}
+                setFilters={setFilters}
+                budgetItems={budgetItems}
+                programs={programs}
+                kegiatans={kegiatans}
+                rincianOutputs={rincianOutputs}
+                komponenOutputs={komponenOutputs}
+                subKomponen={subKomponen}
+                akuns={akuns}
+                loading={isSubmitting}
+                hideZeroPagu={hideZeroPagu}
+                setHideZeroPagu={setHideZeroPagu}
+              />
+            )}
+          </div>
 
           {/* Tabs */}
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
@@ -234,6 +259,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 onDelete={handleDeleteItem}
                 onApprove={handleApproveItem}
                 onReject={handleRejectItem}
+                hideZeroPagu={hideZeroPagu}
               />
             </TabsContent>
 
