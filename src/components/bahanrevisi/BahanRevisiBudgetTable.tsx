@@ -197,7 +197,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
           value={searchUraian}
           onChange={(e) => {
             setSearchUraian(e.target.value);
-            setCurrentPage(1); // Reset ke halaman 1 saat search
+            setCurrentPage(1);
           }}
           className="flex-1"
         />
@@ -209,103 +209,11 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
             className="text-xs"
           >
             <X className="h-4 w-4" />
-            Bersihkan
           </Button>
         )}
       </div>
 
       <Card className="overflow-hidden">
-        {/* Summary Bar - 3 Columns */}
-        <div className="bg-white border-b border-slate-200">
-          <div className="grid grid-cols-3 divide-x divide-slate-200">
-            {/* Ringkasan Halaman */}
-            <div className="bg-blue-50 p-4">
-              <div className="text-sm font-semibold text-center text-blue-900 mb-3">
-                Ringkasan Halaman
-              </div>
-              <div className="space-y-2">
-                <div className="text-center">
-                  <p className="text-xs text-slate-600">Total Pagu Semula (Halaman):</p>
-                  <p className="font-bold text-slate-900 text-sm">
-                    {formatCurrency(
-                      paginatedItems.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0)
-                    )}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-slate-600">Total Pagu Menjadi (Halaman):</p>
-                  <p className="font-bold text-slate-900 text-sm">
-                    {formatCurrency(
-                      paginatedItems.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0)
-                    )}
-                  </p>
-                </div>
-                <div className="text-center text-red-600">
-                  <p className="text-xs text-slate-600">Total Selisih Pagu (Halaman):</p>
-                  <p className="font-bold text-sm">
-                    {formatCurrency(
-                      paginatedItems.reduce((sum, item) => sum + calculateSelisih(item), 0)
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Ringkasan Keseluruhan */}
-            <div className="p-4">
-              <div className="text-sm font-semibold text-center mb-3">
-                Ringkasan Keseluruhan
-              </div>
-              <div className="space-y-2">
-                <div className="text-center">
-                  <p className="text-xs text-slate-600">Total Pagu Semula (Keseluruhan):</p>
-                  <p className="font-bold text-slate-900 text-sm">
-                    {formatCurrency(
-                      filteredByZeroPagu.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0)
-                    )}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-slate-600">Total Pagu Menjadi (Keseluruhan):</p>
-                  <p className="font-bold text-slate-900 text-sm">
-                    {formatCurrency(
-                      filteredByZeroPagu.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0)
-                    )}
-                  </p>
-                </div>
-                <div className="text-center text-red-600">
-                  <p className="text-xs text-slate-600">Total Selisih Pagu (Keseluruhan):</p>
-                  <p className="font-bold text-sm">
-                    {formatCurrency(
-                      filteredByZeroPagu.reduce((sum, item) => sum + calculateSelisih(item), 0)
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="bg-slate-50 p-4">
-              <div className="text-sm font-semibold text-center mb-3">
-                Informasi
-              </div>
-              <div className="space-y-2 text-center text-xs">
-                <div>
-                  <p className="text-slate-600">Total Items (Filter):</p>
-                  <p className="font-bold text-slate-900">{filteredByZeroPagu.length}</p>
-                </div>
-                <div>
-                  <p className="text-slate-600">Halaman:</p>
-                  <p className="font-bold text-slate-900">{currentPage} dari {totalPages}</p>
-                </div>
-                <div>
-                  <p className="text-slate-600">Items per halaman:</p>
-                  <p className="font-bold text-slate-900">{ITEMS_PER_PAGE}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
@@ -447,6 +355,66 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
             Selanjutnya
             <ChevronRight className="h-4 w-4" />
           </Button>
+        </div>
+      </div>
+
+      {/* Summary Section - 3 Columns */}
+      <div className="mt-4 grid grid-cols-3 gap-0 border border-slate-200 rounded overflow-hidden bg-white">
+        {/* Column 1: Halaman */}
+        <div className="bg-blue-50 p-3 border-r border-slate-200">
+          <div className="text-xs font-bold text-blue-900 mb-2">Ringkasan Halaman</div>
+          <div className="space-y-1 text-xs">
+            <div>
+              <span className="text-slate-600">Total Pagu Semula (Halaman):</span>
+              <p className="font-semibold text-slate-900">{formatCurrency(paginatedItems.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0))}</p>
+            </div>
+            <div>
+              <span className="text-slate-600">Total Pagu Menjadi (Halaman):</span>
+              <p className="font-semibold text-slate-900">{formatCurrency(paginatedItems.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0))}</p>
+            </div>
+            <div>
+              <span className="text-slate-600">Total Selisih Pagu (Halaman):</span>
+              <p className="font-semibold text-red-600">{formatCurrency(paginatedItems.reduce((sum, item) => sum + calculateSelisih(item), 0))}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 2: Keseluruhan */}
+        <div className="p-3 border-r border-slate-200">
+          <div className="text-xs font-bold mb-2">Ringkasan Keseluruhan</div>
+          <div className="space-y-1 text-xs">
+            <div>
+              <span className="text-slate-600">Total Pagu Semula (Keseluruhan):</span>
+              <p className="font-semibold text-slate-900">{formatCurrency(filteredByZeroPagu.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0))}</p>
+            </div>
+            <div>
+              <span className="text-slate-600">Total Pagu Menjadi (Keseluruhan):</span>
+              <p className="font-semibold text-slate-900">{formatCurrency(filteredByZeroPagu.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0))}</p>
+            </div>
+            <div>
+              <span className="text-slate-600">Total Selisih Pagu (Keseluruhan):</span>
+              <p className="font-semibold text-red-600">{formatCurrency(filteredByZeroPagu.reduce((sum, item) => sum + calculateSelisih(item), 0))}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 3: Info */}
+        <div className="bg-slate-50 p-3">
+          <div className="text-xs font-bold mb-2">Informasi</div>
+          <div className="space-y-1 text-xs">
+            <div>
+              <span className="text-slate-600">Total Items (Filter):</span>
+              <p className="font-semibold text-slate-900">{filteredByZeroPagu.length}</p>
+            </div>
+            <div>
+              <span className="text-slate-600">Halaman Saat Ini:</span>
+              <p className="font-semibold text-slate-900">{currentPage} / {totalPages}</p>
+            </div>
+            <div>
+              <span className="text-slate-600">Items per Halaman:</span>
+              <p className="font-semibold text-slate-900">{ITEMS_PER_PAGE}</p>
+            </div>
+          </div>
         </div>
       </div>
 
