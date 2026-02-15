@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Loader, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, Loader, ChevronDown, ChevronUp, FileUp } from 'lucide-react';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import BudgetChangesConclusion from './BudgetChangesConclusion';
 import BudgetChangesSummary from './BudgetChangesSummary';
 import { BudgetChangesTable } from './BudgetChangesTable';
 import { NewBudgetTable } from './NewBudgetTable';
+import BahanRevisiExcelImportExport from './BahanRevisiExcelImportExport';
 import { toast } from '@/hooks/use-toast';
 
 interface BahanRevisiAnggaranProps {}
@@ -290,6 +291,37 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 setHideZeroPagu={setHideZeroPagu}
               />
             )}
+          </div>
+
+          {/* Excel Import/Export Controls */}
+          <div className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50 space-y-3">
+            <div className="flex items-center gap-2">
+              <FileUp className="h-4 w-4 text-indigo-600" />
+              <h3 className="font-semibold text-sm text-indigo-900">Import/Export Data</h3>
+            </div>
+            <BahanRevisiExcelImportExport 
+              sheetId={sheetId}
+              onImportSuccess={async (budgetItems, rpdItems) => {
+                try {
+                  // Refetch data after successful import
+                  await refetch();
+                  toast({
+                    title: "Import berhasil",
+                    description: `${budgetItems.length} items berhasil diimport dari Excel`
+                  });
+                } catch (error) {
+                  console.error("Error after import:", error);
+                  toast({
+                    title: "Import berhasil tapi ada error saat refresh data",
+                    variant: "destructive"
+                  });
+                }
+              }}
+              budgetItems={budgetItems}
+              komponenOutput={filters?.komponenOutput}
+              subKomponen={filters?.subKomponen}
+              akun={filters?.akun}
+            />
           </div>
 
           {/* Tabs */}
