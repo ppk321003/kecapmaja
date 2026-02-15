@@ -230,7 +230,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       <Alert variant="destructive" className="my-4">
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          Error mengambil data: {(dataError as Error).message}
+          Error mengambil data: {String(dataError || 'Unknown error')}
         </AlertDescription>
       </Alert>
     );
@@ -344,17 +344,19 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
               {/* New refined summary components */}
               <div className="space-y-4">
                 {/* Summary Conclusion */}
-                <BudgetChangesConclusion
-                  totalSemula={filteredBudgetItems.reduce((sum, item) => sum + item.jumlah_semula, 0)}
-                  totalMenjadi={filteredBudgetItems.reduce((sum, item) => sum + item.jumlah_menjadi, 0)}
-                  totalSelisih={filteredBudgetItems.reduce((sum, item) => sum + item.selisih, 0)}
-                  changedItems={filteredBudgetItems.filter(item => item.status === 'changed').length}
-                  newItems={filteredBudgetItems.filter(item => item.status === 'new').length}
-                  deletedItems={filteredBudgetItems.filter(item => item.status === 'deleted').length}
-                />
+                {Array.isArray(filteredBudgetItems) && filteredBudgetItems.length > 0 && (
+                  <BudgetChangesConclusion
+                    totalSemula={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.jumlah_semula) || 0), 0)}
+                    totalMenjadi={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.jumlah_menjadi) || 0), 0)}
+                    totalSelisih={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.selisih) || 0), 0)}
+                    changedItems={filteredBudgetItems.filter(item => item?.status === 'changed').length}
+                    newItems={filteredBudgetItems.filter(item => item?.status === 'new').length}
+                    deletedItems={filteredBudgetItems.filter(item => item?.status === 'deleted').length}
+                  />
+                )}
 
                 {/* Changed Items Table */}
-                {getChangedBudgetItems().length > 0 && (
+                {Array.isArray(filteredBudgetItems) && getChangedBudgetItems().length > 0 && (
                   <BudgetChangesTable
                     title="Pagu Anggaran Berubah"
                     items={getChangedBudgetItems()}
@@ -362,21 +364,23 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 )}
 
                 {/* New Items Table */}
-                {getNewBudgetItems().length > 0 && (
+                {Array.isArray(filteredBudgetItems) && getNewBudgetItems().length > 0 && (
                   <NewBudgetTable items={getNewBudgetItems()} />
                 )}
 
                 {/* Summary with statistics */}
-                <BudgetChangesSummary
-                  totalSemula={filteredBudgetItems.reduce((sum, item) => sum + item.jumlah_semula, 0)}
-                  totalMenjadi={filteredBudgetItems.reduce((sum, item) => sum + item.jumlah_menjadi, 0)}
-                  totalSelisih={filteredBudgetItems.reduce((sum, item) => sum + item.selisih, 0)}
-                  totalNewItems={filteredBudgetItems.filter(item => item.status === 'new').length}
-                  totalChangedItems={filteredBudgetItems.filter(item => item.status === 'changed').length}
-                  totalDeletedItems={filteredBudgetItems.filter(item => item.status === 'deleted').length}
-                  totalUnchangedItems={filteredBudgetItems.filter(item => item.status === 'unchanged').length}
-                  totalItems={filteredBudgetItems.length}
-                />
+                {Array.isArray(filteredBudgetItems) && (
+                  <BudgetChangesSummary
+                    totalSemula={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.jumlah_semula) || 0), 0)}
+                    totalMenjadi={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.jumlah_menjadi) || 0), 0)}
+                    totalSelisih={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.selisih) || 0), 0)}
+                    totalNewItems={filteredBudgetItems.filter(item => item?.status === 'new').length}
+                    totalChangedItems={filteredBudgetItems.filter(item => item?.status === 'changed').length}
+                    totalDeletedItems={filteredBudgetItems.filter(item => item?.status === 'deleted').length}
+                    totalUnchangedItems={filteredBudgetItems.filter(item => item?.status === 'unchanged').length}
+                    totalItems={filteredBudgetItems.length}
+                  />
+                )}
 
                 {/* Original ringkasan component for additional visualizations */}
                 <BahanRevisiRingkasan

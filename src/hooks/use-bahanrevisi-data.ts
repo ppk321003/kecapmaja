@@ -446,6 +446,9 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
                rincianOutputsQuery.error || komponenOutputsQuery.error ||
                subKomponenQuery.error || akunsQuery.error;
 
+  // Convert error to string message if it exists
+  const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : null;
+
   return {
     budgetItems: budgetItemsQuery.data || [],
     filteredBudgetItems: filteredBudgetItems || [],
@@ -459,7 +462,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     programsOptions,
     kegiatansOptions,
     isLoading,
-    error: error as Error | null,
+    error: errorMessage,
     refetch: async () => {
       await Promise.all([
         budgetItemsQuery.refetch(),
