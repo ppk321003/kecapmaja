@@ -496,6 +496,17 @@ const RPDTable: React.FC<RPDTableProps> = ({
           position: sticky;
           top: 0;
           z-index: 10;
+          white-space: nowrap;
+          padding: 8px 4px;
+        }
+        
+        .rpd-table th button {
+          white-space: nowrap;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-weight: 600;
+          font-size: 0.875rem;
         }
         
         .rpd-table .fixed-column {
@@ -516,9 +527,9 @@ const RPDTable: React.FC<RPDTableProps> = ({
         }
         
         .rpd-table .month-cell {
-          min-width: 80px;
-          width: 80px;
-          max-width: 80px;
+          min-width: 100px;
+          width: 100px;
+          max-width: 100px;
           text-align: right;
         }
         
@@ -532,25 +543,25 @@ const RPDTable: React.FC<RPDTableProps> = ({
         .rpd-table .total-cell {
           font-weight: 600;
           text-align: right;
-          min-width: 100px;
-          width: 100px;
-          max-width: 100px;
+          min-width: 120px;
+          width: 120px;
+          max-width: 120px;
         }
 
         .rpd-table .pagu-cell {
           font-weight: 600;
           text-align: right;
-          min-width: 100px;
-          width: 100px;
-          max-width: 100px;
+          min-width: 120px;
+          width: 120px;
+          max-width: 120px;
         }
 
         .rpd-table .selisih-cell {
           font-weight: 600;
           text-align: right;
-          min-width: 100px;
-          width: 100px;
-          max-width: 100px;
+          min-width: 120px;
+          width: 120px;
+          max-width: 120px;
         }
         
         .rpd-table .action-cell {
@@ -676,13 +687,13 @@ const RPDTable: React.FC<RPDTableProps> = ({
                     <ArrowUpDown className="h-3 w-3 ml-1" />
                   </button>
                 </th>
-                <th className="total-cell fixed-column" style={{left: '480px'}}>
+                <th className="total-cell fixed-column" style={{left: '500px'}}>
                   <button className="flex items-center justify-end w-full" onClick={() => handleSort('total_rpd')}>
                     Total RPD
                     <ArrowUpDown className="h-3 w-3 ml-1" />
                   </button>
                 </th>
-                <th className="selisih-cell fixed-column" style={{left: '580px'}}>
+                <th className="selisih-cell fixed-column" style={{left: '620px'}}>
                   <button className="flex items-center justify-end w-full" onClick={() => handleSort('selisih')}>
                     Selisih
                     <ArrowUpDown className="h-3 w-3 ml-1" />
@@ -729,10 +740,10 @@ const RPDTable: React.FC<RPDTableProps> = ({
                         <td className="pagu-cell fixed-column" style={{left: '380px'}}>
                           {formatNumber(Number(item.total_pagu) || 0)}
                         </td>
-                        <td className="total-cell fixed-column" style={{left: '480px'}}>
+                        <td className="total-cell fixed-column" style={{left: '500px'}}>
                           {formatNumber(Number(item.total_rpd) || 0)}
                         </td>
-                        <td className="selisih-cell fixed-column" style={{left: '580px'}}>
+                        <td className="selisih-cell fixed-column" style={{left: '620px'}}>
                           <span className={(Number(item.sisa_anggaran) || 0) !== 0 ? 'text-red-500' : 'text-green-500'}>
                             {formatNumber(Number(item.sisa_anggaran) || 0)}
                           </span>
@@ -778,8 +789,8 @@ const RPDTable: React.FC<RPDTableProps> = ({
                 <td className="fixed-column" style={{left: '30px'}}></td>
                 <td className="fixed-column text-right" style={{left: '80px'}}>Total per Bulan</td>
                 <td className="pagu-cell fixed-column" style={{left: '380px'}}>{formatNumber(pagu)}</td>
-                <td className="total-cell fixed-column" style={{left: '480px'}}>{formatNumber(grandTotal)}</td>
-                <td className={`selisih-cell fixed-column ${sisaPagu !== 0 ? 'text-red-600' : 'text-green-600'}`} style={{left: '580px'}}>
+                <td className="total-cell fixed-column" style={{left: '500px'}}>{formatNumber(grandTotal)}</td>
+                <td className={`selisih-cell fixed-column ${sisaPagu !== 0 ? 'text-red-600' : 'text-green-600'}`} style={{left: '620px'}}>
                   {formatNumber(sisaPagu)}
                 </td>
                 <td className="month-cell">{formatNumber(totalByMonth.jan, false)}</td>
