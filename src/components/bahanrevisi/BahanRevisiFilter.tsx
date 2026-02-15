@@ -310,17 +310,49 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
     }
   }, [filters.komponen_output, subKomponen, komponenOutputs, budgetItems]);
 
-  // Akun options - all active akuns available
+  // Akun options - filtered based on selected parent filters
   const akunOptions = useMemo<SelectOption[]>(() => {
     try {
-      // Try reference data first
-      if (akuns && Array.isArray(akuns) && akuns.length > 0) {
+      // First, filter budgetItems based on already-selected filters
+      // to get only relevant akuns
+      const relevantItems = budgetItems.filter(item => {
+        try {
+          if (filters.program_pembebanan && String(item.program_pembebanan || '').trim() !== String(filters.program_pembebanan).trim()) {
+            return false;
+          }
+          if (filters.kegiatan && String(item.kegiatan || '').trim() !== String(filters.kegiatan).trim()) {
+            return false;
+          }
+          if (filters.rincian_output && String(item.rincian_output || '').trim() !== String(filters.rincian_output).trim()) {
+            return false;
+          }
+          if (filters.komponen_output && String(item.komponen_output || '').trim() !== String(filters.komponen_output).trim()) {
+            return false;
+          }
+          if (filters.sub_komponen && String(item.sub_komponen || '').trim() !== String(filters.sub_komponen).trim()) {
+            return false;
+          }
+          return true;
+        } catch {
+          return true; // Include item if there's an error to avoid filtering it out
+        }
+      });
+
+      // Try reference data first, filtered by relevantItems
+      if (akuns && Array.isArray(akuns) && akuns.length > 0 && relevantItems.length > 0) {
+        const relevantAkunValues = new Set(
+          relevantItems.map(item => String(item.akun || '').trim()).filter(Boolean)
+        );
+        
         const result: SelectOption[] = [];
         for (const a of akuns) {
           try {
             if (!a || typeof a !== 'object' || !a.is_active) continue;
             // Use name as value (not code) to match budgetItems.akun
             const val = String(a.name || '').trim();
+            // Only include if this akun is used in filtered items
+            if (!relevantAkunValues.has(val)) continue;
+            
             const lbl = String(a.code ? String(a.code) + ' - ' : '') + String(a.name || '');
             if (val && lbl.trim()) {
               result.push({ value: val, label: lbl.trim() });
@@ -329,15 +361,15 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             console.error('Error processing akun:', a, e);
           }
         }
-        console.log('[Filter] Akun options from reference:', result.length);
+        console.log('[Filter] Akun options from filtered reference:', result.length);
         if (result.length > 0) return result;
       }
 
-      // FALLBACK: Derive from budgetItems
-      console.log('[Filter] Using fallback: deriving akun options from budgetItems');
+      // FALLBACK: Derive from filtered budgetItems
+      console.log('[Filter] Using fallback: deriving akun options from filtered budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
-      for (const item of budgetItems) {
+      for (const item of relevantItems) {
         try {
           const val = String(item.akun || '').trim();
           if (val && !seen.has(val)) {
@@ -351,7 +383,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building akunOptions:', e);
       return [];
     }
-  }, [akuns, budgetItems]);
+  }, [akuns, budgetItems, filters.program_pembebanan, filters.kegiatan, filters.rincian_output, filters.komponen_output, filters.sub_komponen]);
 
   const handleReset = () => {
     setFilters({});

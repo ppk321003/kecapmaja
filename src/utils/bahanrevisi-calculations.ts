@@ -21,6 +21,20 @@ export const formatCurrency = (value: number, showDecimals = false): string => {
 };
 
 /**
+ * Format number with thousands separator (no currency symbol)
+ */
+export const formatNumber = (value: number, showDecimals = false): string => {
+  if (isNaN(value)) return '0';
+  
+  const formatter = new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: showDecimals ? 2 : 0,
+    maximumFractionDigits: showDecimals ? 2 : 0,
+  });
+  
+  return formatter.format(value);
+};
+
+/**
  * Round to nearest thousands
  */
 export const roundToThousands = (value: number): number => {

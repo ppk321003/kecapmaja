@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency, roundToThousands } from '@/utils/bahanrevisi-calculations';
+import { formatCurrency, formatNumber, roundToThousands } from '@/utils/bahanrevisi-calculations';
 import { FileEdit, Check, ArrowUpDown, Search } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { BahanRevisiFilters } from '@/types/bahanrevisi';
@@ -13,6 +13,7 @@ interface RPDItem {
   id: string;
   program_pembebanan?: string;
   kegiatan?: string;
+  rincian_output?: string;
   komponen_output?: string;
   sub_komponen?: string;
   akun?: string;
@@ -216,6 +217,26 @@ const RPDTable: React.FC<RPDTableProps> = ({
             return false;
           }
           
+          // Apply drill-down filters
+          if (filters.program_pembebanan && String(item.program_pembebanan || '').trim() !== String(filters.program_pembebanan).trim()) {
+            return false;
+          }
+          if (filters.kegiatan && String(item.kegiatan || '').trim() !== String(filters.kegiatan).trim()) {
+            return false;
+          }
+          if (filters.komponen_output && String(item.komponen_output || '').trim() !== String(filters.komponen_output).trim()) {
+            return false;
+          }
+          if (filters.sub_komponen && String(item.sub_komponen || '').trim() !== String(filters.sub_komponen).trim()) {
+            return false;
+          }
+          if (filters.rincian_output && String(item.rincian_output || '').trim() !== String(filters.rincian_output).trim()) {
+            return false;
+          }
+          if (filters.akun && String(item.akun || '').trim() !== String(filters.akun).trim()) {
+            return false;
+          }
+          
           const searchLower = searchTerm.toLowerCase();
           const uraian = String(item.uraian || '');
           const matchesSearch = !searchTerm || uraian.toLowerCase().includes(searchLower);
@@ -234,7 +255,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       console.error('[RPDTable] Error in filteredItems:', e);
       return [];
     }
-  }, [safeItems, searchTerm, hideZeroBudget]);
+  }, [safeItems, searchTerm, hideZeroBudget, filters]);
 
   const sortedItems = useMemo(() => {
     try {
@@ -706,14 +727,14 @@ const RPDTable: React.FC<RPDTableProps> = ({
                           <span className="line-clamp-2">{String(item.uraian || '')}</span>
                         </td>
                         <td className="pagu-cell fixed-column" style={{left: '380px'}}>
-                          {formatCurrency(Number(item.total_pagu) || 0)}
+                          {formatNumber(Number(item.total_pagu) || 0)}
                         </td>
                         <td className="total-cell fixed-column" style={{left: '480px'}}>
-                          {formatCurrency(Number(item.total_rpd) || 0)}
+                          {formatNumber(Number(item.total_rpd) || 0)}
                         </td>
                         <td className="selisih-cell fixed-column" style={{left: '580px'}}>
                           <span className={(Number(item.sisa_anggaran) || 0) !== 0 ? 'text-red-500' : 'text-green-500'}>
-                            {formatCurrency(Number(item.sisa_anggaran) || 0)}
+                            {formatNumber(Number(item.sisa_anggaran) || 0)}
                           </span>
                         </td>
                         {['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].map(month => (
@@ -756,23 +777,23 @@ const RPDTable: React.FC<RPDTableProps> = ({
                 <td className="fixed-column" style={{left: '0px'}}></td>
                 <td className="fixed-column" style={{left: '30px'}}></td>
                 <td className="fixed-column text-right" style={{left: '80px'}}>Total per Bulan</td>
-                <td className="pagu-cell fixed-column" style={{left: '380px'}}>{formatCurrency(pagu)}</td>
-                <td className="total-cell fixed-column" style={{left: '480px'}}>{formatCurrency(grandTotal)}</td>
+                <td className="pagu-cell fixed-column" style={{left: '380px'}}>{formatNumber(pagu)}</td>
+                <td className="total-cell fixed-column" style={{left: '480px'}}>{formatNumber(grandTotal)}</td>
                 <td className={`selisih-cell fixed-column ${sisaPagu !== 0 ? 'text-red-600' : 'text-green-600'}`} style={{left: '580px'}}>
-                  {formatCurrency(sisaPagu)}
+                  {formatNumber(sisaPagu)}
                 </td>
-                <td className="month-cell">{formatCurrency(totalByMonth.jan, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.feb, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.mar, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.apr, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.mei, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.jun, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.jul, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.aug, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.sep, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.oct, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.nov, false)}</td>
-                <td className="month-cell">{formatCurrency(totalByMonth.dec, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.jan, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.feb, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.mar, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.apr, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.mei, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.jun, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.jul, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.aug, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.sep, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.oct, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.nov, false)}</td>
+                <td className="month-cell">{formatNumber(totalByMonth.dec, false)}</td>
                 <td></td>
               </tr>
             </tfoot>
