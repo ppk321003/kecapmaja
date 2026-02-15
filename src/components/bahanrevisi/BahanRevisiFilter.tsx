@@ -49,91 +49,106 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   hideZeroPagu = false,
   setHideZeroPagu,
 }) => {
+  
   // Build options from reference data (master sheets) like KAK.tsx does
   
   // Program Pembebanan options - from programs reference data
   const programPembebananOptions = useMemo<SelectOption[]>(() => {
+    if (!programs || !Array.isArray(programs)) return [];
     return programs
-      .filter(p => p.is_active)
-      .map(p => ({
-        value: p.name,
-        label: `${p.code} - ${p.name}`,
-      }))
+      .filter(p => p && p.is_active)
+      .map(p => {
+        const val = String(p.name || '').trim();
+        const lbl = String(`${p.code || ''} - ${p.name || ''}`).trim();
+        return val && lbl ? { value: val, label: lbl } : null;
+      })
+      .filter((opt): opt is SelectOption => opt !== null)
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [programs]);
 
   // Kegiatan options - filtered by selected program
   const kegiatanOptions = useMemo<SelectOption[]>(() => {
-    if (!filters.program_pembebanan) return [];
+    if (!filters.program_pembebanan || !kegiatans || !Array.isArray(kegiatans)) return [];
     
-    const relatedProgram = programs.find(p => p.name === filters.program_pembebanan);
+    const relatedProgram = programs?.find(p => p && String(p.name || '') === String(filters.program_pembebanan || ''));
     if (!relatedProgram) return [];
 
     return kegiatans
-      .filter(k => k.program_id === relatedProgram.id && k.is_active)
-      .map(k => ({
-        value: k.name,
-        label: `${k.code} - ${k.name}`,
-      }))
+      .filter(k => k && k.program_id === relatedProgram.id && k.is_active)
+      .map(k => {
+        const val = String(k.name || '').trim();
+        const lbl = String(`${k.code || ''} - ${k.name || ''}`).trim();
+        return val && lbl ? { value: val, label: lbl } : null;
+      })
+      .filter((opt): opt is SelectOption => opt !== null)
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [filters.program_pembebanan, kegiatans, programs]);
 
   // Rincian Output options - filtered by selected kegiatan
   const rincianOutputOptions = useMemo<SelectOption[]>(() => {
-    if (!filters.kegiatan) return [];
+    if (!filters.kegiatan || !rincianOutputs || !Array.isArray(rincianOutputs)) return [];
     
-    const relatedKegiatan = kegiatans.find(k => k.name === filters.kegiatan);
+    const relatedKegiatan = kegiatans?.find(k => k && String(k.name || '') === String(filters.kegiatan || ''));
     if (!relatedKegiatan) return [];
 
     return rincianOutputs
-      .filter(r => r.kegiatan_id === relatedKegiatan.id && r.is_active)
-      .map(r => ({
-        value: r.name,
-        label: `${r.code} - ${r.name}`,
-      }))
+      .filter(r => r && r.kegiatan_id === relatedKegiatan.id && r.is_active)
+      .map(r => {
+        const val = String(r.name || '').trim();
+        const lbl = String(`${r.code || ''} - ${r.name || ''}`).trim();
+        return val && lbl ? { value: val, label: lbl } : null;
+      })
+      .filter((opt): opt is SelectOption => opt !== null)
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [filters.kegiatan, rincianOutputs, kegiatans]);
 
   // Komponen Output options - filtered by selected rincian output
   const komponenOutputOptions = useMemo<SelectOption[]>(() => {
-    if (!filters.rincian_output) return [];
+    if (!filters.rincian_output || !komponenOutputs || !Array.isArray(komponenOutputs)) return [];
     
-    const relatedRincian = rincianOutputs.find(r => r.name === filters.rincian_output);
+    const relatedRincian = rincianOutputs?.find(r => r && String(r.name || '') === String(filters.rincian_output || ''));
     if (!relatedRincian) return [];
 
     return komponenOutputs
-      .filter(k => k.rincian_output_id === relatedRincian.id && k.is_active)
-      .map(k => ({
-        value: k.name,
-        label: `${k.code} - ${k.name}`,
-      }))
+      .filter(k => k && k.rincian_output_id === relatedRincian.id && k.is_active)
+      .map(k => {
+        const val = String(k.name || '').trim();
+        const lbl = String(`${k.code || ''} - ${k.name || ''}`).trim();
+        return val && lbl ? { value: val, label: lbl } : null;
+      })
+      .filter((opt): opt is SelectOption => opt !== null)
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [filters.rincian_output, komponenOutputs, rincianOutputs]);
 
   // Sub Komponen options - filtered by selected komponen output
   const subKomponenOptions = useMemo<SelectOption[]>(() => {
-    if (!filters.komponen_output) return [];
+    if (!filters.komponen_output || !subKomponen || !Array.isArray(subKomponen)) return [];
     
-    const relatedKomponen = komponenOutputs.find(k => k.name === filters.komponen_output);
+    const relatedKomponen = komponenOutputs?.find(k => k && String(k.name || '') === String(filters.komponen_output || ''));
     if (!relatedKomponen) return [];
 
     return subKomponen
-      .filter(s => s.komponen_output_id === relatedKomponen.id && s.is_active)
-      .map(s => ({
-        value: s.name,
-        label: `${s.code} - ${s.name}`,
-      }))
+      .filter(s => s && s.komponen_output_id === relatedKomponen.id && s.is_active)
+      .map(s => {
+        const val = String(s.name || '').trim();
+        const lbl = String(`${s.code || ''} - ${s.name || ''}`).trim();
+        return val && lbl ? { value: val, label: lbl } : null;
+      })
+      .filter((opt): opt is SelectOption => opt !== null)
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [filters.komponen_output, subKomponen, komponenOutputs]);
 
   // Akun options - all active akuns available
   const akunOptions = useMemo<SelectOption[]>(() => {
+    if (!akuns || !Array.isArray(akuns)) return [];
     return akuns
-      .filter(a => a.is_active)
-      .map(a => ({
-        value: a.code,
-        label: `${a.code} - ${a.name}`,
-      }))
+      .filter(a => a && a.is_active)
+      .map(a => {
+        const val = String(a.code || '').trim();
+        const lbl = String(`${a.code || ''} - ${a.name || ''}`).trim();
+        return val && lbl ? { value: val, label: lbl } : null;
+      })
+      .filter((opt): opt is SelectOption => opt !== null)
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [akuns]);
 
@@ -308,7 +323,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
             {filters.program_pembebanan && (
               <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                Program: {filters.program_pembebanan}
+                Program: {String(filters.program_pembebanan || '').slice(0, 50)}
                 <button
                   onClick={() =>
                     setFilters({
@@ -328,7 +343,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             )}
             {filters.kegiatan && (
               <div className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                Kegiatan: {filters.kegiatan}
+                Kegiatan: {String(filters.kegiatan || '').slice(0, 50)}
                 <button
                   onClick={() =>
                     setFilters({
@@ -347,7 +362,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             )}
             {filters.rincian_output && (
               <div className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
-                Rincian: {filters.rincian_output}
+                Rincian: {String(filters.rincian_output || '').slice(0, 50)}
                 <button
                   onClick={() =>
                     setFilters({
@@ -365,7 +380,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             )}
             {filters.komponen_output && (
               <div className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">
-                Komponen: {filters.komponen_output}
+                Komponen: {String(filters.komponen_output || '').slice(0, 50)}
                 <button
                   onClick={() =>
                     setFilters({
@@ -382,7 +397,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             )}
             {filters.sub_komponen && (
               <div className="bg-cyan-100 text-cyan-800 px-2 py-1 rounded text-xs">
-                Sub Komponen: {filters.sub_komponen}
+                Sub Komponen: {String(filters.sub_komponen || '').slice(0, 50)}
                 <button
                   onClick={() =>
                     setFilters({
@@ -398,7 +413,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             )}
             {filters.akun && (
               <div className="bg-rose-100 text-rose-800 px-2 py-1 rounded text-xs">
-                Akun: {filters.akun}
+                Akun: {String(filters.akun || '').slice(0, 50)}
                 <button
                   onClick={() =>
                     setFilters({

@@ -37,13 +37,15 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  const filteredOptions = options.filter(
-    option =>
-      option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      option.value.toLowerCase().includes(searchTerm.toLowerCase())
+  // Ensure options is always an array
+  const safeOptions = Array.isArray(options) ? options.filter(Boolean) : [];
+
+  const filteredOptions = safeOptions.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    option.value.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const selectedOption = options.find(opt => opt.value === value);
+  const selectedOption = safeOptions.find(opt => opt.value === value);
 
   // Reset search when dropdown opens/closes
   useEffect(() => {
@@ -65,7 +67,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     >
       <SelectTrigger className="h-8 text-xs">
         <SelectValue placeholder={placeholder}>
-          {selectedOption ? selectedOption.label : placeholder}
+          {selectedOption ? String(selectedOption.label) : placeholder}
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="max-h-[300px]">
@@ -84,13 +86,17 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
         {/* Options */}
         <div className="max-h-[250px] overflow-y-auto">
-          {filteredOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value} className="text-xs">
-              {option.label}
-            </SelectItem>
-          ))}
-
-          {filteredOptions.length === 0 && (
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => (
+              <SelectItem 
+                key={option.value} 
+                value={option.value} 
+                className="text-xs"
+              >
+                {String(option.label)}
+              </SelectItem>
+            ))
+          ) : (
             <div className="p-2 text-xs text-muted-foreground text-center">
               Tidak ditemukan
             </div>
