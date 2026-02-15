@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { populateAllSheets, verifyPopulatedData } from '@/utils/bahanrevisi-population';
-import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 
 interface PopulationLog {
   sheet: string;
@@ -14,13 +13,12 @@ interface PopulationLog {
   rowsAdded?: number;
 }
 
-export default function BahanRevisiDataPopulation() {
-  const satkerContext = useSatkerConfigContext();
+export default function BahanRevisiDataPopulation({ satkerSheetId }: { satkerSheetId?: string }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<PopulationLog[]>([]);
   const [completed, setCompleted] = useState(false);
-  const [sheetId, setSheetId] = useState('');
+  const [sheetId, setSheetId] = useState(satkerSheetId || '');
 
   const sheets = [
     { name: 'programs', label: 'Master Programs' },
@@ -53,10 +51,8 @@ export default function BahanRevisiDataPopulation() {
   };
 
   const handlePopulateData = async () => {
-    const spreadsheetId = sheetId || satkerContext?.getUserSatkerSheetId('bahanrevisi');
-
-    if (!spreadsheetId) {
-      alert('⚠️ Sheet ID tidak ditemukan. Pastikan Anda telah setup satker_config dengan bahanrevisi_sheet_id');
+    if (!sheetId) {
+      alert('⚠️ Sheet ID tidak ditemukan. Masukkan Sheet ID di field sebelumnya.');
       return;
     }
 
@@ -65,9 +61,9 @@ export default function BahanRevisiDataPopulation() {
     initializeLogs();
 
     try {
-      console.log('🚀 Mulai populate data ke Sheet ID:', spreadsheetId);
+      console.log('🚀 Mulai populate data ke Sheet ID:', sheetId);
 
-      const results = await populateAllSheets(spreadsheetId);
+      const results = await populateAllSheets(sheetId);
 
       // Update logs dengan results
       for (const result of results) {
@@ -83,16 +79,21 @@ export default function BahanRevisiDataPopulation() {
 
       // Verify some data
       const verifyResults = await Promise.all([
-        verifyPopulatedData(spreadsheetId, 'programs'),
-        verifyPopulatedData(spreadsheetId, 'budget_items'),
-        verifyPopulatedData(spreadsheetId, 'rpd_items')
+        verifyPopulatedData(sheetId, 'programs'),
+        verifyPopulatedData(sheetId, 'budget_items'),
+        verifyPopulatedData(sheetId, 'rpd_items')
       ]);
 
       console.log('📊 Verification Results:', verifyResults);
 
     } catch (error: any) {
       console.error('❌ Error saat populate:', error);
-      updateLog('all', 'error', `Error: ${error.message}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      setLogs(prev => [...prev, {
+        sheet: 'ERROR',
+        status: 'error',
+        message: `Fatal error: ${errorMsg}`
+      }]);
     } finally {
       setLoading(false);
     }
@@ -112,9 +113,6 @@ export default function BahanRevisiDataPopulation() {
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Isi Data Sample Bahan Revisi Anggaran</DialogTitle>
-          <DialogDescription>
-            Populasi semua sheet dengan data sample untuk testing dan demo
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

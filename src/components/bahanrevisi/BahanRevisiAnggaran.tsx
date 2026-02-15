@@ -181,7 +181,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
             Kelola revisi pagu anggaran dengan sistem approval berjenjang
           </p>
         </div>
-        <BahanRevisiDataPopulation />
+        {sheetId && <BahanRevisiDataPopulation satkerSheetId={sheetId} />}
       </div>
 
       {/* Loading State */}
