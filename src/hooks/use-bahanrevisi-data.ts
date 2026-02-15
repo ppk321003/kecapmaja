@@ -54,7 +54,8 @@ const fetchBudgetItems = async (sheetId: string): Promise<BudgetItem[]> => {
 
   if (result.error) {
     console.error('[fetchBudgetItems] Error:', result.error);
-    throw result.error;
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to fetch budget items: ${errorMsg}`);
   }
 
   const rows = result.data?.values || [];
@@ -200,7 +201,10 @@ const fetchPrograms = async (sheetId: string): Promise<Program[]> => {
     },
   });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to fetch programs: ${errorMsg}`);
+  }
 
   const rows = result.data?.values || [];
   if (rows.length <= 1) return [];
@@ -237,7 +241,10 @@ const fetchKegiatans = async (sheetId: string): Promise<Kegiatan[]> => {
     },
   });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to fetch kegiatans: ${errorMsg}`);
+  }
 
   const rows = result.data?.values || [];
   if (rows.length <= 1) return [];
@@ -275,7 +282,10 @@ const fetchRincianOutputs = async (sheetId: string): Promise<RincianOutput[]> =>
     },
   });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to fetch rincian outputs: ${errorMsg}`);
+  }
 
   const rows = result.data?.values || [];
   if (rows.length <= 1) return [];
@@ -313,7 +323,10 @@ const fetchKomponenOutputs = async (sheetId: string): Promise<KomponenOutput[]> 
     },
   });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to fetch komponen outputs: ${errorMsg}`);
+  }
 
   const rows = result.data?.values || [];
   if (rows.length <= 1) return [];
@@ -351,7 +364,10 @@ const fetchSubKomponen = async (sheetId: string): Promise<SubKomponen[]> => {
     },
   });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to fetch sub komponen: ${errorMsg}`);
+  }
 
   const rows = result.data?.values || [];
   if (rows.length <= 1) return [];
@@ -389,7 +405,10 @@ const fetchAkuns = async (sheetId: string): Promise<Akun[]> => {
     },
   });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to fetch akuns: ${errorMsg}`);
+  }
 
   const rows = result.data?.values || [];
   if (rows.length <= 1) return [];

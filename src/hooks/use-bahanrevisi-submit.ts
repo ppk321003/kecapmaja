@@ -69,7 +69,8 @@ const addBudgetItem = async (sheetId: string, item: Omit<BudgetItem, 'id'>): Pro
 
   if (result.error) {
     console.error('[addBudgetItem] Error:', result.error);
-    throw result.error;
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to add budget item: ${errorMsg}`);
   }
 
   console.log('[addBudgetItem] New item added with id:', newItem.id);
@@ -102,7 +103,8 @@ const updateBudgetItem = async (sheetId: string, itemId: string, updates: Partia
 
   if (result.error) {
     console.error('[updateBudgetItem] Error:', result.error);
-    throw result.error;
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to update budget item: ${errorMsg}`);
   }
 
   console.log('[updateBudgetItem] Item updated:', itemId);
@@ -134,7 +136,8 @@ const deleteBudgetItem = async (sheetId: string, itemId: string, allItems: Budge
 
   if (result.error) {
     console.error('[deleteBudgetItem] Error:', result.error);
-    throw result.error;
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to delete budget item: ${errorMsg}`);
   }
 
   console.log('[deleteBudgetItem] Item deleted:', itemId);
