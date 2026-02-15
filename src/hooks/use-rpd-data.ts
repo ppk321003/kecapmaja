@@ -50,8 +50,8 @@ const fetchRPDItemsFromSheet = async (sheetId: string): Promise<RPDItem[]> => {
     });
 
     if (result.error) {
-      console.error('[fetchRPDItemsFromSheet] Error:', result.error);
-      throw result.error;
+      const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+      throw new Error(`Failed to fetch RPD items: ${errorMsg}`);
     }
 
     const rows = result.data?.values || [];
@@ -172,8 +172,8 @@ const updateRPDItemInSheet = async (
     });
 
     if (result.error) {
-      console.error('[updateRPDItemInSheet] Error:', result.error);
-      throw result.error;
+      const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+      throw new Error(`Failed to update RPD item: ${errorMsg}`);
     }
 
     console.log(`[updateRPDItemInSheet] Successfully updated RPD item ${itemId}`);
