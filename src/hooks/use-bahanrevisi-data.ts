@@ -399,7 +399,7 @@ const calculateSummaryByAkun = (items: BudgetItem[]): BudgetSummary[] => {
   items.forEach(item => {
     const key = item.akun || 'Unknown';
     const existing = summaryMap.get(key) || {
-      label: `${key} - ${item.account_group_name || ''}`.trim(),
+      label: key,
       totalSemula: 0,
       totalMenjadi: 0,
       totalSelisih: 0,

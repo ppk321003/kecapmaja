@@ -1,19 +1,14 @@
 /**
  * Filter Component untuk Bahan Revisi Anggaran
- * Mendukung cascading dropdowns berdasarkan hierarchy
+ * Mendukung cascading dropdowns berdasarkan hierarchy dengan reference data
+ * Similar to KAK.tsx pattern - menggunakan master data bukan budgetItems
  */
 
 import React, { useMemo } from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { X } from 'lucide-react';
+import SearchableSelect, { SelectOption } from './SearchableSelect';
 import { 
   BudgetItem, 
   BahanRevisiFilters,
@@ -54,70 +49,93 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   hideZeroPagu = false,
   setHideZeroPagu,
 }) => {
-  // Get unique values dari budget items untuk dropdown
-  const programPembebananOptions = useMemo(() => {
-    return Array.from(
-      new Set(budgetItems.map(item => item.program_pembebanan))
-    )
-      .filter(Boolean)
-      .sort();
-  }, [budgetItems]);
+  // Build options from reference data (master sheets) like KAK.tsx does
+  
+  // Program Pembebanan options - from programs reference data
+  const programPembebananOptions = useMemo<SelectOption[]>(() => {
+    return programs
+      .filter(p => p.is_active)
+      .map(p => ({
+        value: p.name,
+        label: `${p.code} - ${p.name}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [programs]);
 
-  const kegiatanOptions = useMemo(() => {
+  // Kegiatan options - filtered by selected program
+  const kegiatanOptions = useMemo<SelectOption[]>(() => {
     if (!filters.program_pembebanan) return [];
-    return budgetItems
-      .filter(item => item.program_pembebanan === filters.program_pembebanan)
-      .map(item => item.kegiatan)
-      .filter((v, i, a) => a.indexOf(v) === i && v)
-      .sort();
-  }, [filters.program_pembebanan, budgetItems]);
+    
+    const relatedProgram = programs.find(p => p.name === filters.program_pembebanan);
+    if (!relatedProgram) return [];
 
-  const rincianOutputOptions = useMemo(() => {
+    return kegiatans
+      .filter(k => k.program_id === relatedProgram.id && k.is_active)
+      .map(k => ({
+        value: k.name,
+        label: `${k.code} - ${k.name}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filters.program_pembebanan, kegiatans, programs]);
+
+  // Rincian Output options - filtered by selected kegiatan
+  const rincianOutputOptions = useMemo<SelectOption[]>(() => {
     if (!filters.kegiatan) return [];
-    return budgetItems
-      .filter(item => 
-        item.program_pembebanan === filters.program_pembebanan &&
-        item.kegiatan === filters.kegiatan
-      )
-      .map(item => item.rincian_output)
-      .filter((v, i, a) => a.indexOf(v) === i && v)
-      .sort();
-  }, [filters.program_pembebanan, filters.kegiatan, budgetItems]);
+    
+    const relatedKegiatan = kegiatans.find(k => k.name === filters.kegiatan);
+    if (!relatedKegiatan) return [];
 
-  const komponenOutputOptions = useMemo(() => {
+    return rincianOutputs
+      .filter(r => r.kegiatan_id === relatedKegiatan.id && r.is_active)
+      .map(r => ({
+        value: r.name,
+        label: `${r.code} - ${r.name}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filters.kegiatan, rincianOutputs, kegiatans]);
+
+  // Komponen Output options - filtered by selected rincian output
+  const komponenOutputOptions = useMemo<SelectOption[]>(() => {
     if (!filters.rincian_output) return [];
-    return budgetItems
-      .filter(item =>
-        item.program_pembebanan === filters.program_pembebanan &&
-        item.kegiatan === filters.kegiatan &&
-        item.rincian_output === filters.rincian_output
-      )
-      .map(item => item.komponen_output)
-      .filter((v, i, a) => a.indexOf(v) === i && v)
-      .sort();
-  }, [filters.program_pembebanan, filters.kegiatan, filters.rincian_output, budgetItems]);
+    
+    const relatedRincian = rincianOutputs.find(r => r.name === filters.rincian_output);
+    if (!relatedRincian) return [];
 
-  const subKomponenOptions = useMemo(() => {
+    return komponenOutputs
+      .filter(k => k.rincian_output_id === relatedRincian.id && k.is_active)
+      .map(k => ({
+        value: k.name,
+        label: `${k.code} - ${k.name}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filters.rincian_output, komponenOutputs, rincianOutputs]);
+
+  // Sub Komponen options - filtered by selected komponen output
+  const subKomponenOptions = useMemo<SelectOption[]>(() => {
     if (!filters.komponen_output) return [];
-    return budgetItems
-      .filter(item =>
-        item.program_pembebanan === filters.program_pembebanan &&
-        item.kegiatan === filters.kegiatan &&
-        item.rincian_output === filters.rincian_output &&
-        item.komponen_output === filters.komponen_output
-      )
-      .map(item => item.sub_komponen)
-      .filter((v, i, a) => a.indexOf(v) === i && v)
-      .sort();
-  }, [filters.program_pembebanan, filters.kegiatan, filters.rincian_output, filters.komponen_output, budgetItems]);
+    
+    const relatedKomponen = komponenOutputs.find(k => k.name === filters.komponen_output);
+    if (!relatedKomponen) return [];
 
-  const akunOptions = useMemo(() => {
-    return Array.from(
-      new Set(budgetItems.map(item => item.akun))
-    )
-      .filter(Boolean)
-      .sort();
-  }, [budgetItems]);
+    return subKomponen
+      .filter(s => s.komponen_output_id === relatedKomponen.id && s.is_active)
+      .map(s => ({
+        value: s.name,
+        label: `${s.code} - ${s.name}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filters.komponen_output, subKomponen, komponenOutputs]);
+
+  // Akun options - all active akuns available
+  const akunOptions = useMemo<SelectOption[]>(() => {
+    return akuns
+      .filter(a => a.is_active)
+      .map(a => ({
+        value: a.code,
+        label: `${a.code} - ${a.name}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [akuns]);
 
   const handleReset = () => {
     setFilters({});
@@ -149,8 +167,11 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             <label className="text-xs font-medium text-slate-600">
               Program Pembebanan
             </label>
-            <Select
+            <SearchableSelect
               value={filters.program_pembebanan || ''}
+              options={programPembebananOptions}
+              placeholder="Pilih Program..."
+              disabled={loading}
               onValueChange={(value) =>
                 setFilters({
                   ...filters,
@@ -161,19 +182,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
                   sub_komponen: undefined,
                 })
               }
-              disabled={loading}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Pilih Program..." />
-              </SelectTrigger>
-              <SelectContent>
-                {programPembebananOptions.map((option) => (
-                  <SelectItem key={option} value={option} className="text-xs">
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           {/* Kegiatan */}
@@ -181,8 +190,11 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             <label className="text-xs font-medium text-slate-600">
               Kegiatan
             </label>
-            <Select
+            <SearchableSelect
               value={filters.kegiatan || ''}
+              options={kegiatanOptions}
+              placeholder="Pilih Kegiatan..."
+              disabled={!filters.program_pembebanan || loading}
               onValueChange={(value) =>
                 setFilters({
                   ...filters,
@@ -192,19 +204,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
                   sub_komponen: undefined,
                 })
               }
-              disabled={!filters.program_pembebanan || loading}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Pilih Kegiatan..." />
-              </SelectTrigger>
-              <SelectContent>
-                {kegiatanOptions.map((option) => (
-                  <SelectItem key={option} value={option} className="text-xs">
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           {/* Rincian Output */}
@@ -212,8 +212,11 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             <label className="text-xs font-medium text-slate-600">
               Rincian Output
             </label>
-            <Select
+            <SearchableSelect
               value={filters.rincian_output || ''}
+              options={rincianOutputOptions}
+              placeholder="Pilih Rincian Output..."
+              disabled={!filters.kegiatan || loading}
               onValueChange={(value) =>
                 setFilters({
                   ...filters,
@@ -222,19 +225,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
                   sub_komponen: undefined,
                 })
               }
-              disabled={!filters.kegiatan || loading}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Pilih Rincian Output..." />
-              </SelectTrigger>
-              <SelectContent>
-                {rincianOutputOptions.map((option) => (
-                  <SelectItem key={option} value={option} className="text-xs">
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           {/* Komponen Output */}
@@ -242,8 +233,11 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             <label className="text-xs font-medium text-slate-600">
               Komponen Output
             </label>
-            <Select
+            <SearchableSelect
               value={filters.komponen_output || ''}
+              options={komponenOutputOptions}
+              placeholder="Pilih Komponen..."
+              disabled={!filters.rincian_output || loading}
               onValueChange={(value) =>
                 setFilters({
                   ...filters,
@@ -251,19 +245,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
                   sub_komponen: undefined,
                 })
               }
-              disabled={!filters.rincian_output || loading}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Pilih Komponen..." />
-              </SelectTrigger>
-              <SelectContent>
-                {komponenOutputOptions.map((option) => (
-                  <SelectItem key={option} value={option} className="text-xs">
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           {/* Sub Komponen */}
@@ -271,27 +253,18 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             <label className="text-xs font-medium text-slate-600">
               Sub Komponen
             </label>
-            <Select
+            <SearchableSelect
               value={filters.sub_komponen || ''}
+              options={subKomponenOptions}
+              placeholder="Pilih Sub Komponen..."
+              disabled={!filters.komponen_output || loading}
               onValueChange={(value) =>
                 setFilters({
                   ...filters,
                   sub_komponen: value || undefined,
                 })
               }
-              disabled={!filters.komponen_output || loading}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Pilih Sub Komponen..." />
-              </SelectTrigger>
-              <SelectContent>
-                {subKomponenOptions.map((option) => (
-                  <SelectItem key={option} value={option} className="text-xs">
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           {/* Akun */}
@@ -299,27 +272,18 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             <label className="text-xs font-medium text-slate-600">
               Akun
             </label>
-            <Select
+            <SearchableSelect
               value={filters.akun || ''}
+              options={akunOptions}
+              placeholder="Pilih Akun..."
+              disabled={loading}
               onValueChange={(value) =>
                 setFilters({
                   ...filters,
                   akun: value || undefined,
                 })
               }
-              disabled={loading}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Pilih Akun..." />
-              </SelectTrigger>
-              <SelectContent>
-                {akunOptions.map((option) => (
-                  <SelectItem key={option} value={option} className="text-xs">
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
         </div>
 

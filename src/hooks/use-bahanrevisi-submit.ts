@@ -12,25 +12,17 @@ interface UseBahanRevisiSubmitProps {
 }
 
 /**
- * Convert BudgetItem to array for Google Sheets
+ * Convert BudgetItem to array for Google Sheets (26 columns)
  */
 const budgetItemToRow = (item: BudgetItem): (string | number | boolean | null)[] => {
   return [
     item.id,
     item.program_pembebanan,
-    item.program_code,
     item.kegiatan,
-    item.kegiatan_code,
     item.rincian_output,
-    item.rincian_output_code,
     item.komponen_output,
-    item.komponen_output_code,
     item.sub_komponen,
-    item.sub_komponen_code,
     item.akun,
-    item.akun_code,
-    item.account_group,
-    item.account_group_name,
     item.uraian,
     item.volume_semula,
     item.satuan_semula,
@@ -41,12 +33,11 @@ const budgetItemToRow = (item: BudgetItem): (string | number | boolean | null)[]
     item.harga_satuan_menjadi,
     item.jumlah_menjadi,
     item.selisih,
+    item.blokir || 0,
     item.status,
     item.approved_by || '',
     item.approved_date || '',
-    item.rejected_by || '',
     item.rejected_date || '',
-    item.rejection_reason || '',
     item.submitted_by,
     item.submitted_date,
     item.updated_date,
@@ -71,7 +62,7 @@ const addBudgetItem = async (sheetId: string, item: Omit<BudgetItem, 'id'>): Pro
     body: {
       spreadsheetId: sheetId,
       operation: 'append',
-      range: 'budget_items!A:AI',
+      range: 'budget_items!A:Z',
       values: [row],
     },
   });
@@ -178,9 +169,7 @@ const rejectBudgetItem = async (
   allItems: BudgetItem[]
 ): Promise<BudgetItem> => {
   const updatedItem = await updateBudgetItem(sheetId, itemId, {
-    rejected_by: rejectedBy,
     rejected_date: new Date().toISOString(),
-    rejection_reason: rejectionReason,
   }, allItems);
 
   console.log('[rejectBudgetItem] Item rejected by:', rejectedBy);
