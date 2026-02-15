@@ -24,9 +24,22 @@ export function DataTable({ title, columns, data }: DataTableProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                {columns.map((column) => (
-                  <TableHead key={column.key}>{column.header}</TableHead>
-                ))}
+                {columns.map((column) => {
+                  try {
+                    return (
+                      <TableHead key={column.key}>
+                        {String(column.header || '')}
+                      </TableHead>
+                    );
+                  } catch (e) {
+                    console.error('Error rendering table header:', column.key, e);
+                    return (
+                      <TableHead key={column.key}>
+                        -
+                      </TableHead>
+                    );
+                  }
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -39,11 +52,45 @@ export function DataTable({ title, columns, data }: DataTableProps) {
               ) : (
                 data.map((row, rowIndex) => (
                   <TableRow key={rowIndex}>
-                    {columns.map((column) => (
-                      <TableCell key={column.key}>
-                        {column.render ? column.render(row[column.key], row) : row[column.key]}
-                      </TableCell>
-                    ))}
+                    {columns.map((column) => {
+                      try {
+                        const cellValue = row[column.key];
+                        const renderedContent = column.render 
+                          ? column.render(cellValue, row) 
+                          : cellValue;
+                        
+                        // Ensure we never render objects directly
+                        let safeContent;
+                        if (renderedContent === null || renderedContent === undefined) {
+                          safeContent = '-';
+                        } else if (typeof renderedContent === 'string' || typeof renderedContent === 'number' || typeof renderedContent === 'boolean') {
+                          safeContent = String(renderedContent);
+                        } else if (typeof renderedContent === 'object' && renderedContent.type) {
+                          // It's a React element, safe to render
+                          safeContent = renderedContent;
+                        } else {
+                          // It's an object, convert to string safely
+                          try {
+                            safeContent = String(renderedContent);
+                          } catch (e) {
+                            safeContent = '[Object]';
+                          }
+                        }
+                        
+                        return (
+                          <TableCell key={column.key}>
+                            {safeContent}
+                          </TableCell>
+                        );
+                      } catch (e) {
+                        console.error('Error rendering cell:', column.key, e);
+                        return (
+                          <TableCell key={column.key}>
+                            -
+                          </TableCell>
+                        );
+                      }
+                    })}
                   </TableRow>
                 ))
               )}

@@ -145,16 +145,22 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   const paginatedItems = sortedItems.slice(startIdx, endIdx);
 
   const getStatusBadge = (item: BudgetItem) => {
-    if (isRejected(item)) {
-      return <Badge variant="destructive">Ditolak</Badge>;
+    try {
+      if (isRejected(item)) {
+        return <Badge variant="destructive">Ditolak</Badge>;
+      }
+      if (isApproved(item)) {
+        return <Badge variant="default" className="bg-green-600">Disetujui</Badge>;
+      }
+      if (needsApproval(item)) {
+        return <Badge variant="secondary">Menunggu Approval</Badge>;
+      }
+      const safeStatus = String(item.status || 'unknown');
+      return <Badge>{safeStatus}</Badge>;
+    } catch (e) {
+      console.error('Error rendering status badge:', e, item);
+      return <Badge>-</Badge>;
     }
-    if (isApproved(item)) {
-      return <Badge variant="default" className="bg-green-600">Disetujui</Badge>;
-    }
-    if (needsApproval(item)) {
-      return <Badge variant="secondary">Menunggu Approval</Badge>;
-    }
-    return <Badge>{item.status}</Badge>;
   };
 
   const calculateSelisih = (item: BudgetItem) => {
