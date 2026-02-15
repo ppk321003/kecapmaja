@@ -126,7 +126,10 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
     },
   });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to fetch RPD items: ${errorMsg}`);
+  }
 
   const rows = result.data?.values || [];
   console.log('[fetchRPDItems] Raw rows:', rows.length, 'rows total');
@@ -566,7 +569,10 @@ const updateBudgetItemInSheet = async (sheetId: string, itemId: string, updates:
       },
     });
 
-    if (result.error) throw result.error;
+    if (result.error) {
+      const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+      throw new Error(`Failed to update budget item in sheet: ${errorMsg}`);
+    }
     return result.data;
   } catch (err) {
     console.error('[updateBudgetItemInSheet] Error:', err);
@@ -589,7 +595,10 @@ const updateRPDItemInSheet = async (sheetId: string, itemId: string, monthValues
       },
     });
 
-    if (result.error) throw result.error;
+    if (result.error) {
+      const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+      throw new Error(`Failed to update RPD item in sheet: ${errorMsg}`);
+    }
     return result.data;
   } catch (err) {
     console.error('[updateRPDItemInSheet] Error:', err);
@@ -611,7 +620,10 @@ const importBudgetItems = async (sheetId: string, items: Partial<BudgetItem>[]) 
       },
     });
 
-    if (result.error) throw result.error;
+    if (result.error) {
+      const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+      throw new Error(`Failed to import budget items: ${errorMsg}`);
+    }
     console.log(`[importBudgetItems] Successfully imported ${items.length} items`);
     return result.data;
   } catch (err) {
@@ -634,7 +646,10 @@ const deleteBudgetItem = async (sheetId: string, itemId: string) => {
       },
     });
 
-    if (result.error) throw result.error;
+    if (result.error) {
+      const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+      throw new Error(`Failed to delete budget item: ${errorMsg}`);
+    }
     return result.data;
   } catch (err) {
     console.error('[deleteBudgetItem] Error:', err);
