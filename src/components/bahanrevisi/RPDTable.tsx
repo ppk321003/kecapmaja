@@ -495,7 +495,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
           font-weight: 600;
           position: sticky;
           top: 0;
-          z-index: 10;
+          z-index: 5;
           white-space: nowrap;
           padding: 8px 4px;
         }
@@ -513,7 +513,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
           position: sticky;
           left: 0;
           background-color: #fff;
-          z-index: 5;
+          z-index: 3;
           border-right: 1px solid #e2e8f0;
         }
         
@@ -522,7 +522,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
         }
         
         .rpd-table th.fixed-column {
-          z-index: 15;
+          z-index: 8;
           background-color: #f1f5f9;
         }
         

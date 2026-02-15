@@ -21,7 +21,7 @@ export function Layout({ children }: LayoutProps) {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-10" style={{ background: "var(--gradient-header)" }}>
+          <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-40" style={{ background: "var(--gradient-header)" }}>
             <div className="flex items-center">
               <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
               <h1 className="ml-4 text-lg font-semibold text-primary-foreground">
