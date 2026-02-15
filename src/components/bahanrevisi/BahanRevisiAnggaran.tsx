@@ -173,15 +173,17 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="space-y-2 flex justify-between items-start">
-        <div className="space-y-2 flex-1">
-          <h1 className="text-2xl font-bold text-slate-900">Bahan Revisi Anggaran</h1>
-          <p className="text-sm text-slate-600">
-            Kelola revisi pagu anggaran dengan sistem approval berjenjang
-          </p>
+      {/* Header with Populate Button */}
+      <div className="space-y-3">
+        <div className="flex justify-between items-start gap-4">
+          <div className="space-y-2 flex-1">
+            <h1 className="text-2xl font-bold text-slate-900">Bahan Revisi Anggaran</h1>
+            <p className="text-sm text-slate-600">
+              Kelola revisi pagu anggaran dengan sistem approval berjenjang
+            </p>
+          </div>
+          {sheetId && <BahanRevisiDataPopulation satkerSheetId={sheetId} />}
         </div>
-        {sheetId && <BahanRevisiDataPopulation satkerSheetId={sheetId} />}
       </div>
 
       {/* Loading State */}
