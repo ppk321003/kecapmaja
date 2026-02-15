@@ -13,10 +13,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useBahanRevisiData } from '@/hooks/use-bahanrevisi-data';
 import { useBahanRevisiSubmit } from '@/hooks/use-bahanrevisi-submit';
-import { BahanRevisiFilters } from '@/types/bahanrevisi';
+import { BahanRevisiFilters, BudgetItem } from '@/types/bahanrevisi';
+import { formatCurrency } from '@/utils/bahanrevisi-calculations';
 import BahanRevisiFilter from './BahanRevisiFilter';
 import BahanRevisiBudgetTable from './BahanRevisiBudgetTable';
 import BahanRevisiRingkasan from './BahanRevisiRingkasan';
+import BudgetChangesConclusion from './BudgetChangesConclusion';
+import BudgetChangesSummary from './BudgetChangesSummary';
+import { BudgetChangesTable } from './BudgetChangesTable';
+import { NewBudgetTable } from './NewBudgetTable';
 import { toast } from '@/hooks/use-toast';
 
 interface BahanRevisiAnggaranProps {}
@@ -162,6 +167,63 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     });
   };
 
+  // Helper functions untuk format data untuk new components
+  const getChangedBudgetItems = () => {
+    return filteredBudgetItems
+      .filter(item => item.status === 'changed')
+      .map(item => ({
+        id: item.id,
+        pembebanan: [
+          item.program_code,
+          item.komponen_output_code,
+          item.sub_komponen_code,
+          'A',
+          item.akun_code
+        ].filter(Boolean).join('.'),
+        uraian: item.uraian,
+        detailPerubahan: getDetailPerubahan(item),
+        jumlahSemula: item.jumlah_semula,
+        jumlahMenjadi: item.jumlah_menjadi,
+        selisih: item.selisih
+      }));
+  };
+
+  const getNewBudgetItems = () => {
+    return filteredBudgetItems
+      .filter(item => item.status === 'new')
+      .map(item => ({
+        id: item.id,
+        pembebanan: [
+          item.program_code,
+          item.komponen_output_code,
+          item.sub_komponen_code,
+          'A',
+          item.akun_code
+        ].filter(Boolean).join('.'),
+        uraian: item.uraian,
+        volume: item.volume_menjadi,
+        satuan: item.satuan_menjadi,
+        hargaSatuan: item.harga_satuan_menjadi,
+        jumlah: item.jumlah_menjadi
+      }));
+  };
+
+  const getDetailPerubahan = (item: BudgetItem) => {
+    const changes: string[] = [];
+    if (item.volume_semula !== item.volume_menjadi) {
+      changes.push(`Volume: ${item.volume_semula} → ${item.volume_menjadi}`);
+    }
+    if (item.satuan_semula !== item.satuan_menjadi) {
+      changes.push(`Satuan: ${item.satuan_semula} → ${item.satuan_menjadi}`);
+    }
+    if (item.harga_satuan_semula !== item.harga_satuan_menjadi) {
+      changes.push(
+        `Harga: ${formatCurrency(item.harga_satuan_semula)} → ${formatCurrency(item.harga_satuan_menjadi)}`
+      );
+    }
+    return changes.join('\n');
+  };
+
   if (dataError) {
     return (
       <Alert variant="destructive" className="my-4">
@@ -277,10 +339,49 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
             {/* Tab: Ringkasan */}
             <TabsContent value="ringkasan" className="space-y-4">
-              <BahanRevisiRingkasan
-                items={filteredBudgetItems}
-                isLoading={isLoadingData}
-              />
+              {/* New refined summary components */}
+              <div className="space-y-4">
+                {/* Summary Conclusion */}
+                <BudgetChangesConclusion
+                  totalSemula={filteredBudgetItems.reduce((sum, item) => sum + item.jumlah_semula, 0)}
+                  totalMenjadi={filteredBudgetItems.reduce((sum, item) => sum + item.jumlah_menjadi, 0)}
+                  totalSelisih={filteredBudgetItems.reduce((sum, item) => sum + item.selisih, 0)}
+                  changedItems={filteredBudgetItems.filter(item => item.status === 'changed').length}
+                  newItems={filteredBudgetItems.filter(item => item.status === 'new').length}
+                  deletedItems={filteredBudgetItems.filter(item => item.status === 'deleted').length}
+                />
+
+                {/* Changed Items Table */}
+                {getChangedBudgetItems().length > 0 && (
+                  <BudgetChangesTable
+                    title="Pagu Anggaran Berubah"
+                    items={getChangedBudgetItems()}
+                  />
+                )}
+
+                {/* New Items Table */}
+                {getNewBudgetItems().length > 0 && (
+                  <NewBudgetTable items={getNewBudgetItems()} />
+                )}
+
+                {/* Summary with statistics */}
+                <BudgetChangesSummary
+                  totalSemula={filteredBudgetItems.reduce((sum, item) => sum + item.jumlah_semula, 0)}
+                  totalMenjadi={filteredBudgetItems.reduce((sum, item) => sum + item.jumlah_menjadi, 0)}
+                  totalSelisih={filteredBudgetItems.reduce((sum, item) => sum + item.selisih, 0)}
+                  totalNewItems={filteredBudgetItems.filter(item => item.status === 'new').length}
+                  totalChangedItems={filteredBudgetItems.filter(item => item.status === 'changed').length}
+                  totalDeletedItems={filteredBudgetItems.filter(item => item.status === 'deleted').length}
+                  totalUnchangedItems={filteredBudgetItems.filter(item => item.status === 'unchanged').length}
+                  totalItems={filteredBudgetItems.length}
+                />
+
+                {/* Original ringkasan component for additional visualizations */}
+                <BahanRevisiRingkasan
+                  items={filteredBudgetItems}
+                  isLoading={isLoadingData}
+                />
+              </div>
             </TabsContent>
           </Tabs>
 
