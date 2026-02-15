@@ -54,7 +54,21 @@ const RPDTable: React.FC<RPDTableProps> = ({
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const pagu = useMemo(() => items.reduce((sum, item) => sum + (Number(item.jumlah_menjadi) || 0), 0), [items]);
+  const pagu = useMemo(() => {
+    try {
+      if (!Array.isArray(items)) return 0;
+      return items.reduce((sum, item) => {
+        try {
+          return sum + (Number(item?.jumlah_menjadi) || 0);
+        } catch {
+          return sum;
+        }
+      }, 0);
+    } catch (e) {
+      console.error('[RPDTable] Error calculating pagu:', e);
+      return 0;
+    }
+  }, [items]);
 
   const handleEditChange = (id: string, field: string, value: string | number) => {
     let numValue: number;
@@ -158,25 +172,216 @@ const RPDTable: React.FC<RPDTableProps> = ({
   };
 
   const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = !searchTerm || item.uraian.toLowerCase().includes(searchLower);
-      
-      if (hideZeroBudget) {
-        return matchesSearch && (item.jumlah_menjadi || 0) !== 0;
+    try {
+      if (!Array.isArray(items)) {
+        console.warn('[RPDTable] items is not an array:', typeof items);
+        return [];
       }
       
-      return matchesSearch;
-    });
+      return items.filter(item => {
+        try {
+          // Defensive checks for item structure
+          if (!item || typeof item !== 'object') {
+            console.warn('[RPDTable] Filtering invalid item:', item);
+            return false;
+          }
+          
+          const searchLower = searchTerm.toLowerCase();
+          const uraian = String(item.uraian || '');
+          const matchesSearch = !searchTerm || uraian.toLowerCase().includes(searchLower);
+          
+          if (hideZeroBudget) {
+            return matchesSearch && (Number(item.jumlah_menjadi) || 0) !== 0;
+          }
+          
+          return matchesSearch;
+        } catch (e) {
+          console.error('[RPDTable] Error filtering item:', e, item);
+          return false;
+        }
+      });
+    } catch (e) {
+      console.error('[RPDTable] Error in filteredItems:', e);
+      return [];
+    }
   }, [items, searchTerm, hideZeroBudget]);
 
   const sortedItems = useMemo(() => {
-    return [...filteredItems].sort((a, b) => {
-      if (!sortField) return 0;
+    try {
+      return [...filteredItems].sort((a, b) => {
+        try {
+          if (!a || typeof a !== 'object' || !b || typeof b !== 'object') {
+            return 0;
+          }
+          
+          if (!sortField) return 0;
+          
+          let fieldA: any, fieldB: any;
+          
+          const monthFields: {[key: string]: string} = {
+            'jan': 'januari',
+            'feb': 'februari',
+            'mar': 'maret',
+            'apr': 'april',
+            'mei': 'mei',
+            'jun': 'juni',
+            'jul': 'juli',
+            'aug': 'agustus',
+            'sep': 'september',
+            'oct': 'oktober',
+            'nov': 'november',
+            'dec': 'desember',
+          };
+          
+          if (monthFields[sortField]) {
+            const monthField = monthFields[sortField];
+            fieldA = a[monthField as keyof RPDItem] || 0;
+            fieldB = b[monthField as keyof RPDItem] || 0;
+          } else if (sortField === 'total_rpd') {
+            fieldA = a.jumlah_rpd || 0;
+            fieldB = b.jumlah_rpd || 0;
+          } else if (sortField === 'total_pagu') {
+            fieldA = a.jumlah_menjadi || 0;
+            fieldB = b.jumlah_menjadi || 0;
+          } else if (sortField === 'selisih') {
+            fieldA = a.selisih || 0;
+            fieldB = b.selisih || 0;
+          } else if (sortField === 'uraian') {
+            fieldA = a.uraian;
+            fieldB = b.uraian;
+          } else {
+            fieldA = a[sortField as keyof RPDItem];
+            fieldB = b[sortField as keyof RPDItem];
+          }
+          
+          if (fieldA === undefined || fieldB === undefined) return 0;
+          
+          if (typeof fieldA === 'string' && typeof fieldB === 'string') {
+            return sortDirection === 'asc' 
+              ? fieldA.localeCompare(fieldB) 
+              : fieldB.localeCompare(fieldA);
+          }
+          
+          if (typeof fieldA === 'number' && typeof fieldB === 'number') {
+            return sortDirection === 'asc' 
+              ? fieldA - fieldB 
+              : fieldB - fieldA;
+          }
+          
+          return 0;
+        } catch (e) {
+          console.error('[RPDTable] Error sorting items:', e);
+          return 0;
+        }
+      });
+    } catch (e) {
+      console.error('[RPDTable] Error in sortedItems:', e);
+      return filteredItems;
+    }
+  }, [filteredItems, sortField, sortDirection]);
+
+  const totalByMonth = useMemo(() => {
+    try {
+      if (!Array.isArray(items)) return {
+        jan: 0, feb: 0, mar: 0, apr: 0, mei: 0, jun: 0,
+        jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
+      };
       
-      let fieldA: any, fieldB: any;
+      return {
+        jan: items.reduce((sum, item) => sum + (Number(item?.januari) || 0), 0),
+        feb: items.reduce((sum, item) => sum + (Number(item?.februari) || 0), 0),
+        mar: items.reduce((sum, item) => sum + (Number(item?.maret) || 0), 0),
+        apr: items.reduce((sum, item) => sum + (Number(item?.april) || 0), 0),
+        mei: items.reduce((sum, item) => sum + (Number(item?.mei) || 0), 0),
+        jun: items.reduce((sum, item) => sum + (Number(item?.juni) || 0), 0),
+        jul: items.reduce((sum, item) => sum + (Number(item?.juli) || 0), 0),
+        aug: items.reduce((sum, item) => sum + (Number(item?.agustus) || 0), 0),
+        sep: items.reduce((sum, item) => sum + (Number(item?.september) || 0), 0),
+        oct: items.reduce((sum, item) => sum + (Number(item?.oktober) || 0), 0),
+        nov: items.reduce((sum, item) => sum + (Number(item?.november) || 0), 0),
+        dec: items.reduce((sum, item) => sum + (Number(item?.desember) || 0), 0)
+      };
+    } catch (e) {
+      console.error('[RPDTable] Error in totalByMonth:', e);
+      return {
+        jan: 0, feb: 0, mar: 0, apr: 0, mei: 0, jun: 0,
+        jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
+      };
+    }
+  }, [items]);
+
+  const grandTotal = useMemo(() => {
+    try {
+      if (!Array.isArray(items)) return 0;
+      return items.reduce((sum, item) => {
+        try {
+          return sum + (Number(item?.jumlah_rpd) || 0);
+        } catch {
+          return sum;
+        }
+      }, 0);
+    } catch (e) {
+      console.error('[RPDTable] Error calculating grandTotal:', e);
+      return 0;
+    }
+  }, [items]);
+
+  const sisaPagu = useMemo(() => {
+    try {
+      return Number(pagu || 0) - Number(grandTotal || 0);
+    } catch (e) {
+      console.error('[RPDTable] Error calculating sisaPagu:', e);
+      return 0;
+    }
+  }, [pagu, grandTotal]);
+
+  const paginatedItems = pageSize === -1 
+    ? sortedItems 
+    : sortedItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  
+  const totalPages = pageSize === -1 ? 1 : Math.ceil(sortedItems.length / pageSize);
+
+  const getStatusClass = (item: RPDItem): string => {
+    try {
+      if (!item || typeof item !== 'object') return 'status-sisa';
+      const rpd = Number(item?.jumlah_rpd) || 0;
+      const pagu = Number(item?.jumlah_menjadi) || 0;
       
-      const monthFields: {[key: string]: string} = {
+      if (rpd === pagu) {
+        return 'status-ok';
+      } else {
+        return 'status-sisa';
+      }
+    } catch (e) {
+      console.error('[RPDTable] Error in getStatusClass:', e);
+      return 'status-sisa';
+    }
+  };
+
+  const getStatusText = (item: RPDItem): string => {
+    try {
+      if (!item || typeof item !== 'object') return '-';
+      const rpd = Number(item?.jumlah_rpd) || 0;
+      const pagu = Number(item?.jumlah_menjadi) || 0;
+      
+      if (rpd === pagu) {
+        return 'OK';
+      } else {
+        return 'Sisa';
+      }
+    } catch (e) {
+      console.error('[RPDTable] Error in getStatusText:', e);
+      return '-';
+    }
+  };
+
+  const renderMonthValue = (item: RPDItem, month: string, field: string) => {
+    try {
+      if (!item || typeof item !== 'object') return <span>-</span>;
+      
+      const isEditing = editingId === item.id;
+      
+      const monthMap: {[key: string]: keyof RPDItem} = {
         'jan': 'januari',
         'feb': 'februari',
         'mar': 'maret',
@@ -191,135 +396,29 @@ const RPDTable: React.FC<RPDTableProps> = ({
         'dec': 'desember',
       };
       
-      if (monthFields[sortField]) {
-        const monthField = monthFields[sortField];
-        fieldA = a[monthField as keyof RPDItem] || 0;
-        fieldB = b[monthField as keyof RPDItem] || 0;
-      } else if (sortField === 'total_rpd') {
-        fieldA = a.jumlah_rpd || 0;
-        fieldB = b.jumlah_rpd || 0;
-      } else if (sortField === 'total_pagu') {
-        fieldA = a.jumlah_menjadi || 0;
-        fieldB = b.jumlah_menjadi || 0;
-      } else if (sortField === 'selisih') {
-        fieldA = a.selisih || 0;
-        fieldB = b.selisih || 0;
-      } else if (sortField === 'uraian') {
-        fieldA = a.uraian;
-        fieldB = b.uraian;
-      } else {
-        fieldA = a[sortField as keyof RPDItem];
-        fieldB = b[sortField as keyof RPDItem];
-      }
+      const monthKey = monthMap[field];
+      if (!monthKey) return <span>-</span>;
       
-      if (fieldA === undefined || fieldB === undefined) return 0;
+      const value = Number(item[monthKey]) || 0;
+      const editValue = isEditing && editValues[item.id] 
+        ? Number(editValues[item.id][monthKey as string]) || 0
+        : value;
       
-      if (typeof fieldA === 'string' && typeof fieldB === 'string') {
-        return sortDirection === 'asc' 
-          ? fieldA.localeCompare(fieldB) 
-          : fieldB.localeCompare(fieldA);
-      }
-      
-      if (typeof fieldA === 'number' && typeof fieldB === 'number') {
-        return sortDirection === 'asc' 
-          ? fieldA - fieldB 
-          : fieldB - fieldA;
-      }
-      
-      return 0;
-    });
-  }, [filteredItems, sortField, sortDirection]);
-
-  const totalByMonth = useMemo(() => {
-    return {
-      jan: items.reduce((sum, item) => sum + (Number(item.januari) || 0), 0),
-      feb: items.reduce((sum, item) => sum + (Number(item.februari) || 0), 0),
-      mar: items.reduce((sum, item) => sum + (Number(item.maret) || 0), 0),
-      apr: items.reduce((sum, item) => sum + (Number(item.april) || 0), 0),
-      mei: items.reduce((sum, item) => sum + (Number(item.mei) || 0), 0),
-      jun: items.reduce((sum, item) => sum + (Number(item.juni) || 0), 0),
-      jul: items.reduce((sum, item) => sum + (Number(item.juli) || 0), 0),
-      aug: items.reduce((sum, item) => sum + (Number(item.agustus) || 0), 0),
-      sep: items.reduce((sum, item) => sum + (Number(item.september) || 0), 0),
-      oct: items.reduce((sum, item) => sum + (Number(item.oktober) || 0), 0),
-      nov: items.reduce((sum, item) => sum + (Number(item.november) || 0), 0),
-      dec: items.reduce((sum, item) => sum + (Number(item.desember) || 0), 0)
-    };
-  }, [items]);
-
-  const grandTotal = useMemo(() => {
-    return items.reduce((sum, item) => sum + (Number(item.jumlah_rpd) || 0), 0);
-  }, [items]);
-
-  const sisaPagu = useMemo(() => {
-    return Number(pagu) - Number(grandTotal);
-  }, [pagu, grandTotal]);
-
-  const paginatedItems = pageSize === -1 
-    ? sortedItems 
-    : sortedItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  
-  const totalPages = pageSize === -1 ? 1 : Math.ceil(sortedItems.length / pageSize);
-
-  const getStatusClass = (item: RPDItem): string => {
-    const rpd = Number(item.jumlah_rpd) || 0;
-    const pagu = Number(item.jumlah_menjadi) || 0;
-    
-    if (rpd === pagu) {
-      return 'status-ok';
-    } else {
-      return 'status-sisa';
+      return isEditing ? (
+        <Input 
+          type="number"
+          value={editValue.toString()} 
+          onChange={(e) => handleEditChange(item.id, field, e.target.value)}
+          className="w-full text-right px-2 py-1 h-7"
+          min="0"
+        />
+      ) : (
+        <span className="text-right block w-full">{formatCurrency(value, false)}</span>
+      );
+    } catch (e) {
+      console.error('[RPDTable] Error in renderMonthValue:', e);
+      return <span>-</span>;
     }
-  };
-
-  const getStatusText = (item: RPDItem): string => {
-    const rpd = Number(item.jumlah_rpd) || 0;
-    const pagu = Number(item.jumlah_menjadi) || 0;
-    
-    if (rpd === pagu) {
-      return 'OK';
-    } else {
-      return 'Sisa';
-    }
-  };
-
-  const renderMonthValue = (item: RPDItem, month: string, field: string) => {
-    const isEditing = editingId === item.id;
-    
-    const monthMap: {[key: string]: keyof RPDItem} = {
-      'jan': 'januari',
-      'feb': 'februari',
-      'mar': 'maret',
-      'apr': 'april',
-      'mei': 'mei',
-      'jun': 'juni',
-      'jul': 'juli',
-      'aug': 'agustus',
-      'sep': 'september',
-      'oct': 'oktober',
-      'nov': 'november',
-      'dec': 'desember',
-    };
-    
-    const monthKey = monthMap[field];
-    if (!monthKey) return <span>-</span>;
-    
-    const value = Number(item[monthKey]) || 0;
-    const editValue = isEditing && editValues[item.id] 
-      ? Number(editValues[item.id][monthKey as string]) || 0
-      : value;
-    
-    return isEditing ? (
-      <Input 
-        type="number"
-        value={editValue.toString()} 
-        onChange={(e) => handleEditChange(item.id, field, e.target.value)}
-        className="w-full text-right px-2 py-1 h-7"
-        min="0"
-      />
-    ) : (
-      <span className="text-right block w-full">{formatCurrency(value, false)}</span>
-    );
   };
 
   if (loading) {
@@ -558,56 +657,68 @@ const RPDTable: React.FC<RPDTableProps> = ({
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((item, index) => (
-                  <tr key={item.id} className={`${index % 2 === 0 ? 'bg-slate-50' : ''} h-9`}>
-                    <td className="text-center fixed-column" style={{left: '0px'}}>
-                      {String((currentPage - 1) * (pageSize === -1 ? 0 : pageSize) + index + 1)}
-                    </td>
-                    <td className="status-cell fixed-column" style={{left: '30px'}}>
-                      <span className={getStatusClass(item)}>{String(getStatusText(item))}</span>
-                    </td>
-                    <td className="description-cell fixed-column" style={{left: '80px'}} title={String(item.uraian || '')}>
-                      <span className="line-clamp-2">{String(item.uraian || '')}</span>
-                    </td>
-                    <td className="pagu-cell fixed-column" style={{left: '380px'}}>
-                      {formatCurrency(Number(item.jumlah_menjadi) || 0)}
-                    </td>
-                    <td className="total-cell fixed-column" style={{left: '480px'}}>
-                      {formatCurrency(Number(item.jumlah_rpd) || 0)}
-                    </td>
-                    <td className="selisih-cell fixed-column" style={{left: '580px'}}>
-                      <span className={(Number(item.selisih) || 0) !== 0 ? 'text-red-500' : 'text-green-500'}>
-                        {formatCurrency(Number(item.selisih) || 0)}
-                      </span>
-                    </td>
-                    {['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].map(month => (
-                      <td key={month} className="month-cell">
-                        {renderMonthValue(item, month, month)}
-                      </td>
-                    ))}
-                    <td className="action-cell">
-                      {canEdit && (
-                        <div className="flex space-x-1 justify-center">
-                          {editingId === item.id ? (
-                            <Button variant="ghost" size="icon" onClick={() => saveEditing(item.id)} className="h-6 w-6">
-                              <Check className="h-3 w-3" />
-                            </Button>
-                          ) : (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => startEditing(item)} 
-                              className="h-6 w-6"
-                              title="Edit"
-                            >
-                              <FileEdit className="h-3 w-3" />
-                            </Button>
+                paginatedItems.map((item, index) => {
+                  try {
+                    if (!item || typeof item !== 'object' || !item.id) {
+                      console.warn('[RPDTable] Invalid item at index', index, ':', item);
+                      return null;
+                    }
+                    
+                    return (
+                      <tr key={item.id} className={`${index % 2 === 0 ? 'bg-slate-50' : ''} h-9`}>
+                        <td className="text-center fixed-column" style={{left: '0px'}}>
+                          {String((currentPage - 1) * (pageSize === -1 ? 0 : pageSize) + index + 1)}
+                        </td>
+                        <td className="status-cell fixed-column" style={{left: '30px'}}>
+                          <span className={getStatusClass(item)}>{String(getStatusText(item))}</span>
+                        </td>
+                        <td className="description-cell fixed-column" style={{left: '80px'}} title={String(item.uraian || '')}>
+                          <span className="line-clamp-2">{String(item.uraian || '')}</span>
+                        </td>
+                        <td className="pagu-cell fixed-column" style={{left: '380px'}}>
+                          {formatCurrency(Number(item.jumlah_menjadi) || 0)}
+                        </td>
+                        <td className="total-cell fixed-column" style={{left: '480px'}}>
+                          {formatCurrency(Number(item.jumlah_rpd) || 0)}
+                        </td>
+                        <td className="selisih-cell fixed-column" style={{left: '580px'}}>
+                          <span className={(Number(item.selisih) || 0) !== 0 ? 'text-red-500' : 'text-green-500'}>
+                            {formatCurrency(Number(item.selisih) || 0)}
+                          </span>
+                        </td>
+                        {['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].map(month => (
+                          <td key={month} className="month-cell">
+                            {renderMonthValue(item, month, month)}
+                          </td>
+                        ))}
+                        <td className="action-cell">
+                          {canEdit && (
+                            <div className="flex space-x-1 justify-center">
+                              {editingId === item.id ? (
+                                <Button variant="ghost" size="icon" onClick={() => saveEditing(item.id)} className="h-6 w-6">
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                              ) : (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => startEditing(item)} 
+                                  className="h-6 w-6"
+                                  title="Edit"
+                                >
+                                  <FileEdit className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
                           )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                        </td>
+                      </tr>
+                    );
+                  } catch (e) {
+                    console.error('[RPDTable] Error rendering item at index', index, ':', e, item);
+                    return null;
+                  }
+                })
               )}
             </tbody>
             <tfoot>

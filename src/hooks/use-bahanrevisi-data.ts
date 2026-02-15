@@ -790,8 +790,8 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     ? budgetItemsQuery.data.filter(item => item.status === 'changed').length
     : 0;
 
-  const totalRPDAllocated = rpdItemsQuery.data
-    ? roundToThousands(rpdItemsQuery.data.reduce((sum, item) => sum + (item.total_rpd || 0), 0))
+  const totalRPDAllocated = (Array.isArray(rpdItemsQuery.data) && rpdItemsQuery.data.length > 0)
+    ? roundToThousands(rpdItemsQuery.data.reduce((sum, item) => sum + (Number(item?.total_rpd) || 0), 0))
     : 0;
 
   const totalBlokir = budgetItemsQuery.data
