@@ -20,6 +20,7 @@ import {
   PiggyBank,
   Receipt,
   Plus,
+  BarChart3,
 } from "lucide-react";
 
 import {
@@ -47,6 +48,7 @@ const baseMenuItems = [
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Sigap SPJ", url: "/usulan-pencairan", icon: DollarSign },
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
+  { title: "Bahan Revisi Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3 },
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },

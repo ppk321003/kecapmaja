@@ -29,6 +29,7 @@ export interface SatkerConfig {
   kecaptobendahara_sheet_id?: string;
   generatespj_sheet_id?: string;
   kuitansi_sheet_id?: string;
+  bahanrevisi_sheet_id?: string;
 }
 
 /**
@@ -47,7 +48,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:X`, // 24 kolom (semua sheet IDs termasuk kuitansi_sheet_id)
+            range: `${sheetName}!A:Y`, // 25 kolom (semua sheet IDs termasuk bahanrevisi_sheet_id di kolom Y)
           },
         });
         
@@ -101,6 +102,7 @@ export function useSatkerConfig() {
           kecaptobendahara_sheet_id: row[21]?.trim() || '',
           generatespj_sheet_id: row[22]?.trim() || '',
           kuitansi_sheet_id: row[23]?.trim() || '',
+          bahanrevisi_sheet_id: row[24]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
@@ -123,7 +125,7 @@ export function useSatkerConfig() {
 export function getSheetIdBySatkerAndModule(
   configs: SatkerConfig[] | undefined,
   satker_id: string,
-  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara' | 'kuitansi'
+  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara' | 'kuitansi' | 'bahanrevisi'
 ): string | null {
   if (!configs) {
     console.warn(`[getSheetIdBySatkerAndModule] Configs is undefined, cannot find satker ${satker_id}`);
@@ -158,6 +160,7 @@ export function getSheetIdBySatkerAndModule(
     linkers: 'linkers_sheet_id',
     kecaptobendahara: 'kecaptobendahara_sheet_id',
     kuitansi: 'kuitansi_sheet_id',
+    bahanrevisi: 'bahanrevisi_sheet_id',
   };
 
   const sheetId = config[moduleKeyMap[module]];
