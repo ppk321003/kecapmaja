@@ -3,7 +3,7 @@
  * Similar to KAK.tsx pattern - supports search, filter, and value/label separation
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Select,
   SelectContent,
@@ -37,15 +37,59 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Ensure options is always an array
-  const safeOptions = Array.isArray(options) ? options.filter(Boolean) : [];
+  // Ensure options is always a safe array of valid SelectOptions
+  const safeOptions = useMemo(() => {
+    try {
+      if (!Array.isArray(options)) return [];
+      return options.filter(opt => {
+        try {
+          return (
+            opt &&
+            typeof opt === 'object' &&
+            typeof opt.value === 'string' &&
+            typeof opt.label === 'string' &&
+            opt.value.length > 0 &&
+            opt.label.length > 0
+          );
+        } catch {
+          return false;
+        }
+      });
+    } catch (e) {
+      console.error('Error processing options:', options, e);
+      return [];
+    }
+  }, [options]);
 
-  const filteredOptions = safeOptions.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    option.value.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOptions = useMemo(() => {
+    try {
+      if (!safeOptions || !Array.isArray(safeOptions)) return [];
+      const lowerSearchTerm = String(searchTerm || '').toLowerCase();
+      return safeOptions.filter(option => {
+        try {
+          const optLabel = String(option.label || '').toLowerCase();
+          const optValue = String(option.value || '').toLowerCase();
+          return optLabel.includes(lowerSearchTerm) || optValue.includes(lowerSearchTerm);
+        } catch {
+          return false;
+        }
+      });
+    } catch (e) {
+      console.error('Error filtering options:', e);
+      return [];
+    }
+  }, [safeOptions, searchTerm]);
 
-  const selectedOption = safeOptions.find(opt => opt.value === value);
+  const selectedOption = useMemo(() => {
+    try {
+      if (!safeOptions || !Array.isArray(safeOptions)) return undefined;
+      const safeValue = String(value || '');
+      return safeOptions.find(opt => opt && String(opt.value || '') === safeValue);
+    } catch (e) {
+      console.error('Error finding selected option:', e);
+      return undefined;
+    }
+  }, [safeOptions, value]);
 
   // Reset search when dropdown opens/closes
   useEffect(() => {
@@ -56,10 +100,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   return (
     <Select
-      value={value}
+      value={String(value || '')}
       onValueChange={(newValue) => {
-        onValueChange(newValue);
-        setIsOpen(false);
+        try {
+          onValueChange(String(newValue || ''));
+          setIsOpen(false);
+        } catch (e) {
+          console.error('Error in onValueChange:', e);
+        }
       }}
       open={isOpen}
       onOpenChange={setIsOpen}
@@ -67,7 +115,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     >
       <SelectTrigger className="h-8 text-xs">
         <SelectValue placeholder={placeholder}>
-          {selectedOption ? String(selectedOption.label) : placeholder}
+          {selectedOption && selectedOption.label ? String(selectedOption.label) : placeholder}
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="max-h-[300px]">
@@ -86,16 +134,25 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
         {/* Options */}
         <div className="max-h-[250px] overflow-y-auto">
-          {filteredOptions.length > 0 ? (
-            filteredOptions.map((option) => (
-              <SelectItem 
-                key={option.value} 
-                value={option.value} 
-                className="text-xs"
-              >
-                {String(option.label)}
-              </SelectItem>
-            ))
+          {filteredOptions && filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => {
+              try {
+                const key = String(option.value || `opt-${Math.random()}`);
+                const val = String(option.value || '');
+                const lbl = String(option.label || '');
+                
+                if (!key || !val || !lbl) return null;
+                
+                return (
+                  <SelectItem key={key} value={val} className="text-xs">
+                    {lbl}
+                  </SelectItem>
+                );
+              } catch (e) {
+                console.error('Error rendering option item:', option, e);
+                return null;
+              }
+            })
           ) : (
             <div className="p-2 text-xs text-muted-foreground text-center">
               Tidak ditemukan

@@ -49,107 +49,194 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   hideZeroPagu = false,
   setHideZeroPagu,
 }) => {
-  
   // Build options from reference data (master sheets) like KAK.tsx does
   
   // Program Pembebanan options - from programs reference data
   const programPembebananOptions = useMemo<SelectOption[]>(() => {
-    if (!programs || !Array.isArray(programs)) return [];
-    return programs
-      .filter(p => p && p.is_active)
-      .map(p => {
-        const val = String(p.name || '').trim();
-        const lbl = String(`${p.code || ''} - ${p.name || ''}`).trim();
-        return val && lbl ? { value: val, label: lbl } : null;
-      })
-      .filter((opt): opt is SelectOption => opt !== null)
-      .sort((a, b) => a.label.localeCompare(b.label));
+    try {
+      if (!programs || !Array.isArray(programs)) return [];
+      const result: SelectOption[] = [];
+      for (const p of programs) {
+        try {
+          if (!p || typeof p !== 'object' || !p.is_active) continue;
+          const val = String(p.name || '').trim();
+          const lbl = String(p.code ? String(p.code) + ' - ' : '') + String(p.name || '');
+          if (val && lbl.trim()) {
+            result.push({ value: val, label: lbl.trim() });
+          }
+        } catch (e) {
+          console.error('Error processing program:', p, e);
+        }
+      }
+      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+    } catch (e) {
+      console.error('Error building programPembebananOptions:', e);
+      return [];
+    }
   }, [programs]);
 
   // Kegiatan options - filtered by selected program
   const kegiatanOptions = useMemo<SelectOption[]>(() => {
-    if (!filters.program_pembebanan || !kegiatans || !Array.isArray(kegiatans)) return [];
-    
-    const relatedProgram = programs?.find(p => p && String(p.name || '') === String(filters.program_pembebanan || ''));
-    if (!relatedProgram) return [];
+    try {
+      if (!filters.program_pembebanan || typeof filters.program_pembebanan !== 'string') return [];
+      if (!kegiatans || !Array.isArray(kegiatans)) return [];
+      
+      const relatedProgram = programs?.find(p => {
+        try {
+          return p && p.name && String(p.name) === String(filters.program_pembebanan);
+        } catch {
+          return false;
+        }
+      });
+      if (!relatedProgram) return [];
 
-    return kegiatans
-      .filter(k => k && k.program_id === relatedProgram.id && k.is_active)
-      .map(k => {
-        const val = String(k.name || '').trim();
-        const lbl = String(`${k.code || ''} - ${k.name || ''}`).trim();
-        return val && lbl ? { value: val, label: lbl } : null;
-      })
-      .filter((opt): opt is SelectOption => opt !== null)
-      .sort((a, b) => a.label.localeCompare(b.label));
+      const result: SelectOption[] = [];
+      for (const k of kegiatans) {
+        try {
+          if (!k || typeof k !== 'object' || !k.is_active || k.program_id !== relatedProgram.id) continue;
+          const val = String(k.name || '').trim();
+          const lbl = String(k.code ? String(k.code) + ' - ' : '') + String(k.name || '');
+          if (val && lbl.trim()) {
+            result.push({ value: val, label: lbl.trim() });
+          }
+        } catch (e) {
+          console.error('Error processing kegiatan:', k, e);
+        }
+      }
+      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+    } catch (e) {
+      console.error('Error building kegiatanOptions:', e);
+      return [];
+    }
   }, [filters.program_pembebanan, kegiatans, programs]);
 
   // Rincian Output options - filtered by selected kegiatan
   const rincianOutputOptions = useMemo<SelectOption[]>(() => {
-    if (!filters.kegiatan || !rincianOutputs || !Array.isArray(rincianOutputs)) return [];
-    
-    const relatedKegiatan = kegiatans?.find(k => k && String(k.name || '') === String(filters.kegiatan || ''));
-    if (!relatedKegiatan) return [];
+    try {
+      if (!filters.kegiatan || typeof filters.kegiatan !== 'string') return [];
+      if (!rincianOutputs || !Array.isArray(rincianOutputs)) return [];
+      
+      const relatedKegiatan = kegiatans?.find(k => {
+        try {
+          return k && k.name && String(k.name) === String(filters.kegiatan);
+        } catch {
+          return false;
+        }
+      });
+      if (!relatedKegiatan) return [];
 
-    return rincianOutputs
-      .filter(r => r && r.kegiatan_id === relatedKegiatan.id && r.is_active)
-      .map(r => {
-        const val = String(r.name || '').trim();
-        const lbl = String(`${r.code || ''} - ${r.name || ''}`).trim();
-        return val && lbl ? { value: val, label: lbl } : null;
-      })
-      .filter((opt): opt is SelectOption => opt !== null)
-      .sort((a, b) => a.label.localeCompare(b.label));
+      const result: SelectOption[] = [];
+      for (const r of rincianOutputs) {
+        try {
+          if (!r || typeof r !== 'object' || !r.is_active || r.kegiatan_id !== relatedKegiatan.id) continue;
+          const val = String(r.name || '').trim();
+          const lbl = String(r.code ? String(r.code) + ' - ' : '') + String(r.name || '');
+          if (val && lbl.trim()) {
+            result.push({ value: val, label: lbl.trim() });
+          }
+        } catch (e) {
+          console.error('Error processing rincian output:', r, e);
+        }
+      }
+      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+    } catch (e) {
+      console.error('Error building rincianOutputOptions:', e);
+      return [];
+    }
   }, [filters.kegiatan, rincianOutputs, kegiatans]);
 
   // Komponen Output options - filtered by selected rincian output
   const komponenOutputOptions = useMemo<SelectOption[]>(() => {
-    if (!filters.rincian_output || !komponenOutputs || !Array.isArray(komponenOutputs)) return [];
-    
-    const relatedRincian = rincianOutputs?.find(r => r && String(r.name || '') === String(filters.rincian_output || ''));
-    if (!relatedRincian) return [];
+    try {
+      if (!filters.rincian_output || typeof filters.rincian_output !== 'string') return [];
+      if (!komponenOutputs || !Array.isArray(komponenOutputs)) return [];
+      
+      const relatedRincian = rincianOutputs?.find(r => {
+        try {
+          return r && r.name && String(r.name) === String(filters.rincian_output);
+        } catch {
+          return false;
+        }
+      });
+      if (!relatedRincian) return [];
 
-    return komponenOutputs
-      .filter(k => k && k.rincian_output_id === relatedRincian.id && k.is_active)
-      .map(k => {
-        const val = String(k.name || '').trim();
-        const lbl = String(`${k.code || ''} - ${k.name || ''}`).trim();
-        return val && lbl ? { value: val, label: lbl } : null;
-      })
-      .filter((opt): opt is SelectOption => opt !== null)
-      .sort((a, b) => a.label.localeCompare(b.label));
+      const result: SelectOption[] = [];
+      for (const k of komponenOutputs) {
+        try {
+          if (!k || typeof k !== 'object' || !k.is_active || k.rincian_output_id !== relatedRincian.id) continue;
+          const val = String(k.name || '').trim();
+          const lbl = String(k.code ? String(k.code) + ' - ' : '') + String(k.name || '');
+          if (val && lbl.trim()) {
+            result.push({ value: val, label: lbl.trim() });
+          }
+        } catch (e) {
+          console.error('Error processing komponen output:', k, e);
+        }
+      }
+      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+    } catch (e) {
+      console.error('Error building komponenOutputOptions:', e);
+      return [];
+    }
   }, [filters.rincian_output, komponenOutputs, rincianOutputs]);
 
   // Sub Komponen options - filtered by selected komponen output
   const subKomponenOptions = useMemo<SelectOption[]>(() => {
-    if (!filters.komponen_output || !subKomponen || !Array.isArray(subKomponen)) return [];
-    
-    const relatedKomponen = komponenOutputs?.find(k => k && String(k.name || '') === String(filters.komponen_output || ''));
-    if (!relatedKomponen) return [];
+    try {
+      if (!filters.komponen_output || typeof filters.komponen_output !== 'string') return [];
+      if (!subKomponen || !Array.isArray(subKomponen)) return [];
+      
+      const relatedKomponen = komponenOutputs?.find(k => {
+        try {
+          return k && k.name && String(k.name) === String(filters.komponen_output);
+        } catch {
+          return false;
+        }
+      });
+      if (!relatedKomponen) return [];
 
-    return subKomponen
-      .filter(s => s && s.komponen_output_id === relatedKomponen.id && s.is_active)
-      .map(s => {
-        const val = String(s.name || '').trim();
-        const lbl = String(`${s.code || ''} - ${s.name || ''}`).trim();
-        return val && lbl ? { value: val, label: lbl } : null;
-      })
-      .filter((opt): opt is SelectOption => opt !== null)
-      .sort((a, b) => a.label.localeCompare(b.label));
+      const result: SelectOption[] = [];
+      for (const s of subKomponen) {
+        try {
+          if (!s || typeof s !== 'object' || !s.is_active || s.komponen_output_id !== relatedKomponen.id) continue;
+          const val = String(s.name || '').trim();
+          const lbl = String(s.code ? String(s.code) + ' - ' : '') + String(s.name || '');
+          if (val && lbl.trim()) {
+            result.push({ value: val, label: lbl.trim() });
+          }
+        } catch (e) {
+          console.error('Error processing sub komponen:', s, e);
+        }
+      }
+      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+    } catch (e) {
+      console.error('Error building subKomponenOptions:', e);
+      return [];
+    }
   }, [filters.komponen_output, subKomponen, komponenOutputs]);
 
   // Akun options - all active akuns available
   const akunOptions = useMemo<SelectOption[]>(() => {
-    if (!akuns || !Array.isArray(akuns)) return [];
-    return akuns
-      .filter(a => a && a.is_active)
-      .map(a => {
-        const val = String(a.code || '').trim();
-        const lbl = String(`${a.code || ''} - ${a.name || ''}`).trim();
-        return val && lbl ? { value: val, label: lbl } : null;
-      })
-      .filter((opt): opt is SelectOption => opt !== null)
-      .sort((a, b) => a.label.localeCompare(b.label));
+    try {
+      if (!akuns || !Array.isArray(akuns)) return [];
+      const result: SelectOption[] = [];
+      for (const a of akuns) {
+        try {
+          if (!a || typeof a !== 'object' || !a.is_active) continue;
+          const val = String(a.code || '').trim();
+          const lbl = String(a.code ? String(a.code) + ' - ' : '') + String(a.name || '');
+          if (val && lbl.trim()) {
+            result.push({ value: val, label: lbl.trim() });
+          }
+        } catch (e) {
+          console.error('Error processing akun:', a, e);
+        }
+      }
+      return result.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+    } catch (e) {
+      console.error('Error building akunOptions:', e);
+      return [];
+    }
   }, [akuns]);
 
   const handleReset = () => {
