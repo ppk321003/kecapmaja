@@ -68,56 +68,36 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   // Program Pembebanan options - use provided options if available
   const programPembebananOptions = useMemo<SelectOption[]>(() => {
     // Always try reference data first (most reliable)
-    try {
-      if (programs && Array.isArray(programs) && programs.length > 0) {
-        const result: SelectOption[] = [];
-        for (const p of programs) {
-          try {
-            if (!p || typeof p !== 'object') continue;
-            // Don't strictly require is_active - just skip if explicitly false
-            if (p.is_active === false) continue;
-            const code = String(p.code || '').trim();
-            const name = String(p.name || '').trim();
-            if (code && name) {
-              const label = `${code} - ${name}`;
-              result.push({ value: code, label });
-            }
-          } catch (e) {
-            console.error('Error processing program:', p, e);
-          }
+    if (programs && Array.isArray(programs) && programs.length > 0) {
+      const result: SelectOption[] = [];
+      for (const p of programs) {
+        const code = p?.code ? String(p.code).trim() : '';
+        const name = p?.name ? String(p.name).trim() : '';
+        if (code && name) {
+          result.push({ value: code, label: `${code} - ${name}` });
         }
-        console.log('[Filter] Program options from reference:', result.length, 'filtered from programs:', programs.length);
-        if (result.length > 0) return result;
       }
-    } catch (e) {
-      console.error('Error building program options from reference:', e);
+      if (result.length > 0) {
+        return result;
+      }
     }
     
     // Fall back to provided options from hook
     if (programsOptions && programsOptions.length > 0) {
-      console.log('[Filter] Using provided programsOptions:', programsOptions.length);
       return programsOptions;
     }
 
-    try {
-      // FALLBACK: Derive from budgetItems
-      console.log('[Filter] Using fallback: deriving program options from budgetItems');
-      const fallback: SelectOption[] = [];
-      const seen = new Set<string>();
-      for (const item of budgetItems) {
-        try {
-          const val = String(item.program_pembebanan || '').trim();
-          if (val && !seen.has(val)) {
-            seen.add(val);
-            fallback.push({ value: val, label: val });
-          }
-        } catch {}
+    // FALLBACK: Derive from budgetItems
+    const fallback: SelectOption[] = [];
+    const seen = new Set<string>();
+    for (const item of budgetItems) {
+      const val = String(item.program_pembebanan || '').trim();
+      if (val && !seen.has(val)) {
+        seen.add(val);
+        fallback.push({ value: val, label: val });
       }
-      return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
-    } catch (e) {
-      console.error('Error building programPembebananOptions:', e);
-      return [];
     }
+    return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
   }, [programs, programsOptions, budgetItems]);
 
   // Kegiatan options - filtered by selected program
@@ -127,44 +107,30 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       // Always try reference data first (most reliable) with "code - name" format
       if (kegiatans && Array.isArray(kegiatans) && kegiatans.length > 0) {
-        const relatedProgram = programs?.find(p => {
-          try {
-            return p && p.code && String(p.code) === String(filters.program_pembebanan);
-          } catch {
-            return false;
-          }
-        });
+        const relatedProgram = programs?.find(p => String(p?.code || '') === String(filters.program_pembebanan || ''));
         if (relatedProgram) {
           const result: SelectOption[] = [];
           for (const k of kegiatans) {
-            try {
-              if (!k || typeof k !== 'object') continue;
-              // Don't strictly require is_active - just skip if explicitly false
-              if (k.is_active === false) continue;
-              if (k.program_id !== relatedProgram.id) continue;
-              const code = String(k.code || '').trim();
-              const name = String(k.name || '').trim();
-              if (code && name) {
-                const label = `${code} - ${name}`;
-                result.push({ value: code, label });
-              }
-            } catch (e) {
-              console.error('Error processing kegiatan:', k, e);
+            // Only filter by program_id if it exists, otherwise include all
+            if (k?.program_id && relatedProgram.id && k.program_id !== relatedProgram.id) continue;
+            const code = k?.code ? String(k.code).trim() : '';
+            const name = k?.name ? String(k.name).trim() : '';
+            if (code && name) {
+              result.push({ value: code, label: `${code} - ${name}` });
             }
           }
-          console.log('[Filter] Kegiatan options from reference:', result.length, 'filtered from kegiatans:', kegiatans.length);
-          if (result.length > 0) return result;
+          if (result.length > 0) {
+            return result;
+          }
         }
       }
       
       // Fall back to provided options from hook
       if (kegiatansOptions && Array.isArray(kegiatansOptions) && kegiatansOptions.length > 0) {
-        console.log('[Filter] Using provided kegiatansOptions:', kegiatansOptions.length);
         return kegiatansOptions;
       }
 
       // FALLBACK: Derive from budgetItems with "code - name" format
-      console.log('[Filter] Using fallback: deriving kegiatan options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
       const relevantItems = budgetItems.filter(item => String(item.program_pembebanan || '').trim() === String(filters.program_pembebanan).trim());
@@ -182,7 +148,6 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       }
       return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
-      console.error('Error building kegiatanOptions:', e);
       return [];
     }
   }, [filters.program_pembebanan, kegiatans, programs, budgetItems, kegiatansOptions]);
@@ -194,44 +159,30 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       // Always try reference data first (most reliable) with "code - name" format
       if (rincianOutputs && Array.isArray(rincianOutputs) && rincianOutputs.length > 0) {
-        const relatedKegiatan = kegiatans?.find(k => {
-          try {
-            return k && k.code && String(k.code) === String(filters.kegiatan);
-          } catch {
-            return false;
-          }
-        });
+        const relatedKegiatan = kegiatans?.find(k => String(k?.code || '') === String(filters.kegiatan || ''));
         if (relatedKegiatan) {
           const result: SelectOption[] = [];
           for (const r of rincianOutputs) {
-            try {
-              if (!r || typeof r !== 'object') continue;
-              // Don't strictly require is_active - just skip if explicitly false
-              if (r.is_active === false) continue;
-              if (r.kegiatan_id !== relatedKegiatan.id) continue;
-              const code = String(r.code || '').trim();
-              const name = String(r.name || '').trim();
-              if (code && name) {
-                const label = `${code} - ${name}`;
-                result.push({ value: code, label });
-              }
-            } catch (e) {
-              console.error('Error processing rincian output:', r, e);
+            // Only filter by kegiatan_id if it exists, otherwise include all
+            if (r?.kegiatan_id && relatedKegiatan.id && r.kegiatan_id !== relatedKegiatan.id) continue;
+            const code = r?.code ? String(r.code).trim() : '';
+            const name = r?.name ? String(r.name).trim() : '';
+            if (code && name) {
+              result.push({ value: code, label: `${code} - ${name}` });
             }
           }
-          console.log('[Filter] Rincian Output options from reference:', result.length, 'filtered from rincianOutputs:', rincianOutputs.length);
-          if (result.length > 0) return result;
+          if (result.length > 0) {
+            return result;
+          }
         }
       }
       
       // Fall back to provided options from hook
       if (rincianOutputsOptions && Array.isArray(rincianOutputsOptions) && rincianOutputsOptions.length > 0) {
-        console.log('[Filter] Using provided rincianOutputsOptions:', rincianOutputsOptions.length);
         return rincianOutputsOptions;
       }
 
       // FALLBACK: Derive from budgetItems with "code - name" format
-      console.log('[Filter] Using fallback: deriving rincian output options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
       const relevantItems = budgetItems.filter(item => String(item.kegiatan || '').trim() === String(filters.kegiatan).trim());
@@ -249,7 +200,6 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       }
       return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
-      console.error('Error building rincianOutputOptions:', e);
       return [];
     }
   }, [filters.kegiatan, rincianOutputs, kegiatans, budgetItems, rincianOutputsOptions]);
@@ -261,44 +211,30 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       // Always try reference data first (most reliable) with "code - name" format
       if (komponenOutputs && Array.isArray(komponenOutputs) && komponenOutputs.length > 0) {
-        const relatedRincian = rincianOutputs?.find(r => {
-          try {
-            return r && r.code && String(r.code) === String(filters.rincian_output);
-          } catch {
-            return false;
-          }
-        });
+        const relatedRincian = rincianOutputs?.find(r => String(r?.code || '') === String(filters.rincian_output || ''));
         if (relatedRincian) {
           const result: SelectOption[] = [];
           for (const k of komponenOutputs) {
-            try {
-              if (!k || typeof k !== 'object') continue;
-              // Don't strictly require is_active - just skip if explicitly false
-              if (k.is_active === false) continue;
-              if (k.rincian_output_id !== relatedRincian.id) continue;
-              const code = String(k.code || '').trim();
-              const name = String(k.name || '').trim();
-              if (code && name) {
-                const label = `${code} - ${name}`;
-                result.push({ value: code, label });
-              }
-            } catch (e) {
-              console.error('Error processing komponen output:', k, e);
+            // Only filter by rincian_output_id if it exists, otherwise include all
+            if (k?.rincian_output_id && relatedRincian.id && k.rincian_output_id !== relatedRincian.id) continue;
+            const code = k?.code ? String(k.code).trim() : '';
+            const name = k?.name ? String(k.name).trim() : '';
+            if (code && name) {
+              result.push({ value: code, label: `${code} - ${name}` });
             }
           }
-          console.log('[Filter] Komponen Output options from reference:', result.length, 'filtered from komponenOutputs:', komponenOutputs.length);
-          if (result.length > 0) return result;
+          if (result.length > 0) {
+            return result;
+          }
         }
       }
       
       // Fall back to provided options from hook
       if (komponenOutputsOptions && Array.isArray(komponenOutputsOptions) && komponenOutputsOptions.length > 0) {
-        console.log('[Filter] Using provided komponenOutputsOptions:', komponenOutputsOptions.length);
         return komponenOutputsOptions;
       }
 
       // FALLBACK: Derive from budgetItems with "code - name" format
-      console.log('[Filter] Using fallback: deriving komponen output options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
       const relevantItems = budgetItems.filter(item => String(item.rincian_output || '').trim() === String(filters.rincian_output).trim());
@@ -316,7 +252,6 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       }
       return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
-      console.error('Error building komponenOutputOptions:', e);
       return [];
     }
   }, [filters.rincian_output, komponenOutputs, rincianOutputs, budgetItems, komponenOutputsOptions]);
@@ -328,44 +263,30 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       // Always try reference data first (most reliable) with "code - name" format
       if (subKomponen && Array.isArray(subKomponen) && subKomponen.length > 0) {
-        const relatedKomponen = komponenOutputs?.find(k => {
-          try {
-            return k && k.code && String(k.code) === String(filters.komponen_output);
-          } catch {
-            return false;
-          }
-        });
+        const relatedKomponen = komponenOutputs?.find(k => String(k?.code || '') === String(filters.komponen_output || ''));
         if (relatedKomponen) {
           const result: SelectOption[] = [];
           for (const s of subKomponen) {
-            try {
-              if (!s || typeof s !== 'object') continue;
-              // Don't strictly require is_active - just skip if explicitly false
-              if (s.is_active === false) continue;
-              if (s.komponen_output_id !== relatedKomponen.id) continue;
-              const code = String(s.code || '').trim();
-              const name = String(s.name || '').trim();
-              if (code && name) {
-                const label = `${code} - ${name}`;
-                result.push({ value: code, label });
-              }
-            } catch (e) {
-              console.error('Error processing sub komponen:', s, e);
+            // Only filter by komponen_output_id if it exists, otherwise include all
+            if (s?.komponen_output_id && relatedKomponen.id && s.komponen_output_id !== relatedKomponen.id) continue;
+            const code = s?.code ? String(s.code).trim() : '';
+            const name = s?.name ? String(s.name).trim() : '';
+            if (code && name) {
+              result.push({ value: code, label: `${code} - ${name}` });
             }
           }
-          console.log('[Filter] Sub Komponen options from reference:', result.length, 'filtered from subKomponen:', subKomponen.length);
-          if (result.length > 0) return result;
+          if (result.length > 0) {
+            return result;
+          }
         }
       }
       
       // Fall back to provided options from hook
       if (providedSubKomponenOptions && Array.isArray(providedSubKomponenOptions) && providedSubKomponenOptions.length > 0) {
-        console.log('[Filter] Using provided subKomponenOptions:', providedSubKomponenOptions.length);
         return providedSubKomponenOptions;
       }
 
       // FALLBACK: Derive from budgetItems with "code - name" format
-      console.log('[Filter] Using fallback: deriving sub komponen options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
       const relevantItems = budgetItems.filter(item => String(item.komponen_output || '').trim() === String(filters.komponen_output).trim());
@@ -383,7 +304,6 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       }
       return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
-      console.error('Error building subKomponenOptions:', e);
       return [];
     }
   }, [filters.komponen_output, subKomponen, komponenOutputs, budgetItems, providedSubKomponenOptions]);
@@ -425,25 +345,17 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         
         const result: SelectOption[] = [];
         for (const a of akuns) {
-          try {
-            if (!a || typeof a !== 'object') continue;
-            // Don't strictly require is_active - just skip if explicitly false
-            if (a.is_active === false) continue;
-            const code = String(a.code || '').trim();
-            
-            // If we have relevant items, only include matching akuns; otherwise include all
-            if (relevantAkunValues && !relevantAkunValues.has(code)) continue;
-            
-            const name = String(a.name || '').trim();
-            if (code && name) {
-              const label = `${code} - ${name}`;
-              result.push({ value: code, label });
-            }
-          } catch (e) {
-            console.error('Error processing akun:', a, e);
+          const code = a?.code ? String(a.code).trim() : '';
+          const name = a?.name ? String(a.name).trim() : '';
+          
+          // If we have relevant items, only include matching akuns; otherwise include all
+          if (relevantAkunValues && !relevantAkunValues.has(code)) continue;
+          
+          if (code && name) {
+            result.push({ value: code, label: `${code} - ${name}` });
           }
         }
-        console.log('[Filter] Akun options from reference:', result.length, 'filtered from akuns:', akuns.length);
+
         if (result.length > 0) return result;
       }      
       // Fall back to provided options from hook
