@@ -40,6 +40,7 @@ interface RPDInputDialogProps {
   itemId: string;
   itemUraian: string;
   totalPagu: number;
+  pembebanan?: string;
   initialData?: RPDInputData;
   readOnly?: boolean;
   blokir?: number;
@@ -67,6 +68,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   itemId,
   itemUraian,
   totalPagu,
+  pembebanan = '',
   initialData = {},
   readOnly = false,
   blokir = 0,
@@ -223,6 +225,9 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
         <div className="space-y-3">
           {/* Item Info */}
           <div className="bg-slate-50 p-2 rounded border border-slate-200">
+            {pembebanan && (
+              <p className="text-xs text-slate-600"><strong>Pembebanan:</strong> {pembebanan}</p>
+            )}
             <p className="text-xs text-slate-600"><strong>Item:</strong> {itemUraian}</p>
             <p className="text-xs text-slate-600"><strong>Pagu:</strong> {formatNumber(totalPagu)}</p>
           </div>

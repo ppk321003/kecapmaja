@@ -676,6 +676,14 @@ const RPDTable: React.FC<RPDTableProps> = ({
           itemId={selectedRPDItem.id}
           itemUraian={selectedRPDItem.uraian}
           totalPagu={selectedRPDItem.total_pagu}
+          pembebanan={[
+            selectedRPDItem.program_pembebanan,
+            selectedRPDItem.kegiatan,
+            selectedRPDItem.rincian_output,
+            selectedRPDItem.komponen_output,
+            selectedRPDItem.sub_komponen,
+            selectedRPDItem.akun
+          ].filter(v => v && v.trim()).join('.')}
           initialData={{
             jan: selectedRPDItem.jan,
             feb: selectedRPDItem.feb,

@@ -813,6 +813,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
       const matchingBudgetItem = budgetItemsQuery.data?.find(b => b.id === rpdItem.id);
       return {
         ...rpdItem,
+        rincian_output: matchingBudgetItem?.rincian_output || rpdItem.rincian_output || '',
         blokir: matchingBudgetItem?.blokir || 0
       };
     });
