@@ -5,7 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BudgetItem, RPDItem } from '@/types/bahanrevisi';
-import { generateId } from '@/utils/bahanrevisi-calculations';
+import { generateId, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
 
 interface UseBahanRevisiSubmitProps {
   sheetId: string | null;
@@ -188,7 +188,7 @@ const approveBudgetItem = async (
 ): Promise<BudgetItem> => {
   const updatedItem = await updateBudgetItem(sheetId, itemId, {
     approved_by: approvedBy,
-    approved_date: new Date().toISOString(),
+    approved_date: formatDateIndonesia(new Date().toISOString()),
   }, allItems);
 
   console.log('[approveBudgetItem] Item approved by:', approvedBy);
@@ -206,10 +206,11 @@ const rejectBudgetItem = async (
   allItems: BudgetItem[]
 ): Promise<BudgetItem> => {
   const updatedItem = await updateBudgetItem(sheetId, itemId, {
-    rejected_date: new Date().toISOString(),
+    rejected_date: formatDateIndonesia(new Date().toISOString()),
+    notes: rejectionReason || '',
   }, allItems);
 
-  console.log('[rejectBudgetItem] Item rejected by:', rejectedBy);
+  console.log('[rejectBudgetItem] Item rejected by:', rejectedBy, 'Reason:', rejectionReason);
   return updatedItem;
 };
 

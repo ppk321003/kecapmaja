@@ -139,7 +139,9 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   }, [values, paguTidakDapatDitarik, totalPagu]);
 
   const handleValueChange = (key: string, value: string) => {
-    const numValue = parseInt(value.replace(/\D/g, ''), 10) || 0;
+    // Remove all non-digit characters to get clean numeric value
+    const cleanValue = value.replace(/[^\d]/g, '');
+    const numValue = parseInt(cleanValue, 10) || 0;
     setValues(prev => ({ ...prev, [key]: numValue }));
   };
 
@@ -253,9 +255,8 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                       <td className="px-2 py-2 text-xs font-medium text-slate-700 whitespace-nowrap">{leftMonth.label}</td>
                       <td className="px-2 py-2">
                         <Input
-                          type="number"
-                          min="0"
-                          max="100"
+                          type="text"
+                          inputMode="numeric"
                           value={calculations.percentages[leftMonth.key] || 0}
                           onChange={(e) => handlePercentageChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
@@ -265,8 +266,8 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                       </td>
                       <td className="px-2 py-2">
                         <Input
-                          type="number"
-                          min="0"
+                          type="text"
+                          inputMode="numeric"
                           value={values[leftMonth.key as keyof typeof values] || 0}
                           onChange={(e) => handleValueChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
@@ -278,9 +279,8 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                       <td className="px-2 py-2 text-xs font-medium text-slate-700 whitespace-nowrap">{rightMonth.label}</td>
                       <td className="px-2 py-2">
                         <Input
-                          type="number"
-                          min="0"
-                          max="100"
+                          type="text"
+                          inputMode="numeric"
                           value={calculations.percentages[rightMonth.key] || 0}
                           onChange={(e) => handlePercentageChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
@@ -290,8 +290,8 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                       </td>
                       <td className="px-2 py-2">
                         <Input
-                          type="number"
-                          min="0"
+                          type="text"
+                          inputMode="numeric"
                           value={values[rightMonth.key as keyof typeof values] || 0}
                           onChange={(e) => handleValueChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
