@@ -730,16 +730,75 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     ? filterBudgetItems(budgetItemsQuery.data, filters)
     : budgetItemsQuery.data;
 
-  // Get dropdown options berdasarkan budget items
-  const programsOptions = budgetItemsQuery.data
-    ? Array.from(new Set(budgetItemsQuery.data.map(item => item.program_pembebanan))).sort()
+  // Get dropdown options with "code - name" format
+  // Maps codes to their display format using master sheets
+
+  const programsOptions = budgetItemsQuery.data && programsQuery.data
+    ? Array.from(new Set(budgetItemsQuery.data.map(item => item.program_pembebanan)))
+        .map(code => {
+          const prog = programsQuery.data.find(p => p.code === code);
+          return prog ? `${prog.code} - ${prog.name}` : code;
+        })
+        .sort()
     : [];
 
-  const kegiatansOptions = filters?.program_pembebanan && budgetItemsQuery.data
+  const kegiatansOptions = filters?.program_pembebanan && budgetItemsQuery.data && kegiatansQuery.data
     ? budgetItemsQuery.data
         .filter(item => item.program_pembebanan === filters.program_pembebanan)
         .map(item => item.kegiatan)
         .filter((v, i, a) => a.indexOf(v) === i)
+        .map(code => {
+          const keg = kegiatansQuery.data.find(k => k.code === code);
+          return keg ? `${keg.code} - ${keg.name}` : code;
+        })
+        .sort()
+    : [];
+
+  const rincianOutputsOptions = filters?.kegiatan && budgetItemsQuery.data && rincianOutputsQuery.data
+    ? budgetItemsQuery.data
+        .filter(item => item.kegiatan === filters.kegiatan)
+        .map(item => item.rincian_output)
+        .filter((v, i, a) => a.indexOf(v) === i && v)
+        .map(code => {
+          const rio = rincianOutputsQuery.data.find(r => r.code === code);
+          return rio ? `${rio.code} - ${rio.name}` : code;
+        })
+        .sort()
+    : [];
+
+  const komponenOutputsOptions = filters?.rincian_output && budgetItemsQuery.data && komponenOutputsQuery.data
+    ? budgetItemsQuery.data
+        .filter(item => item.rincian_output === filters.rincian_output)
+        .map(item => item.komponen_output)
+        .filter((v, i, a) => a.indexOf(v) === i && v)
+        .map(code => {
+          const ko = komponenOutputsQuery.data.find(k => k.code === code);
+          return ko ? `${ko.code} - ${ko.name}` : code;
+        })
+        .sort()
+    : [];
+
+  const subKomponenOptions = filters?.komponen_output && budgetItemsQuery.data && subKomponenQuery.data
+    ? budgetItemsQuery.data
+        .filter(item => item.komponen_output === filters.komponen_output)
+        .map(item => item.sub_komponen)
+        .filter((v, i, a) => a.indexOf(v) === i && v)
+        .map(code => {
+          const sk = subKomponenQuery.data.find(s => s.code === code);
+          return sk ? `${sk.code} - ${sk.name}` : code;
+        })
+        .sort()
+    : [];
+
+  const akunsOptions = filters?.sub_komponen && budgetItemsQuery.data && akunsQuery.data
+    ? budgetItemsQuery.data
+        .filter(item => item.sub_komponen === filters.sub_komponen)
+        .map(item => item.akun)
+        .filter((v, i, a) => a.indexOf(v) === i && v)
+        .map(code => {
+          const akun = akunsQuery.data.find(a => a.code === code);
+          return akun ? `${akun.code} - ${akun.name}` : code;
+        })
         .sort()
     : [];
 
@@ -831,6 +890,10 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     akuns: akunsQuery.data || [],
     programsOptions,
     kegiatansOptions,
+    rincianOutputsOptions,
+    komponenOutputsOptions,
+    subKomponenOptions,
+    akunsOptions,
     isLoading,
     error: errorMessage,
     

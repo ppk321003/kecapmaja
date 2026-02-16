@@ -61,10 +61,10 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         for (const p of programs) {
           try {
             if (!p || typeof p !== 'object' || !p.is_active) continue;
-            const val = String(p.name || '').trim();
-            const lbl = String(p.code ? String(p.code) + ' - ' : '') + String(p.name || '');
-            if (val && lbl.trim()) {
-              result.push({ value: val, label: lbl.trim() });
+            const code = String(p.code || '').trim();
+            const label = `${code} - ${String(p.name || '').trim()}`;
+            if (code && label.trim()) {
+              result.push({ value: code, label: label.trim() });
             }
           } catch (e) {
             console.error('Error processing program:', p, e);
@@ -103,7 +103,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       if (kegiatans && Array.isArray(kegiatans) && kegiatans.length > 0) {
         const relatedProgram = programs?.find(p => {
           try {
-            return p && p.name && String(p.name) === String(filters.program_pembebanan);
+            return p && p.code && String(p.code) === String(filters.program_pembebanan);
           } catch {
             return false;
           }
@@ -113,10 +113,10 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           for (const k of kegiatans) {
             try {
               if (!k || typeof k !== 'object' || !k.is_active || k.program_id !== relatedProgram.id) continue;
-              const val = String(k.name || '').trim();
-              const lbl = String(k.code ? String(k.code) + ' - ' : '') + String(k.name || '');
-              if (val && lbl.trim()) {
-                result.push({ value: val, label: lbl.trim() });
+              const code = String(k.code || '').trim();
+              const label = `${code} - ${String(k.name || '').trim()}`;
+              if (code && label.trim()) {
+                result.push({ value: code, label: label.trim() });
               }
             } catch (e) {
               console.error('Error processing kegiatan:', k, e);
@@ -157,7 +157,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       if (rincianOutputs && Array.isArray(rincianOutputs) && rincianOutputs.length > 0) {
         const relatedKegiatan = kegiatans?.find(k => {
           try {
-            return k && k.name && String(k.name) === String(filters.kegiatan);
+            return k && k.code && String(k.code) === String(filters.kegiatan);
           } catch {
             return false;
           }
@@ -167,10 +167,10 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           for (const r of rincianOutputs) {
             try {
               if (!r || typeof r !== 'object' || !r.is_active || r.kegiatan_id !== relatedKegiatan.id) continue;
-              const val = String(r.name || '').trim();
-              const lbl = String(r.code ? String(r.code) + ' - ' : '') + String(r.name || '');
-              if (val && lbl.trim()) {
-                result.push({ value: val, label: lbl.trim() });
+              const code = String(r.code || '').trim();
+              const label = `${code} - ${String(r.name || '').trim()}`;
+              if (code && label.trim()) {
+                result.push({ value: code, label: label.trim() });
               }
             } catch (e) {
               console.error('Error processing rincian output:', r, e);
@@ -211,7 +211,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       if (komponenOutputs && Array.isArray(komponenOutputs) && komponenOutputs.length > 0) {
         const relatedRincian = rincianOutputs?.find(r => {
           try {
-            return r && r.name && String(r.name) === String(filters.rincian_output);
+            return r && r.code && String(r.code) === String(filters.rincian_output);
           } catch {
             return false;
           }
@@ -221,10 +221,10 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           for (const k of komponenOutputs) {
             try {
               if (!k || typeof k !== 'object' || !k.is_active || k.rincian_output_id !== relatedRincian.id) continue;
-              const val = String(k.name || '').trim();
-              const lbl = String(k.code ? String(k.code) + ' - ' : '') + String(k.name || '');
-              if (val && lbl.trim()) {
-                result.push({ value: val, label: lbl.trim() });
+              const code = String(k.code || '').trim();
+              const label = `${code} - ${String(k.name || '').trim()}`;
+              if (code && label.trim()) {
+                result.push({ value: code, label: label.trim() });
               }
             } catch (e) {
               console.error('Error processing komponen output:', k, e);
@@ -265,7 +265,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       if (subKomponen && Array.isArray(subKomponen) && subKomponen.length > 0) {
         const relatedKomponen = komponenOutputs?.find(k => {
           try {
-            return k && k.name && String(k.name) === String(filters.komponen_output);
+            return k && k.code && String(k.code) === String(filters.komponen_output);
           } catch {
             return false;
           }
@@ -275,10 +275,10 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           for (const s of subKomponen) {
             try {
               if (!s || typeof s !== 'object' || !s.is_active || s.komponen_output_id !== relatedKomponen.id) continue;
-              const val = String(s.name || '').trim();
-              const lbl = String(s.code ? String(s.code) + ' - ' : '') + String(s.name || '');
-              if (val && lbl.trim()) {
-                result.push({ value: val, label: lbl.trim() });
+              const code = String(s.code || '').trim();
+              const label = `${code} - ${String(s.name || '').trim()}`;
+              if (code && label.trim()) {
+                result.push({ value: code, label: label.trim() });
               }
             } catch (e) {
               console.error('Error processing sub komponen:', s, e);
@@ -348,14 +348,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         for (const a of akuns) {
           try {
             if (!a || typeof a !== 'object' || !a.is_active) continue;
-            // Use name as value (not code) to match budgetItems.akun
-            const val = String(a.name || '').trim();
+            // Use code as value to match budgetItems.akun
+            const code = String(a.code || '').trim();
             // Only include if this akun is used in filtered items
-            if (!relevantAkunValues.has(val)) continue;
+            if (!relevantAkunValues.has(code)) continue;
             
-            const lbl = String(a.code ? String(a.code) + ' - ' : '') + String(a.name || '');
-            if (val && lbl.trim()) {
-              result.push({ value: val, label: lbl.trim() });
+            const label = `${code} - ${String(a.name || '').trim()}`;
+            if (code && label.trim()) {
+              result.push({ value: code, label: label.trim() });
             }
           } catch (e) {
             console.error('Error processing akun:', a, e);
