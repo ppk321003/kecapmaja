@@ -116,7 +116,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             // Only filter by program_id if it exists, otherwise include all
             if (k?.program_id && relatedProgram.id && k.program_id !== relatedProgram.id) continue;
             const code = k?.id ? String(k.id).trim() : '';
-            const name = k?.code ? String(k.code).trim() : '';
+            const name = k?.program_id ? String(k.program_id).trim() : '';
             if (code && name) {
               result.push({ value: code, label: `${code} - ${name}` });
             }
@@ -141,7 +141,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       for (const code of kegiatanCodes) {
         try {
           const kegRef = kegiatans?.find(k => String(k.id || '').trim() === code);
-          const label = kegRef ? `${code} - ${String(kegRef.code || '').trim()}` : code;
+          const label = kegRef ? `${code} - ${String(kegRef.program_id || '').trim()}` : code;
           if (code && !seen.has(code)) {
             seen.add(code);
             fallback.push({ value: code, label });
@@ -168,7 +168,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             // Only filter by kegiatan_id if it exists, otherwise include all
             if (r?.kegiatan_id && relatedKegiatan.id && r.kegiatan_id !== relatedKegiatan.id) continue;
             const code = r?.id ? String(r.id).trim() : '';
-            const name = r?.code ? String(r.code).trim() : '';
+            const name = r?.kegiatan_id ? String(r.kegiatan_id).trim() : '';
             if (code && name) {
               result.push({ value: code, label: `${code} - ${name}` });
             }
@@ -193,7 +193,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       for (const code of rincianCodes) {
         try {
           const rincRef = rincianOutputs?.find(r => String(r.id || '').trim() === code);
-          const label = rincRef ? `${code} - ${String(rincRef.code || '').trim()}` : code;
+          const label = rincRef ? `${code} - ${String(rincRef.kegiatan_id || '').trim()}` : code;
           if (code && !seen.has(code)) {
             seen.add(code);
             fallback.push({ value: code, label });
@@ -220,7 +220,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             // Only filter by rincian_output_id if it exists, otherwise include all
             if (k?.rincian_output_id && relatedRincian.id && k.rincian_output_id !== relatedRincian.id) continue;
             const code = k?.id ? String(k.id).trim() : '';
-            const name = k?.code ? String(k.code).trim() : '';
+            const name = k?.rincian_output_id ? String(k.rincian_output_id).trim() : '';
             if (code && name) {
               result.push({ value: code, label: `${code} - ${name}` });
             }
@@ -245,7 +245,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       for (const code of komponenCodes) {
         try {
           const kompRef = komponenOutputs?.find(k => String(k.id || '').trim() === code);
-          const label = kompRef ? `${code} - ${String(kompRef.code || '').trim()}` : code;
+          const label = kompRef ? `${code} - ${String(kompRef.rincian_output_id || '').trim()}` : code;
           if (code && !seen.has(code)) {
             seen.add(code);
             fallback.push({ value: code, label });
@@ -272,7 +272,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             // Only filter by komponen_output_id if it exists, otherwise include all
             if (s?.komponen_output_id && relatedKomponen.id && s.komponen_output_id !== relatedKomponen.id) continue;
             const code = s?.id ? String(s.id).trim() : '';
-            const name = s?.code ? String(s.code).trim() : '';
+            const name = s?.komponen_output_id ? String(s.komponen_output_id).trim() : '';
             if (code && name) {
               result.push({ value: code, label: `${code} - ${name}` });
             }
@@ -297,7 +297,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       for (const code of subKomponenCodes) {
         try {
           const skRef = subKomponen?.find(s => String(s.id || '').trim() === code);
-          const label = skRef ? `${code} - ${String(skRef.code || '').trim()}` : code;
+          const label = skRef ? `${code} - ${String(skRef.komponen_output_id || '').trim()}` : code;
           if (code && !seen.has(code)) {
             seen.add(code);
             fallback.push({ value: code, label });

@@ -755,7 +755,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
           const keg = kegiatansQuery.data?.find(k => k.id === code);
           return {
             value: code,
-            label: keg ? `${keg.id} - ${keg.code}` : code
+            label: keg ? `${keg.id} - ${keg.program_id}` : code
           };
         })
         .sort((a, b) => a.label.localeCompare(b.label))
@@ -770,7 +770,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
           const rio = rincianOutputsQuery.data?.find(r => r.id === code);
           return {
             value: code,
-            label: rio ? `${rio.id} - ${rio.code}` : code
+            label: rio ? `${rio.id} - ${rio.kegiatan_id}` : code
           };
         })
         .sort((a, b) => a.label.localeCompare(b.label))
@@ -785,7 +785,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
           const ko = komponenOutputsQuery.data?.find(k => k.id === code);
           return {
             value: code,
-            label: ko ? `${ko.id} - ${ko.code}` : code
+            label: ko ? `${ko.id} - ${ko.rincian_output_id}` : code
           };
         })
         .sort((a, b) => a.label.localeCompare(b.label))
@@ -800,7 +800,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
           const sk = subKomponenQuery.data?.find(s => s.id === code);
           return {
             value: code,
-            label: sk ? `${sk.id} - ${sk.code}` : code
+            label: sk ? `${sk.id} - ${sk.komponen_output_id}` : code
           };
         })
         .sort((a, b) => a.label.localeCompare(b.label))
