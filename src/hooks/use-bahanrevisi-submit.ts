@@ -5,7 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BudgetItem, RPDItem } from '@/types/bahanrevisi';
-import { generateId, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
+import { generateId, formatDateIndonesia, calculateJumlahMenjadi } from '@/utils/bahanrevisi-calculations';
 
 interface UseBahanRevisiSubmitProps {
   sheetId: string | null;
@@ -33,6 +33,7 @@ const budgetItemToRow = (item: BudgetItem): (string | number | boolean | null)[]
     item.harga_satuan_menjadi,
     item.jumlah_menjadi,
     item.selisih,
+    item.sisa_anggaran || 0,
     item.blokir || 0,
     item.status,
     item.approved_by || '',
@@ -179,6 +180,7 @@ const deleteBudgetItem = async (sheetId: string, itemId: string, allItems: Budge
 
 /**
  * Approve budget item (PPK approval)
+ * Sets status to 'unchanged' and copies 'menjadi' values to 'semula'
  */
 const approveBudgetItem = async (
   sheetId: string,
@@ -186,7 +188,18 @@ const approveBudgetItem = async (
   approvedBy: string,
   allItems: BudgetItem[]
 ): Promise<BudgetItem> => {
+  // Find the current item
+  const currentItem = allItems.find(item => item.id === itemId);
+  if (!currentItem) throw new Error(`Item dengan ID ${itemId} tidak ditemukan`);
+  
+  // Update semula values to match menjadi values
   const updatedItem = await updateBudgetItem(sheetId, itemId, {
+    volume_semula: currentItem.volume_menjadi,
+    satuan_semula: currentItem.satuan_menjadi,
+    harga_satuan_semula: currentItem.harga_satuan_menjadi,
+    jumlah_semula: currentItem.jumlah_menjadi,
+    selisih: 0, // After approval, selisih becomes 0 since semula = menjadi
+    status: 'unchanged' as const,
     approved_by: approvedBy,
     approved_date: formatDateIndonesia(new Date().toISOString()),
   }, allItems);
@@ -197,6 +210,7 @@ const approveBudgetItem = async (
 
 /**
  * Reject budget item (PPK rejection)
+ * Reverts 'menjadi' values to 'semula' and sets status to 'unchanged'
  */
 const rejectBudgetItem = async (
   sheetId: string,
@@ -205,7 +219,18 @@ const rejectBudgetItem = async (
   rejectionReason: string,
   allItems: BudgetItem[]
 ): Promise<BudgetItem> => {
+  // Find the current item
+  const currentItem = allItems.find(item => item.id === itemId);
+  if (!currentItem) throw new Error(`Item dengan ID ${itemId} tidak ditemukan`);
+  
+  // Revert menjadi values to semula
   const updatedItem = await updateBudgetItem(sheetId, itemId, {
+    volume_menjadi: currentItem.volume_semula,
+    satuan_menjadi: currentItem.satuan_semula,
+    harga_satuan_menjadi: currentItem.harga_satuan_semula,
+    jumlah_menjadi: currentItem.jumlah_semula,
+    selisih: 0, // After rejection, selisih becomes 0 since menjadi = semula
+    status: 'unchanged' as const,
     rejected_date: formatDateIndonesia(new Date().toISOString()),
     notes: rejectionReason || '',
   }, allItems);

@@ -154,8 +154,20 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
       if (isApproved(item)) {
         return <Badge variant="default" className="bg-green-600">Disetujui</Badge>;
       }
+      if (item.status === 'changed') {
+        return <Badge variant="secondary" className="bg-amber-200 text-amber-900">Berubah</Badge>;
+      }
+      if (item.status === 'new') {
+        return <Badge variant="default" className="bg-green-500">Baru</Badge>;
+      }
+      if (item.status === 'deleted') {
+        return <Badge variant="destructive" className="bg-red-600">Dihapus</Badge>;
+      }
       if (needsApproval(item)) {
         return <Badge variant="secondary">Menunggu Approval</Badge>;
+      }
+      if (item.status === 'unchanged') {
+        return <Badge variant="outline">Tidak Berubah</Badge>;
       }
       const safeStatus = String(item.status || 'unknown');
       return <Badge>{safeStatus}</Badge>;
@@ -282,6 +294,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                 <TableHead className="text-right">Sisa Anggaran</TableHead>
                 <TableHead className="text-right">Blokir</TableHead>
                 <TableHead className="text-right">Selisih</TableHead>
+                <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-center">Aksi SM/PJK</TableHead>
                 <TableHead className="text-center">Aksi PPK</TableHead>
               </TableRow>
@@ -290,9 +303,19 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
               {paginatedItems.map((item, idx) => (
                 <TableRow
                   key={item.id}
-                  className={
-                    needsApproval(item) ? 'bg-yellow-50' : isApproved(item) ? 'bg-green-50' : ''
-                  }
+                  className={`
+                    ${
+                      item.status === 'changed'
+                        ? 'bg-yellow-50'
+                        : item.status === 'new'
+                        ? 'bg-green-50'
+                        : item.status === 'deleted'
+                        ? 'bg-red-50'
+                        : isApproved(item)
+                        ? 'bg-green-50'
+                        : ''
+                    }
+                  `}
                 >
                   <TableCell className="font-medium text-xs">{startIdx + idx + 1}</TableCell>
                   <TableCell className="max-w-xs">
@@ -318,6 +341,10 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                     }`}
                   >
                     {formatCurrency(calculateSelisih(item))}
+                  </TableCell>
+                  {/* Status Column */}
+                  <TableCell className="text-center">
+                    {getStatusBadge(item)}
                   </TableCell>
                   {/* Aksi SM/PJK Column */}
                   <TableCell className="text-center">

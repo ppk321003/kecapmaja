@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useBahanRevisiData } from '@/hooks/use-bahanrevisi-data';
 import { useBahanRevisiSubmit } from '@/hooks/use-bahanrevisi-submit';
 import { BahanRevisiFilters, BudgetItem } from '@/types/bahanrevisi';
-import { formatCurrency, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
+import { formatCurrency, formatDateIndonesia, determineStatusFromChanges, calculateSelisih, calculateJumlahMenjadi } from '@/utils/bahanrevisi-calculations';
 import BahanRevisiFilter from './BahanRevisiFilter';
 import BahanRevisiBudgetTable from './BahanRevisiBudgetTable';
 import BahanRevisiRingkasan from './BahanRevisiRingkasan';
@@ -180,9 +180,39 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
   // Handle update item
   const handleUpdateItem = (itemId: string, updates: Partial<BudgetItem>) => {
+    // Find the item to update
+    const itemIndex = budgetItems.findIndex(item => item.id === itemId);
+    if (itemIndex === -1) return;
+    
+    const originalItem = budgetItems[itemIndex];
+    
+    // Merge updates with original item
+    let updatedItem = { ...originalItem, ...updates };
+    
+    // Recalculate jumlah_menjadi if volume or harga changed
+    if ('volume_menjadi' in updates || 'harga_satuan_menjadi' in updates) {
+      updatedItem.jumlah_menjadi = calculateJumlahMenjadi(
+        updatedItem.volume_menjadi,
+        updatedItem.harga_satuan_menjadi
+      );
+    }
+    
+    // Recalculate selisih
+    updatedItem.selisih = (updatedItem.jumlah_menjadi || 0) - (updatedItem.jumlah_semula || 0);
+    
+    // Determine status based on changes
+    const newStatus = determineStatusFromChanges(updatedItem);
+    
+    // If status changed to 'changed' or 'new', mark as needing approval
+    if ((newStatus === 'changed' || newStatus === 'new') && !updatedItem.approved_by) {
+      updatedItem.status = newStatus;
+      updatedItem.approved_by = undefined;
+      updatedItem.approved_date = undefined;
+    }
+    
     updateItem({
       itemId,
-      updates,
+      updates: updatedItem,
       allItems: budgetItems,
     });
     toast({

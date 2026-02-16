@@ -2,7 +2,7 @@
  * Utility functions untuk Bahan Revisi Anggaran calculations
  */
 
-import { BudgetItem, BudgetSummary, BudgetSummaryByGroup, RPDItem, RPDSummary } from '@/types/bahanrevisi';
+import { BudgetItem, BudgetItemStatus, BudgetSummary, BudgetSummaryByGroup, RPDItem, RPDSummary } from '@/types/bahanrevisi';
 
 /**
  * Format currency to IDR format
@@ -236,6 +236,30 @@ export const getFilteredDropdownValues = (
 
   // Get unique values for target field
   return getUniqueValues(filtered, targetField);
+};
+
+/**
+ * Determine the status of an item based on changes from semula to menjadi
+ * Adapted from reference implementation
+ */
+export const determineStatusFromChanges = (item: BudgetItem): BudgetItemStatus => {
+  // Check if this is a new item (no semula values)
+  if ((item.volume_semula === 0 || item.jumlah_semula === 0) && item.jumlah_menjadi > 0) {
+    return 'new';
+  }
+  
+  // Check if there are changes
+  const volumeChanged = item.volume_semula !== item.volume_menjadi;
+  const satuanChanged = item.satuan_semula !== item.satuan_menjadi;
+  const hargaChanged = item.harga_satuan_semula !== item.harga_satuan_menjadi;
+  const selisihExists = (item.selisih || 0) !== 0;
+  
+  if (volumeChanged || satuanChanged || hargaChanged || selisihExists) {
+    return 'changed';
+  }
+  
+  // No changes detected
+  return 'unchanged';
 };
 
 /**
