@@ -178,6 +178,19 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     });
   };
 
+  // Handle update item
+  const handleUpdateItem = (itemId: string, updates: Partial<BudgetItem>) => {
+    updateItem({
+      itemId,
+      updates,
+      allItems: budgetItems,
+    });
+    toast({
+      title: 'Success',
+      description: 'Item berhasil diperbarui',
+    });
+  };
+
   // Helper functions untuk format data untuk new components
   const getChangedBudgetItems = () => {
     return filteredBudgetItems
@@ -367,6 +380,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 filters={filters}
                 isLoading={isLoadingData || isSubmitting}
                 onAdd={handleAddItem}
+                onUpdate={handleUpdateItem}
                 onDelete={handleDeleteItem}
                 onApprove={handleApproveItem}
                 onReject={handleRejectItem}

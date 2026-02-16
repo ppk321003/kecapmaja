@@ -175,7 +175,6 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
       volume_menjadi: item.volume_menjadi,
       satuan_menjadi: item.satuan_menjadi,
       harga_satuan_menjadi: item.harga_satuan_menjadi,
-      sisa_anggaran: item.sisa_anggaran || 0,
     });
     setShowEditDialog(true);
   };
@@ -199,7 +198,6 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
       satuan_menjadi: editFormData.satuan_menjadi || 'Paket',
       harga_satuan_menjadi: editFormData.harga_satuan_menjadi || 0,
       jumlah_menjadi: newJumlahMenjadi,
-      sisa_anggaran: editFormData.sisa_anggaran || 0,
       selisih: newJumlahMenjadi - (editingItem.jumlah_semula || 0),
     });
     
@@ -523,25 +521,25 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
       {/* Edit Dialog */}
       {showEditDialog && editingItem && (
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Edit Item Budget</DialogTitle>
+              <DialogTitle className="text-lg">Edit Item Budget</DialogTitle>
               <DialogDescription>
-                Ubah Volume Menjadi, Satuan Menjadi, Harga Satuan Menjadi, dan Sisa Anggaran
+                Ubah Volume, Satuan, dan Harga Satuan
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium">Uraian</label>
+                <label className="text-xs font-medium">Uraian</label>
                 <Input
                   value={editingItem.uraian}
                   disabled
-                  className="mt-1"
+                  className="mt-1 h-8 text-xs"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-sm font-medium">Volume Menjadi</label>
+                  <label className="text-xs font-medium">Volume</label>
                   <Input
                     type="number"
                     value={editFormData.volume_menjadi || 0}
@@ -551,12 +549,12 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                         volume_menjadi: parseFloat(e.target.value) || 0,
                       })
                     }
-                    className="mt-1"
+                    className="mt-1 h-8 text-xs"
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Satuan Menjadi</label>
+                  <label className="text-xs font-medium">Satuan</label>
                   <Input
                     value={editFormData.satuan_menjadi || ''}
                     onChange={(e) =>
@@ -565,14 +563,12 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                         satuan_menjadi: e.target.value,
                       })
                     }
-                    className="mt-1"
+                    className="mt-1 h-8 text-xs"
                     placeholder="Paket"
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Harga Satuan Menjadi</label>
+                  <label className="text-xs font-medium">Harga Satuan</label>
                   <Input
                     type="number"
                     value={editFormData.harga_satuan_menjadi || 0}
@@ -582,44 +578,24 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                         harga_satuan_menjadi: parseFloat(e.target.value) || 0,
                       })
                     }
-                    className="mt-1"
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Sisa Anggaran</label>
-                  <Input
-                    type="number"
-                    value={editFormData.sisa_anggaran || 0}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        sisa_anggaran: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="mt-1"
+                    className="mt-1 h-8 text-xs"
                     min="0"
                   />
                 </div>
               </div>
-              <div className="bg-blue-50 p-3 rounded">
-                <p className="text-sm font-medium text-blue-900">
-                  Jumlah Menjadi akan auto: {formatCurrency(
+              <div className="bg-blue-50 p-2 rounded text-xs border border-blue-100">
+                <p className="text-blue-900 font-medium">
+                  Jumlah: {formatCurrency(
                     Math.round((editFormData.volume_menjadi || 0) * (editFormData.harga_satuan_menjadi || 0))
-                  )}
-                </p>
-                <p className="text-sm font-medium text-blue-900">
-                  Selisih akan auto: {formatCurrency(
-                    Math.round((editFormData.volume_menjadi || 0) * (editFormData.harga_satuan_menjadi || 0)) - (editingItem.jumlah_semula || 0)
                   )}
                 </p>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={handleEditClose}>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={handleEditClose} size="sm">
                 Batal
               </Button>
-              <Button onClick={handleEditSave}>
+              <Button onClick={handleEditSave} size="sm">
                 Simpan
               </Button>
             </DialogFooter>
