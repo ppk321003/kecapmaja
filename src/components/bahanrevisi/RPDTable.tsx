@@ -424,7 +424,13 @@ const RPDTable: React.FC<RPDTableProps> = ({
           width: 120px;
           max-width: 120px;
         }
-
+        .rpd-table .blokir-cell {
+          font-weight: 600;
+          text-align: right;
+          min-width: 120px;
+          width: 120px;
+          max-width: 120px;
+        }
         .rpd-table .selisih-cell {
           font-weight: 600;
           text-align: right;
@@ -530,13 +536,19 @@ const RPDTable: React.FC<RPDTableProps> = ({
                     <ArrowUpDown className="h-3 w-3 ml-1" />
                   </button>
                 </th>
-                <th className="total-cell fixed-column" style={{left: '500px'}}>
+                <th className="blokir-cell fixed-column" style={{left: '500px'}}>
+                  <button className="flex items-center justify-end w-full" onClick={() => handleSort('blokir')}>
+                    Blokir
+                    <ArrowUpDown className="h-3 w-3 ml-1" />
+                  </button>
+                </th>
+                <th className="total-cell fixed-column" style={{left: '620px'}}>
                   <button className="flex items-center justify-end w-full" onClick={() => handleSort('total_rpd')}>
                     Total RPD
                     <ArrowUpDown className="h-3 w-3 ml-1" />
                   </button>
                 </th>
-                <th className="selisih-cell fixed-column" style={{left: '620px'}}>
+                <th className="selisih-cell fixed-column" style={{left: '740px'}}>
                   <button className="flex items-center justify-end w-full" onClick={() => handleSort('selisih')}>
                     Selisih
                     <ArrowUpDown className="h-3 w-3 ml-1" />
@@ -575,10 +587,13 @@ const RPDTable: React.FC<RPDTableProps> = ({
                         <td className="pagu-cell fixed-column" style={{left: '380px'}}>
                           {formatNumber(Number(item.total_pagu) || 0)}
                         </td>
-                        <td className="total-cell fixed-column" style={{left: '500px'}}>
+                        <td className="blokir-cell fixed-column" style={{left: '500px'}}>
+                          {formatNumber(Number(item.blokir) || 0)}
+                        </td>
+                        <td className="total-cell fixed-column" style={{left: '620px'}}>
                           {formatNumber(Number(item.total_rpd) || 0)}
                         </td>
-                        <td className="selisih-cell fixed-column" style={{left: '620px'}}>
+                        <td className="selisih-cell fixed-column" style={{left: '740px'}}>
                           <span className={(Number(item.sisa_anggaran) || 0) !== 0 ? 'text-red-500' : 'text-green-500'}>
                             {formatNumber(Number(item.sisa_anggaran) || 0)}
                           </span>
