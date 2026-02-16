@@ -374,10 +374,14 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                         </>
                       )}
                       {isApproved(item) && (
-                        <Badge variant="default" className="bg-green-600 text-xs">Disetujui</Badge>
+                        <div title="Disetujui">
+                          <Check className="h-5 w-5 text-green-600" />
+                        </div>
                       )}
                       {isRejected(item) && (
-                        <Badge variant="destructive" className="text-xs">Ditolak</Badge>
+                        <div title="Ditolak">
+                          <X className="h-5 w-5 text-red-600" />
+                        </div>
                       )}
                       {needsApproval(item) && !isAdmin && (
                         <Badge variant="secondary" className="text-xs">Menunggu</Badge>

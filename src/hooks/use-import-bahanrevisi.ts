@@ -122,7 +122,7 @@ export const useImportBahanRevisi = ({
     }
 
     try {
-      // Prepare budget items data with all 26 columns for Google Sheets
+      // Prepare budget items data with all 27 columns for Google Sheets
       const budgetItemsData = budgetItems.map((item) => [
         item.id || '',
         item.program_pembebanan || '',
