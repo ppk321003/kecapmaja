@@ -67,8 +67,13 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   
   // Program Pembebanan options - use provided options if available
   const programPembebananOptions = useMemo<SelectOption[]>(() => {
+    const progLen = programs?.length || 0;
+    const pOptLen = programsOptions?.length || 0;
+    console.log('[DEBUG] programs:', progLen, 'programsOptions:', pOptLen);
+    
     // Always try reference data first (most reliable)
     if (programs && Array.isArray(programs) && programs.length > 0) {
+      console.log('[DEBUG] programs[0]:', programs[0]);
       const result: SelectOption[] = [];
       for (const p of programs) {
         const code = p?.code ? String(p.code).trim() : '';
@@ -78,16 +83,19 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         }
       }
       if (result.length > 0) {
+        console.log('[DEBUG] program options result:', result);
         return result;
       }
     }
     
     // Fall back to provided options from hook
     if (programsOptions && programsOptions.length > 0) {
+      console.log('[DEBUG] Using programsOptions from hook');
       return programsOptions;
     }
 
     // FALLBACK: Derive from budgetItems
+    console.log('[DEBUG] Using fallback from budgetItems');
     const fallback: SelectOption[] = [];
     const seen = new Set<string>();
     for (const item of budgetItems) {
