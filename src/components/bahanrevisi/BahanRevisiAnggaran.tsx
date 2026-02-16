@@ -482,7 +482,12 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
               {Array.isArray(filteredBudgetItems) && (
                 <BahanRevisiRingkasanSubtab
                   items={filteredBudgetItems}
-                  isLoading={isLoadingData}
+                  programs={programs}
+                  kegiatans={kegiatans}
+                  rincianOutputs={rincianOutputs}
+                  komponenOutputs={komponenOutputs}
+                  subKomponen={subKomponen}
+                  akuns={akuns}
                 />
               )}
             </TabsContent>

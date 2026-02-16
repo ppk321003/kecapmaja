@@ -25,6 +25,7 @@ import {
 } from '@/utils/bahanrevisi-calculations';
 import BahanRevisiRingkasan from './BahanRevisiRingkasan';
 import DetailedSummaryView from './DetailedSummaryView';
+import { Program, Kegiatan, RincianOutput, KomponenOutput, SubKomponen, Akun } from '@/types/bahanrevisi';
 
 type SummaryViewType = 'changes' | 'program_pembebanan' | 'kegiatan' | 'rincian_output' | 'komponen_output' | 'sub_komponen' | 'akun' | 'akun_group' | 'account_group';
 
@@ -57,9 +58,100 @@ interface BudgetChangeItem {
 
 interface BahanRevisiRingkasanSubtabProps {
   items: BudgetItem[];
+  programs?: Program[];
+  kegiatans?: Kegiatan[];
+  rincianOutputs?: RincianOutput[];
+  komponenOutputs?: KomponenOutput[];
+  subKomponen?: SubKomponen[];
+  akuns?: Akun[];
 }
 
-const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({ items }) => {
+const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({ 
+  items, 
+  programs = [],
+  kegiatans = [],
+  rincianOutputs = [],
+  komponenOutputs = [],
+  subKomponen = [],
+  akuns = []
+}) => {
+  // Build name mappings menggunakan field yang SAMA dengan filter options
+  const kegiatanNameMap = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    kegiatans.forEach(keg => {
+      // Menggunakan format yang sama dengan filter: ${keg.id} - ${keg.program_id}
+      map[keg.id] = `${keg.id} - ${keg.program_id}`;
+    });
+    return map;
+  }, [kegiatans]);
+
+  const rincianOutputNameMap = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    rincianOutputs.forEach(rio => {
+      // Menggunakan format: ${rio.id} - ${rio.kegiatan_id}
+      map[rio.id] = `${rio.id} - ${rio.kegiatan_id}`;
+    });
+    return map;
+  }, [rincianOutputs]);
+
+  const komponenOutputNameMap = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    komponenOutputs.forEach(ko => {
+      // Menggunakan format: ${ko.id} - ${ko.rincian_output_id}
+      map[ko.id] = `${ko.id} - ${ko.rincian_output_id}`;
+    });
+    return map;
+  }, [komponenOutputs]);
+
+  const subKomponenNameMap = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    subKomponen.forEach(sk => {
+      // Menggunakan format: ${sk.id} - ${sk.komponen_output_id}
+      map[sk.id] = `${sk.id} - ${sk.komponen_output_id}`;
+    });
+    return map;
+  }, [subKomponen]);
+
+  const programNameMap = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    programs.forEach(prog => {
+      // Menggunakan format: ${prog.id} - ${prog.code}
+      map[prog.id] = `${prog.id} - ${prog.code}`;
+    });
+    return map;
+  }, [programs]);
+
+  const akunNameMap = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    akuns.forEach(akun => {
+      // Menggunakan format: ${akun.id} - ${akun.code}
+      map[akun.id] = `${akun.id} - ${akun.code}`;
+    });
+    return map;
+  }, [akuns]);
+
+  // Helper function menggunakan map sederhana
+  const getFormattedName = (code: string | undefined, type: 'program' | 'kegiatan' | 'rincian_output' | 'komponen_output' | 'sub_komponen' | 'akun'): string => {
+    if (!code) return 'Unknown';
+    
+    switch (type) {
+      case 'program':
+        return programNameMap[code] || code;
+      case 'kegiatan':
+        return kegiatanNameMap[code] || code;
+      case 'rincian_output':
+        return rincianOutputNameMap[code] || code;
+      case 'komponen_output':
+        return komponenOutputNameMap[code] || code;
+      case 'sub_komponen':
+        return subKomponenNameMap[code] || code;
+      case 'akun':
+        return akunNameMap[code] || code;
+      default:
+        return code;
+    }
+  };
+
   const [summaryView, setSummaryView] = useState<SummaryViewType>('changes');
 
   // Separate changed and new items
@@ -203,10 +295,27 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
       const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
       const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
       
-      // Get the appropriate name/code field based on summary type
+      // Get the appropriate name/code field based on summary type and format as "code - name"
       const itemCode = item.program_pembebanan || item.kegiatan || item.rincian_output || 
                        item.komponen_output || item.sub_komponen || item.akun || 'Unknown';
-      const itemName = item.name || itemCode;
+      
+      // Determine type and format name accordingly
+      let itemName: string;
+      if (summaryView === 'program_pembebanan') {
+        itemName = getFormattedName(item.program_pembebanan, 'program');
+      } else if (summaryView === 'kegiatan') {
+        itemName = getFormattedName(item.kegiatan, 'kegiatan');
+      } else if (summaryView === 'rincian_output') {
+        itemName = getFormattedName(item.rincian_output, 'rincian_output');
+      } else if (summaryView === 'komponen_output') {
+        itemName = getFormattedName(item.komponen_output, 'komponen_output');
+      } else if (summaryView === 'sub_komponen') {
+        itemName = getFormattedName(item.sub_komponen, 'sub_komponen');
+      } else if (summaryView === 'akun') {
+        itemName = getFormattedName(item.akun, 'akun');
+      } else {
+        itemName = itemCode;
+      }
       
       return {
         id: itemCode,
