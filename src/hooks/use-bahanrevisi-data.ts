@@ -820,9 +820,6 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         })
         .sort((a, b) => a.label.localeCompare(b.label))
     : [];
-        })
-        .sort()
-    : [];
 
   const isLoading = budgetItemsQuery.isLoading || rpdItemsQuery.isLoading || 
                    programsQuery.isLoading || kegiatansQuery.isLoading ||
