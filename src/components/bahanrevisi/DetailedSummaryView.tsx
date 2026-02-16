@@ -36,6 +36,13 @@ interface DetailedSummaryViewProps {
   totalSemula: number;
   totalMenjadi: number;
   totalSelisih: number;
+  totalSisaAnggaran?: number;
+  totalRealisasi?: number;
+  totalPersentaseRealisasi?: number;
+  totalBlokir?: number;
+  totalBaru?: number;
+  totalBerubah?: number;
+  totalAllItems?: number;
 }
 
 const DetailedSummaryView: React.FC<DetailedSummaryViewProps> = ({
@@ -44,6 +51,13 @@ const DetailedSummaryView: React.FC<DetailedSummaryViewProps> = ({
   totalSemula,
   totalMenjadi,
   totalSelisih,
+  totalSisaAnggaran = 0,
+  totalRealisasi = 0,
+  totalPersentaseRealisasi = 0,
+  totalBlokir = 0,
+  totalBaru = 0,
+  totalBerubah = 0,
+  totalAllItems = 0,
 }) => {
   const chartAndTableRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -290,7 +304,27 @@ const DetailedSummaryView: React.FC<DetailedSummaryViewProps> = ({
                     >
                       {formatCurrency(totalSelisih)}
                     </TableCell>
-                    <TableCell colSpan={6} />
+                    <TableCell className="text-right py-2 px-3 font-bold text-blue-600">
+                      {formatCurrency(totalSisaAnggaran)}
+                    </TableCell>
+                    <TableCell className="text-right py-2 px-3 font-bold text-purple-600">
+                      {formatCurrency(totalRealisasi)}
+                    </TableCell>
+                    <TableCell className="text-right py-2 px-3 font-bold text-purple-600">
+                      {formatPercentage(totalPersentaseRealisasi)}
+                    </TableCell>
+                    <TableCell className="text-right py-2 px-3 font-bold text-orange-600">
+                      {formatCurrency(totalBlokir)}
+                    </TableCell>
+                    <TableCell className="text-center py-2 px-3 font-bold">
+                      {totalBaru}
+                    </TableCell>
+                    <TableCell className="text-center py-2 px-3 font-bold">
+                      {totalBerubah}
+                    </TableCell>
+                    <TableCell className="text-center py-2 px-3 font-bold">
+                      {totalAllItems}
+                    </TableCell>
                   </TableRow>
                 </TableFooter>
               </Table>

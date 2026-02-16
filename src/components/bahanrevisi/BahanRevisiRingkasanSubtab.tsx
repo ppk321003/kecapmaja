@@ -337,14 +337,46 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const getTotalSummaryValues = () => {
     const data = getFilteredSummaryData();
     if (data.length === 0) {
-      return { semula: 0, menjadi: 0, selisih: 0 };
+      return { 
+        semula: 0, 
+        menjadi: 0, 
+        selisih: 0,
+        sisaAnggaran: 0,
+        realisasi: 0,
+        blokir: 0,
+        baru: 0,
+        berubah: 0,
+        totalItems: 0
+      };
     }
 
     const totalSemula = data.reduce((sum, item) => sum + item.totalSemula, 0);
     const totalMenjadi = data.reduce((sum, item) => sum + item.totalMenjadi, 0);
     const totalSelisih = data.reduce((sum, item) => sum + item.totalSelisih, 0);
+    const totalSisaAnggaran = data.reduce((sum, item) => sum + (item.sisaAnggaran || 0), 0);
+    const totalRealisasi = data.reduce((sum, item) => sum + (item.realisasi || 0), 0);
+    const totalBlokir = data.reduce((sum, item) => sum + (item.blokir || 0), 0);
+    const totalBaru = data.reduce((sum, item) => sum + item.newItems, 0);
+    const totalBerubah = data.reduce((sum, item) => sum + item.changedItems, 0);
+    const totalAllItems = data.reduce((sum, item) => sum + item.totalItems, 0);
+    
+    // Hitung persentase realisasi total
+    const totalPersentaseRealisasi = totalMenjadi > 0 
+      ? Math.round((totalRealisasi / totalMenjadi) * 100 * 100) / 100 
+      : 0;
 
-    return { semula: totalSemula, menjadi: totalMenjadi, selisih: totalSelisih };
+    return { 
+      semula: totalSemula, 
+      menjadi: totalMenjadi, 
+      selisih: totalSelisih,
+      sisaAnggaran: totalSisaAnggaran,
+      realisasi: totalRealisasi,
+      persentaseRealisasi: totalPersentaseRealisasi,
+      blokir: totalBlokir,
+      baru: totalBaru,
+      berubah: totalBerubah,
+      totalItems: totalAllItems
+    };
   };
 
   const getSummaryTitle = (): string => {
@@ -703,6 +735,13 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
         totalSemula={values.semula}
         totalMenjadi={values.menjadi}
         totalSelisih={values.selisih}
+        totalSisaAnggaran={values.sisaAnggaran}
+        totalRealisasi={values.realisasi}
+        totalPersentaseRealisasi={values.persentaseRealisasi}
+        totalBlokir={values.blokir}
+        totalBaru={values.baru}
+        totalBerubah={values.berubah}
+        totalAllItems={values.totalItems}
       />
     );
   };
