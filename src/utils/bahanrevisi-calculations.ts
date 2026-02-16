@@ -734,10 +734,10 @@ export const calculateBudgetSummaryByAkun = (
 };
 
 /**
- * Calculate realisasi (realisasi = jumlah_menjadi - sisa_anggaran)
+ * Calculate realisasi (realisasi = jumlah_menjadi - sisa_anggaran - blokir)
  */
-export const calculateRealisasi = (jumlahMenjadi: number, sisaAnggaran: number): number => {
-  return roundToThousands(jumlahMenjadi - sisaAnggaran);
+export const calculateRealisasi = (jumlahMenjadi: number, sisaAnggaran: number, blokir: number = 0): number => {
+  return roundToThousands(jumlahMenjadi - sisaAnggaran - blokir);
 };
 
 /**
@@ -753,4 +753,96 @@ export const calculatePersentaseRealisasi = (realisasi: number, jumlahMenjadi: n
  */
 export const formatPercentage = (percentage: number): string => {
   return `${percentage.toFixed(2)}%`;
+};
+
+/**
+ * Calculate summary by Kelompok Akun (first 3 digits of akun code)
+ */
+export const calculateBudgetSummaryByKelompokAkun = (
+  items: BudgetItem[]
+): BudgetSummaryByAkun[] => {
+  const groupMap = new Map<string, BudgetSummaryByAkun>();
+
+  items.forEach((item) => {
+    if (!item.akun) return;
+    
+    // Extract first 3 characters/digits from akun code
+    const kelompokAkun = item.akun.substring(0, 3);
+    
+    if (!groupMap.has(kelompokAkun)) {
+      groupMap.set(kelompokAkun, {
+        akun: kelompokAkun,
+        name: kelompokAkun,
+        total_semula: 0,
+        total_menjadi: 0,
+        total_selisih: 0,
+        sisa_anggaran: 0,
+        blokir: 0,
+        new_items: 0,
+        changed_items: 0,
+        total_items: 0,
+      });
+    }
+
+    const group = groupMap.get(kelompokAkun)!;
+    group.total_semula += item.jumlah_semula || 0;
+    group.total_menjadi += item.jumlah_menjadi || 0;
+    group.total_selisih += item.selisih || 0;
+    group.sisa_anggaran += item.sisa_anggaran || 0;
+    group.blokir += item.blokir || 0;
+    group.total_items++;
+
+    if (item.status === 'new') group.new_items++;
+    else if (item.status === 'changed') group.changed_items++;
+  });
+
+  return Array.from(groupMap.values()).sort((a, b) =>
+    a.akun.localeCompare(b.akun)
+  );
+};
+
+/**
+ * Calculate summary by Kelompok Belanja (first 2 digits of akun code)
+ */
+export const calculateBudgetSummaryByKelompokBelanja = (
+  items: BudgetItem[]
+): BudgetSummaryByAkun[] => {
+  const groupMap = new Map<string, BudgetSummaryByAkun>();
+
+  items.forEach((item) => {
+    if (!item.akun) return;
+    
+    // Extract first 2 characters/digits from akun code
+    const kelompokBelanja = item.akun.substring(0, 2);
+    
+    if (!groupMap.has(kelompokBelanja)) {
+      groupMap.set(kelompokBelanja, {
+        akun: kelompokBelanja,
+        name: kelompokBelanja,
+        total_semula: 0,
+        total_menjadi: 0,
+        total_selisih: 0,
+        sisa_anggaran: 0,
+        blokir: 0,
+        new_items: 0,
+        changed_items: 0,
+        total_items: 0,
+      });
+    }
+
+    const group = groupMap.get(kelompokBelanja)!;
+    group.total_semula += item.jumlah_semula || 0;
+    group.total_menjadi += item.jumlah_menjadi || 0;
+    group.total_selisih += item.selisih || 0;
+    group.sisa_anggaran += item.sisa_anggaran || 0;
+    group.blokir += item.blokir || 0;
+    group.total_items++;
+
+    if (item.status === 'new') group.new_items++;
+    else if (item.status === 'changed') group.changed_items++;
+  });
+
+  return Array.from(groupMap.values()).sort((a, b) =>
+    a.akun.localeCompare(b.akun)
+  );
 };

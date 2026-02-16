@@ -20,6 +20,8 @@ import {
   calculateBudgetSummaryByKomponenOutput,
   calculateBudgetSummaryBySubKomponen,
   calculateBudgetSummaryByAkun,
+  calculateBudgetSummaryByKelompokAkun,
+  calculateBudgetSummaryByKelompokBelanja,
 } from '@/utils/bahanrevisi-calculations';
 import BahanRevisiRingkasan from './BahanRevisiRingkasan';
 import DetailedSummaryView from './DetailedSummaryView';
@@ -89,6 +91,14 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     calculateBudgetSummaryByAkun(items),
     [items]
   );
+  const summaryByKelompokAkun = useMemo(() =>
+    calculateBudgetSummaryByKelompokAkun(items),
+    [items]
+  );
+  const summaryByKelompokBelanja = useMemo(() =>
+    calculateBudgetSummaryByKelompokBelanja(items),
+    [items]
+  );
 
   // Helper function to get combined pembebanan code
   const getCombinedPembebananCode = (item: BudgetItem): string => {
@@ -116,7 +126,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     return changedItems.map((item) => {
       const jumlahMenjadi = Number(item.jumlah_menjadi) || 0;
       const sisaAnggaran = Number(item.sisa_anggaran) || 0;
-      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran);
+      const blokir = Number(item.blokir) || 0;
+      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
       const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
       return {
         id: item.id,
@@ -136,7 +147,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     return newItems.map((item) => {
       const jumlahMenjadi = Number(item.jumlah_menjadi) || 0;
       const sisaAnggaran = Number(item.sisa_anggaran) || 0;
-      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran);
+      const blokir = Number(item.blokir) || 0;
+      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
       const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
       return {
         id: item.id,
@@ -174,6 +186,12 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
       case 'akun':
         summaryData = summaryByAkun;
         break;
+      case 'akun_group':
+        summaryData = summaryByKelompokAkun;
+        break;
+      case 'account_group':
+        summaryData = summaryByKelompokBelanja;
+        break;
       default:
         return [];
     }
@@ -181,12 +199,18 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     return summaryData.map((item) => {
       const jumlahMenjadi = item.total_menjadi || 0;
       const sisaAnggaran = item.sisa_anggaran || 0;
-      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran);
+      const blokir = item.blokir || 0;
+      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
       const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
       
+      // Get the appropriate name/code field based on summary type
+      const itemCode = item.program_pembebanan || item.kegiatan || item.rincian_output || 
+                       item.komponen_output || item.sub_komponen || item.akun || 'Unknown';
+      const itemName = item.name || itemCode;
+      
       return {
-        id: item.akun || item.kegiatan || item.program_pembebanan || item.ro || item.kro || 'unknown',
-        name: item.akun || item.kegiatan || item.program_pembebanan || item.ro || item.kro || 'Unknown',
+        id: itemCode,
+        name: itemName,
         totalSemula: item.total_semula || 0,
         totalMenjadi: jumlahMenjadi,
         totalSelisih: item.total_selisih || 0,
@@ -194,7 +218,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
         changedItems: item.changed_items || 0,
         totalItems: item.total_items || 0,
         sisaAnggaran,
-        blokir: item.blokir || 0,
+        blokir,
         realisasi,
         persentaseRealisasi,
       };
@@ -228,6 +252,10 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
         return 'Sub Komponen';
       case 'akun':
         return 'Akun';
+      case 'akun_group':
+        return 'Kelompok Akun (3 Digit)';
+      case 'account_group':
+        return 'Kelompok Belanja (2 Digit)';
       default:
         return '';
     }
@@ -632,6 +660,22 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
           className="text-xs"
         >
           Akun
+        </Button>
+        <Button
+          variant={summaryView === 'akun_group' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSummaryView('akun_group')}
+          className="text-xs"
+        >
+          Kelompok Akun
+        </Button>
+        <Button
+          variant={summaryView === 'account_group' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSummaryView('account_group')}
+          className="text-xs"
+        >
+          Kelompok Belanja
         </Button>
       </div>
 
