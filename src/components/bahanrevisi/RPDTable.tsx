@@ -80,8 +80,9 @@ const RPDTable: React.FC<RPDTableProps> = ({
   }
 
   const { user } = useAuth();
-  // Role-based access: PPK dan Fungsi xxxx can edit, others read-only
-  const canEditRPD = user?.role === 'Pejabat Pembuat Komitmen' || user?.role === 'Fungsi xxxx';
+  // Role-based access: PPK dan Fungsi xxx can edit, others read-only
+  // Supports roles like: "Fungsi PEJABAT_PEMBUAT_KOMITMEN", "Fungsi KUASA_PENGGUNA", etc.
+  const canEditRPD = user?.role === 'Pejabat Pembuat Komitmen' || user?.role?.startsWith('Fungsi') === true;
   const isReadOnly = !canEditRPD;
 
   const [rpdDialogOpen, setRpdDialogOpen] = useState(false);

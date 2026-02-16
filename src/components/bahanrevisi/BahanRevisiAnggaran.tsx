@@ -189,7 +189,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
           item.komponen_output,
           item.sub_komponen,
           item.akun
-        ].filter(Boolean).join(' > '),
+        ].filter(Boolean).join('.'),
         uraian: item.uraian,
         detailPerubahan: getDetailPerubahan(item),
         jumlahSemula: item.jumlah_semula,
@@ -208,7 +208,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
           item.komponen_output,
           item.sub_komponen,
           item.akun
-        ].filter(Boolean).join(' > '),
+        ].filter(Boolean).join('.'),
         uraian: item.uraian,
         volume: item.volume_menjadi,
         satuan: item.satuan_menjadi,
@@ -307,36 +307,38 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
             )}
           </div>
 
-          {/* Excel Import/Export Controls */}
-          <div className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50 space-y-3">
-            <div className="flex items-center gap-2">
-              <FileUp className="h-4 w-4 text-indigo-600" />
-              <h3 className="font-semibold text-sm text-indigo-900">Import/Export Data</h3>
+          {/* Excel Import/Export Controls - Only for PPK */}
+          {user?.role === 'Pejabat Pembuat Komitmen' && (
+            <div className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50 space-y-3">
+              <div className="flex items-center gap-2">
+                <FileUp className="h-4 w-4 text-indigo-600" />
+                <h3 className="font-semibold text-sm text-indigo-900">Import/Export Data</h3>
+              </div>
+              <BahanRevisiExcelImportExport 
+                sheetId={sheetId}
+                onImportSuccess={async (budgetItems, rpdItems) => {
+                  try {
+                    // Refetch data after successful import
+                    await refetch();
+                    toast({
+                      title: "Import berhasil",
+                      description: `${budgetItems.length} items berhasil diimport dari Excel`
+                    });
+                  } catch (error) {
+                    console.error("Error after import:", error);
+                    toast({
+                      title: "Import berhasil tapi ada error saat refresh data",
+                      variant: "destructive"
+                    });
+                  }
+                }}
+                budgetItems={budgetItems}
+                komponenOutput={filters?.komponenOutput}
+                subKomponen={filters?.subKomponen}
+                akun={filters?.akun}
+              />
             </div>
-            <BahanRevisiExcelImportExport 
-              sheetId={sheetId}
-              onImportSuccess={async (budgetItems, rpdItems) => {
-                try {
-                  // Refetch data after successful import
-                  await refetch();
-                  toast({
-                    title: "Import berhasil",
-                    description: `${budgetItems.length} items berhasil diimport dari Excel`
-                  });
-                } catch (error) {
-                  console.error("Error after import:", error);
-                  toast({
-                    title: "Import berhasil tapi ada error saat refresh data",
-                    variant: "destructive"
-                  });
-                }
-              }}
-              budgetItems={budgetItems}
-              komponenOutput={filters?.komponenOutput}
-              subKomponen={filters?.subKomponen}
-              akun={filters?.akun}
-            />
-          </div>
+          )}
 
           {/* Tabs */}
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
