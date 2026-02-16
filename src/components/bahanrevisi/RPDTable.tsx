@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency, formatNumber, roundToThousands } from '@/utils/bahanrevisi-calculations';
+import { formatCurrency, formatNumber, roundToThousands, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
 import { FileEdit, Check, ArrowUpDown, Search, Edit2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { BahanRevisiFilters } from '@/types/bahanrevisi';
@@ -55,6 +55,7 @@ interface RPDTableProps {
   items: RPDItem[];
   loading?: boolean;
   budgetItems?: any[];
+  hideZeroPagu?: boolean;
   onUpdateItem?: (id: string, updates: Partial<RPDItem>) => Promise<void>;
 }
 
@@ -63,6 +64,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
   items, 
   loading = false,
   budgetItems = [],
+  hideZeroPagu = true,
   onUpdateItem 
 }) => {
   // Safety check: ensure items is always an array
@@ -86,7 +88,6 @@ const RPDTable: React.FC<RPDTableProps> = ({
   const [selectedRPDItem, setSelectedRPDItem] = useState<RPDItem | null>(null);
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [hideZeroBudget, setHideZeroBudget] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -155,7 +156,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
           const uraian = String(item.uraian || '');
           const matchesSearch = !searchTerm || uraian.toLowerCase().includes(searchLower);
           
-          if (hideZeroBudget) {
+          if (hideZeroPagu) {
             return matchesSearch && (Number(item.total_pagu) || 0) !== 0;
           }
           
@@ -169,7 +170,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       console.error('[RPDTable] Error in filteredItems:', e);
       return [];
     }
-  }, [safeItems, searchTerm, hideZeroBudget, filters]);
+  }, [safeItems, searchTerm, hideZeroPagu, filters]);
 
   const sortedItems = useMemo(() => {
     try {
@@ -491,21 +492,6 @@ const RPDTable: React.FC<RPDTableProps> = ({
                 setCurrentPage(1);
               }}
             />
-          </div>
-          
-          <div className="filter-checkbox-container flex items-center gap-2">
-            <Checkbox 
-              id="hideZeroBudget"
-              checked={hideZeroBudget}
-              onCheckedChange={(checked) => {
-                setHideZeroBudget(checked === true);
-                setCurrentPage(1);
-              }}
-              className="filter-checkbox"
-            />
-            <label htmlFor="hideZeroBudget" className="filter-checkbox-label text-xs">
-              Sembunyikan pagu 0
-            </label>
           </div>
         </div>
         

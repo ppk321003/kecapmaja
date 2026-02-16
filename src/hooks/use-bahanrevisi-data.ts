@@ -169,6 +169,7 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
         total_rpd: parseFloat(row[20]) || 0,
         sisa_anggaran: parseFloat(row[21]) || 0,
         status: row[22]?.trim() || '',
+        blokir: parseFloat(row[25]) || 0,
         modified_by: row[23]?.trim(),
         modified_date: row[24]?.trim(),
       };
@@ -178,6 +179,7 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
         console.log('[fetchRPDItems] Column mapping check:');
         console.log('  - row[7] (total_pagu):', row[7], '=> parsed as:', item.total_pagu);
         console.log('  - row[20] (total_rpd):', row[20], '=> parsed as:', item.total_rpd);
+        console.log('  - row[25] (blokir):', row[25], '=> parsed as:', item.blokir);
       }
       
       return item;

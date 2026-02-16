@@ -235,12 +235,12 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
             <table className="w-full text-sm">
               <thead className="bg-slate-100 border-b">
                 <tr>
-                  <th className="px-3 py-2 text-left font-semibold">Bulan</th>
-                  <th className="px-3 py-2 text-center font-semibold w-16">%</th>
-                  <th className="px-3 py-2 text-right font-semibold w-24">Nilai</th>
-                  <th className="px-3 py-2 text-left font-semibold">Bulan</th>
-                  <th className="px-3 py-2 text-center font-semibold w-16">%</th>
-                  <th className="px-3 py-2 text-right font-semibold w-24">Nilai</th>
+                  <th className="px-2 py-2 text-left font-semibold text-xs">Bulan</th>
+                  <th className="px-2 py-2 text-center font-semibold text-xs w-12">%</th>
+                  <th className="px-2 py-2 text-right font-semibold text-xs flex-1">Nilai</th>
+                  <th className="px-2 py-2 text-left font-semibold text-xs">Bulan</th>
+                  <th className="px-2 py-2 text-center font-semibold text-xs w-12">%</th>
+                  <th className="px-2 py-2 text-right font-semibold text-xs flex-1">Nilai</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -250,8 +250,8 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                   return (
                     <tr key={i} className="hover:bg-slate-50">
                       {/* Left Column */}
-                      <td className="px-3 py-2 text-xs font-medium text-slate-700">{leftMonth.label}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-2 py-2 text-xs font-medium text-slate-700 whitespace-nowrap">{leftMonth.label}</td>
+                      <td className="px-2 py-2">
                         <Input
                           type="number"
                           min="0"
@@ -259,24 +259,24 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                           value={calculations.percentages[leftMonth.key] || 0}
                           onChange={(e) => handlePercentageChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
-                          className="h-7 text-xs text-center px-2"
+                          className="h-7 text-xs text-center px-1"
                           placeholder="0"
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-2 py-2">
                         <Input
                           type="number"
                           min="0"
                           value={values[leftMonth.key as keyof typeof values] || 0}
                           onChange={(e) => handleValueChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
-                          className="h-7 text-xs text-right px-2"
+                          className="h-7 text-xs text-right px-1"
                           placeholder="0"
                         />
                       </td>
                       {/* Right Column */}
-                      <td className="px-3 py-2 text-xs font-medium text-slate-700">{rightMonth.label}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-2 py-2 text-xs font-medium text-slate-700 whitespace-nowrap">{rightMonth.label}</td>
+                      <td className="px-2 py-2">
                         <Input
                           type="number"
                           min="0"
@@ -284,18 +284,18 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                           value={calculations.percentages[rightMonth.key] || 0}
                           onChange={(e) => handlePercentageChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
-                          className="h-7 text-xs text-center px-2"
+                          className="h-7 text-xs text-center px-1"
                           placeholder="0"
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-2 py-2">
                         <Input
                           type="number"
                           min="0"
                           value={values[rightMonth.key as keyof typeof values] || 0}
                           onChange={(e) => handleValueChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
-                          className="h-7 text-xs text-right px-2"
+                          className="h-7 text-xs text-right px-1"
                           placeholder="0"
                         />
                       </td>
@@ -304,22 +304,6 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                 })}
               </tbody>
             </table>
-          </div>
-
-          {/* Pagu Tidak Dapat Ditarik */}
-          <div className="border-t pt-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">Pagu yang Tidak Dapat Ditarik</label>
-              <Input
-                type="number"
-                min="0"
-                value={paguTidakDapatDitarik}
-                disabled={true}
-                className="h-10 text-sm"
-                placeholder="0"
-              />
-              <p className="text-xs text-slate-500">{formatNumber(paguTidakDapatDitarik)}</p>
-            </div>
           </div>
 
           {/* Summary */}

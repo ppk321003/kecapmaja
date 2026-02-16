@@ -46,7 +46,7 @@ const budgetItemToRow = (item: BudgetItem): (string | number | boolean | null)[]
 };
 
 /**
- * Convert RPDItem to array for Google Sheets (25 columns)
+ * Convert RPDItem to array for Google Sheets (26 columns)
  */
 const rpdItemToRow = (item: RPDItem): (string | number | boolean | null)[] => {
   return [
@@ -75,6 +75,7 @@ const rpdItemToRow = (item: RPDItem): (string | number | boolean | null)[] => {
     item.status,
     item.modified_by || '',
     item.modified_date || '',
+    item.blokir || 0,
   ];
 };
 

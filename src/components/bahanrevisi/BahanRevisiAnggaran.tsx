@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useBahanRevisiData } from '@/hooks/use-bahanrevisi-data';
 import { useBahanRevisiSubmit } from '@/hooks/use-bahanrevisi-submit';
 import { BahanRevisiFilters, BudgetItem } from '@/types/bahanrevisi';
-import { formatCurrency } from '@/utils/bahanrevisi-calculations';
+import { formatCurrency, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
 import BahanRevisiFilter from './BahanRevisiFilter';
 import BahanRevisiBudgetTable from './BahanRevisiBudgetTable';
 import BahanRevisiRingkasan from './BahanRevisiRingkasan';
@@ -363,6 +363,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 items={rpdItems}
                 loading={isLoadingData}
                 budgetItems={budgetItems}
+                hideZeroPagu={hideZeroPagu}
                 onUpdateItem={async (id, updates) => {
                   try {
                     // Calculate total_rpd and sisa_anggaran
@@ -386,6 +387,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                       ...updates,
                       total_rpd: total,
                       sisa_anggaran: (rpdItem.total_pagu || 0) - total,
+                      status: 'ok',
                       modified_by: user?.username || 'unknown',
                       modified_date: new Date().toISOString(),
                     };
