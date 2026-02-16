@@ -152,7 +152,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
     } catch (e) {
       return [];
     }
-  }, [filters.program_pembebanan, kegiatans, programs, budgetItems, kegiatansOptions]);
+  }, [filters.program_pembebanan, kegiatans, programs, budgetItems]);
 
   // Rincian Output options - filtered by selected kegiatan
   const rincianOutputOptions = useMemo<SelectOption[]>(() => {
@@ -204,7 +204,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
     } catch (e) {
       return [];
     }
-  }, [filters.kegiatan, rincianOutputs, kegiatans, budgetItems, rincianOutputsOptions]);
+  }, [filters.kegiatan, rincianOutputs, kegiatans, budgetItems]);
 
   // Komponen Output options - filtered by selected rincian output
   const komponenOutputOptions = useMemo<SelectOption[]>(() => {
@@ -256,7 +256,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
     } catch (e) {
       return [];
     }
-  }, [filters.rincian_output, komponenOutputs, rincianOutputs, budgetItems, komponenOutputsOptions]);
+  }, [filters.rincian_output, komponenOutputs, rincianOutputs, budgetItems]);
 
   // Sub Komponen options - filtered by selected komponen output
   const subKomponenOptions = useMemo<SelectOption[]>(() => {
@@ -308,7 +308,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
     } catch (e) {
       return [];
     }
-  }, [filters.komponen_output, subKomponen, komponenOutputs, budgetItems, providedSubKomponenOptions]);
+  }, [filters.komponen_output, subKomponen, komponenOutputs, budgetItems]);
 
   // Akun options - filtered based on selected parent filters
   const akunOptions = useMemo<SelectOption[]>(() => {
@@ -392,7 +392,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building akunOptions:', e);
       return [];
     }
-  }, [akunsOptions, akuns, budgetItems, filters.program_pembebanan, filters.kegiatan, filters.rincian_output, filters.komponen_output, filters.sub_komponen]);
+  }, [akuns, budgetItems, filters.program_pembebanan, filters.kegiatan, filters.rincian_output, filters.komponen_output, filters.sub_komponen]);
 
   const handleReset = () => {
     setFilters({});
