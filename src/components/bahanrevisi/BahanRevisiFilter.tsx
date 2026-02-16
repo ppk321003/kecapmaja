@@ -116,15 +116,15 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   // Kegiatan options - filtered by selected program
   const kegiatanOptions = useMemo<SelectOption[]>(() => {
     try {
-      if (!filters.program_pembebanan || typeof filters.program_pembebanan !== 'string') return [];
-      
       // Use provided options first if available
       if (kegiatansOptions && Array.isArray(kegiatansOptions) && kegiatansOptions.length > 0) {
         console.log('[Filter] Using provided kegiatansOptions:', kegiatansOptions.length);
         return kegiatansOptions;
       }
       
-      // Try reference data first
+      if (!filters.program_pembebanan || typeof filters.program_pembebanan !== 'string') return [];
+      
+      // Try reference data first with "code - name" format
       if (kegiatans && Array.isArray(kegiatans) && kegiatans.length > 0) {
         const relatedProgram = programs?.find(p => {
           try {
@@ -152,17 +152,20 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         }
       }
 
-      // FALLBACK: Derive from budgetItems
+      // FALLBACK: Derive from budgetItems with "code - name" format
       console.log('[Filter] Using fallback: deriving kegiatan options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
-      for (const item of budgetItems) {
+      const relevantItems = budgetItems.filter(item => String(item.program_pembebanan || '').trim() === String(filters.program_pembebanan).trim());
+      const kegiatanCodes = new Set(relevantItems.map(item => String(item.kegiatan || '').trim()).filter(Boolean));
+      
+      for (const code of kegiatanCodes) {
         try {
-          if (String(item.program_pembebanan || '').trim() !== filters.program_pembebanan) continue;
-          const val = String(item.kegiatan || '').trim();
-          if (val && !seen.has(val)) {
-            seen.add(val);
-            fallback.push({ value: val, label: val });
+          const kegRef = kegiatans?.find(k => String(k.code || '').trim() === code);
+          const label = kegRef ? `${code} - ${String(kegRef.name || '').trim()}` : code;
+          if (code && !seen.has(code)) {
+            seen.add(code);
+            fallback.push({ value: code, label });
           }
         } catch {}
       }
@@ -176,15 +179,15 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   // Rincian Output options - filtered by selected kegiatan
   const rincianOutputOptions = useMemo<SelectOption[]>(() => {
     try {
-      if (!filters.kegiatan || typeof filters.kegiatan !== 'string') return [];
-      
       // Use provided options first if available
       if (rincianOutputsOptions && Array.isArray(rincianOutputsOptions) && rincianOutputsOptions.length > 0) {
         console.log('[Filter] Using provided rincianOutputsOptions:', rincianOutputsOptions.length);
         return rincianOutputsOptions;
       }
       
-      // Try reference data first
+      if (!filters.kegiatan || typeof filters.kegiatan !== 'string') return [];
+      
+      // Try reference data first with "code - name" format
       if (rincianOutputs && Array.isArray(rincianOutputs) && rincianOutputs.length > 0) {
         const relatedKegiatan = kegiatans?.find(k => {
           try {
@@ -212,17 +215,20 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         }
       }
 
-      // FALLBACK: Derive from budgetItems
+      // FALLBACK: Derive from budgetItems with "code - name" format
       console.log('[Filter] Using fallback: deriving rincian output options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
-      for (const item of budgetItems) {
+      const relevantItems = budgetItems.filter(item => String(item.kegiatan || '').trim() === String(filters.kegiatan).trim());
+      const rincianCodes = new Set(relevantItems.map(item => String(item.rincian_output || '').trim()).filter(Boolean));
+      
+      for (const code of rincianCodes) {
         try {
-          if (String(item.kegiatan || '').trim() !== filters.kegiatan) continue;
-          const val = String(item.rincian_output || '').trim();
-          if (val && !seen.has(val)) {
-            seen.add(val);
-            fallback.push({ value: val, label: val });
+          const rincRef = rincianOutputs?.find(r => String(r.code || '').trim() === code);
+          const label = rincRef ? `${code} - ${String(rincRef.name || '').trim()}` : code;
+          if (code && !seen.has(code)) {
+            seen.add(code);
+            fallback.push({ value: code, label });
           }
         } catch {}
       }
@@ -236,15 +242,15 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   // Komponen Output options - filtered by selected rincian output
   const komponenOutputOptions = useMemo<SelectOption[]>(() => {
     try {
-      if (!filters.rincian_output || typeof filters.rincian_output !== 'string') return [];
-      
       // Use provided options first if available
       if (komponenOutputsOptions && Array.isArray(komponenOutputsOptions) && komponenOutputsOptions.length > 0) {
         console.log('[Filter] Using provided komponenOutputsOptions:', komponenOutputsOptions.length);
         return komponenOutputsOptions;
       }
       
-      // Try reference data first
+      if (!filters.rincian_output || typeof filters.rincian_output !== 'string') return [];
+      
+      // Try reference data first with "code - name" format
       if (komponenOutputs && Array.isArray(komponenOutputs) && komponenOutputs.length > 0) {
         const relatedRincian = rincianOutputs?.find(r => {
           try {
@@ -272,17 +278,20 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         }
       }
 
-      // FALLBACK: Derive from budgetItems
+      // FALLBACK: Derive from budgetItems with "code - name" format
       console.log('[Filter] Using fallback: deriving komponen output options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
-      for (const item of budgetItems) {
+      const relevantItems = budgetItems.filter(item => String(item.rincian_output || '').trim() === String(filters.rincian_output).trim());
+      const komponenCodes = new Set(relevantItems.map(item => String(item.komponen_output || '').trim()).filter(Boolean));
+      
+      for (const code of komponenCodes) {
         try {
-          if (String(item.rincian_output || '').trim() !== filters.rincian_output) continue;
-          const val = String(item.komponen_output || '').trim();
-          if (val && !seen.has(val)) {
-            seen.add(val);
-            fallback.push({ value: val, label: val });
+          const kompRef = komponenOutputs?.find(k => String(k.code || '').trim() === code);
+          const label = kompRef ? `${code} - ${String(kompRef.name || '').trim()}` : code;
+          if (code && !seen.has(code)) {
+            seen.add(code);
+            fallback.push({ value: code, label });
           }
         } catch {}
       }
@@ -336,13 +345,16 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.log('[Filter] Using fallback: deriving sub komponen options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
-      for (const item of budgetItems) {
+      const relevantItems = budgetItems.filter(item => String(item.komponen_output || '').trim() === String(filters.komponen_output).trim());
+      const subKomponenCodes = new Set(relevantItems.map(item => String(item.sub_komponen || '').trim()).filter(Boolean));
+      
+      for (const code of subKomponenCodes) {
         try {
-          if (String(item.komponen_output || '').trim() !== filters.komponen_output) continue;
-          const val = String(item.sub_komponen || '').trim();
-          if (val && !seen.has(val)) {
-            seen.add(val);
-            fallback.push({ value: val, label: val });
+          const skRef = subKomponen?.find(s => String(s.code || '').trim() === code);
+          const label = skRef ? `${code} - ${String(skRef.name || '').trim()}` : code;
+          if (code && !seen.has(code)) {
+            seen.add(code);
+            fallback.push({ value: code, label });
           }
         } catch {}
       }
@@ -387,20 +399,21 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         }
       });
 
-      // Try reference data first, filtered by relevantItems
-      if (akuns && Array.isArray(akuns) && akuns.length > 0 && relevantItems.length > 0) {
-        const relevantAkunValues = new Set(
-          relevantItems.map(item => String(item.akun || '').trim()).filter(Boolean)
-        );
+      // Try reference data first with "code - name" format
+      if (akuns && Array.isArray(akuns) && akuns.length > 0) {
+        // If we have relevant items, filter akuns to only those used; otherwise show all active akuns
+        const relevantAkunValues = relevantItems.length > 0
+          ? new Set(relevantItems.map(item => String(item.akun || '').trim()).filter(Boolean))
+          : null;
         
         const result: SelectOption[] = [];
         for (const a of akuns) {
           try {
             if (!a || typeof a !== 'object' || !a.is_active) continue;
-            // Use code as value to match budgetItems.akun
             const code = String(a.code || '').trim();
-            // Only include if this akun is used in filtered items
-            if (!relevantAkunValues.has(code)) continue;
+            
+            // If we have relevant items, only include matching akuns; otherwise include all active
+            if (relevantAkunValues && !relevantAkunValues.has(code)) continue;
             
             const label = `${code} - ${String(a.name || '').trim()}`;
             if (code && label.trim()) {
@@ -410,23 +423,32 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             console.error('Error processing akun:', a, e);
           }
         }
-        console.log('[Filter] Akun options from filtered reference:', result.length);
+        console.log('[Filter] Akun options from reference:', result.length);
         if (result.length > 0) return result;
       }
 
-      // FALLBACK: Derive from filtered budgetItems
-      console.log('[Filter] Using fallback: deriving akun options from filtered budgetItems');
+      // FALLBACK: Derive from filtered budgetItems with "code - name" format
+      console.log('[Filter] Using fallback: deriving akun options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
-      for (const item of relevantItems) {
+      
+      // Get unique akun codes from relevant items
+      const akunCodes = new Set(
+        relevantItems.map(item => String(item.akun || '').trim()).filter(Boolean)
+      );
+      
+      // Try to enhance fallback with any available reference data for names
+      for (const code of akunCodes) {
         try {
-          const val = String(item.akun || '').trim();
-          if (val && !seen.has(val)) {
-            seen.add(val);
-            fallback.push({ value: val, label: val });
+          const akunRef = akuns?.find(a => String(a.code || '').trim() === code);
+          const label = akunRef ? `${code} - ${String(akunRef.name || '').trim()}` : code;
+          if (code && !seen.has(code)) {
+            seen.add(code);
+            fallback.push({ value: code, label });
           }
         } catch {}
       }
+      
       return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
     } catch (e) {
       console.error('Error building akunOptions:', e);
