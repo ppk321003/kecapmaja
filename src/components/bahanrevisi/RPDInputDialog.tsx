@@ -244,10 +244,10 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                 <tr>
                   <th className="px-2 py-2 text-left font-semibold text-xs">Bulan</th>
                   <th className="px-2 py-2 text-center font-semibold text-xs w-16">%</th>
-                  <th className="px-2 py-2 text-right font-semibold text-xs w-24">Nilai</th>
+                  <th className="px-2 py-2 text-right font-semibold text-xs w-28">Nilai</th>
                   <th className="px-2 py-2 text-left font-semibold text-xs">Bulan</th>
                   <th className="px-2 py-2 text-center font-semibold text-xs w-16">%</th>
-                  <th className="px-2 py-2 text-right font-semibold text-xs w-24">Nilai</th>
+                  <th className="px-2 py-2 text-right font-semibold text-xs w-28">Nilai</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -269,14 +269,14 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                           placeholder="0"
                         />
                       </td>
-                      <td className="px-2 py-2 w-24">
+                      <td className="px-2 py-2 w-28">
                         <Input
                           type="text"
                           inputMode="numeric"
                           value={getDisplayValue(values[leftMonth.key as keyof typeof values] || 0)}
                           onChange={(e) => handleValueChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
-                          className="h-7 text-xs text-right px-1 w-full font-mono"
+                          className="h-7 text-xs text-right px-1 w-full"
                           placeholder="0"
                         />
                       </td>
@@ -293,14 +293,14 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                           placeholder="0"
                         />
                       </td>
-                      <td className="px-2 py-2 w-24">
+                      <td className="px-2 py-2 w-28">
                         <Input
                           type="text"
                           inputMode="numeric"
                           value={getDisplayValue(values[rightMonth.key as keyof typeof values] || 0)}
                           onChange={(e) => handleValueChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
-                          className="h-7 text-xs text-right px-1 w-full font-mono"
+                          className="h-7 text-xs text-right px-1 w-full"
                           placeholder="0"
                         />
                       </td>
