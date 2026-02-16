@@ -209,19 +209,9 @@ const BahanRevisiRingkasanTabs: React.FC<BahanRevisiRingkasanTabsProps> = ({
     );
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-8">
-          <div className="text-center text-slate-500">Loading summary data...</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-      <TabsList className="grid grid-cols-5 lg:grid-cols-9 gap-2 h-auto bg-transparent">
+      <TabsList className="w-full h-auto flex flex-wrap gap-1 bg-slate-100 p-1 rounded-lg shadow-sm overflow-visible">
         <TabsTrigger value="ringkasan-perubahan" className="text-xs">
           Ringkasan Perubahan
         </TabsTrigger>
@@ -246,31 +236,87 @@ const BahanRevisiRingkasanTabs: React.FC<BahanRevisiRingkasanTabsProps> = ({
       </TabsList>
 
       <TabsContent value="ringkasan-perubahan" className="space-y-4">
-        <BahanRevisiRingkasan items={items} isLoading={isLoading} />
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-slate-500">Loading data...</div>
+            </CardContent>
+          </Card>
+        ) : (
+          <BahanRevisiRingkasan items={items} isLoading={false} />
+        )}
       </TabsContent>
 
       <TabsContent value="program-pembebanan">
-        {renderSummaryTable(summaryByProgram, 'Program Pembebanan')}
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-slate-500">Loading data...</div>
+            </CardContent>
+          </Card>
+        ) : (
+          renderSummaryTable(summaryByProgram, 'Program Pembebanan')
+        )}
       </TabsContent>
 
       <TabsContent value="kegiatan">
-        {renderSummaryTable(summaryByKegiatan, 'Kegiatan')}
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-slate-500">Loading data...</div>
+            </CardContent>
+          </Card>
+        ) : (
+          renderSummaryTable(summaryByKegiatan, 'Kegiatan')
+        )}
       </TabsContent>
 
       <TabsContent value="rincian-output">
-        {renderSummaryTable(summaryByRincianOutput, 'Rincian Output')}
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-slate-500">Loading data...</div>
+            </CardContent>
+          </Card>
+        ) : (
+          renderSummaryTable(summaryByRincianOutput, 'Rincian Output')
+        )}
       </TabsContent>
 
       <TabsContent value="komponen-output">
-        {renderSummaryTable(summaryByKomponen, 'Komponen Output')}
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-slate-500">Loading data...</div>
+            </CardContent>
+          </Card>
+        ) : (
+          renderSummaryTable(summaryByKomponen, 'Komponen Output')
+        )}
       </TabsContent>
 
       <TabsContent value="sub-komponen">
-        {renderSummaryTable(summaryBySubKomponen, 'Sub Komponen')}
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-slate-500">Loading data...</div>
+            </CardContent>
+          </Card>
+        ) : (
+          renderSummaryTable(summaryBySubKomponen, 'Sub Komponen')
+        )}
       </TabsContent>
 
       <TabsContent value="akun">
-        {renderSummaryTable(summaryByAkun, 'Akun')}
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-slate-500">Loading data...</div>
+            </CardContent>
+          </Card>
+        ) : (
+          renderSummaryTable(summaryByAkun, 'Akun')
+        )}
       </TabsContent>
     </Tabs>
   );
