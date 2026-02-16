@@ -389,7 +389,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                       sisa_anggaran: (rpdItem.total_pagu || 0) - total,
                       status: 'ok',
                       modified_by: user?.username || 'unknown',
-                      modified_date: new Date().toISOString(),
+                      modified_date: formatDateIndonesia(new Date().toISOString()),
                     };
 
                     updateRPDItem({ 

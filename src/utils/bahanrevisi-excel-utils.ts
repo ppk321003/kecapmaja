@@ -18,6 +18,40 @@ export const normalizeColumnName = (name: string): string => {
     .trim();
 };
 
+// Convert Excel date value to ISO string
+export const excelDateToISO = (dateValue: any): string => {
+  if (!dateValue) return '';
+  
+  // If it's already a string that looks like ISO date
+  if (typeof dateValue === 'string') {
+    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+    if (isoRegex.test(dateValue)) {
+      return dateValue;
+    }
+    
+    // Try to parse as date string
+    const parsedDate = new Date(dateValue);
+    if (!isNaN(parsedDate.getTime())) {
+      return parsedDate.toISOString();
+    }
+  }
+  
+  // If it's a number (Excel serial date)
+  if (typeof dateValue === 'number') {
+    // Excel dates start from Jan 1, 1900
+    const excelBaseDate = new Date(1900, 0, 1);
+    const excelDate = new Date(excelBaseDate.getTime() + (dateValue - 1) * 86400000);
+    return excelDate.toISOString();
+  }
+  
+  // If it's already a Date object
+  if (dateValue instanceof Date) {
+    return dateValue.toISOString();
+  }
+  
+  return '';
+};
+
 // Expected column names dan variasi mereka
 export const expectedColumns = {
   // Hierarchy columns
@@ -37,6 +71,18 @@ export const expectedColumns = {
   satuanMenjadi: ['satuanmenjadi', 'satuan menjadi', 'satuan akhir'],
   hargaSatuanMenjadi: ['hargasatuanmenjadi', 'harga satuan menjadi', 'harga menjadi'],
   blokir: ['blokir', 'blocked', 'blocked amount', 'locked amount', 'terkunci'],
+
+  // Approval and tracking columns
+  approvedBy: ['approvedby', 'approved by', 'disetujui oleh'],
+  rejectedBy: ['rejectedby', 'rejected by', 'ditolak oleh'],
+  submittedBy: ['submittedby', 'submitted by', 'dikirim oleh'],
+  notes: ['notes', 'catatan', 'remarks', 'keterangan tambahan'],
+
+  // Date columns
+  approvedDate: ['approveddate', 'approved date', 'tgl disetujui', 'tanggal disetujui'],
+  rejectedDate: ['rejecteddate', 'rejected date', 'tgl ditolak', 'tanggal ditolak'],
+  submittedDate: ['submitteddate', 'submitted date', 'tgl dikirim', 'tanggal dikirim'],
+  updatedDate: ['updateddate', 'updated date', 'tgl diupdate', 'tanggal diupdate'],
 
   // RPD columns (monthly)
   januari: ['januari', 'jan', 'january'],
@@ -326,9 +372,34 @@ export const processBahanRevisiRows = (
               ? parseFloat(row[columnIndices.blokir]) || 0
               : 0,
           status,
-          submitted_by: 'import',
-          submitted_date: new Date().toISOString(),
-          updated_date: new Date().toISOString(),
+          approved_by: 
+            columnIndices.approvedBy !== undefined
+              ? String(row[columnIndices.approvedBy] || '')
+              : '',
+          approved_date:
+            columnIndices.approvedDate !== undefined && row[columnIndices.approvedDate]
+              ? excelDateToISO(row[columnIndices.approvedDate])
+              : '',
+          rejected_date:
+            columnIndices.rejectedDate !== undefined && row[columnIndices.rejectedDate]
+              ? excelDateToISO(row[columnIndices.rejectedDate])
+              : '',
+          submitted_by: 
+            columnIndices.submittedBy !== undefined
+              ? String(row[columnIndices.submittedBy] || '')
+              : 'import',
+          submitted_date:
+            columnIndices.submittedDate !== undefined && row[columnIndices.submittedDate]
+              ? excelDateToISO(row[columnIndices.submittedDate])
+              : new Date().toISOString(),
+          updated_date:
+            columnIndices.updatedDate !== undefined && row[columnIndices.updatedDate]
+              ? excelDateToISO(row[columnIndices.updatedDate])
+              : new Date().toISOString(),
+          notes: 
+            columnIndices.notes !== undefined
+              ? String(row[columnIndices.notes] || '')
+              : '',
         };
 
         budgetItems.push(budgetItem);
@@ -415,6 +486,14 @@ export const getFriendlyColumnNames = (columns: string[]): string => {
     satuanMenjadi: 'Satuan Menjadi',
     hargaSatuanMenjadi: 'Harga Satuan Menjadi',
     blokir: 'Blokir',
+    approvedBy: 'Disetujui Oleh',
+    approvedDate: 'Tgl Disetujui',
+    rejectedBy: 'Ditolak Oleh',
+    rejectedDate: 'Tgl Ditolak',
+    submittedBy: 'Dikirim Oleh',
+    submittedDate: 'Tgl Dikirim',
+    updatedDate: 'Tgl Diupdate',
+    notes: 'Catatan',
   };
 
   return columns.map((col) => friendlyNames[col] || col).join(', ');

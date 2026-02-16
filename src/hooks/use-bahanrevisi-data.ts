@@ -2,6 +2,7 @@
  * Custom hook untuk membaca data Bahan Revisi Anggaran dari Google Sheets
  */
 
+import { useMemo } from 'react';
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -800,10 +801,22 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
     ? roundToThousands(budgetItemsQuery.data.reduce((sum, item) => sum + (item.blokir || 0), 0))
     : 0;
 
+  // Enrich RPD items with blokir values from budget items (match by ID)
+  const enrichedRPDItems = useMemo(() => {
+    if (!rpdItemsQuery.data || !budgetItemsQuery.data) return [];
+    return rpdItemsQuery.data.map(rpdItem => {
+      const matchingBudgetItem = budgetItemsQuery.data?.find(b => b.id === rpdItem.id);
+      return {
+        ...rpdItem,
+        blokir: matchingBudgetItem?.blokir || 0
+      };
+    });
+  }, [rpdItemsQuery.data, budgetItemsQuery.data]);
+
   return {
     budgetItems: budgetItemsQuery.data || [],
     filteredBudgetItems: filteredBudgetItems || [],
-    rpdItems: rpdItemsQuery.data || [],
+    rpdItems: enrichedRPDItems,
     programs: programsQuery.data || [],
     kegiatans: kegiatansQuery.data || [],
     rincianOutputs: rincianOutputsQuery.data || [],
