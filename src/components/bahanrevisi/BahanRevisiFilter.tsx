@@ -73,17 +73,20 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         const result: SelectOption[] = [];
         for (const p of programs) {
           try {
-            if (!p || typeof p !== 'object' || !p.is_active) continue;
+            if (!p || typeof p !== 'object') continue;
+            // Don't strictly require is_active - just skip if explicitly false
+            if (p.is_active === false) continue;
             const code = String(p.code || '').trim();
-            const label = `${code} - ${String(p.name || '').trim()}`;
-            if (code && label.trim()) {
-              result.push({ value: code, label: label.trim() });
+            const name = String(p.name || '').trim();
+            if (code && name) {
+              const label = `${code} - ${name}`;
+              result.push({ value: code, label });
             }
           } catch (e) {
             console.error('Error processing program:', p, e);
           }
         }
-        console.log('[Filter] Program options from reference:', result.length, 'programs:', programs.length);
+        console.log('[Filter] Program options from reference:', result.length, 'filtered from programs:', programs.length);
         if (result.length > 0) return result;
       }
     } catch (e) {
@@ -135,17 +138,21 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           const result: SelectOption[] = [];
           for (const k of kegiatans) {
             try {
-              if (!k || typeof k !== 'object' || !k.is_active || k.program_id !== relatedProgram.id) continue;
+              if (!k || typeof k !== 'object') continue;
+              // Don't strictly require is_active - just skip if explicitly false
+              if (k.is_active === false) continue;
+              if (k.program_id !== relatedProgram.id) continue;
               const code = String(k.code || '').trim();
-              const label = `${code} - ${String(k.name || '').trim()}`;
-              if (code && label.trim()) {
-                result.push({ value: code, label: label.trim() });
+              const name = String(k.name || '').trim();
+              if (code && name) {
+                const label = `${code} - ${name}`;
+                result.push({ value: code, label });
               }
             } catch (e) {
               console.error('Error processing kegiatan:', k, e);
             }
           }
-          console.log('[Filter] Kegiatan options from reference:', result.length);
+          console.log('[Filter] Kegiatan options from reference:', result.length, 'filtered from kegiatans:', kegiatans.length);
           if (result.length > 0) return result;
         }
       }
@@ -198,17 +205,21 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           const result: SelectOption[] = [];
           for (const r of rincianOutputs) {
             try {
-              if (!r || typeof r !== 'object' || !r.is_active || r.kegiatan_id !== relatedKegiatan.id) continue;
+              if (!r || typeof r !== 'object') continue;
+              // Don't strictly require is_active - just skip if explicitly false
+              if (r.is_active === false) continue;
+              if (r.kegiatan_id !== relatedKegiatan.id) continue;
               const code = String(r.code || '').trim();
-              const label = `${code} - ${String(r.name || '').trim()}`;
-              if (code && label.trim()) {
-                result.push({ value: code, label: label.trim() });
+              const name = String(r.name || '').trim();
+              if (code && name) {
+                const label = `${code} - ${name}`;
+                result.push({ value: code, label });
               }
             } catch (e) {
               console.error('Error processing rincian output:', r, e);
             }
           }
-          console.log('[Filter] Rincian Output options from reference:', result.length);
+          console.log('[Filter] Rincian Output options from reference:', result.length, 'filtered from rincianOutputs:', rincianOutputs.length);
           if (result.length > 0) return result;
         }
       }
@@ -261,17 +272,21 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           const result: SelectOption[] = [];
           for (const k of komponenOutputs) {
             try {
-              if (!k || typeof k !== 'object' || !k.is_active || k.rincian_output_id !== relatedRincian.id) continue;
+              if (!k || typeof k !== 'object') continue;
+              // Don't strictly require is_active - just skip if explicitly false
+              if (k.is_active === false) continue;
+              if (k.rincian_output_id !== relatedRincian.id) continue;
               const code = String(k.code || '').trim();
-              const label = `${code} - ${String(k.name || '').trim()}`;
-              if (code && label.trim()) {
-                result.push({ value: code, label: label.trim() });
+              const name = String(k.name || '').trim();
+              if (code && name) {
+                const label = `${code} - ${name}`;
+                result.push({ value: code, label });
               }
             } catch (e) {
               console.error('Error processing komponen output:', k, e);
             }
           }
-          console.log('[Filter] Komponen Output options from reference:', result.length);
+          console.log('[Filter] Komponen Output options from reference:', result.length, 'filtered from komponenOutputs:', komponenOutputs.length);
           if (result.length > 0) return result;
         }
       }
@@ -324,17 +339,21 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           const result: SelectOption[] = [];
           for (const s of subKomponen) {
             try {
-              if (!s || typeof s !== 'object' || !s.is_active || s.komponen_output_id !== relatedKomponen.id) continue;
+              if (!s || typeof s !== 'object') continue;
+              // Don't strictly require is_active - just skip if explicitly false
+              if (s.is_active === false) continue;
+              if (s.komponen_output_id !== relatedKomponen.id) continue;
               const code = String(s.code || '').trim();
-              const label = `${code} - ${String(s.name || '').trim()}`;
-              if (code && label.trim()) {
-                result.push({ value: code, label: label.trim() });
+              const name = String(s.name || '').trim();
+              if (code && name) {
+                const label = `${code} - ${name}`;
+                result.push({ value: code, label });
               }
             } catch (e) {
               console.error('Error processing sub komponen:', s, e);
             }
           }
-          console.log('[Filter] Sub Komponen options from reference:', result.length);
+          console.log('[Filter] Sub Komponen options from reference:', result.length, 'filtered from subKomponen:', subKomponen.length);
           if (result.length > 0) return result;
         }
       }
@@ -372,12 +391,6 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   // Akun options - filtered based on selected parent filters
   const akunOptions = useMemo<SelectOption[]>(() => {
     try {
-      // Use provided options first if available
-      if (akunsOptions && Array.isArray(akunsOptions) && akunsOptions.length > 0) {
-        console.log('[Filter] Using provided akunsOptions:', akunsOptions.length);
-        return akunsOptions;
-      }
-      
       // First, filter budgetItems based on already-selected filters
       // to get only relevant akuns
       const relevantItems = budgetItems.filter(item => {
@@ -413,21 +426,24 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         const result: SelectOption[] = [];
         for (const a of akuns) {
           try {
-            if (!a || typeof a !== 'object' || !a.is_active) continue;
+            if (!a || typeof a !== 'object') continue;
+            // Don't strictly require is_active - just skip if explicitly false
+            if (a.is_active === false) continue;
             const code = String(a.code || '').trim();
             
-            // If we have relevant items, only include matching akuns; otherwise include all active
+            // If we have relevant items, only include matching akuns; otherwise include all
             if (relevantAkunValues && !relevantAkunValues.has(code)) continue;
             
-            const label = `${code} - ${String(a.name || '').trim()}`;
-            if (code && label.trim()) {
-              result.push({ value: code, label: label.trim() });
+            const name = String(a.name || '').trim();
+            if (code && name) {
+              const label = `${code} - ${name}`;
+              result.push({ value: code, label });
             }
           } catch (e) {
             console.error('Error processing akun:', a, e);
           }
         }
-        console.log('[Filter] Akun options from reference:', result.length);
+        console.log('[Filter] Akun options from reference:', result.length, 'filtered from akuns:', akuns.length);
         if (result.length > 0) return result;
       }      
       // Fall back to provided options from hook
