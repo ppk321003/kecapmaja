@@ -77,6 +77,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     deleteItem,
     approveItem,
     rejectItem,
+    updateRPDItem,
     isLoading: isSubmitting,
   } = useBahanRevisiSubmit({ sheetId });
 
@@ -361,9 +362,52 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 filters={filters}
                 items={rpdItems}
                 loading={isLoadingData}
+                budgetItems={budgetItems}
                 onUpdateItem={async (id, updates) => {
-                  // Handle RPD item updates via spreadsheet
-                  // TODO: Implement RPD update functionality
+                  try {
+                    // Calculate total_rpd and sisa_anggaran
+                    const rpdItem = rpdItems.find(item => item.id === id);
+                    if (!rpdItem) {
+                      toast({
+                        title: 'Error',
+                        description: 'Item RPD tidak ditemukan',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+
+                    const newValues = { ...rpdItem, ...updates };
+                    const total = (newValues.jan || 0) + (newValues.feb || 0) + (newValues.mar || 0) + 
+                                 (newValues.apr || 0) + (newValues.mei || 0) + (newValues.jun || 0) + 
+                                 (newValues.jul || 0) + (newValues.aug || 0) + (newValues.sep || 0) + 
+                                 (newValues.oct || 0) + (newValues.nov || 0) + (newValues.dec || 0);
+                    
+                    const finalUpdates = {
+                      ...updates,
+                      total_rpd: total,
+                      sisa_anggaran: (rpdItem.total_pagu || 0) - total,
+                      modified_by: user?.username || 'unknown',
+                      modified_date: new Date().toISOString(),
+                    };
+
+                    updateRPDItem({ 
+                      itemId: id, 
+                      updates: finalUpdates, 
+                      allItems: rpdItems 
+                    });
+                    
+                    toast({
+                      title: 'Berhasil',
+                      description: 'Data RPD berhasil disimpan',
+                    });
+                  } catch (error) {
+                    console.error('[RPDTable] Update error:', error);
+                    toast({
+                      title: 'Error',
+                      description: 'Gagal menyimpan data RPD',
+                      variant: 'destructive',
+                    });
+                  }
                 }}
               />
             </TabsContent>

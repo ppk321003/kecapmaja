@@ -46,6 +46,39 @@ const budgetItemToRow = (item: BudgetItem): (string | number | boolean | null)[]
 };
 
 /**
+ * Convert RPDItem to array for Google Sheets (25 columns)
+ */
+const rpdItemToRow = (item: RPDItem): (string | number | boolean | null)[] => {
+  return [
+    item.id,
+    item.program_pembebanan,
+    item.kegiatan,
+    item.komponen_output,
+    item.sub_komponen,
+    item.akun,
+    item.uraian,
+    item.total_pagu,
+    item.jan,
+    item.feb,
+    item.mar,
+    item.apr,
+    item.may,
+    item.jun,
+    item.jul,
+    item.aug,
+    item.sep,
+    item.oct,
+    item.nov,
+    item.dec,
+    item.total_rpd,
+    item.sisa_anggaran,
+    item.status,
+    item.modified_by || '',
+    item.modified_date || '',
+  ];
+};
+
+/**
  * Add new budget item to Google Sheets
  */
 const addBudgetItem = async (sheetId: string, item: Omit<BudgetItem, 'id'>): Promise<BudgetItem> => {
@@ -180,6 +213,40 @@ const rejectBudgetItem = async (
 };
 
 /**
+ * Update existing RPD item
+ */
+const updateRPDItem = async (sheetId: string, itemId: string, updates: Partial<RPDItem>, allItems: RPDItem[]): Promise<RPDItem> => {
+  if (!sheetId) throw new Error('Sheet ID tidak ditemukan');
+
+  const itemIndex = allItems.findIndex(item => item.id === itemId);
+  if (itemIndex === -1) throw new Error(`RPD item dengan ID ${itemId} tidak ditemukan`);
+
+  const updatedItem = { ...allItems[itemIndex], ...updates };
+  const row = rpdItemToRow(updatedItem);
+
+  // Google Sheets row index (1-based, +1 for header)
+  const sheetRowIndex = itemIndex + 2;
+
+  const result = await supabase.functions.invoke('google-sheets', {
+    body: {
+      spreadsheetId: sheetId,
+      operation: 'update',
+      range: `rpd_items!A${sheetRowIndex}:Y${sheetRowIndex}`,
+      values: [row],
+    },
+  });
+
+  if (result.error) {
+    console.error('[updateRPDItem] Error:', result.error);
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to update RPD item: ${errorMsg}`);
+  }
+
+  console.log('[updateRPDItem] Item updated:', itemId);
+  return updatedItem;
+};
+
+/**
  * Hook untuk budget item mutations
  */
 export const useBahanRevisiSubmit = ({ sheetId }: UseBahanRevisiSubmitProps) => {
@@ -225,22 +292,33 @@ export const useBahanRevisiSubmit = ({ sheetId }: UseBahanRevisiSubmitProps) => 
     },
   });
 
+  const updateRPDMutation = useMutation({
+    mutationFn: ({ itemId, updates, allItems }: { itemId: string; updates: Partial<RPDItem>; allItems: RPDItem[] }) =>
+      updateRPDItem(sheetId!, itemId, updates, allItems),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bahanrevisi-rpd-items', sheetId] });
+    },
+  });
+
   return {
     addItem: addMutation.mutate,
     updateItem: updateMutation.mutate,
     deleteItem: deleteMutation.mutate,
     approveItem: approveMutation.mutate,
     rejectItem: rejectMutation.mutate,
+    updateRPDItem: updateRPDMutation.mutate,
     isLoading:
       addMutation.isPending ||
       updateMutation.isPending ||
       deleteMutation.isPending ||
       approveMutation.isPending ||
-      rejectMutation.isPending,
+      rejectMutation.isPending ||
+      updateRPDMutation.isPending,
     isAdding: addMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isApproving: approveMutation.isPending,
     isRejecting: rejectMutation.isPending,
+    isUpdatingRPD: updateRPDMutation.isPending,
   };
 };

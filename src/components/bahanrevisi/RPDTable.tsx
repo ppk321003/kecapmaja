@@ -47,12 +47,14 @@ interface RPDItem {
   total_rpd?: number; // Total RPD
   sisa_anggaran?: number; // Sisa Anggaran
   status?: string;
+  blokir?: number; // Pagu yang tidak dapat ditarik
 }
 
 interface RPDTableProps {
   filters: BahanRevisiFilters;
   items: RPDItem[];
   loading?: boolean;
+  budgetItems?: any[];
   onUpdateItem?: (id: string, updates: Partial<RPDItem>) => Promise<void>;
 }
 
@@ -60,6 +62,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
   filters, 
   items, 
   loading = false,
+  budgetItems = [],
   onUpdateItem 
 }) => {
   // Safety check: ensure items is always an array
@@ -400,8 +403,8 @@ const RPDTable: React.FC<RPDTableProps> = ({
         
         .rpd-table .description-cell {
           text-align: left;
-          min-width: 150px;
-          max-width: 150px;
+          min-width: 100px;
+          max-width: 100px;
           word-break: break-word;
         }
         
@@ -607,18 +610,17 @@ const RPDTable: React.FC<RPDTableProps> = ({
                         </td>
                         <td className="action-cell">
                           <Button 
-                            variant="outline" 
+                            variant="ghost" 
                             size="sm"
                             onClick={() => {
                               setSelectedRPDItem(item);
                               setRpdDialogOpen(true);
                             }}
                             disabled={isReadOnly}
-                            className="h-7 text-xs"
-                            title={isReadOnly ? "Anda tidak memiliki akses untuk mengubah RPD" : "Isi Rencana Penarikan Dana"}
+                            className="h-7 w-7 p-0"
+                            title={isReadOnly ? "Anda tidak memiliki akses untuk mengubah RPD" : "Edit Rencana Penarikan Dana"}
                           >
-                            <Edit2 className="h-3 w-3 mr-1" />
-                            Isi RPD
+                            <Edit2 className="h-4 w-4" />
                           </Button>
                         </td>
                       </tr>
@@ -634,7 +636,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
               <tr className="footer-row">
                 <td className="fixed-column" style={{left: '0px'}}></td>
                 <td className="fixed-column" style={{left: '30px'}}></td>
-                <td className="fixed-column text-right" style={{left: '80px'}}>Total per Bulan</td>
+                <td className="fixed-column text-left" style={{left: '80px'}}>Total per Bulan</td>
                 <td className="pagu-cell fixed-column" style={{left: '380px'}}>{formatNumber(pagu)}</td>
                 <td className="total-cell fixed-column" style={{left: '500px'}}>{formatNumber(grandTotal)}</td>
                 <td className={`selisih-cell fixed-column ${sisaPagu !== 0 ? 'text-red-600' : 'text-green-600'}`} style={{left: '620px'}}>
@@ -714,6 +716,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
             dec: selectedRPDItem.dec,
           }}
           readOnly={isReadOnly}
+          blokir={selectedRPDItem.blokir || 0}
           onSave={async (data) => {
             if (onUpdateItem && selectedRPDItem) {
               const updates: {[key: string]: number} = {

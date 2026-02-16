@@ -57,6 +57,7 @@ export interface RPDItem {
   total_rpd: number; // auto sum: jan to dec
   sisa_anggaran: number; // auto: total_pagu - total_rpd
   status: string;
+  blokir?: number; // jumlah yang diblokir/tidak dapat ditarik
   modified_by?: string;
   modified_date?: string;
 }

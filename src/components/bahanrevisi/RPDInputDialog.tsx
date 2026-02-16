@@ -42,22 +42,23 @@ interface RPDInputDialogProps {
   totalPagu: number;
   initialData?: RPDInputData;
   readOnly?: boolean;
+  blokir?: number;
   onSave?: (data: RPDInputData) => Promise<void>;
 }
 
 const months: RPDMonth[] = [
-  { name: 'Januari', key: 'jan', label: 'Jan' },
-  { name: 'Februari', key: 'feb', label: 'Feb' },
-  { name: 'Maret', key: 'mar', label: 'Mar' },
-  { name: 'April', key: 'apr', label: 'Apr' },
+  { name: 'Januari', key: 'jan', label: 'Januari' },
+  { name: 'Februari', key: 'feb', label: 'Februari' },
+  { name: 'Maret', key: 'mar', label: 'Maret' },
+  { name: 'April', key: 'apr', label: 'April' },
   { name: 'Mei', key: 'mei', label: 'Mei' },
-  { name: 'Juni', key: 'jun', label: 'Jun' },
-  { name: 'Juli', key: 'jul', label: 'Jul' },
-  { name: 'Agustus', key: 'aug', label: 'Agu' },
-  { name: 'September', key: 'sep', label: 'Sep' },
-  { name: 'Oktober', key: 'oct', label: 'Okt' },
-  { name: 'November', key: 'nov', label: 'Nov' },
-  { name: 'Desember', key: 'dec', label: 'Des' },
+  { name: 'Juni', key: 'jun', label: 'Juni' },
+  { name: 'Juli', key: 'jul', label: 'Juli' },
+  { name: 'Agustus', key: 'aug', label: 'Agustus' },
+  { name: 'September', key: 'sep', label: 'September' },
+  { name: 'Oktober', key: 'oct', label: 'Oktober' },
+  { name: 'November', key: 'nov', label: 'November' },
+  { name: 'Desember', key: 'dec', label: 'Desember' },
 ];
 
 const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
@@ -68,6 +69,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   totalPagu,
   initialData = {},
   readOnly = false,
+  blokir = 0,
   onSave,
 }) => {
   const [percentages, setPercentages] = useState<{[key: string]: number}>({});
@@ -88,9 +90,9 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
         jul: initialData.jul || 0, aug: initialData.aug || 0, sep: initialData.sep || 0,
         oct: initialData.oct || 0, nov: initialData.nov || 0, dec: initialData.dec || 0
       });
-      setPaguTidakDapatDitarik(initialData.paguTidakDapatDitarik || 0);
+      setPaguTidakDapatDitarik(blokir || 0);
     }
-  }, [open, initialData]);
+  }, [open, initialData, blokir]);
 
   // Calculate total, percentages, and sisa
   const calculations = useMemo((): {
