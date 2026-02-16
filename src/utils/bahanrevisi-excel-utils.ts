@@ -71,6 +71,7 @@ export const expectedColumns = {
   satuanMenjadi: ['satuanmenjadi', 'satuan menjadi', 'satuan akhir'],
   hargaSatuanMenjadi: ['hargasatuanmenjadi', 'harga satuan menjadi', 'harga menjadi'],
   blokir: ['blokir', 'blocked', 'blocked amount', 'locked amount', 'terkunci'],
+  sisaAnggaran: ['sisaanggaran', 'sisa anggaran', 'sisa budget', 'remainder'],
 
   // Approval and tracking columns
   approvedBy: ['approvedby', 'approved by', 'disetujui oleh'],
@@ -367,6 +368,10 @@ export const processBahanRevisiRows = (
           harga_satuan_menjadi: hargaSatuanMenjadi,
           jumlah_menjadi: jumlahMenjadi,
           selisih,
+          sisa_anggaran:
+            columnIndices.sisaAnggaran !== undefined
+              ? parseFloat(row[columnIndices.sisaAnggaran]) || 0
+              : 0,
           blokir:
             columnIndices.blokir !== undefined
               ? parseFloat(row[columnIndices.blokir]) || 0

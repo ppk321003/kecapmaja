@@ -141,6 +141,7 @@ export const useImportBahanRevisi = ({
         item.harga_satuan_menjadi || 0,
         item.jumlah_menjadi || 0,
         item.selisih || 0,
+        item.sisa_anggaran || 0,
         item.blokir || 0,
         item.status || '',
         item.approved_by || '',

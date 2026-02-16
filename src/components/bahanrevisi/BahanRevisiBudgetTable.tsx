@@ -90,6 +90,8 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [searchUraian, setSearchUraian] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [editFormData, setEditFormData] = useState<Partial<BudgetItem>>({});
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   // Filter items berdasarkan hideZeroPagu dan search uraian
   const filteredByZeroPagu = useMemo(() => {
@@ -165,6 +167,43 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
 
   const calculateSelisih = (item: BudgetItem) => {
     return (item.jumlah_menjadi || 0) - (item.jumlah_semula || 0);
+  };
+
+  const handleEditOpen = (item: BudgetItem) => {
+    setEditingItem(item);
+    setEditFormData({
+      volume_menjadi: item.volume_menjadi,
+      satuan_menjadi: item.satuan_menjadi,
+      harga_satuan_menjadi: item.harga_satuan_menjadi,
+      sisa_anggaran: item.sisa_anggaran || 0,
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleEditClose = () => {
+    setShowEditDialog(false);
+    setEditingItem(null);
+    setEditFormData({});
+  };
+
+  const handleEditSave = () => {
+    if (!editingItem) return;
+    
+    // Calculate new jumlah_menjadi
+    const newJumlahMenjadi = Math.round(
+      (editFormData.volume_menjadi || 0) * (editFormData.harga_satuan_menjadi || 0)
+    );
+
+    onUpdate?.(editingItem.id, {
+      volume_menjadi: editFormData.volume_menjadi || 0,
+      satuan_menjadi: editFormData.satuan_menjadi || 'Paket',
+      harga_satuan_menjadi: editFormData.harga_satuan_menjadi || 0,
+      jumlah_menjadi: newJumlahMenjadi,
+      sisa_anggaran: editFormData.sisa_anggaran || 0,
+      selisih: newJumlahMenjadi - (editingItem.jumlah_semula || 0),
+    });
+    
+    handleEditClose();
   };
 
   if (isLoading) {
@@ -269,7 +308,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                   <TableCell className="text-center text-xs">{item.satuan_menjadi}</TableCell>
                   <TableCell className="text-right text-xs">{formatCurrency(item.harga_satuan_menjadi)}</TableCell>
                   <TableCell className="text-right text-xs">{formatCurrency(item.jumlah_menjadi)}</TableCell>
-                  <TableCell className="text-right text-xs">{formatCurrency((item.jumlah_semula || 0) - (item.jumlah_menjadi || 0))}</TableCell>
+                  <TableCell className="text-right text-xs">{formatCurrency(item.sisa_anggaran || 0)}</TableCell>
                   <TableCell className="text-right text-xs font-semibold text-orange-600">{formatCurrency(item.blokir || 0)}</TableCell>
                   <TableCell
                     className={`text-right text-xs font-semibold ${
@@ -289,12 +328,12 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7 text-blue-600 hover:bg-blue-100"
-                        onClick={() => setEditingItem(item)}
+                        onClick={() => handleEditOpen(item)}
                         title="Edit"
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
-                      {!isApproved(item) && (
+                      {!isApproved(item) && isAdmin && (
                         <Button
                           size="icon"
                           variant="ghost"
@@ -475,6 +514,113 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
             Tambah Item
           </Button>
         </div>
+      )}
+
+      {/* Edit Dialog */}
+      {showEditDialog && editingItem && (
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Item Budget</DialogTitle>
+              <DialogDescription>
+                Ubah Volume Menjadi, Satuan Menjadi, Harga Satuan Menjadi, dan Sisa Anggaran
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Uraian</label>
+                <Input
+                  value={editingItem.uraian}
+                  disabled
+                  className="mt-1"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Volume Menjadi</label>
+                  <Input
+                    type="number"
+                    value={editFormData.volume_menjadi || 0}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        volume_menjadi: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="mt-1"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Satuan Menjadi</label>
+                  <Input
+                    value={editFormData.satuan_menjadi || ''}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        satuan_menjadi: e.target.value,
+                      })
+                    }
+                    className="mt-1"
+                    placeholder="Paket"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Harga Satuan Menjadi</label>
+                  <Input
+                    type="number"
+                    value={editFormData.harga_satuan_menjadi || 0}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        harga_satuan_menjadi: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="mt-1"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Sisa Anggaran</label>
+                  <Input
+                    type="number"
+                    value={editFormData.sisa_anggaran || 0}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        sisa_anggaran: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="mt-1"
+                    min="0"
+                  />
+                </div>
+              </div>
+              <div className="bg-blue-50 p-3 rounded">
+                <p className="text-sm font-medium text-blue-900">
+                  Jumlah Menjadi akan auto: {formatCurrency(
+                    Math.round((editFormData.volume_menjadi || 0) * (editFormData.harga_satuan_menjadi || 0))
+                  )}
+                </p>
+                <p className="text-sm font-medium text-blue-900">
+                  Selisih akan auto: {formatCurrency(
+                    Math.round((editFormData.volume_menjadi || 0) * (editFormData.harga_satuan_menjadi || 0)) - (editingItem.jumlah_semula || 0)
+                  )}
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleEditClose}>
+                Batal
+              </Button>
+              <Button onClick={handleEditSave}>
+                Simpan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Reject Dialog */}

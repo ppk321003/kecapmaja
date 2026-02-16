@@ -2,7 +2,7 @@ import React from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileImage } from 'lucide-react';
+import { FileImage, Edit, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/utils/bahanrevisi-calculations';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,9 +19,11 @@ interface NewBudgetItem {
 
 interface NewBudgetTableProps {
   items: NewBudgetItem[];
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export const NewBudgetTable: React.FC<NewBudgetTableProps> = ({ items }) => {
+export const NewBudgetTable: React.FC<NewBudgetTableProps> = ({ items, onEdit, onDelete }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'Pejabat Pembuat Komitmen';
 
@@ -66,6 +68,7 @@ export const NewBudgetTable: React.FC<NewBudgetTableProps> = ({ items }) => {
                 <TableHead className="w-[100px] text-center">Satuan</TableHead>
                 <TableHead className="w-[180px] text-center">Harga Satuan</TableHead>
                 <TableHead className="w-[180px] text-center">Jumlah</TableHead>
+                {(onEdit || onDelete) && <TableHead className="w-[100px] text-center">Aksi SM/PJK</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -78,12 +81,40 @@ export const NewBudgetTable: React.FC<NewBudgetTableProps> = ({ items }) => {
                   <TableCell className="text-center py-3">{item.satuan}</TableCell>
                   <TableCell className="text-right py-3">{formatCurrency(item.hargaSatuan)}</TableCell>
                   <TableCell className="text-right py-3">{formatCurrency(item.jumlah)}</TableCell>
+                  {(onEdit || onDelete) && (
+                    <TableCell className="text-center py-3">
+                      <div className="flex gap-1 justify-center">
+                        {onEdit && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-blue-600 hover:bg-blue-100"
+                            onClick={() => onEdit(item.id)}
+                            title="Edit"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {onDelete && isAdmin && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-red-600 hover:bg-red-100"
+                            onClick={() => onDelete(item.id)}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={6} className="font-bold text-center">
+                <TableCell colSpan={(onEdit || onDelete) ? 7 : 6} className="font-bold text-center">
                   Total Pagu Anggaran Baru
                 </TableCell>
                 <TableCell className="text-right font-bold">{formatCurrency(totalJumlah)}</TableCell>

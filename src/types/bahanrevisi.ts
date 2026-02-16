@@ -22,6 +22,7 @@ export interface BudgetItem {
   harga_satuan_menjadi: number;
   jumlah_menjadi: number; // auto: volume_menjadi * harga_satuan_menjadi
   selisih: number; // auto: jumlah_menjadi - jumlah_semula
+  sisa_anggaran: number; // sisa anggaran yang tersedia (opsional, default: 0)
   blokir: number; // jumlah yang diblokir/terkunci (default: 0)
   status: BudgetItemStatus;
   approved_by?: string; // username PPK
