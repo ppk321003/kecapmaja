@@ -47,19 +47,19 @@ interface RPDInputDialogProps {
 }
 
 const months: RPDMonth[] = [
-  { name: 'Januari', key: 'jan', label: 'Januari' },
-  { name: 'Februari', key: 'feb', label: 'Februari' },
-  { name: 'Maret', key: 'mar', label: 'Maret' },
-  { name: 'April', key: 'apr', label: 'April' },
-  { name: 'Mei', key: 'mei', label: 'Mei' },
-  { name: 'Juni', key: 'jun', label: 'Juni' },
-  { name: 'Juli', key: 'jul', label: 'Juli' },
-  { name: 'Agustus', key: 'aug', label: 'Agustus' },
-  { name: 'September', key: 'sep', label: 'September' },
-  { name: 'Oktober', key: 'oct', label: 'Oktober' },
-  { name: 'November', key: 'nov', label: 'November' },
-  { name: 'Desember', key: 'dec', label: 'Desember' },
-];
+{ name: 'Januari', key: 'jan', label: 'Januari' },
+{ name: 'Februari', key: 'feb', label: 'Februari' },
+{ name: 'Maret', key: 'mar', label: 'Maret' },
+{ name: 'April', key: 'apr', label: 'April' },
+{ name: 'Mei', key: 'mei', label: 'Mei' },
+{ name: 'Juni', key: 'jun', label: 'Juni' },
+{ name: 'Juli', key: 'jul', label: 'Juli' },
+{ name: 'Agustus', key: 'aug', label: 'Agustus' },
+{ name: 'September', key: 'sep', label: 'September' },
+{ name: 'Oktober', key: 'oct', label: 'Oktober' },
+{ name: 'November', key: 'nov', label: 'November' },
+{ name: 'Desember', key: 'dec', label: 'Desember' }];
+
 
 const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   open,
@@ -70,10 +70,10 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   initialData = {},
   readOnly = false,
   blokir = 0,
-  onSave,
+  onSave
 }) => {
-  const [percentages, setPercentages] = useState<{[key: string]: number}>({});
-  const [values, setValues] = useState<{[key: string]: number}>({});
+  const [percentages, setPercentages] = useState<{[key: string]: number;}>({});
+  const [values, setValues] = useState<{[key: string]: number;}>({});
   const [paguTidakDapatDitarik, setPaguTidakDapatDitarik] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -98,12 +98,12 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   const calculations = useMemo((): {
     total: number;
     sisa: number;
-    percentages: {[key: string]: number};
+    percentages: {[key: string]: number;};
     isBalanced: boolean;
   } => {
     try {
       const monthKeys: (keyof typeof values)[] = ['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-      
+
       let total: number = 0;
       for (const key of monthKeys) {
         const val = Number(values[key]) || 0;
@@ -112,19 +112,19 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
 
       const paguNotAvailable: number = Number(paguTidakDapatDitarik) || 0;
       const sisa: number = Number(totalPagu) - total - paguNotAvailable;
-      
+
       // Calculate percentages
-      const newPercentages: {[key: string]: number} = {};
-      monthKeys.forEach(key => {
+      const newPercentages: {[key: string]: number;} = {};
+      monthKeys.forEach((key) => {
         const val = Number(values[key]) || 0;
-        newPercentages[key] = Number(totalPagu) > 0 ? Math.round((val / Number(totalPagu)) * 100) : 0;
+        newPercentages[key] = Number(totalPagu) > 0 ? Math.round(val / Number(totalPagu) * 100) : 0;
       });
 
       return {
         total,
         sisa,
         percentages: newPercentages,
-        isBalanced: sisa === 0,
+        isBalanced: sisa === 0
       };
     } catch (e) {
       console.error('[RPDInputDialog] Error calculating:', e);
@@ -133,20 +133,20 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
         total: 0,
         sisa: Number(totalPagu) - paguNotAvailable,
         percentages: {},
-        isBalanced: false,
+        isBalanced: false
       };
     }
   }, [values, paguTidakDapatDitarik, totalPagu]);
 
   const handleValueChange = (key: string, value: string) => {
     const numValue = parseInt(value.replace(/\D/g, ''), 10) || 0;
-    setValues(prev => ({ ...prev, [key]: numValue }));
+    setValues((prev) => ({ ...prev, [key]: numValue }));
   };
 
   const handlePercentageChange = (key: string, value: string) => {
     const numValue = parseInt(value.replace(/\D/g, ''), 10) || 0;
-    const newValue = (numValue / 100) * totalPagu;
-    setValues(prev => ({ ...prev, [key]: newValue }));
+    const newValue = numValue / 100 * totalPagu;
+    setValues((prev) => ({ ...prev, [key]: newValue }));
   };
 
   const handleSave = async () => {
@@ -181,7 +181,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
       oct: values.oct,
       nov: values.nov,
       dec: values.dec,
-      paguTidakDapatDitarik,
+      paguTidakDapatDitarik
     };
 
     try {
@@ -221,14 +221,14 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
           </div>
 
           {/* Warning jika tidak balance */}
-          {!calculations.isBalanced && (
-            <Alert variant="destructive" className="py-2">
+          {!calculations.isBalanced &&
+          <Alert variant="destructive" className="py-2">
               <AlertTriangle className="h-3 w-3" />
               <AlertDescription className="text-xs">
                 Sisa: {formatNumber(calculations.sisa)} (harus 0 sebelum disimpan)
               </AlertDescription>
             </Alert>
-          )}
+          }
 
           {/* Monthly Input Table - POK Style 2 Column Layout */}
           <div className="border rounded bg-white overflow-hidden">
@@ -244,7 +244,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {[0, 1, 2, 3, 4, 5].map(i => {
+                {[0, 1, 2, 3, 4, 5].map((i) => {
                   const leftMonth = months[i];
                   const rightMonth = months[i + 6];
                   return (
@@ -260,8 +260,8 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                           onChange={(e) => handlePercentageChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
                           className="h-7 text-xs text-center px-2"
-                          placeholder="0"
-                        />
+                          placeholder="0" />
+
                       </td>
                       <td className="px-3 py-2">
                         <Input
@@ -271,8 +271,8 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                           onChange={(e) => handleValueChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
                           className="h-7 text-xs text-right px-2"
-                          placeholder="0"
-                        />
+                          placeholder="0" />
+
                       </td>
                       {/* Right Column */}
                       <td className="px-3 py-2 text-xs font-medium text-slate-700">{rightMonth.label}</td>
@@ -285,8 +285,8 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                           onChange={(e) => handlePercentageChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
                           className="h-7 text-xs text-center px-2"
-                          placeholder="0"
-                        />
+                          placeholder="0" />
+
                       </td>
                       <td className="px-3 py-2">
                         <Input
@@ -296,31 +296,31 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                           onChange={(e) => handleValueChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
                           className="h-7 text-xs text-right px-2"
-                          placeholder="0"
-                        />
+                          placeholder="0" />
+
                       </td>
-                    </tr>
-                  );
+                    </tr>);
+
                 })}
               </tbody>
             </table>
           </div>
 
           {/* Pagu Tidak Dapat Ditarik */}
-          <div className="border-t pt-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">Pagu yang Tidak Dapat Ditarik</label>
-              <Input
-                type="number"
-                min="0"
-                value={paguTidakDapatDitarik}
-                disabled={true}
-                className="h-10 text-sm"
-                placeholder="0"
-              />
-              <p className="text-xs text-slate-500">{formatNumber(paguTidakDapatDitarik)}</p>
-            </div>
-          </div>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
 
           {/* Summary */}
           <div className="grid grid-cols-3 gap-3 border-t pt-3">
@@ -345,23 +345,23 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="text-sm"
-          >
+            className="text-sm">
+
             Tutup
           </Button>
-          {!readOnly && (
-            <Button
-              onClick={handleSave}
-              disabled={!calculations.isBalanced || isSaving}
-              className="bg-blue-600 hover:bg-blue-700 text-sm"
-            >
+          {!readOnly &&
+          <Button
+            onClick={handleSave}
+            disabled={!calculations.isBalanced || isSaving}
+            className="bg-blue-600 hover:bg-blue-700 text-sm">
+
               {isSaving ? 'Menyimpan...' : 'Simpan'}
             </Button>
-          )}
+          }
         </DialogFooter>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>);
+
 };
 
 export default RPDInputDialog;
