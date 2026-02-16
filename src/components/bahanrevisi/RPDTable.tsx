@@ -400,8 +400,8 @@ const RPDTable: React.FC<RPDTableProps> = ({
         
         .rpd-table .description-cell {
           text-align: left;
-          min-width: 300px;
-          max-width: 300px;
+          min-width: 150px;
+          max-width: 150px;
           word-break: break-word;
         }
         

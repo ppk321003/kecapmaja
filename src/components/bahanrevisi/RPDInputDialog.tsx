@@ -206,68 +206,102 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Rekam Rencana Penarikan Dana (RPD)</DialogTitle>
+          <DialogTitle className="text-lg">Rencana Penarikan Dana (RPD)</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Item Info */}
-          <div className="bg-slate-50 p-3 rounded border border-slate-200">
-            <p className="text-sm text-slate-600"><strong>Item:</strong> {itemUraian}</p>
-            <p className="text-sm text-slate-600"><strong>Pagu:</strong> {formatNumber(totalPagu)}</p>
+          <div className="bg-slate-50 p-2 rounded border border-slate-200">
+            <p className="text-xs text-slate-600"><strong>Item:</strong> {itemUraian}</p>
+            <p className="text-xs text-slate-600"><strong>Pagu:</strong> {formatNumber(totalPagu)}</p>
           </div>
 
           {/* Warning jika tidak balance */}
           {!calculations.isBalanced && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Rencana penarikan dana belum seimbang. Sisa: {formatNumber(calculations.sisa)} 
-                (Sisa harus 0 sebelum data disimpan)
+            <Alert variant="destructive" className="py-2">
+              <AlertTriangle className="h-3 w-3" />
+              <AlertDescription className="text-xs">
+                Sisa: {formatNumber(calculations.sisa)} (harus 0 sebelum disimpan)
               </AlertDescription>
             </Alert>
           )}
 
-          {/* Monthly Input Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {months.map(month => (
-              <div key={month.key} className="space-y-2 border rounded p-3 bg-white">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700">{month.name}</label>
-                </div>
-                
-                <div>
-                  <label className="text-xs text-slate-600">% Pagu:</label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={calculations.percentages[month.key] || 0}
-                    onChange={(e) => handlePercentageChange(month.key, e.target.value)}
-                    disabled={readOnly}
-                    className="h-8 text-sm text-right"
-                    placeholder="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-slate-600">Nilai:</label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={values[month.key as keyof typeof values] || 0}
-                    onChange={(e) => handleValueChange(month.key, e.target.value)}
-                    disabled={readOnly}
-                    className="h-8 text-sm text-right"
-                    placeholder="0"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">
-                    {formatNumber(values[month.key as keyof typeof values] || 0)}
-                  </p>
-                </div>
-              </div>
-            ))}
+          {/* Monthly Input Table - POK Style 2 Column Layout */}
+          <div className="border rounded bg-white overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-100 border-b">
+                <tr>
+                  <th className="px-3 py-2 text-left font-semibold">Bulan</th>
+                  <th className="px-3 py-2 text-center font-semibold w-16">%</th>
+                  <th className="px-3 py-2 text-right font-semibold w-24">Nilai</th>
+                  <th className="px-3 py-2 text-left font-semibold">Bulan</th>
+                  <th className="px-3 py-2 text-center font-semibold w-16">%</th>
+                  <th className="px-3 py-2 text-right font-semibold w-24">Nilai</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {[0, 1, 2, 3, 4, 5].map(i => {
+                  const leftMonth = months[i];
+                  const rightMonth = months[i + 6];
+                  return (
+                    <tr key={i} className="hover:bg-slate-50">
+                      {/* Left Column */}
+                      <td className="px-3 py-2 text-xs font-medium text-slate-700">{leftMonth.label}</td>
+                      <td className="px-3 py-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={calculations.percentages[leftMonth.key] || 0}
+                          onChange={(e) => handlePercentageChange(leftMonth.key, e.target.value)}
+                          disabled={readOnly}
+                          className="h-7 text-xs text-center px-2"
+                          placeholder="0"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          value={values[leftMonth.key as keyof typeof values] || 0}
+                          onChange={(e) => handleValueChange(leftMonth.key, e.target.value)}
+                          disabled={readOnly}
+                          className="h-7 text-xs text-right px-2"
+                          placeholder="0"
+                        />
+                      </td>
+                      {/* Right Column */}
+                      <td className="px-3 py-2 text-xs font-medium text-slate-700">{rightMonth.label}</td>
+                      <td className="px-3 py-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={calculations.percentages[rightMonth.key] || 0}
+                          onChange={(e) => handlePercentageChange(rightMonth.key, e.target.value)}
+                          disabled={readOnly}
+                          className="h-7 text-xs text-center px-2"
+                          placeholder="0"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          value={values[rightMonth.key as keyof typeof values] || 0}
+                          onChange={(e) => handleValueChange(rightMonth.key, e.target.value)}
+                          disabled={readOnly}
+                          className="h-7 text-xs text-right px-2"
+                          placeholder="0"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
           {/* Pagu Tidak Dapat Ditarik */}
@@ -278,45 +312,46 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                 type="number"
                 min="0"
                 value={paguTidakDapatDitarik}
-                onChange={(e) => setPaguTidakDapatDitarik(parseInt(e.target.value) || 0)}
-                disabled={readOnly}
+                disabled={true}
                 className="h-10 text-sm"
                 placeholder="0"
               />
+              <p className="text-xs text-slate-500">{formatNumber(paguTidakDapatDitarik)}</p>
             </div>
           </div>
 
           {/* Summary */}
-          <div className="grid grid-cols-3 gap-4 border-t pt-4">
-            <div className="bg-blue-50 p-3 rounded border border-blue-200">
-              <p className="text-xs text-blue-600 font-semibold">Total Penarikan</p>
-              <p className="text-lg font-bold text-blue-900">{formatNumber(Number(calculations.total))}</p>
+          <div className="grid grid-cols-3 gap-3 border-t pt-3">
+            <div className="bg-slate-50 p-2 rounded border border-slate-200">
+              <p className="text-xs text-slate-600 font-semibold">Pagu Tdk Dapat Ditarik</p>
+              <p className="text-sm font-bold text-slate-900">{formatNumber(paguTidakDapatDitarik)}</p>
             </div>
-            <div className="bg-orange-50 p-3 rounded border border-orange-200">
+            <div className="bg-orange-50 p-2 rounded border border-orange-200">
               <p className="text-xs text-orange-600 font-semibold">Sisa</p>
-              <p className={`text-lg font-bold ${calculations.sisa === 0 ? 'text-green-900' : 'text-red-900'}`}>
+              <p className={`text-sm font-bold ${calculations.sisa === 0 ? 'text-green-900' : 'text-red-900'}`}>
                 {formatNumber(Number(calculations.sisa))}
               </p>
             </div>
-            <div className="bg-slate-50 p-3 rounded border border-slate-200">
-              <p className="text-xs text-slate-600 font-semibold">Total Pagu</p>
-              <p className="text-lg font-bold text-slate-900">{formatNumber(totalPagu)}</p>
+            <div className="bg-blue-50 p-2 rounded border border-blue-200">
+              <p className="text-xs text-blue-600 font-semibold">Total Penarikan</p>
+              <p className="text-sm font-bold text-blue-900">{formatNumber(Number(calculations.total))}</p>
             </div>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
+            className="text-sm"
           >
-            Batal
+            Tutup
           </Button>
           {!readOnly && (
             <Button
               onClick={handleSave}
               disabled={!calculations.isBalanced || isSaving}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 text-sm"
             >
               {isSaving ? 'Menyimpan...' : 'Simpan'}
             </Button>
