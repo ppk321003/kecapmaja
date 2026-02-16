@@ -34,7 +34,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
   const [filters, setFilters] = useState<BahanRevisiFilters>({});
   const [selectedTab, setSelectedTab] = useState('anggaran');
   const [filterExpanded, setFilterExpanded] = useState(false);
-  const [hideZeroPagu, setHideZeroPagu] = useState(false);
+  const [hideZeroPagu, setHideZeroPagu] = useState(true);
 
   // Get sheet ID untuk bahanrevisi module
   const sheetId = satkerConfig?.getUserSatkerSheetId('bahanrevisi');

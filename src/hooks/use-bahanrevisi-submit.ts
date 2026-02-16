@@ -232,7 +232,7 @@ const updateRPDItem = async (sheetId: string, itemId: string, updates: Partial<R
     body: {
       spreadsheetId: sheetId,
       operation: 'update',
-      range: `rpd_items!A${sheetRowIndex}:Y${sheetRowIndex}`,
+      range: `rpd_items!A${sheetRowIndex}:Z${sheetRowIndex}`,
       values: [row],
     },
   });
