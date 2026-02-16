@@ -153,7 +153,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   };
 
   const handlePercentageChange = (key: string, value: string) => {
-    const numValue = parseInt(value.replace(/\D/g, ''), 10) || 0;
+    const numValue = parseFloat(value.replace(/[^\d.]/g, '')) || 0;
     const newValue = (numValue / 100) * totalPagu;
     setValues(prev => ({ ...prev, [key]: newValue }));
   };
@@ -248,10 +248,10 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
               <thead className="bg-slate-100 border-b">
                 <tr>
                   <th className="px-2 py-2 text-left font-semibold text-xs">Bulan</th>
-                  <th className="px-2 py-2 text-center font-semibold text-xs w-16">%</th>
+                  <th className="px-2 py-2 text-center font-semibold text-xs w-20">%</th>
                   <th className="px-2 py-2 text-right font-semibold text-xs w-28">Nilai</th>
                   <th className="px-2 py-2 text-left font-semibold text-xs">Bulan</th>
-                  <th className="px-2 py-2 text-center font-semibold text-xs w-16">%</th>
+                  <th className="px-2 py-2 text-center font-semibold text-xs w-20">%</th>
                   <th className="px-2 py-2 text-right font-semibold text-xs w-28">Nilai</th>
                 </tr>
               </thead>
@@ -263,10 +263,10 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                     <tr key={i} className="hover:bg-slate-50">
                       {/* Left Column */}
                       <td className="px-2 py-2 text-xs font-medium text-slate-700 whitespace-nowrap">{leftMonth.label}</td>
-                      <td className="px-2 py-2 w-16">
+                      <td className="px-2 py-2 w-20">
                         <Input
                           type="text"
-                          inputMode="numeric"
+                          inputMode="decimal"
                           value={calculations.percentages[leftMonth.key] || 0}
                           onChange={(e) => handlePercentageChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
@@ -287,10 +287,10 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                       </td>
                       {/* Right Column */}
                       <td className="px-2 py-2 text-xs font-medium text-slate-700 whitespace-nowrap">{rightMonth.label}</td>
-                      <td className="px-2 py-2 w-16">
+                      <td className="px-2 py-2 w-20">
                         <Input
                           type="text"
-                          inputMode="numeric"
+                          inputMode="decimal"
                           value={calculations.percentages[rightMonth.key] || 0}
                           onChange={(e) => handlePercentageChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
