@@ -734,92 +734,98 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
   // Maps codes to their display format using master sheets
   // Returns SelectOption[] for direct use in filter dropdowns
 
-  const programsOptions = budgetItemsQuery.data && programsQuery.data
-    ? Array.from(new Set(budgetItemsQuery.data.map(item => item.program_pembebanan)))
-        .map(code => {
-          const prog = programsQuery.data?.find(p => p.id === code);
-          return {
-            value: code,
-            label: prog ? `${prog.id} - ${prog.code}` : code
-          };
-        })
-        .sort((a, b) => a.label.localeCompare(b.label))
-    : [];
+  const programsOptions = useMemo<SelectOption[]>(() => {
+    if (!budgetItemsQuery.data || !programsQuery.data) return [];
+    return Array.from(new Set(budgetItemsQuery.data.map(item => item.program_pembebanan)))
+      .map(code => {
+        const prog = programsQuery.data?.find(p => p.id === code);
+        return {
+          value: code,
+          label: prog ? `${prog.id} - ${prog.code}` : code
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [budgetItemsQuery.data, programsQuery.data]);
 
-  const kegiatansOptions = filters?.program_pembebanan && budgetItemsQuery.data && kegiatansQuery.data
-    ? budgetItemsQuery.data
-        .filter(item => item.program_pembebanan === filters.program_pembebanan)
-        .map(item => item.kegiatan)
-        .filter((v, i, a) => a.indexOf(v) === i)
-        .map(code => {
-          const keg = kegiatansQuery.data?.find(k => k.id === code);
-          return {
-            value: code,
-            label: keg ? `${keg.id} - ${keg.program_id}` : code
-          };
-        })
-        .sort((a, b) => a.label.localeCompare(b.label))
-    : [];
+  const kegiatansOptions = useMemo<SelectOption[]>(() => {
+    if (!filters?.program_pembebanan || !budgetItemsQuery.data || !kegiatansQuery.data) return [];
+    return budgetItemsQuery.data
+      .filter(item => item.program_pembebanan === filters.program_pembebanan)
+      .map(item => item.kegiatan)
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .map(code => {
+        const keg = kegiatansQuery.data?.find(k => k.id === code);
+        return {
+          value: code,
+          label: keg ? `${keg.id} - ${keg.program_id}` : code
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filters?.program_pembebanan, budgetItemsQuery.data, kegiatansQuery.data]);
 
-  const rincianOutputsOptions = filters?.kegiatan && budgetItemsQuery.data && rincianOutputsQuery.data
-    ? budgetItemsQuery.data
-        .filter(item => item.kegiatan === filters.kegiatan)
-        .map(item => item.rincian_output)
-        .filter((v, i, a) => a.indexOf(v) === i && v)
-        .map(code => {
-          const rio = rincianOutputsQuery.data?.find(r => r.id === code);
-          return {
-            value: code,
-            label: rio ? `${rio.id} - ${rio.kegiatan_id}` : code
-          };
-        })
-        .sort((a, b) => a.label.localeCompare(b.label))
-    : [];
+  const rincianOutputsOptions = useMemo<SelectOption[]>(() => {
+    if (!filters?.kegiatan || !budgetItemsQuery.data || !rincianOutputsQuery.data) return [];
+    return budgetItemsQuery.data
+      .filter(item => item.kegiatan === filters.kegiatan)
+      .map(item => item.rincian_output)
+      .filter((v, i, a) => a.indexOf(v) === i && v)
+      .map(code => {
+        const rio = rincianOutputsQuery.data?.find(r => r.id === code);
+        return {
+          value: code,
+          label: rio ? `${rio.id} - ${rio.kegiatan_id}` : code
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filters?.kegiatan, budgetItemsQuery.data, rincianOutputsQuery.data]);
 
-  const komponenOutputsOptions = filters?.rincian_output && budgetItemsQuery.data && komponenOutputsQuery.data
-    ? budgetItemsQuery.data
-        .filter(item => item.rincian_output === filters.rincian_output)
-        .map(item => item.komponen_output)
-        .filter((v, i, a) => a.indexOf(v) === i && v)
-        .map(code => {
-          const ko = komponenOutputsQuery.data?.find(k => k.id === code);
-          return {
-            value: code,
-            label: ko ? `${ko.id} - ${ko.rincian_output_id}` : code
-          };
-        })
-        .sort((a, b) => a.label.localeCompare(b.label))
-    : [];
+  const komponenOutputsOptions = useMemo<SelectOption[]>(() => {
+    if (!filters?.rincian_output || !budgetItemsQuery.data || !komponenOutputsQuery.data) return [];
+    return budgetItemsQuery.data
+      .filter(item => item.rincian_output === filters.rincian_output)
+      .map(item => item.komponen_output)
+      .filter((v, i, a) => a.indexOf(v) === i && v)
+      .map(code => {
+        const ko = komponenOutputsQuery.data?.find(k => k.id === code);
+        return {
+          value: code,
+          label: ko ? `${ko.id} - ${ko.rincian_output_id}` : code
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filters?.rincian_output, budgetItemsQuery.data, komponenOutputsQuery.data]);
 
-  const subKomponenOptions = filters?.komponen_output && budgetItemsQuery.data && subKomponenQuery.data
-    ? budgetItemsQuery.data
-        .filter(item => item.komponen_output === filters.komponen_output)
-        .map(item => item.sub_komponen)
-        .filter((v, i, a) => a.indexOf(v) === i && v)
-        .map(code => {
-          const sk = subKomponenQuery.data?.find(s => s.id === code);
-          return {
-            value: code,
-            label: sk ? `${sk.id} - ${sk.komponen_output_id}` : code
-          };
-        })
-        .sort((a, b) => a.label.localeCompare(b.label))
-    : [];
+  const subKomponenOptions = useMemo<SelectOption[]>(() => {
+    if (!filters?.komponen_output || !budgetItemsQuery.data || !subKomponenQuery.data) return [];
+    return budgetItemsQuery.data
+      .filter(item => item.komponen_output === filters.komponen_output)
+      .map(item => item.sub_komponen)
+      .filter((v, i, a) => a.indexOf(v) === i && v)
+      .map(code => {
+        const sk = subKomponenQuery.data?.find(s => s.id === code);
+        return {
+          value: code,
+          label: sk ? `${sk.id} - ${sk.komponen_output_id}` : code
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filters?.komponen_output, budgetItemsQuery.data, subKomponenQuery.data]);
 
-  const akunsOptions = filters?.sub_komponen && budgetItemsQuery.data && akunsQuery.data
-    ? budgetItemsQuery.data
-        .filter(item => item.sub_komponen === filters.sub_komponen)
-        .map(item => item.akun)
-        .filter((v, i, a) => a.indexOf(v) === i && v)
-        .map(code => {
-          const akun = akunsQuery.data?.find(a => a.id === code);
-          return {
-            value: code,
-            label: akun ? `${akun.id} - ${akun.code}` : code
-          };
-        })
-        .sort((a, b) => a.label.localeCompare(b.label))
-    : [];
+  const akunsOptions = useMemo<SelectOption[]>(() => {
+    if (!filters?.sub_komponen || !budgetItemsQuery.data || !akunsQuery.data) return [];
+    return budgetItemsQuery.data
+      .filter(item => item.sub_komponen === filters.sub_komponen)
+      .map(item => item.akun)
+      .filter((v, i, a) => a.indexOf(v) === i && v)
+      .map(code => {
+        const akun = akunsQuery.data?.find(a => a.id === code);
+        return {
+          value: code,
+          label: akun ? `${akun.id} - ${akun.code}` : code
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filters?.sub_komponen, budgetItemsQuery.data, akunsQuery.data]);
 
   const isLoading = budgetItemsQuery.isLoading || rpdItemsQuery.isLoading || 
                    programsQuery.isLoading || kegiatansQuery.isLoading ||
