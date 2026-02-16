@@ -80,7 +80,8 @@ export function AppSidebar() {
   
   // Check if user has Fungsi role for Bahan Revisi Anggaran menu
   // Supports roles like: "Fungsi PEJABAT_PEMBUAT_KOMITMEN", "Fungsi KUASA_PENGGUNA", etc.
-  const hasFungsiRole = user?.role?.startsWith("Fungsi");
+  // MUST start with "Fungsi" AND NOT be PPK
+  const hasFungsiRole = user?.role?.startsWith("Fungsi") === true && !isPPK;
   
   // Check if user is satker 3210 for Sikostik 28 menu
   const isSatker3210 = user?.satker === '3210';
@@ -106,6 +107,8 @@ export function AppSidebar() {
 
   console.log("Logged-in user:", user);
   console.log("isSatker3210:", isSatker3210);
+  console.log("isPPK:", isPPK);
+  console.log("hasFungsiRole:", hasFungsiRole);
 
   return (
     <Sidebar
