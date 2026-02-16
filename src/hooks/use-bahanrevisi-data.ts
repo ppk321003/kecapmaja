@@ -732,14 +732,18 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
 
   // Get dropdown options with "code - name" format
   // Maps codes to their display format using master sheets
+  // Returns SelectOption[] for direct use in filter dropdowns
 
   const programsOptions = budgetItemsQuery.data && programsQuery.data
     ? Array.from(new Set(budgetItemsQuery.data.map(item => item.program_pembebanan)))
         .map(code => {
-          const prog = programsQuery.data.find(p => p.code === code);
-          return prog ? `${prog.code} - ${prog.name}` : code;
+          const prog = programsQuery.data?.find(p => p.code === code);
+          return {
+            value: code,
+            label: prog ? `${prog.code} - ${prog.name}` : code
+          };
         })
-        .sort()
+        .sort((a, b) => a.label.localeCompare(b.label))
     : [];
 
   const kegiatansOptions = filters?.program_pembebanan && budgetItemsQuery.data && kegiatansQuery.data
@@ -748,10 +752,13 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         .map(item => item.kegiatan)
         .filter((v, i, a) => a.indexOf(v) === i)
         .map(code => {
-          const keg = kegiatansQuery.data.find(k => k.code === code);
-          return keg ? `${keg.code} - ${keg.name}` : code;
+          const keg = kegiatansQuery.data?.find(k => k.code === code);
+          return {
+            value: code,
+            label: keg ? `${keg.code} - ${keg.name}` : code
+          };
         })
-        .sort()
+        .sort((a, b) => a.label.localeCompare(b.label))
     : [];
 
   const rincianOutputsOptions = filters?.kegiatan && budgetItemsQuery.data && rincianOutputsQuery.data
@@ -760,10 +767,13 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         .map(item => item.rincian_output)
         .filter((v, i, a) => a.indexOf(v) === i && v)
         .map(code => {
-          const rio = rincianOutputsQuery.data.find(r => r.code === code);
-          return rio ? `${rio.code} - ${rio.name}` : code;
+          const rio = rincianOutputsQuery.data?.find(r => r.code === code);
+          return {
+            value: code,
+            label: rio ? `${rio.code} - ${rio.name}` : code
+          };
         })
-        .sort()
+        .sort((a, b) => a.label.localeCompare(b.label))
     : [];
 
   const komponenOutputsOptions = filters?.rincian_output && budgetItemsQuery.data && komponenOutputsQuery.data
@@ -772,10 +782,13 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         .map(item => item.komponen_output)
         .filter((v, i, a) => a.indexOf(v) === i && v)
         .map(code => {
-          const ko = komponenOutputsQuery.data.find(k => k.code === code);
-          return ko ? `${ko.code} - ${ko.name}` : code;
+          const ko = komponenOutputsQuery.data?.find(k => k.code === code);
+          return {
+            value: code,
+            label: ko ? `${ko.code} - ${ko.name}` : code
+          };
         })
-        .sort()
+        .sort((a, b) => a.label.localeCompare(b.label))
     : [];
 
   const subKomponenOptions = filters?.komponen_output && budgetItemsQuery.data && subKomponenQuery.data
@@ -784,10 +797,13 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         .map(item => item.sub_komponen)
         .filter((v, i, a) => a.indexOf(v) === i && v)
         .map(code => {
-          const sk = subKomponenQuery.data.find(s => s.code === code);
-          return sk ? `${sk.code} - ${sk.name}` : code;
+          const sk = subKomponenQuery.data?.find(s => s.code === code);
+          return {
+            value: code,
+            label: sk ? `${sk.code} - ${sk.name}` : code
+          };
         })
-        .sort()
+        .sort((a, b) => a.label.localeCompare(b.label))
     : [];
 
   const akunsOptions = filters?.sub_komponen && budgetItemsQuery.data && akunsQuery.data
@@ -796,8 +812,14 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         .map(item => item.akun)
         .filter((v, i, a) => a.indexOf(v) === i && v)
         .map(code => {
-          const akun = akunsQuery.data.find(a => a.code === code);
-          return akun ? `${akun.code} - ${akun.name}` : code;
+          const akun = akunsQuery.data?.find(a => a.code === code);
+          return {
+            value: code,
+            label: akun ? `${akun.code} - ${akun.name}` : code
+          };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label))
+    : [];
         })
         .sort()
     : [];

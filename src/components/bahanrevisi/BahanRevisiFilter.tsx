@@ -30,6 +30,12 @@ interface BahanRevisiFilterProps {
   komponenOutputs: KomponenOutput[];
   subKomponen: SubKomponen[];
   akuns: Akun[];
+  programsOptions?: SelectOption[];
+  kegiatansOptions?: SelectOption[];
+  rincianOutputsOptions?: SelectOption[];
+  komponenOutputsOptions?: SelectOption[];
+  subKomponenOptions?: SelectOption[];
+  akunsOptions?: SelectOption[];
   loading?: boolean;
   hideZeroPagu?: boolean;
   setHideZeroPagu?: (hide: boolean) => void;
@@ -45,15 +51,28 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   komponenOutputs,
   subKomponen,
   akuns,
+  programsOptions = [],
+  kegiatansOptions = [],
+  rincianOutputsOptions = [],
+  komponenOutputsOptions = [],
+  subKomponenOptions: providedSubKomponenOptions = [],
+  akunsOptions = [],
   loading = false,
   hideZeroPagu = false,
   setHideZeroPagu,
 }) => {
   // Build options from reference data (master sheets) like KAK.tsx does
   // FALLBACK: If reference data is empty, derive from budgetItems
+  // IF PROVIDED: Use options from hook (pre-computed with "code - name" format)
   
-  // Program Pembebanan options
+  // Program Pembebanan options - use provided options if available
   const programPembebananOptions = useMemo<SelectOption[]>(() => {
+    // If options are provided from hook, use them directly
+    if (programsOptions && programsOptions.length > 0) {
+      console.log('[Filter] Using provided programsOptions:', programsOptions.length);
+      return programsOptions;
+    }
+    
     try {
       // Try to use programs reference data first
       if (programs && Array.isArray(programs) && programs.length > 0) {
@@ -98,6 +117,12 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   const kegiatanOptions = useMemo<SelectOption[]>(() => {
     try {
       if (!filters.program_pembebanan || typeof filters.program_pembebanan !== 'string') return [];
+      
+      // Use provided options first if available
+      if (kegiatansOptions && Array.isArray(kegiatansOptions) && kegiatansOptions.length > 0) {
+        console.log('[Filter] Using provided kegiatansOptions:', kegiatansOptions.length);
+        return kegiatansOptions;
+      }
       
       // Try reference data first
       if (kegiatans && Array.isArray(kegiatans) && kegiatans.length > 0) {
@@ -146,12 +171,18 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building kegiatanOptions:', e);
       return [];
     }
-  }, [filters.program_pembebanan, kegiatans, programs, budgetItems]);
+  }, [filters.program_pembebanan, kegiatansOptions, kegiatans, programs, budgetItems]);
 
   // Rincian Output options - filtered by selected kegiatan
   const rincianOutputOptions = useMemo<SelectOption[]>(() => {
     try {
       if (!filters.kegiatan || typeof filters.kegiatan !== 'string') return [];
+      
+      // Use provided options first if available
+      if (rincianOutputsOptions && Array.isArray(rincianOutputsOptions) && rincianOutputsOptions.length > 0) {
+        console.log('[Filter] Using provided rincianOutputsOptions:', rincianOutputsOptions.length);
+        return rincianOutputsOptions;
+      }
       
       // Try reference data first
       if (rincianOutputs && Array.isArray(rincianOutputs) && rincianOutputs.length > 0) {
@@ -200,12 +231,18 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building rincianOutputOptions:', e);
       return [];
     }
-  }, [filters.kegiatan, rincianOutputs, kegiatans, budgetItems]);
+  }, [filters.kegiatan, rincianOutputsOptions, rincianOutputs, kegiatans, budgetItems]);
 
   // Komponen Output options - filtered by selected rincian output
   const komponenOutputOptions = useMemo<SelectOption[]>(() => {
     try {
       if (!filters.rincian_output || typeof filters.rincian_output !== 'string') return [];
+      
+      // Use provided options first if available
+      if (komponenOutputsOptions && Array.isArray(komponenOutputsOptions) && komponenOutputsOptions.length > 0) {
+        console.log('[Filter] Using provided komponenOutputsOptions:', komponenOutputsOptions.length);
+        return komponenOutputsOptions;
+      }
       
       // Try reference data first
       if (komponenOutputs && Array.isArray(komponenOutputs) && komponenOutputs.length > 0) {
@@ -254,12 +291,18 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building komponenOutputOptions:', e);
       return [];
     }
-  }, [filters.rincian_output, komponenOutputs, rincianOutputs, budgetItems]);
+  }, [filters.rincian_output, komponenOutputsOptions, komponenOutputs, rincianOutputs, budgetItems]);
 
   // Sub Komponen options - filtered by selected komponen output
   const subKomponenOptions = useMemo<SelectOption[]>(() => {
     try {
       if (!filters.komponen_output || typeof filters.komponen_output !== 'string') return [];
+      
+      // Use provided options first if available
+      if (providedSubKomponenOptions && Array.isArray(providedSubKomponenOptions) && providedSubKomponenOptions.length > 0) {
+        console.log('[Filter] Using provided subKomponenOptions:', providedSubKomponenOptions.length);
+        return providedSubKomponenOptions;
+      }
       
       // Try reference data first
       if (subKomponen && Array.isArray(subKomponen) && subKomponen.length > 0) {
@@ -308,11 +351,17 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building subKomponenOptions:', e);
       return [];
     }
-  }, [filters.komponen_output, subKomponen, komponenOutputs, budgetItems]);
+  }, [filters.komponen_output, providedSubKomponenOptions, subKomponen, komponenOutputs, budgetItems]);
 
   // Akun options - filtered based on selected parent filters
   const akunOptions = useMemo<SelectOption[]>(() => {
     try {
+      // Use provided options first if available
+      if (akunsOptions && Array.isArray(akunsOptions) && akunsOptions.length > 0) {
+        console.log('[Filter] Using provided akunsOptions:', akunsOptions.length);
+        return akunsOptions;
+      }
+      
       // First, filter budgetItems based on already-selected filters
       // to get only relevant akuns
       const relevantItems = budgetItems.filter(item => {
@@ -383,7 +432,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building akunOptions:', e);
       return [];
     }
-  }, [akuns, budgetItems, filters.program_pembebanan, filters.kegiatan, filters.rincian_output, filters.komponen_output, filters.sub_komponen]);
+  }, [akunsOptions, akuns, budgetItems, filters.program_pembebanan, filters.kegiatan, filters.rincian_output, filters.komponen_output, filters.sub_komponen]);
 
   const handleReset = () => {
     setFilters({});

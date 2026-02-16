@@ -61,6 +61,12 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     komponenOutputs,
     subKomponen,
     akuns,
+    programsOptions,
+    kegiatansOptions,
+    rincianOutputsOptions,
+    komponenOutputsOptions,
+    subKomponenOptions,
+    akunsOptions,
     isLoading: isLoadingData,
     error: dataError,
     refetch,
@@ -284,6 +290,12 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 komponenOutputs={komponenOutputs}
                 subKomponen={subKomponen}
                 akuns={akuns}
+                programsOptions={programsOptions}
+                kegiatansOptions={kegiatansOptions}
+                rincianOutputsOptions={rincianOutputsOptions}
+                komponenOutputsOptions={komponenOutputsOptions}
+                subKomponenOptions={subKomponenOptions}
+                akunsOptions={akunsOptions}
                 loading={isSubmitting}
                 hideZeroPagu={hideZeroPagu}
                 setHideZeroPagu={setHideZeroPagu}
