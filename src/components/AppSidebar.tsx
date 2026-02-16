@@ -78,6 +78,10 @@ export function AppSidebar() {
   // Check if user is PPK for User Management menu
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
   
+  // Check if user has Fungsi role for Bahan Revisi Anggaran menu
+  // Supports roles like: "Fungsi PEJABAT_PEMBUAT_KOMITMEN", "Fungsi KUASA_PENGGUNA", etc.
+  const hasFungsiRole = user?.role?.startsWith("Fungsi");
+  
   // Check if user is satker 3210 for Sikostik 28 menu
   const isSatker3210 = user?.satker === '3210';
   
@@ -396,9 +400,9 @@ export function AppSidebar() {
               <SidebarMenu className="space-y-1">
                 {mainMenuItems
                   .filter((item) => {
-                    // Only show Bahan Revisi Anggaran for PPK users
+                    // Only show Bahan Revisi Anggaran for users with Fungsi role
                     if (item.title === "Bahan Revisi Anggaran") {
-                      return isPPK;
+                      return hasFungsiRole;
                     }
                     return true;
                   })
