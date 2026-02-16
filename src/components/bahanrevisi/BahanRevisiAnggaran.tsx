@@ -39,18 +39,10 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
   // Get sheet ID untuk bahanrevisi module
   const sheetId = satkerConfig?.getUserSatkerSheetId('bahanrevisi');
 
-  if (!sheetId) {
-    return (
-      <Alert variant="destructive" className="my-4">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          Sheet ID untuk Bahan Revisi Anggaran tidak ditemukan. Hubungi administrator.
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
-  // Fetch data dari Google Sheets
+  // IMPORTANT: Call all hooks BEFORE any conditional returns!
+  // This ensures hook count is consistent across renders
+  
+  // Fetch data dari Google Sheets (all hooks called unconditionally)
   const {
     budgetItems,
     filteredBudgetItems,
@@ -86,6 +78,18 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     updateRPDItem,
     isLoading: isSubmitting,
   } = useBahanRevisiSubmit({ sheetId });
+
+  // NOW check if sheetId exists
+  if (!sheetId) {
+    return (
+      <Alert variant="destructive" className="my-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          Sheet ID untuk Bahan Revisi Anggaran tidak ditemukan. Hubungi administrator.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   // Handle add new item
   const handleAddItem = () => {
