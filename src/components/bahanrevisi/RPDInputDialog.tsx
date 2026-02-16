@@ -119,7 +119,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
       const newPercentages: {[key: string]: number} = {};
       monthKeys.forEach(key => {
         const val = Number(values[key]) || 0;
-        newPercentages[key] = Number(totalPagu) > 0 ? Math.round((val / Number(totalPagu)) * 100) : 0;
+        newPercentages[key] = Number(totalPagu) > 0 ? parseFloat(((val / Number(totalPagu)) * 100).toFixed(2)) : 0;
       });
 
       return {
@@ -150,6 +150,12 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   const getDisplayValue = (value: number): string => {
     // For display, show formatted number with separators
     return formatNumber(value);
+  };
+
+  const getPercentageDisplay = (percentage: number): string => {
+    // For percentage display, show up to 2 decimal places
+    if (percentage === 0) return '0';
+    return percentage % 1 === 0 ? percentage.toString() : percentage.toFixed(2);
   };
 
   const handlePercentageChange = (key: string, value: string) => {
@@ -267,7 +273,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                         <Input
                           type="text"
                           inputMode="decimal"
-                          value={calculations.percentages[leftMonth.key] || 0}
+                          value={getPercentageDisplay(calculations.percentages[leftMonth.key] || 0)}
                           onChange={(e) => handlePercentageChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
                           className="h-7 text-xs text-center px-1 w-full"
@@ -291,7 +297,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                         <Input
                           type="text"
                           inputMode="decimal"
-                          value={calculations.percentages[rightMonth.key] || 0}
+                          value={getPercentageDisplay(calculations.percentages[rightMonth.key] || 0)}
                           onChange={(e) => handlePercentageChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
                           className="h-7 text-xs text-center px-1 w-full"
