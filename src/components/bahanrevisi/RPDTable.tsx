@@ -310,10 +310,9 @@ const RPDTable: React.FC<RPDTableProps> = ({
   const getStatusClass = (item: RPDItem): string => {
     try {
       if (!item || typeof item !== 'object') return 'status-sisa';
-      const rpd = Number(item?.total_rpd) || 0;
-      const pagu = Number(item?.total_pagu) || 0;
+      const sisaAnggaran = Number(item?.sisa_anggaran) || 0;
       
-      if (rpd === pagu) {
+      if (sisaAnggaran === 0) {
         return 'status-ok';
       } else {
         return 'status-sisa';
@@ -327,10 +326,9 @@ const RPDTable: React.FC<RPDTableProps> = ({
   const getStatusText = (item: RPDItem): string => {
     try {
       if (!item || typeof item !== 'object') return '-';
-      const rpd = Number(item?.total_rpd) || 0;
-      const pagu = Number(item?.total_pagu) || 0;
+      const sisaAnggaran = Number(item?.sisa_anggaran) || 0;
       
-      if (rpd === pagu) {
+      if (sisaAnggaran === 0) {
         return 'OK';
       } else {
         return 'Sisa';
@@ -607,7 +605,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
                               setRpdDialogOpen(true);
                             }}
                             disabled={isReadOnly}
-                            className="h-7 w-7 p-0"
+                            className="h-7 w-7 p-0 flex items-center justify-center"
                             title={isReadOnly ? "Anda tidak memiliki akses untuk mengubah RPD" : "Edit Rencana Penarikan Dana"}
                           >
                             <Edit2 className="h-4 w-4" />
