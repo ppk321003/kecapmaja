@@ -4,10 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency, formatNumber, roundToThousands } from '@/utils/bahanrevisi-calculations';
-import { FileEdit, Check, ArrowUpDown, Search } from 'lucide-react';
+import { FileEdit, Check, ArrowUpDown, Search, Edit2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { BahanRevisiFilters } from '@/types/bahanrevisi';
 import { useAuth } from '@/contexts/AuthContext';
+import RPDInputDialog from './RPDInputDialog';
 
 interface RPDItem {
   id: string;
@@ -74,10 +75,12 @@ const RPDTable: React.FC<RPDTableProps> = ({
   }
 
   const { user } = useAuth();
-  const canEdit = user?.role !== 'Pejabat Pembuat Komitmen'; // User roles can edit, PPK cannot
+  // Role-based access: PPK dan Fungsi xxxx can edit, others read-only
+  const canEditRPD = user?.role === 'Pejabat Pembuat Komitmen' || user?.role === 'Fungsi xxxx';
+  const isReadOnly = !canEditRPD;
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{[key: string]: {[key: string]: number}}>({});
+  const [rpdDialogOpen, setRpdDialogOpen] = useState(false);
+  const [selectedRPDItem, setSelectedRPDItem] = useState<RPDItem | null>(null);
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [hideZeroBudget, setHideZeroBudget] = useState<boolean>(true);
@@ -100,98 +103,6 @@ const RPDTable: React.FC<RPDTableProps> = ({
       return 0;
     }
   }, [safeItems]);
-
-  const handleEditChange = (id: string, field: string, value: string | number) => {
-    let numValue: number;
-    
-    if (typeof value === 'string') {
-      const cleanValue = value.replace(/[^0-9.]/g, '');
-      numValue = parseFloat(cleanValue) || 0;
-    } else {
-      numValue = Number(value) || 0;
-    }
-    
-    if (numValue < 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Nilai tidak boleh negatif'
-      });
-      return;
-    }
-    
-    setEditValues(prev => {
-      const itemValues = prev[id] || {};
-      const fieldMap: {[key: string]: string} = {
-        'jan': 'januari',
-        'feb': 'februari',
-        'mar': 'maret',
-        'apr': 'april',
-        'mei': 'mei',
-        'jun': 'juni',
-        'jul': 'juli',
-        'aug': 'agustus',
-        'sep': 'september',
-        'oct': 'oktober',
-        'nov': 'november',
-        'dec': 'desember',
-      };
-      
-      const apiField = fieldMap[field] || field;
-      
-      return {
-        ...prev,
-        [id]: {
-          ...itemValues,
-          [apiField]: Number(numValue)
-        }
-      };
-    });
-  };
-
-  const startEditing = (item: RPDItem) => {
-    if (!canEdit) {
-      toast({
-        variant: 'destructive',
-        title: 'Akses Ditolak',
-        description: 'Hanya user yang dapat mengedit RPD.'
-      });
-      return;
-    }
-
-    setEditingId(item.id);
-    const monthValues = {
-      januari: Number(item.januari) || 0,
-      februari: Number(item.februari) || 0,
-      maret: Number(item.maret) || 0,
-      april: Number(item.april) || 0,
-      mei: Number(item.mei) || 0,
-      juni: Number(item.juni) || 0,
-      juli: Number(item.juli) || 0,
-      agustus: Number(item.agustus) || 0,
-      september: Number(item.september) || 0,
-      oktober: Number(item.oktober) || 0,
-      november: Number(item.november) || 0,
-      desember: Number(item.desember) || 0
-    };
-    
-    setEditValues(prev => ({
-      ...prev,
-      [item.id]: monthValues
-    }));
-  };
-
-  const saveEditing = async (id: string) => {
-    if (editingId && editValues[editingId] && onUpdateItem) {
-      const updates = editValues[editingId];
-      await onUpdateItem(id, updates);
-      setEditingId(null);
-      toast({
-        title: 'Berhasil',
-        description: 'Perubahan RPD berhasil disimpan'
-      });
-    }
-  };
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -426,52 +337,6 @@ const RPDTable: React.FC<RPDTableProps> = ({
     }
   };
 
-  const renderMonthValue = (item: RPDItem, month: string, field: string) => {
-    try {
-      if (!item || typeof item !== 'object') return <span>-</span>;
-      
-      const isEditing = editingId === item.id;
-      
-      const monthMap: {[key: string]: keyof RPDItem} = {
-        'jan': 'januari',
-        'feb': 'februari',
-        'mar': 'maret',
-        'apr': 'april',
-        'mei': 'mei',
-        'jun': 'juni',
-        'jul': 'juli',
-        'aug': 'agustus',
-        'sep': 'september',
-        'oct': 'oktober',
-        'nov': 'november',
-        'dec': 'desember',
-      };
-      
-      const monthKey = monthMap[field];
-      if (!monthKey) return <span>-</span>;
-      
-      const value = Number(item[monthKey]) || 0;
-      const editValue = isEditing && editValues[item.id] 
-        ? Number(editValues[item.id][monthKey as string]) || 0
-        : value;
-      
-      return isEditing ? (
-        <Input 
-          type="number"
-          value={editValue.toString()} 
-          onChange={(e) => handleEditChange(item.id, field, e.target.value)}
-          className="w-full text-right px-2 py-1 h-7"
-          min="0"
-        />
-      ) : (
-        <span className="text-right block w-full">{formatNumber(value, false)}</span>
-      );
-    } catch (e) {
-      console.error('[RPDTable] Error in renderMonthValue:', e);
-      return <span>-</span>;
-    }
-  };
-
   if (loading) {
     return <div className="flex justify-center p-4">Loading RPD data...</div>;
   }
@@ -699,15 +564,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
                     <ArrowUpDown className="h-3 w-3 ml-1" />
                   </button>
                 </th>
-                {['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].map(month => (
-                  <th key={month} className="month-cell">
-                    <button className="flex items-center justify-end w-full" onClick={() => handleSort(month)}>
-                      {month.charAt(0).toUpperCase() + month.slice(1)}
-                      <ArrowUpDown className="h-3 w-3 ml-1" />
-                    </button>
-                  </th>
-                ))}
-                <th className="action-cell"></th>
+                <th className="action-cell">Aksi</th>
               </tr>
             </thead>
             
@@ -748,31 +605,21 @@ const RPDTable: React.FC<RPDTableProps> = ({
                             {formatNumber(Number(item.sisa_anggaran) || 0)}
                           </span>
                         </td>
-                        {['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].map(month => (
-                          <td key={month} className="month-cell">
-                            {renderMonthValue(item, month, month)}
-                          </td>
-                        ))}
                         <td className="action-cell">
-                          {canEdit && (
-                            <div className="flex space-x-1 justify-center">
-                              {editingId === item.id ? (
-                                <Button variant="ghost" size="icon" onClick={() => saveEditing(item.id)} className="h-6 w-6">
-                                  <Check className="h-3 w-3" />
-                                </Button>
-                              ) : (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={() => startEditing(item)} 
-                                  className="h-6 w-6"
-                                  title="Edit"
-                                >
-                                  <FileEdit className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedRPDItem(item);
+                              setRpdDialogOpen(true);
+                            }}
+                            disabled={isReadOnly}
+                            className="h-7 text-xs"
+                            title={isReadOnly ? "Anda tidak memiliki akses untuk mengubah RPD" : "Isi Rencana Penarikan Dana"}
+                          >
+                            <Edit2 className="h-3 w-3 mr-1" />
+                            Isi RPD
+                          </Button>
                         </td>
                       </tr>
                     );
@@ -793,18 +640,6 @@ const RPDTable: React.FC<RPDTableProps> = ({
                 <td className={`selisih-cell fixed-column ${sisaPagu !== 0 ? 'text-red-600' : 'text-green-600'}`} style={{left: '620px'}}>
                   {formatNumber(sisaPagu)}
                 </td>
-                <td className="month-cell">{formatNumber(totalByMonth.jan, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.feb, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.mar, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.apr, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.mei, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.jun, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.jul, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.aug, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.sep, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.oct, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.nov, false)}</td>
-                <td className="month-cell">{formatNumber(totalByMonth.dec, false)}</td>
                 <td></td>
               </tr>
             </tfoot>
@@ -854,6 +689,51 @@ const RPDTable: React.FC<RPDTableProps> = ({
             Last
           </Button>
         </div>
+      )}
+
+      {/* RPD Input Dialog */}
+      {selectedRPDItem && (
+        <RPDInputDialog
+          open={rpdDialogOpen}
+          onOpenChange={setRpdDialogOpen}
+          itemId={selectedRPDItem.id}
+          itemUraian={selectedRPDItem.uraian}
+          totalPagu={selectedRPDItem.total_pagu}
+          initialData={{
+            jan: selectedRPDItem.jan,
+            feb: selectedRPDItem.feb,
+            mar: selectedRPDItem.mar,
+            apr: selectedRPDItem.apr,
+            mei: selectedRPDItem.mei,
+            jun: selectedRPDItem.jun,
+            jul: selectedRPDItem.jul,
+            aug: selectedRPDItem.aug,
+            sep: selectedRPDItem.sep,
+            oct: selectedRPDItem.oct,
+            nov: selectedRPDItem.nov,
+            dec: selectedRPDItem.dec,
+          }}
+          readOnly={isReadOnly}
+          onSave={async (data) => {
+            if (onUpdateItem && selectedRPDItem) {
+              const updates: {[key: string]: number} = {
+                jan: data.jan || 0,
+                feb: data.feb || 0,
+                mar: data.mar || 0,
+                apr: data.apr || 0,
+                mei: data.mei || 0,
+                jun: data.jun || 0,
+                jul: data.jul || 0,
+                aug: data.aug || 0,
+                sep: data.sep || 0,
+                oct: data.oct || 0,
+                nov: data.nov || 0,
+                dec: data.dec || 0,
+              };
+              await onUpdateItem(selectedRPDItem.id, updates);
+            }
+          }}
+        />
       )}
     </div>
   );
