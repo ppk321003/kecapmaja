@@ -145,6 +145,11 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
     setValues(prev => ({ ...prev, [key]: numValue }));
   };
 
+  const getDisplayValue = (value: number): string => {
+    // For display, show formatted number with separators
+    return formatNumber(value);
+  };
+
   const handlePercentageChange = (key: string, value: string) => {
     const numValue = parseInt(value.replace(/\D/g, ''), 10) || 0;
     const newValue = (numValue / 100) * totalPagu;
@@ -268,10 +273,10 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={values[leftMonth.key as keyof typeof values] || 0}
+                          value={getDisplayValue(values[leftMonth.key as keyof typeof values] || 0)}
                           onChange={(e) => handleValueChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
-                          className="h-7 text-xs text-right px-1 w-full"
+                          className="h-7 text-xs text-right px-1 w-full font-mono"
                           placeholder="0"
                         />
                       </td>
@@ -292,10 +297,10 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={values[rightMonth.key as keyof typeof values] || 0}
+                          value={getDisplayValue(values[rightMonth.key as keyof typeof values] || 0)}
                           onChange={(e) => handleValueChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
-                          className="h-7 text-xs text-right px-1 w-full"
+                          className="h-7 text-xs text-right px-1 w-full font-mono"
                           placeholder="0"
                         />
                       </td>

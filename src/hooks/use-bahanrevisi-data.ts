@@ -123,7 +123,7 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
     body: {
       spreadsheetId: sheetId,
       operation: 'read',
-      range: 'rpd_items!A:Y',
+      range: 'rpd_items!A:Z',
     },
   });
 
@@ -146,6 +146,11 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
   const items: RPDItem[] = rows.slice(1)
     .filter((row: string[]) => row[0]?.trim())
     .map((row: string[], idx: number) => {
+      const totalPagu = parseFloat(row[7]) || 0;
+      const totalRpd = parseFloat(row[20]) || 0;
+      const blokir = parseFloat(row[25]) || 0;
+      const sisaAnggaran = roundToThousands(totalPagu - totalRpd - blokir);
+      
       const item = {
         id: row[0]?.trim() || '',
         program_pembebanan: row[1]?.trim() || '',
@@ -154,7 +159,7 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
         sub_komponen: row[4]?.trim() || '',
         akun: row[5]?.trim() || '',
         uraian: row[6]?.trim() || '',
-        total_pagu: parseFloat(row[7]) || 0,
+        total_pagu: totalPagu,
         jan: parseFloat(row[8]) || 0,
         feb: parseFloat(row[9]) || 0,
         mar: parseFloat(row[10]) || 0,
@@ -167,10 +172,10 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
         oct: parseFloat(row[17]) || 0,
         nov: parseFloat(row[18]) || 0,
         dec: parseFloat(row[19]) || 0,
-        total_rpd: parseFloat(row[20]) || 0,
-        sisa_anggaran: parseFloat(row[21]) || 0,
+        total_rpd: totalRpd,
+        sisa_anggaran: sisaAnggaran,
         status: row[22]?.trim() || '',
-        blokir: parseFloat(row[25]) || 0,
+        blokir: blokir,
         modified_by: row[23]?.trim(),
         modified_date: row[24]?.trim(),
       };
