@@ -2,7 +2,7 @@
  * Utility functions untuk Bahan Revisi Anggaran calculations
  */
 
-import { BudgetItem, BudgetItemStatus, BudgetSummary, BudgetSummaryByGroup, RPDItem, RPDSummary } from '@/types/bahanrevisi';
+import { BudgetItem, BudgetItemStatus, BudgetSummary, BudgetSummaryByGroup, BudgetSummaryByProgramPembebanan, BudgetSummaryByKegiatan, BudgetSummaryByRincianOutput, BudgetSummaryByKomponenOutput, BudgetSummaryBySubKomponen, BudgetSummaryByAkun, RPDItem, RPDSummary } from '@/types/bahanrevisi';
 
 /**
  * Format currency to IDR format
@@ -473,4 +473,262 @@ export const parseCSV = async (file: File): Promise<Record<string, string>[]> =>
     reader.onerror = () => reject(reader.error);
     reader.readAsText(file);
   });
+};
+
+/**
+ * Calculate summary by Program Pembebanan
+ */
+export const calculateBudgetSummaryByProgramPembebanan = (
+  items: BudgetItem[]
+): BudgetSummaryByProgramPembebanan[] => {
+  const groupMap = new Map<string, BudgetSummaryByProgramPembebanan>();
+
+  items.forEach((item) => {
+    const key = item.program_pembebanan || 'Uncategorized';
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        program_pembebanan: key,
+        name: key,
+        total_semula: 0,
+        total_menjadi: 0,
+        total_selisih: 0,
+        sisa_anggaran: 0,
+        blokir: 0,
+        new_items: 0,
+        changed_items: 0,
+        total_items: 0,
+      });
+    }
+
+    const group = groupMap.get(key)!;
+    group.total_semula += item.jumlah_semula || 0;
+    group.total_menjadi += item.jumlah_menjadi || 0;
+    group.total_selisih += item.selisih || 0;
+    group.sisa_anggaran += item.sisa_anggaran || 0;
+    group.blokir += item.blokir || 0;
+    group.total_items++;
+
+    if (item.status === 'new') group.new_items++;
+    else if (item.status === 'changed') group.changed_items++;
+  });
+
+  return Array.from(groupMap.values()).sort((a, b) =>
+    a.program_pembebanan.localeCompare(b.program_pembebanan)
+  );
+};
+
+/**
+ * Calculate summary by Kegiatan
+ */
+export const calculateBudgetSummaryByKegiatan = (
+  items: BudgetItem[]
+): BudgetSummaryByKegiatan[] => {
+  const groupMap = new Map<string, BudgetSummaryByKegiatan>();
+
+  items.forEach((item) => {
+    const key = item.kegiatan || 'Uncategorized';
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        kegiatan: key,
+        name: key,
+        total_semula: 0,
+        total_menjadi: 0,
+        total_selisih: 0,
+        sisa_anggaran: 0,
+        blokir: 0,
+        new_items: 0,
+        changed_items: 0,
+        total_items: 0,
+      });
+    }
+
+    const group = groupMap.get(key)!;
+    group.total_semula += item.jumlah_semula || 0;
+    group.total_menjadi += item.jumlah_menjadi || 0;
+    group.total_selisih += item.selisih || 0;
+    group.sisa_anggaran += item.sisa_anggaran || 0;
+    group.blokir += item.blokir || 0;
+    group.total_items++;
+
+    if (item.status === 'new') group.new_items++;
+    else if (item.status === 'changed') group.changed_items++;
+  });
+
+  return Array.from(groupMap.values()).sort((a, b) =>
+    a.kegiatan.localeCompare(b.kegiatan)
+  );
+};
+
+/**
+ * Calculate summary by Rincian Output
+ */
+export const calculateBudgetSummaryByRincianOutput = (
+  items: BudgetItem[]
+): BudgetSummaryByRincianOutput[] => {
+  const groupMap = new Map<string, BudgetSummaryByRincianOutput>();
+
+  items.forEach((item) => {
+    const key = item.rincian_output || 'Uncategorized';
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        rincian_output: key,
+        name: key,
+        total_semula: 0,
+        total_menjadi: 0,
+        total_selisih: 0,
+        sisa_anggaran: 0,
+        blokir: 0,
+        new_items: 0,
+        changed_items: 0,
+        total_items: 0,
+      });
+    }
+
+    const group = groupMap.get(key)!;
+    group.total_semula += item.jumlah_semula || 0;
+    group.total_menjadi += item.jumlah_menjadi || 0;
+    group.total_selisih += item.selisih || 0;
+    group.sisa_anggaran += item.sisa_anggaran || 0;
+    group.blokir += item.blokir || 0;
+    group.total_items++;
+
+    if (item.status === 'new') group.new_items++;
+    else if (item.status === 'changed') group.changed_items++;
+  });
+
+  return Array.from(groupMap.values()).sort((a, b) =>
+    a.rincian_output.localeCompare(b.rincian_output)
+  );
+};
+
+/**
+ * Calculate summary by Komponen Output
+ */
+export const calculateBudgetSummaryByKomponenOutput = (
+  items: BudgetItem[]
+): BudgetSummaryByKomponenOutput[] => {
+  const groupMap = new Map<string, BudgetSummaryByKomponenOutput>();
+
+  items.forEach((item) => {
+    const key = item.komponen_output || 'Uncategorized';
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        komponen_output: key,
+        name: key,
+        total_semula: 0,
+        total_menjadi: 0,
+        total_selisih: 0,
+        sisa_anggaran: 0,
+        blokir: 0,
+        new_items: 0,
+        changed_items: 0,
+        total_items: 0,
+      });
+    }
+
+    const group = groupMap.get(key)!;
+    group.total_semula += item.jumlah_semula || 0;
+    group.total_menjadi += item.jumlah_menjadi || 0;
+    group.total_selisih += item.selisih || 0;
+    group.sisa_anggaran += item.sisa_anggaran || 0;
+    group.blokir += item.blokir || 0;
+    group.total_items++;
+
+    if (item.status === 'new') group.new_items++;
+    else if (item.status === 'changed') group.changed_items++;
+  });
+
+  return Array.from(groupMap.values()).sort((a, b) =>
+    a.komponen_output.localeCompare(b.komponen_output)
+  );
+};
+
+/**
+ * Calculate summary by Sub Komponen
+ */
+export const calculateBudgetSummaryBySubKomponen = (
+  items: BudgetItem[]
+): BudgetSummaryBySubKomponen[] => {
+  const groupMap = new Map<string, BudgetSummaryBySubKomponen>();
+
+  items.forEach((item) => {
+    const key = item.sub_komponen || 'Uncategorized';
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        sub_komponen: key,
+        name: key,
+        total_semula: 0,
+        total_menjadi: 0,
+        total_selisih: 0,
+        sisa_anggaran: 0,
+        blokir: 0,
+        new_items: 0,
+        changed_items: 0,
+        total_items: 0,
+      });
+    }
+
+    const group = groupMap.get(key)!;
+    group.total_semula += item.jumlah_semula || 0;
+    group.total_menjadi += item.jumlah_menjadi || 0;
+    group.total_selisih += item.selisih || 0;
+    group.sisa_anggaran += item.sisa_anggaran || 0;
+    group.blokir += item.blokir || 0;
+    group.total_items++;
+
+    if (item.status === 'new') group.new_items++;
+    else if (item.status === 'changed') group.changed_items++;
+  });
+
+  return Array.from(groupMap.values()).sort((a, b) =>
+    a.sub_komponen.localeCompare(b.sub_komponen)
+  );
+};
+
+/**
+ * Calculate summary by Akun
+ */
+export const calculateBudgetSummaryByAkun = (
+  items: BudgetItem[]
+): BudgetSummaryByAkun[] => {
+  const groupMap = new Map<string, BudgetSummaryByAkun>();
+
+  items.forEach((item) => {
+    const key = item.akun || 'Uncategorized';
+
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        akun: key,
+        name: key,
+        total_semula: 0,
+        total_menjadi: 0,
+        total_selisih: 0,
+        sisa_anggaran: 0,
+        blokir: 0,
+        new_items: 0,
+        changed_items: 0,
+        total_items: 0,
+      });
+    }
+
+    const group = groupMap.get(key)!;
+    group.total_semula += item.jumlah_semula || 0;
+    group.total_menjadi += item.jumlah_menjadi || 0;
+    group.total_selisih += item.selisih || 0;
+    group.sisa_anggaran += item.sisa_anggaran || 0;
+    group.blokir += item.blokir || 0;
+    group.total_items++;
+
+    if (item.status === 'new') group.new_items++;
+    else if (item.status === 'changed') group.changed_items++;
+  });
+
+  return Array.from(groupMap.values()).sort((a, b) =>
+    a.akun.localeCompare(b.akun)
+  );
 };

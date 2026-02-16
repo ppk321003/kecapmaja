@@ -169,3 +169,52 @@ export interface RPDSummary {
   total_sisa_anggaran: number;
   items_count: number;
 }
+
+/**
+ * Summary by berbagai kategori
+ */
+export interface BudgetSummaryByCategory {
+  name: string;
+  total_semula: number;
+  total_menjadi: number;
+  total_selisih: number;
+  sisa_anggaran?: number;
+  blokir?: number;
+  new_items: number;
+  changed_items: number;
+  unchanged_items?: number;
+  deleted_items?: number;
+  total_items: number;
+}
+
+export interface BudgetSummaryByProgramPembebanan extends BudgetSummaryByCategory {
+  program_pembebanan: string;
+}
+
+export interface BudgetSummaryByKegiatan extends BudgetSummaryByCategory {
+  kegiatan: string;
+}
+
+export interface BudgetSummaryByRincianOutput extends BudgetSummaryByCategory {
+  rincian_output: string;
+}
+
+export interface BudgetSummaryByKomponenOutput extends BudgetSummaryByCategory {
+  komponen_output: string;
+}
+
+export interface BudgetSummaryBySubKomponen extends BudgetSummaryByCategory {
+  sub_komponen: string;
+}
+
+export interface BudgetSummaryByAkun extends BudgetSummaryByCategory {
+  akun: string;
+}
+
+export interface BudgetSummaryByKelompokAkun extends BudgetSummaryByCategory {
+  kelompok_akun: string;
+}
+
+export interface BudgetSummaryByKelompokBelanja extends BudgetSummaryByCategory {
+  kelompok_belanja: string;
+}
