@@ -45,7 +45,7 @@ const fetchRPDItemsFromSheet = async (sheetId: string): Promise<RPDItem[]> => {
       body: {
         spreadsheetId: sheetId,
         operation: 'read',
-        range: 'rpd_items!A:Y',
+        range: 'rpd_items!A:Z',
       },
     });
 
@@ -83,7 +83,8 @@ const fetchRPDItemsFromSheet = async (sheetId: string): Promise<RPDItem[]> => {
         );
 
         const jumlahMenjadi = parseFloat(row[7]) || 0;
-        const selisih = roundToThousands(jumlahMenjadi - jumlahRpd);
+        const blokir = parseFloat(row[25]) || 0;
+        const selisih = roundToThousands(jumlahMenjadi - jumlahRpd - blokir);
         
         // Determine status based on allocation
         let status: string;
@@ -125,6 +126,7 @@ const fetchRPDItemsFromSheet = async (sheetId: string): Promise<RPDItem[]> => {
           total_rpd: jumlahRpd,
           sisa_anggaran: selisih,
           status,
+          blokir,
           modified_by: row[23]?.trim(),
           modified_date: row[24]?.trim(),
         };
@@ -275,7 +277,7 @@ export const useRPDData = ({ sheetId, enabled = true }: UseRPDDataProps): RPDDat
             );
 
             updatedItem.total_rpd = totalRpd;
-            updatedItem.sisa_anggaran = roundToThousands(updatedItem.total_pagu - totalRpd);
+            updatedItem.sisa_anggaran = roundToThousands(updatedItem.total_pagu - totalRpd - (updatedItem.blokir || 0));
 
             // Update status
             if (totalRpd === updatedItem.total_pagu) {
