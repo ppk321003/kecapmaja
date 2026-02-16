@@ -478,53 +478,13 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
             {/* Tab: Ringkasan */}
             <TabsContent value="ringkasan" className="space-y-4">
-              {/* New refined summary components */}
-              <div className="space-y-4">
-                {/* Summary Conclusion */}
-                {Array.isArray(filteredBudgetItems) && filteredBudgetItems.length > 0 && (
-                  <BudgetChangesConclusion
-                    totalSemula={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.jumlah_semula) || 0), 0)}
-                    totalMenjadi={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.jumlah_menjadi) || 0), 0)}
-                    totalSelisih={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.selisih) || 0), 0)}
-                    changedItems={filteredBudgetItems.filter(item => item?.status === 'changed').length}
-                    newItems={filteredBudgetItems.filter(item => item?.status === 'new').length}
-                    deletedItems={filteredBudgetItems.filter(item => item?.status === 'deleted').length}
-                  />
-                )}
-
-                {/* Changed Items Table */}
-                {Array.isArray(filteredBudgetItems) && getChangedBudgetItems().length > 0 && (
-                  <BudgetChangesTable
-                    title="Pagu Anggaran Berubah"
-                    items={getChangedBudgetItems()}
-                  />
-                )}
-
-                {/* New Items Table */}
-                {Array.isArray(filteredBudgetItems) && getNewBudgetItems().length > 0 && (
-                  <NewBudgetTable items={getNewBudgetItems()} />
-                )}
-
-                {/* Summary with statistics */}
-                {Array.isArray(filteredBudgetItems) && (
-                  <BudgetChangesSummary
-                    totalSemula={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.jumlah_semula) || 0), 0)}
-                    totalMenjadi={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.jumlah_menjadi) || 0), 0)}
-                    totalSelisih={filteredBudgetItems.reduce((sum, item) => sum + (Number(item?.selisih) || 0), 0)}
-                    totalNewItems={filteredBudgetItems.filter(item => item?.status === 'new').length}
-                    totalChangedItems={filteredBudgetItems.filter(item => item?.status === 'changed').length}
-                    totalDeletedItems={filteredBudgetItems.filter(item => item?.status === 'deleted').length}
-                    totalUnchangedItems={filteredBudgetItems.filter(item => item?.status === 'unchanged').length}
-                    totalItems={filteredBudgetItems.length}
-                  />
-                )}
-
-                {/* Ringkasan dengan subtab button untuk berbagai kategori */}
+              {/* Ringkasan dengan subtab button untuk berbagai kategori */}
+              {Array.isArray(filteredBudgetItems) && (
                 <BahanRevisiRingkasanSubtab
                   items={filteredBudgetItems}
                   isLoading={isLoadingData}
                 />
-              </div>
+              )}
             </TabsContent>
           </Tabs>
 

@@ -732,3 +732,25 @@ export const calculateBudgetSummaryByAkun = (
     a.akun.localeCompare(b.akun)
   );
 };
+
+/**
+ * Calculate realisasi (realisasi = jumlah_menjadi - sisa_anggaran)
+ */
+export const calculateRealisasi = (jumlahMenjadi: number, sisaAnggaran: number): number => {
+  return roundToThousands(jumlahMenjadi - sisaAnggaran);
+};
+
+/**
+ * Calculate percentage realisasi
+ */
+export const calculatePersentaseRealisasi = (realisasi: number, jumlahMenjadi: number): number => {
+  if (jumlahMenjadi === 0) return 0;
+  return Math.round((realisasi / jumlahMenjadi) * 100 * 100) / 100; // Round to 2 decimal places
+};
+
+/**
+ * Format percentage to string
+ */
+export const formatPercentage = (percentage: number): string => {
+  return `${percentage.toFixed(2)}%`;
+};
