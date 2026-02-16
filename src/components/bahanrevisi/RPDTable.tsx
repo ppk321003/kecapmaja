@@ -678,8 +678,6 @@ const RPDTable: React.FC<RPDTableProps> = ({
           totalPagu={selectedRPDItem.total_pagu}
           pembebanan={[
             selectedRPDItem.program_pembebanan,
-            selectedRPDItem.kegiatan,
-            selectedRPDItem.rincian_output,
             selectedRPDItem.komponen_output,
             selectedRPDItem.sub_komponen,
             selectedRPDItem.akun

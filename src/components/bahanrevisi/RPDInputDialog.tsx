@@ -74,7 +74,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   blokir = 0,
   onSave,
 }) => {
-  const [percentages, setPercentages] = useState<{[key: string]: number}>({});
+  const [percentageInputs, setPercentageInputs] = useState<{[key: string]: string}>({});
   const [values, setValues] = useState<{[key: string]: number}>({});
   const [paguTidakDapatDitarik, setPaguTidakDapatDitarik] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,19 +82,29 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
   // Initialize data
   useEffect(() => {
     if (open) {
-      setPercentages({
-        jan: 0, feb: 0, mar: 0, apr: 0, mei: 0, jun: 0,
-        jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
-      });
-      setValues({
+      const initialValues = {
         jan: initialData.jan || 0, feb: initialData.feb || 0, mar: initialData.mar || 0,
         apr: initialData.apr || 0, mei: initialData.mei || 0, jun: initialData.jun || 0,
         jul: initialData.jul || 0, aug: initialData.aug || 0, sep: initialData.sep || 0,
         oct: initialData.oct || 0, nov: initialData.nov || 0, dec: initialData.dec || 0
+      };
+      
+      // Calculate initial percentages from values
+      const initialPercentages: {[key: string]: string} = {};
+      Object.entries(initialValues).forEach(([key, value]) => {
+        if (totalPagu > 0) {
+          const pct = ((value as number) / totalPagu) * 100;
+          initialPercentages[key] = pct === 0 ? '0' : pct.toFixed(2);
+        } else {
+          initialPercentages[key] = '0';
+        }
       });
+      
+      setPercentageInputs(initialPercentages);
+      setValues(initialValues);
       setPaguTidakDapatDitarik(blokir || 0);
     }
-  }, [open, initialData, blokir]);
+  }, [open, initialData, blokir, totalPagu]);
 
   // Calculate total, percentages, and sisa
   const calculations = useMemo((): {
@@ -152,13 +162,10 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
     return formatNumber(value);
   };
 
-  const getPercentageDisplay = (percentage: number): string => {
-    // For percentage display, show up to 2 decimal places
-    if (percentage === 0) return '0';
-    return percentage % 1 === 0 ? percentage.toString() : percentage.toFixed(2);
-  };
-
   const handlePercentageChange = (key: string, value: string) => {
+    // Store the input value as-is for display
+    setPercentageInputs(prev => ({ ...prev, [key]: value }));
+    // Calculate and update the nilai
     const numValue = parseFloat(value.replace(/[^\d.]/g, '')) || 0;
     const newValue = (numValue / 100) * totalPagu;
     setValues(prev => ({ ...prev, [key]: newValue }));
@@ -273,7 +280,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                         <Input
                           type="text"
                           inputMode="decimal"
-                          value={getPercentageDisplay(calculations.percentages[leftMonth.key] || 0)}
+                          value={percentageInputs[leftMonth.key] || '0'}
                           onChange={(e) => handlePercentageChange(leftMonth.key, e.target.value)}
                           disabled={readOnly}
                           className="h-7 text-xs text-center px-1 w-full"
@@ -297,7 +304,7 @@ const RPDInputDialog: React.FC<RPDInputDialogProps> = ({
                         <Input
                           type="text"
                           inputMode="decimal"
-                          value={getPercentageDisplay(calculations.percentages[rightMonth.key] || 0)}
+                          value={percentageInputs[rightMonth.key] || '0'}
                           onChange={(e) => handlePercentageChange(rightMonth.key, e.target.value)}
                           disabled={readOnly}
                           className="h-7 text-xs text-center px-1 w-full"
