@@ -17,7 +17,7 @@ import { BahanRevisiFilters, BudgetItem } from '@/types/bahanrevisi';
 import { formatCurrency, formatDateIndonesia, determineStatusFromChanges, calculateSelisih, calculateJumlahMenjadi } from '@/utils/bahanrevisi-calculations';
 import BahanRevisiFilter from './BahanRevisiFilter';
 import BahanRevisiBudgetTable from './BahanRevisiBudgetTable';
-import BahanRevisiRingkasanTabs from './BahanRevisiRingkasanTabs';
+import BahanRevisiRingkasanSubtab from './BahanRevisiRingkasanSubtab';
 import RPDTable from './RPDTable';
 import BudgetChangesConclusion from './BudgetChangesConclusion';
 import BudgetChangesSummary from './BudgetChangesSummary';
@@ -519,8 +519,8 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                   />
                 )}
 
-                {/* Ringkasan dengan subtab untuk berbagai kategori */}
-                <BahanRevisiRingkasanTabs
+                {/* Ringkasan dengan subtab button untuk berbagai kategori */}
+                <BahanRevisiRingkasanSubtab
                   items={filteredBudgetItems}
                   isLoading={isLoadingData}
                 />
