@@ -67,42 +67,36 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   
   // Program Pembebanan options - use provided options if available
   const programPembebananOptions = useMemo<SelectOption[]>(() => {
-    const progLen = programs?.length || 0;
-    const pOptLen = programsOptions?.length || 0;
-    console.log('[DEBUG] programs:', progLen, 'programsOptions:', pOptLen);
-    
     // Always try reference data first (most reliable)
     if (programs && Array.isArray(programs) && programs.length > 0) {
-      console.log('[DEBUG] programs[0]:', programs[0]);
       const result: SelectOption[] = [];
       for (const p of programs) {
-        const code = p?.code ? String(p.code).trim() : '';
-        const name = p?.name ? String(p.name).trim() : '';
+        const code = p?.id ? String(p.id).trim() : '';
+        const name = p?.code ? String(p.code).trim() : '';
         if (code && name) {
           result.push({ value: code, label: `${code} - ${name}` });
         }
       }
       if (result.length > 0) {
-        console.log('[DEBUG] program options result:', result);
         return result;
       }
     }
     
     // Fall back to provided options from hook
     if (programsOptions && programsOptions.length > 0) {
-      console.log('[DEBUG] Using programsOptions from hook');
       return programsOptions;
     }
 
     // FALLBACK: Derive from budgetItems
-    console.log('[DEBUG] Using fallback from budgetItems');
     const fallback: SelectOption[] = [];
     const seen = new Set<string>();
     for (const item of budgetItems) {
       const val = String(item.program_pembebanan || '').trim();
       if (val && !seen.has(val)) {
         seen.add(val);
-        fallback.push({ value: val, label: val });
+        const progRef = programs?.find(p => String(p.id || '').trim() === val);
+        const label = progRef ? `${val} - ${String(progRef.code || '').trim()}` : val;
+        fallback.push({ value: val, label });
       }
     }
     return fallback.sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
@@ -115,14 +109,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       // Always try reference data first (most reliable) with "code - name" format
       if (kegiatans && Array.isArray(kegiatans) && kegiatans.length > 0) {
-        const relatedProgram = programs?.find(p => String(p?.code || '') === String(filters.program_pembebanan || ''));
+        const relatedProgram = programs?.find(p => String(p?.id || '') === String(filters.program_pembebanan || ''));
         if (relatedProgram) {
           const result: SelectOption[] = [];
           for (const k of kegiatans) {
             // Only filter by program_id if it exists, otherwise include all
             if (k?.program_id && relatedProgram.id && k.program_id !== relatedProgram.id) continue;
-            const code = k?.code ? String(k.code).trim() : '';
-            const name = k?.name ? String(k.name).trim() : '';
+            const code = k?.id ? String(k.id).trim() : '';
+            const name = k?.code ? String(k.code).trim() : '';
             if (code && name) {
               result.push({ value: code, label: `${code} - ${name}` });
             }
@@ -146,8 +140,8 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       for (const code of kegiatanCodes) {
         try {
-          const kegRef = kegiatans?.find(k => String(k.code || '').trim() === code);
-          const label = kegRef ? `${code} - ${String(kegRef.name || '').trim()}` : code;
+          const kegRef = kegiatans?.find(k => String(k.id || '').trim() === code);
+          const label = kegRef ? `${code} - ${String(kegRef.code || '').trim()}` : code;
           if (code && !seen.has(code)) {
             seen.add(code);
             fallback.push({ value: code, label });
@@ -167,14 +161,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       // Always try reference data first (most reliable) with "code - name" format
       if (rincianOutputs && Array.isArray(rincianOutputs) && rincianOutputs.length > 0) {
-        const relatedKegiatan = kegiatans?.find(k => String(k?.code || '') === String(filters.kegiatan || ''));
+        const relatedKegiatan = kegiatans?.find(k => String(k?.id || '') === String(filters.kegiatan || ''));
         if (relatedKegiatan) {
           const result: SelectOption[] = [];
           for (const r of rincianOutputs) {
             // Only filter by kegiatan_id if it exists, otherwise include all
             if (r?.kegiatan_id && relatedKegiatan.id && r.kegiatan_id !== relatedKegiatan.id) continue;
-            const code = r?.code ? String(r.code).trim() : '';
-            const name = r?.name ? String(r.name).trim() : '';
+            const code = r?.id ? String(r.id).trim() : '';
+            const name = r?.code ? String(r.code).trim() : '';
             if (code && name) {
               result.push({ value: code, label: `${code} - ${name}` });
             }
@@ -198,8 +192,8 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       for (const code of rincianCodes) {
         try {
-          const rincRef = rincianOutputs?.find(r => String(r.code || '').trim() === code);
-          const label = rincRef ? `${code} - ${String(rincRef.name || '').trim()}` : code;
+          const rincRef = rincianOutputs?.find(r => String(r.id || '').trim() === code);
+          const label = rincRef ? `${code} - ${String(rincRef.code || '').trim()}` : code;
           if (code && !seen.has(code)) {
             seen.add(code);
             fallback.push({ value: code, label });
@@ -219,14 +213,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       // Always try reference data first (most reliable) with "code - name" format
       if (komponenOutputs && Array.isArray(komponenOutputs) && komponenOutputs.length > 0) {
-        const relatedRincian = rincianOutputs?.find(r => String(r?.code || '') === String(filters.rincian_output || ''));
+        const relatedRincian = rincianOutputs?.find(r => String(r?.id || '') === String(filters.rincian_output || ''));
         if (relatedRincian) {
           const result: SelectOption[] = [];
           for (const k of komponenOutputs) {
             // Only filter by rincian_output_id if it exists, otherwise include all
             if (k?.rincian_output_id && relatedRincian.id && k.rincian_output_id !== relatedRincian.id) continue;
-            const code = k?.code ? String(k.code).trim() : '';
-            const name = k?.name ? String(k.name).trim() : '';
+            const code = k?.id ? String(k.id).trim() : '';
+            const name = k?.code ? String(k.code).trim() : '';
             if (code && name) {
               result.push({ value: code, label: `${code} - ${name}` });
             }
@@ -250,8 +244,8 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       for (const code of komponenCodes) {
         try {
-          const kompRef = komponenOutputs?.find(k => String(k.code || '').trim() === code);
-          const label = kompRef ? `${code} - ${String(kompRef.name || '').trim()}` : code;
+          const kompRef = komponenOutputs?.find(k => String(k.id || '').trim() === code);
+          const label = kompRef ? `${code} - ${String(kompRef.code || '').trim()}` : code;
           if (code && !seen.has(code)) {
             seen.add(code);
             fallback.push({ value: code, label });
@@ -271,14 +265,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       // Always try reference data first (most reliable) with "code - name" format
       if (subKomponen && Array.isArray(subKomponen) && subKomponen.length > 0) {
-        const relatedKomponen = komponenOutputs?.find(k => String(k?.code || '') === String(filters.komponen_output || ''));
+        const relatedKomponen = komponenOutputs?.find(k => String(k?.id || '') === String(filters.komponen_output || ''));
         if (relatedKomponen) {
           const result: SelectOption[] = [];
           for (const s of subKomponen) {
             // Only filter by komponen_output_id if it exists, otherwise include all
             if (s?.komponen_output_id && relatedKomponen.id && s.komponen_output_id !== relatedKomponen.id) continue;
-            const code = s?.code ? String(s.code).trim() : '';
-            const name = s?.name ? String(s.name).trim() : '';
+            const code = s?.id ? String(s.id).trim() : '';
+            const name = s?.code ? String(s.code).trim() : '';
             if (code && name) {
               result.push({ value: code, label: `${code} - ${name}` });
             }
@@ -302,8 +296,8 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       
       for (const code of subKomponenCodes) {
         try {
-          const skRef = subKomponen?.find(s => String(s.code || '').trim() === code);
-          const label = skRef ? `${code} - ${String(skRef.name || '').trim()}` : code;
+          const skRef = subKomponen?.find(s => String(s.id || '').trim() === code);
+          const label = skRef ? `${code} - ${String(skRef.code || '').trim()}` : code;
           if (code && !seen.has(code)) {
             seen.add(code);
             fallback.push({ value: code, label });
@@ -353,8 +347,8 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         
         const result: SelectOption[] = [];
         for (const a of akuns) {
-          const code = a?.code ? String(a.code).trim() : '';
-          const name = a?.name ? String(a.name).trim() : '';
+          const code = a?.id ? String(a.id).trim() : '';
+          const name = a?.code ? String(a.code).trim() : '';
           
           // If we have relevant items, only include matching akuns; otherwise include all
           if (relevantAkunValues && !relevantAkunValues.has(code)) continue;
@@ -384,8 +378,8 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       // Try to enhance fallback with any available reference data for names
       for (const code of akunCodes) {
         try {
-          const akunRef = akuns?.find(a => String(a.code || '').trim() === code);
-          const label = akunRef ? `${code} - ${String(akunRef.name || '').trim()}` : code;
+          const akunRef = akuns?.find(a => String(a.id || '').trim() === code);
+          const label = akunRef ? `${code} - ${String(akunRef.code || '').trim()}` : code;
           if (code && !seen.has(code)) {
             seen.add(code);
             fallback.push({ value: code, label });
