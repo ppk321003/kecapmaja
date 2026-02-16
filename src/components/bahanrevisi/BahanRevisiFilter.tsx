@@ -67,14 +67,8 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
   
   // Program Pembebanan options - use provided options if available
   const programPembebananOptions = useMemo<SelectOption[]>(() => {
-    // If options are provided from hook, use them directly
-    if (programsOptions && programsOptions.length > 0) {
-      console.log('[Filter] Using provided programsOptions:', programsOptions.length);
-      return programsOptions;
-    }
-    
+    // Always try reference data first (most reliable)
     try {
-      // Try to use programs reference data first
       if (programs && Array.isArray(programs) && programs.length > 0) {
         const result: SelectOption[] = [];
         for (const p of programs) {
@@ -89,10 +83,20 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
             console.error('Error processing program:', p, e);
           }
         }
-        console.log('[Filter] Program options from reference:', result.length);
+        console.log('[Filter] Program options from reference:', result.length, 'programs:', programs.length);
         if (result.length > 0) return result;
       }
+    } catch (e) {
+      console.error('Error building program options from reference:', e);
+    }
+    
+    // Fall back to provided options from hook
+    if (programsOptions && programsOptions.length > 0) {
+      console.log('[Filter] Using provided programsOptions:', programsOptions.length);
+      return programsOptions;
+    }
 
+    try {
       // FALLBACK: Derive from budgetItems
       console.log('[Filter] Using fallback: deriving program options from budgetItems');
       const fallback: SelectOption[] = [];
@@ -111,20 +115,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building programPembebananOptions:', e);
       return [];
     }
-  }, [programs, budgetItems]);
+  }, [programs, programsOptions, budgetItems]);
 
   // Kegiatan options - filtered by selected program
   const kegiatanOptions = useMemo<SelectOption[]>(() => {
     try {
-      // Use provided options first if available
-      if (kegiatansOptions && Array.isArray(kegiatansOptions) && kegiatansOptions.length > 0) {
-        console.log('[Filter] Using provided kegiatansOptions:', kegiatansOptions.length);
-        return kegiatansOptions;
-      }
-      
       if (!filters.program_pembebanan || typeof filters.program_pembebanan !== 'string') return [];
       
-      // Try reference data first with "code - name" format
+      // Always try reference data first (most reliable) with "code - name" format
       if (kegiatans && Array.isArray(kegiatans) && kegiatans.length > 0) {
         const relatedProgram = programs?.find(p => {
           try {
@@ -151,6 +149,12 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           if (result.length > 0) return result;
         }
       }
+      
+      // Fall back to provided options from hook
+      if (kegiatansOptions && Array.isArray(kegiatansOptions) && kegiatansOptions.length > 0) {
+        console.log('[Filter] Using provided kegiatansOptions:', kegiatansOptions.length);
+        return kegiatansOptions;
+      }
 
       // FALLBACK: Derive from budgetItems with "code - name" format
       console.log('[Filter] Using fallback: deriving kegiatan options from budgetItems');
@@ -174,20 +178,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building kegiatanOptions:', e);
       return [];
     }
-  }, [filters.program_pembebanan, kegiatansOptions, kegiatans, programs, budgetItems]);
+  }, [filters.program_pembebanan, kegiatans, programs, budgetItems, kegiatansOptions]);
 
   // Rincian Output options - filtered by selected kegiatan
   const rincianOutputOptions = useMemo<SelectOption[]>(() => {
     try {
-      // Use provided options first if available
-      if (rincianOutputsOptions && Array.isArray(rincianOutputsOptions) && rincianOutputsOptions.length > 0) {
-        console.log('[Filter] Using provided rincianOutputsOptions:', rincianOutputsOptions.length);
-        return rincianOutputsOptions;
-      }
-      
       if (!filters.kegiatan || typeof filters.kegiatan !== 'string') return [];
       
-      // Try reference data first with "code - name" format
+      // Always try reference data first (most reliable) with "code - name" format
       if (rincianOutputs && Array.isArray(rincianOutputs) && rincianOutputs.length > 0) {
         const relatedKegiatan = kegiatans?.find(k => {
           try {
@@ -214,6 +212,12 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           if (result.length > 0) return result;
         }
       }
+      
+      // Fall back to provided options from hook
+      if (rincianOutputsOptions && Array.isArray(rincianOutputsOptions) && rincianOutputsOptions.length > 0) {
+        console.log('[Filter] Using provided rincianOutputsOptions:', rincianOutputsOptions.length);
+        return rincianOutputsOptions;
+      }
 
       // FALLBACK: Derive from budgetItems with "code - name" format
       console.log('[Filter] Using fallback: deriving rincian output options from budgetItems');
@@ -237,20 +241,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building rincianOutputOptions:', e);
       return [];
     }
-  }, [filters.kegiatan, rincianOutputsOptions, rincianOutputs, kegiatans, budgetItems]);
+  }, [filters.kegiatan, rincianOutputs, kegiatans, budgetItems, rincianOutputsOptions]);
 
   // Komponen Output options - filtered by selected rincian output
   const komponenOutputOptions = useMemo<SelectOption[]>(() => {
     try {
-      // Use provided options first if available
-      if (komponenOutputsOptions && Array.isArray(komponenOutputsOptions) && komponenOutputsOptions.length > 0) {
-        console.log('[Filter] Using provided komponenOutputsOptions:', komponenOutputsOptions.length);
-        return komponenOutputsOptions;
-      }
-      
       if (!filters.rincian_output || typeof filters.rincian_output !== 'string') return [];
       
-      // Try reference data first with "code - name" format
+      // Always try reference data first (most reliable) with "code - name" format
       if (komponenOutputs && Array.isArray(komponenOutputs) && komponenOutputs.length > 0) {
         const relatedRincian = rincianOutputs?.find(r => {
           try {
@@ -277,6 +275,12 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           if (result.length > 0) return result;
         }
       }
+      
+      // Fall back to provided options from hook
+      if (komponenOutputsOptions && Array.isArray(komponenOutputsOptions) && komponenOutputsOptions.length > 0) {
+        console.log('[Filter] Using provided komponenOutputsOptions:', komponenOutputsOptions.length);
+        return komponenOutputsOptions;
+      }
 
       // FALLBACK: Derive from budgetItems with "code - name" format
       console.log('[Filter] Using fallback: deriving komponen output options from budgetItems');
@@ -300,20 +304,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building komponenOutputOptions:', e);
       return [];
     }
-  }, [filters.rincian_output, komponenOutputsOptions, komponenOutputs, rincianOutputs, budgetItems]);
+  }, [filters.rincian_output, komponenOutputs, rincianOutputs, budgetItems, komponenOutputsOptions]);
 
   // Sub Komponen options - filtered by selected komponen output
   const subKomponenOptions = useMemo<SelectOption[]>(() => {
     try {
       if (!filters.komponen_output || typeof filters.komponen_output !== 'string') return [];
       
-      // Use provided options first if available
-      if (providedSubKomponenOptions && Array.isArray(providedSubKomponenOptions) && providedSubKomponenOptions.length > 0) {
-        console.log('[Filter] Using provided subKomponenOptions:', providedSubKomponenOptions.length);
-        return providedSubKomponenOptions;
-      }
-      
-      // Try reference data first
+      // Always try reference data first (most reliable) with "code - name" format
       if (subKomponen && Array.isArray(subKomponen) && subKomponen.length > 0) {
         const relatedKomponen = komponenOutputs?.find(k => {
           try {
@@ -340,8 +338,14 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
           if (result.length > 0) return result;
         }
       }
+      
+      // Fall back to provided options from hook
+      if (providedSubKomponenOptions && Array.isArray(providedSubKomponenOptions) && providedSubKomponenOptions.length > 0) {
+        console.log('[Filter] Using provided subKomponenOptions:', providedSubKomponenOptions.length);
+        return providedSubKomponenOptions;
+      }
 
-      // FALLBACK: Derive from budgetItems
+      // FALLBACK: Derive from budgetItems with "code - name" format
       console.log('[Filter] Using fallback: deriving sub komponen options from budgetItems');
       const fallback: SelectOption[] = [];
       const seen = new Set<string>();
@@ -363,7 +367,7 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
       console.error('Error building subKomponenOptions:', e);
       return [];
     }
-  }, [filters.komponen_output, providedSubKomponenOptions, subKomponen, komponenOutputs, budgetItems]);
+  }, [filters.komponen_output, subKomponen, komponenOutputs, budgetItems, providedSubKomponenOptions]);
 
   // Akun options - filtered based on selected parent filters
   const akunOptions = useMemo<SelectOption[]>(() => {
@@ -425,8 +429,12 @@ const BahanRevisiFilter: React.FC<BahanRevisiFilterProps> = ({
         }
         console.log('[Filter] Akun options from reference:', result.length);
         if (result.length > 0) return result;
+      }      
+      // Fall back to provided options from hook
+      if (akunsOptions && Array.isArray(akunsOptions) && akunsOptions.length > 0) {
+        console.log('[Filter] Using provided akunsOptions:', akunsOptions.length);
+        return akunsOptions;
       }
-
       // FALLBACK: Derive from filtered budgetItems with "code - name" format
       console.log('[Filter] Using fallback: deriving akun options from budgetItems');
       const fallback: SelectOption[] = [];
