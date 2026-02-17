@@ -114,18 +114,16 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
   // Handle delete item
   const handleDeleteItem = (itemId: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus item ini?')) {
-      deleteItem({
-        itemId,
-        allItems: budgetItems,
-        submitted_by: user?.username,
-        updated_date: formatDateIndonesia(new Date().toISOString()),
-      });
-      toast({
-        title: 'Success',
-        description: 'Item berhasil dihapus',
-      });
-    }
+    deleteItem({
+      itemId,
+      allItems: budgetItems,
+      submitted_by: user?.username,
+      updated_date: formatDateIndonesia(new Date().toISOString()),
+    });
+    toast({
+      title: 'Success',
+      description: 'Item berhasil dihapus',
+    });
   };
 
   // Handle approve item
@@ -359,35 +357,29 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
           {/* Excel Import/Export Controls - Only for PPK */}
           {user?.role === 'Pejabat Pembuat Komitmen' && (
-            <div className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50 space-y-3">
-              <div className="flex items-center gap-2">
-                <FileUp className="h-4 w-4 text-indigo-600" />
-                <h3 className="font-semibold text-sm text-indigo-900">Import/Export Data</h3>
-              </div>
-              <BahanRevisiExcelImportExport 
-                sheetId={sheetId}
-                onImportSuccess={async (budgetItems, rpdItems) => {
-                  try {
-                    // Refetch data after successful import
-                    await refetch();
-                    toast({
-                      title: "Import berhasil",
-                      description: `${budgetItems.length} items berhasil diimport dari Excel`
-                    });
-                  } catch (error) {
-                    console.error("Error after import:", error);
-                    toast({
-                      title: "Import berhasil tapi ada error saat refresh data",
-                      variant: "destructive"
-                    });
-                  }
-                }}
-                budgetItems={budgetItems}
-                komponenOutput={filters?.komponenOutput}
-                subKomponen={filters?.subKomponen}
-                akun={filters?.akun}
-              />
-            </div>
+            <BahanRevisiExcelImportExport 
+              sheetId={sheetId}
+              onImportSuccess={async (budgetItems, rpdItems) => {
+                try {
+                  // Refetch data after successful import
+                  await refetch();
+                  toast({
+                    title: "Import berhasil",
+                    description: `${budgetItems.length} items berhasil diimport dari Excel`
+                  });
+                } catch (error) {
+                  console.error("Error after import:", error);
+                  toast({
+                    title: "Import berhasil tapi ada error saat refresh data",
+                    variant: "destructive"
+                  });
+                }
+              }}
+              budgetItems={budgetItems}
+              komponenOutput={filters?.komponenOutput}
+              subKomponen={filters?.subKomponen}
+              akun={filters?.akun}
+            />
           )}
 
           {/* Summary Cards Bar */}

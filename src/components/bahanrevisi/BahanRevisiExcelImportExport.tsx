@@ -40,7 +40,7 @@ const BahanRevisiExcelImportExport: React.FC<BahanRevisiExcelImportExportProps> 
   komponenOutput,
   subKomponen,
   akun,
-  smallText = false,
+  smallText = true,
 }) => {
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
   const [importResult, setImportResult] = React.useState<{
@@ -66,8 +66,6 @@ const BahanRevisiExcelImportExport: React.FC<BahanRevisiExcelImportExportProps> 
       subKomponen,
       akun,
     });
-
-  const buttonClass = smallText ? 'text-xs px-2 py-1 h-8' : '';
 
   const downloadTemplate = () => {
     try {
@@ -134,28 +132,28 @@ const BahanRevisiExcelImportExport: React.FC<BahanRevisiExcelImportExportProps> 
 
   return (
     <>
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-1.5 flex-wrap">
         <Button
           variant="outline"
           onClick={downloadTemplate}
-          className={`flex items-center ${buttonClass}`}
-          size={smallText ? 'sm' : undefined}
+          className="text-xs px-2 py-1 h-8"
+          size="sm"
           title="Download template Excel untuk diisi"
         >
-          <FileSpreadsheet className={`${smallText ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
-          <span>Download Template</span>
+          <FileSpreadsheet className="h-3 w-3 mr-1" />
+          <span>Template</span>
         </Button>
 
         <Button
           variant="outline"
-          className={`flex items-center cursor-pointer ${buttonClass}`}
-          size={smallText ? 'sm' : undefined}
+          className="text-xs px-2 py-1 h-8 cursor-pointer"
+          size="sm"
           onClick={triggerFileInput}
           disabled={isImporting || !sheetId}
           title="Upload file Excel untuk import data"
         >
-          <Upload className={`${smallText ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
-          <span>Import Excel</span>
+          <Upload className="h-3 w-3 mr-1" />
+          <span>Import</span>
         </Button>
 
         <input
@@ -169,21 +167,21 @@ const BahanRevisiExcelImportExport: React.FC<BahanRevisiExcelImportExportProps> 
 
         <Button
           variant="outline"
-          className={`flex items-center ${buttonClass}`}
-          size={smallText ? 'sm' : undefined}
+          className="text-xs px-2 py-1 h-8"
+          size="sm"
           onClick={handleExport}
           disabled={budgetItems.length === 0}
           title="Export data current ke Excel"
         >
-          <FileSpreadsheet className={`${smallText ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
+          <FileSpreadsheet className="h-3 w-3 mr-1" />
           <span>Export</span>
         </Button>
       </div>
 
       {!sheetId && (
-        <Alert className="mt-2 bg-yellow-50 border-yellow-200">
-          <AlertCircle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-sm text-yellow-800">
+        <Alert className="mt-2 bg-yellow-50 border-yellow-200 text-xs py-2">
+          <AlertCircle className="h-3 w-3 text-yellow-600 mt-0.5" />
+          <AlertDescription className="text-xs text-yellow-800 ml-2">
             Sheet ID belum dikonfigurasi. Hubungi administrator untuk setup.
           </AlertDescription>
         </Alert>
