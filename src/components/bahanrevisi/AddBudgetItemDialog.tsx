@@ -27,7 +27,7 @@ import {
   SubKomponen,
   Akun,
 } from '@/types/bahanrevisi';
-import { formatCurrency, calculateJumlahMenjadi } from '@/utils/bahanrevisi-calculations';
+import { formatCurrency, calculateJumlahMenjadi, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
 
 interface AddBudgetItemDialogProps {
   open: boolean;
@@ -363,8 +363,8 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
         blokir: 0,
         status: 'new',
         submitted_by: '',
-        submitted_date: new Date().toISOString(),
-        updated_date: new Date().toISOString(),
+        submitted_date: formatDateIndonesia(new Date().toISOString()),
+        updated_date: formatDateIndonesia(new Date().toISOString()),
       };
 
       onSubmit(newItem);

@@ -97,8 +97,8 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     const newItem = {
       ...newItemData,
       submitted_by: user?.username || 'unknown',
-      submitted_date: new Date().toISOString(),
-      updated_date: new Date().toISOString(),
+      submitted_date: formatDateIndonesia(new Date().toISOString()),
+      updated_date: formatDateIndonesia(new Date().toISOString()),
       status: 'new' as const,
       approved_by: undefined,
       approved_date: undefined,
