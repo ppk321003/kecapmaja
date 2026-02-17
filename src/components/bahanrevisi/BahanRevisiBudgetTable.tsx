@@ -451,17 +451,15 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
-                      {!isApproved(item) && isAdmin && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-red-600 hover:bg-red-100"
-                          onClick={() => onDelete?.(item.id)}
-                          title="Delete"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-red-600 hover:bg-red-100"
+                        onClick={() => onDelete?.(item.id)}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </TableCell>
                   {/* Aksi PPK Column - Only visible to PPK users */}

@@ -49,7 +49,7 @@ const fetchBudgetItems = async (sheetId: string): Promise<BudgetItem[]> => {
     body: {
       spreadsheetId: sheetId,
       operation: 'read',
-      range: 'budget_items!A:Z', // A sampai Z (26 kolom)
+      range: 'budget_items!A:AB', // A sampai AB (28 kolom) - termasuk catatan_ppk
     },
   });
 
