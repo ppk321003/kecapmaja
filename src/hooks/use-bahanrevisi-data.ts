@@ -791,7 +791,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         const ko = komponenOutputsQuery.data?.find(k => k.id === code);
         return {
           value: code,
-          label: kom ? `${kom.id} - ${kom.name}` : code
+          label: ko ? `${ko.id} - ${ko.name}` : code
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -807,7 +807,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         const sk = subKomponenQuery.data?.find(s => s.id === code);
         return {
           value: code,
-          label: sub ? `${sub.id} - ${sub.name}` : code
+          label: sk ? `${sk.id} - ${sk.name}` : code
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
