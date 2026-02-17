@@ -208,7 +208,7 @@ const updateBudgetItem = async (sheetId: string, itemId: string, updates: Partia
 /**
  * Delete budget item (soft delete by changing status to 'deleted' and zeroing out menjadi values)
  */
-const deleteBudgetItem = async (sheetId: string, itemId: string, allItems: BudgetItem[]): Promise<void> => {
+const deleteBudgetItem = async (sheetId: string, itemId: string, allItems: BudgetItem[], submitted_by?: string): Promise<void> => {
   if (!sheetId) throw new Error('Sheet ID tidak ditemukan');
 
   const itemIndex = allItems.findIndex(item => item.id === itemId);
@@ -221,6 +221,7 @@ const deleteBudgetItem = async (sheetId: string, itemId: string, allItems: Budge
     satuan_menjadi: '',
     harga_satuan_menjadi: 0,
     jumlah_menjadi: 0,
+    submitted_by: submitted_by || allItems[itemIndex].submitted_by,
   };
   const row = budgetItemToRow(deletedItem);
 
@@ -372,8 +373,8 @@ export const useBahanRevisiSubmit = ({ sheetId }: UseBahanRevisiSubmitProps) => 
   });
 
   const deleteMutation = useMutation({
-    mutationFn: ({ itemId, allItems }: { itemId: string; allItems: BudgetItem[] }) =>
-      deleteBudgetItem(sheetId!, itemId, allItems),
+    mutationFn: ({ itemId, allItems, submitted_by }: { itemId: string; allItems: BudgetItem[]; submitted_by?: string }) =>
+      deleteBudgetItem(sheetId!, itemId, allItems, submitted_by),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bahanrevisi-budget-items', sheetId] });
     },

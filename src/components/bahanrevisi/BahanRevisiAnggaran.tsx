@@ -118,6 +118,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       deleteItem({
         itemId,
         allItems: budgetItems,
+        submitted_by: user?.username,
       });
       toast({
         title: 'Success',
@@ -172,6 +173,9 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     
     // Merge updates with original item
     let updatedItem = { ...originalItem, ...updates };
+    
+    // Update submitted_by to current user when editing
+    updatedItem.submitted_by = user?.username || updatedItem.submitted_by;
     
     // Check if ada perubahan pada data (bukan approval fields)
     const dataChanged = 

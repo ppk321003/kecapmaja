@@ -243,7 +243,7 @@ const DetailDialog: React.FC<DetailDialogProps> = ({ open, onOpenChange, item })
                 <span className="font-medium">{item.updated_date || '-'}</span>
               </div>
             </div>
-            {item.catatan_ppk && (
+            {item.catatan_ppk?.trim() && (
               <div className="bg-blue-50 border border-blue-200 p-2 rounded">
                 <span className="text-gray-600 block font-medium">Catatan PPK</span>
                 <span className="text-gray-700">{item.catatan_ppk}</span>
