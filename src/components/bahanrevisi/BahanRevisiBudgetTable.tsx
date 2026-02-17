@@ -98,12 +98,21 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   // Filter items berdasarkan hideZeroPagu dan search uraian
+  // Special handling: items pending PPK approval always shown even if pagu = 0
   const filteredByZeroPagu = useMemo(() => {
     let filtered = items;
     
-    // Filter by zero pagu
+    // Filter by zero pagu - but keep items that haven't been approved by PPK yet
     if (hideZeroPagu) {
-      filtered = filtered.filter(item => item.jumlah_menjadi !== 0);
+      filtered = filtered.filter(item => {
+        // If item hasn't been approved by PPK, always show it (even if pagu = 0)
+        const isApprovedByPPK = !!item.approved_by;
+        if (!isApprovedByPPK) {
+          return true; // Show pending approvals regardless of pagu amount
+        }
+        // For approved items, apply the zero pagu filter
+        return item.jumlah_menjadi !== 0;
+      });
     }
     
     // Filter by search uraian
