@@ -111,101 +111,81 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [programs, programsOptions]);
 
-  // Generate filtered kegiatans based on program_pembebanan selection
+  // Show all available kegiatans without filtering
   const filteredKegiatans = useMemo<SelectOption[]>(() => {
-    if (!formData.program_pembebanan) return [];
-    // Try to filter from master data first
+    // Try to use master data first
     if (kegiatans && kegiatans.length > 0) {
       return kegiatans
-        .filter(k => k.program_id === formData.program_pembebanan && k.is_active !== false)
+        .filter(k => k.is_active !== false)
         .map(k => ({
           value: k.id,
           label: `${k.id} - ${k.name}`
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
-    // Fallback to filtering from passed options if master data empty
+    // Fallback to passed options if master data empty
     if (kegiatansOptions && kegiatansOptions.length > 0) {
-      return kegiatansOptions.filter(
-        (opt) =>
-          opt.label?.includes(`- ${formData.program_pembebanan}`) ||
-          opt.label?.includes(formData.program_pembebanan)
-      );
+      return kegiatansOptions.sort((a, b) => a.label.localeCompare(b.label));
     }
     return [];
-  }, [formData.program_pembebanan, kegiatans, kegiatansOptions]);
+  }, [kegiatans, kegiatansOptions]);
 
-  // Generate filtered rincian outputs based on kegiatan selection
+  // Show all available rincian outputs without filtering
   const filteredRincianOutputs = useMemo<SelectOption[]>(() => {
-    if (!formData.kegiatan) return [];
-    // Try to filter from master data first
+    // Try to use master data first
     if (rincianOutputs && rincianOutputs.length > 0) {
       return rincianOutputs
-        .filter(r => r.kegiatan_id === formData.kegiatan && r.is_active !== false)
+        .filter(r => r.is_active !== false)
         .map(r => ({
           value: r.id,
           label: `${r.id} - ${r.name}`
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
-    // Fallback to filtering from passed options
+    // Fallback to passed options if master data empty
     if (rincianOutputsOptions && rincianOutputsOptions.length > 0) {
-      return rincianOutputsOptions.filter(
-        (opt) =>
-          opt.label?.includes(`- ${formData.kegiatan}`) ||
-          opt.label?.includes(formData.kegiatan)
-      );
+      return rincianOutputsOptions.sort((a, b) => a.label.localeCompare(b.label));
     }
     return [];
-  }, [formData.kegiatan, rincianOutputs, rincianOutputsOptions]);
+  }, [rincianOutputs, rincianOutputsOptions]);
 
-  // Generate filtered komponen outputs based on rincian_output selection
+  // Show all available komponen outputs without filtering
   const filteredKomponenOutputs = useMemo<SelectOption[]>(() => {
-    if (!formData.rincian_output) return [];
-    // Try to filter from master data first
+    // Try to use master data first
     if (komponenOutputs && komponenOutputs.length > 0) {
       return komponenOutputs
-        .filter(k => k.rincian_output_id === formData.rincian_output && k.is_active !== false)
+        .filter(k => k.is_active !== false)
         .map(k => ({
           value: k.id,
           label: `${k.id} - ${k.name}`
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
-    // Fallback to filtering from passed options
+    // Fallback to passed options if master data empty
     if (komponenOutputsOptions && komponenOutputsOptions.length > 0) {
-      return komponenOutputsOptions.filter(
-        (opt) =>
-          opt.label?.includes(`- ${formData.rincian_output}`) ||
-          opt.label?.includes(formData.rincian_output)
-      );
+      return komponenOutputsOptions.sort((a, b) => a.label.localeCompare(b.label));
     }
     return [];
-  }, [formData.rincian_output, komponenOutputs, komponenOutputsOptions]);
+  }, [komponenOutputs, komponenOutputsOptions]);
 
-  // Generate filtered sub komponen based on komponen_output selection
+  // Show all available sub komponen without filtering
   const filteredSubKomponen = useMemo<SelectOption[]>(() => {
-    if (!formData.komponen_output) return [];
-    // Try to filter from master data first
+    // Try to use master data first
     if (subKomponen && subKomponen.length > 0) {
       return subKomponen
-        .filter(s => s.komponen_output_id === formData.komponen_output && s.is_active !== false)
+        .filter(s => s.is_active !== false)
         .map(s => ({
           value: s.id,
           label: `${s.id} - ${s.name}`
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
-    // Fallback to filtering from passed options
+    // Fallback to passed options if master data empty
     if (subKomponenOptions && subKomponenOptions.length > 0) {
-      return subKomponenOptions.filter(
-        (opt) =>
-          opt.label?.includes(`- ${formData.komponen_output}`) ||
-          opt.label?.includes(formData.komponen_output)
-      );
+      return subKomponenOptions.sort((a, b) => a.label.localeCompare(b.label));
     }
     return [];
-  }, [formData.komponen_output, subKomponen, subKomponenOptions]);
+  }, [subKomponen, subKomponenOptions]);
 
   // Generate akuns options from master data, fallback to props if master data empty
   const akunsOptionsGenerated = useMemo<SelectOption[]>(() => {
@@ -442,14 +422,11 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
                 value={formData.kegiatan}
                 options={filteredKegiatans}
                 placeholder="Pilih Kegiatan..."
-                disabled={!formData.program_pembebanan || isLoading}
+                disabled={isLoading}
                 onValueChange={(value) =>
                   setFormData({
                     ...formData,
                     kegiatan: value || '',
-                    rincian_output: '',
-                    komponen_output: '',
-                    sub_komponen: '',
                   })
                 }
               />
@@ -462,13 +439,11 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
                 value={formData.rincian_output}
                 options={filteredRincianOutputs}
                 placeholder="Pilih Rincian Output..."
-                disabled={!formData.kegiatan || isLoading}
+                disabled={isLoading}
                 onValueChange={(value) =>
                   setFormData({
                     ...formData,
                     rincian_output: value || '',
-                    komponen_output: '',
-                    sub_komponen: '',
                   })
                 }
               />
@@ -481,12 +456,11 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
                 value={formData.komponen_output}
                 options={filteredKomponenOutputs}
                 placeholder="Pilih Komponen Output..."
-                disabled={!formData.rincian_output || isLoading}
+                disabled={isLoading}
                 onValueChange={(value) =>
                   setFormData({
                     ...formData,
                     komponen_output: value || '',
-                    sub_komponen: '',
                   })
                 }
               />
@@ -499,7 +473,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
                 value={formData.sub_komponen}
                 options={filteredSubKomponen}
                 placeholder="Pilih Sub Komponen..."
-                disabled={!formData.komponen_output || isLoading}
+                disabled={isLoading}
                 onValueChange={(value) =>
                   setFormData({ ...formData, sub_komponen: value || '' })
                 }
