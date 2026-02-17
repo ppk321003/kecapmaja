@@ -212,7 +212,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
         return <Badge variant="secondary">Menunggu Approval</Badge>;
       }
       if (item.status === 'unchanged') {
-        return <Badge variant="outline"> </Badge>;
+        return <Badge variant="outline">-</Badge>;
       }
       const safeStatus = String(item.status || 'unknown');
       return <Badge>{safeStatus}</Badge>;
