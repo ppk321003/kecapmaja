@@ -79,8 +79,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const kegiatanNameMap = useMemo(() => {
     const map: { [key: string]: string } = {};
     kegiatans.forEach(keg => {
-      // Menggunakan format yang sama dengan filter: ${keg.id} - ${keg.program_id}
-      map[keg.id] = `${keg.id} - ${keg.program_id}`;
+      // Menggunakan format: ${keg.id} - ${keg.name}
+      map[keg.id] = `${keg.id} - ${keg.name}`;
     });
     return map;
   }, [kegiatans]);
@@ -88,8 +88,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const rincianOutputNameMap = useMemo(() => {
     const map: { [key: string]: string } = {};
     rincianOutputs.forEach(rio => {
-      // Menggunakan format: ${rio.id} - ${rio.kegiatan_id}
-      map[rio.id] = `${rio.id} - ${rio.kegiatan_id}`;
+      // Menggunakan format: ${rio.id} - ${rio.name}
+      map[rio.id] = `${rio.id} - ${rio.name}`;
     });
     return map;
   }, [rincianOutputs]);
@@ -97,8 +97,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const komponenOutputNameMap = useMemo(() => {
     const map: { [key: string]: string } = {};
     komponenOutputs.forEach(ko => {
-      // Menggunakan format: ${ko.id} - ${ko.rincian_output_id}
-      map[ko.id] = `${ko.id} - ${ko.rincian_output_id}`;
+      // Menggunakan format: ${ko.id} - ${ko.name}
+      map[ko.id] = `${ko.id} - ${ko.name}`;
     });
     return map;
   }, [komponenOutputs]);
@@ -106,8 +106,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const subKomponenNameMap = useMemo(() => {
     const map: { [key: string]: string } = {};
     subKomponen.forEach(sk => {
-      // Menggunakan format: ${sk.id} - ${sk.komponen_output_id}
-      map[sk.id] = `${sk.id} - ${sk.komponen_output_id}`;
+      // Menggunakan format: ${sk.id} - ${sk.name}
+      map[sk.id] = `${sk.id} - ${sk.name}`;
     });
     return map;
   }, [subKomponen]);
@@ -115,8 +115,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const programNameMap = useMemo(() => {
     const map: { [key: string]: string } = {};
     programs.forEach(prog => {
-      // Menggunakan format: ${prog.id} - ${prog.code}
-      map[prog.id] = `${prog.id} - ${prog.code}`;
+      // Menggunakan format: ${prog.id} - ${prog.name}
+      map[prog.id] = `${prog.id} - ${prog.name}`;
     });
     return map;
   }, [programs]);
@@ -124,8 +124,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const akunNameMap = useMemo(() => {
     const map: { [key: string]: string } = {};
     akuns.forEach(akun => {
-      // Menggunakan format: ${akun.id} - ${akun.code}
-      map[akun.id] = `${akun.id} - ${akun.code}`;
+      // Menggunakan format: ${akun.id} - ${akun.name}
+      map[akun.id] = `${akun.id} - ${akun.name}`;
     });
     return map;
   }, [akuns]);

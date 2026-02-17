@@ -212,6 +212,10 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
         return <Badge variant="secondary">Menunggu Approval</Badge>;
       }
       if (item.status === 'unchanged') {
+        // Jika status unchanged dan rejected_date blank, tampilkan kosong
+        if (!item.rejected_date || item.rejected_date.trim() === '') {
+          return null;
+        }
         return <Badge variant="outline">-</Badge>;
       }
       const safeStatus = String(item.status || 'unknown');
