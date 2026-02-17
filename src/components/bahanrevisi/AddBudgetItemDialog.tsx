@@ -94,13 +94,8 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
     jumlah_menjadi: 0,
   });
 
-  // Generate programs options from master data, fallback to props if master data empty
-  const programsOptionsGenerated = useMemo<SelectOption[]>(() => {
-    // Use passed programsOptions if available
-    if (programsOptions && programsOptions.length > 0) {
-      return programsOptions;
-    }
-    // Otherwise generate from master data
+  // Generate all options from master data arrays
+  const programsDisplay = useMemo<SelectOption[]>(() => {
     if (!programs || programs.length === 0) return [];
     return programs
       .filter(p => p.is_active !== false)
@@ -109,91 +104,53 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
         label: `${p.id} - ${p.code}`
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [programs, programsOptions]);
+  }, [programs]);
 
-  // Show all available kegiatans without filtering
   const filteredKegiatans = useMemo<SelectOption[]>(() => {
-    // Try to use master data first
-    if (kegiatans && kegiatans.length > 0) {
-      return kegiatans
-        .filter(k => k.is_active !== false)
-        .map(k => ({
-          value: k.id,
-          label: `${k.id} - ${k.name}`
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    }
-    // Fallback to passed options if master data empty
-    if (kegiatansOptions && kegiatansOptions.length > 0) {
-      return kegiatansOptions.sort((a, b) => a.label.localeCompare(b.label));
-    }
-    return [];
-  }, [kegiatans, kegiatansOptions]);
+    if (!kegiatans || kegiatans.length === 0) return [];
+    return kegiatans
+      .filter(k => k.is_active !== false)
+      .map(k => ({
+        value: k.id,
+        label: `${k.id} - ${k.name}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [kegiatans]);
 
-  // Show all available rincian outputs without filtering
   const filteredRincianOutputs = useMemo<SelectOption[]>(() => {
-    // Try to use master data first
-    if (rincianOutputs && rincianOutputs.length > 0) {
-      return rincianOutputs
-        .filter(r => r.is_active !== false)
-        .map(r => ({
-          value: r.id,
-          label: `${r.id} - ${r.name}`
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    }
-    // Fallback to passed options if master data empty
-    if (rincianOutputsOptions && rincianOutputsOptions.length > 0) {
-      return rincianOutputsOptions.sort((a, b) => a.label.localeCompare(b.label));
-    }
-    return [];
-  }, [rincianOutputs, rincianOutputsOptions]);
+    if (!rincianOutputs || rincianOutputs.length === 0) return [];
+    return rincianOutputs
+      .filter(r => r.is_active !== false)
+      .map(r => ({
+        value: r.id,
+        label: `${r.id} - ${r.name}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [rincianOutputs]);
 
-  // Show all available komponen outputs without filtering
   const filteredKomponenOutputs = useMemo<SelectOption[]>(() => {
-    // Try to use master data first
-    if (komponenOutputs && komponenOutputs.length > 0) {
-      return komponenOutputs
-        .filter(k => k.is_active !== false)
-        .map(k => ({
-          value: k.id,
-          label: `${k.id} - ${k.name}`
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    }
-    // Fallback to passed options if master data empty
-    if (komponenOutputsOptions && komponenOutputsOptions.length > 0) {
-      return komponenOutputsOptions.sort((a, b) => a.label.localeCompare(b.label));
-    }
-    return [];
-  }, [komponenOutputs, komponenOutputsOptions]);
+    if (!komponenOutputs || komponenOutputs.length === 0) return [];
+    return komponenOutputs
+      .filter(k => k.is_active !== false)
+      .map(k => ({
+        value: k.id,
+        label: `${k.id} - ${k.name}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [komponenOutputs]);
 
-  // Show all available sub komponen without filtering
   const filteredSubKomponen = useMemo<SelectOption[]>(() => {
-    // Try to use master data first
-    if (subKomponen && subKomponen.length > 0) {
-      return subKomponen
-        .filter(s => s.is_active !== false)
-        .map(s => ({
-          value: s.id,
-          label: `${s.id} - ${s.name}`
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    }
-    // Fallback to passed options if master data empty
-    if (subKomponenOptions && subKomponenOptions.length > 0) {
-      return subKomponenOptions.sort((a, b) => a.label.localeCompare(b.label));
-    }
-    return [];
-  }, [subKomponen, subKomponenOptions]);
+    if (!subKomponen || subKomponen.length === 0) return [];
+    return subKomponen
+      .filter(s => s.is_active !== false)
+      .map(s => ({
+        value: s.id,
+        label: `${s.id} - ${s.name}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [subKomponen]);
 
-  // Generate akuns options from master data, fallback to props if master data empty
-  const akunsOptionsGenerated = useMemo<SelectOption[]>(() => {
-    // Use passed akunsOptions if available
-    if (akunsOptions && akunsOptions.length > 0) {
-      return akunsOptions;
-    }
-    // Otherwise generate from master data
+  const akunsDisplay = useMemo<SelectOption[]>(() => {
     if (!akuns || akuns.length === 0) return [];
     return akuns
       .filter(a => a.is_active !== false)
@@ -202,7 +159,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
         label: `${a.code} - ${a.name}`
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [akuns, akunsOptions]);
+  }, [akuns]);
 
   // Auto-calculate jumlah_menjadi
   const calculateTotal = (volume: number, harga: number) => {
@@ -399,7 +356,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
               <label className="text-xs font-medium">Program Pembebanan *</label>
               <SearchableSelect
                 value={formData.program_pembebanan}
-                options={programsOptionsGenerated}
+                options={programsDisplay}
                 placeholder="Pilih Program..."
                 disabled={isLoading}
                 onValueChange={(value) =>
@@ -485,7 +442,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
               <label className="text-xs font-medium">Akun *</label>
               <SearchableSelect
                 value={formData.akun}
-                options={akunsOptionsGenerated}
+                options={akunsDisplay}
                 placeholder="Pilih Akun..."
                 disabled={isLoading}
                 onValueChange={(value) =>
