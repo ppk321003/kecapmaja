@@ -237,24 +237,26 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   };
 
   const getNewBudgetItems = (): BudgetChangeItem[] => {
-    return newItems.map((item) => {
-      const jumlahMenjadi = Number(item.jumlah_menjadi) || 0;
-      const sisaAnggaran = Number(item.sisa_anggaran) || 0;
-      const blokir = Number(item.blokir) || 0;
-      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
-      const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
-      return {
-        id: item.id,
-        pembebanan: getCombinedPembebananCode(item),
-        uraian: item.uraian || '',
-        detailPerubahan: `Baru: ${item.volume_menjadi} ${item.satuan_menjadi} @ ${formatCurrency(item.harga_satuan_menjadi || 0)}`,
-        jumlahSemula: 0,
-        jumlahMenjadi,
-        selisih: jumlahMenjadi,
-        realisasi,
-        persentaseRealisasi,
-      };
-    });
+    return newItems
+      .filter((item) => (Number(item.jumlah_menjadi) || 0) > 0) // Hide new items with 0 amount
+      .map((item) => {
+        const jumlahMenjadi = Number(item.jumlah_menjadi) || 0;
+        const sisaAnggaran = Number(item.sisa_anggaran) || 0;
+        const blokir = Number(item.blokir) || 0;
+        const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
+        const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
+        return {
+          id: item.id,
+          pembebanan: getCombinedPembebananCode(item),
+          uraian: item.uraian || '',
+          detailPerubahan: `Baru: ${item.volume_menjadi} ${item.satuan_menjadi} @ ${formatCurrency(item.harga_satuan_menjadi || 0)}`,
+          jumlahSemula: 0,
+          jumlahMenjadi,
+          selisih: jumlahMenjadi,
+          realisasi,
+          persentaseRealisasi,
+        };
+      });
   };
 
   const getDeletedBudgetItems = (): BudgetChangeItem[] => {
@@ -452,13 +454,13 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                 </p>
                 <p>
                   Perubahan ini terdiri dari <strong>{changedItems.length} komponen anggaran</strong> yang
-                  mengalami penyesuaian nilai, <strong>{newItems.length} komponen anggaran baru</strong> yang ditambahkan,
+                  mengalami penyesuaian nilai, <strong>{getNewBudgetItems().length} komponen anggaran baru</strong> yang ditambahkan,
                   dan <strong>{allDeletedItems.length} komponen anggaran</strong> yang dihapus.
                 </p>
                 <p>
                   Penyesuaian anggaran ini dilakukan untuk mengoptimalkan
                   penggunaan sumber daya keuangan sesuai dengan prioritas program dan kegiatan
-                  yang telah ditetapkan. Dengan adanya <strong>{changedItems.length + newItems.length} perubahan</strong> ini, 
+                  yang telah ditetapkan. Dengan adanya <strong>{changedItems.length + getNewBudgetItems().length} perubahan</strong> ini, 
                   diharapkan pelaksanaan program dapat berjalan dengan lebih efektif dan efisien.
                 </p>
                 <p>
@@ -505,7 +507,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Baru:</span>
-                      <span className="font-medium text-green-600">{newItems.length}</span>
+                      <span className="font-medium text-green-600">{getNewBudgetItems().length}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Dihapus:</span>
@@ -640,11 +642,11 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
           )}
 
           {/* Pagu Anggaran Baru */}
-          {newItems.length > 0 && (
+          {getNewBudgetItems().length > 0 && (
             <Card className="bg-green-50/50 border-green-100">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg text-green-700 font-bold">
-                  Pagu Anggaran Baru ({newItems.length} item)
+                  Pagu Anggaran Baru ({getNewBudgetItems().length} item)
                 </CardTitle>
               </CardHeader>
               <CardContent>
