@@ -286,7 +286,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
             <TableHeader className="bg-slate-100 sticky top-0">
               <TableRow>
                 <TableHead className="w-8">#</TableHead>
-                <TableHead className="min-w-48">Uraian</TableHead>
+                <TableHead className="min-w-48">Uraian Detil</TableHead>
                 <TableHead className="text-center">Volume Semula</TableHead>
                 <TableHead className="text-center">Satuan Semula</TableHead>
                 <TableHead className="text-right">Harga Satuan Semula</TableHead>

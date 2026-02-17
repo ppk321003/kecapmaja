@@ -525,7 +525,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
                 <th className="status-cell fixed-column" style={{left: '30px'}}>Status</th>
                 <th className="description-cell fixed-column" style={{left: '80px'}}>
                   <button className="flex items-center" onClick={() => handleSort('uraian')}>
-                    Uraian
+                    Uraian Detil
                     <ArrowUpDown className="h-3 w-3 ml-1" />
                   </button>
                 </th>
