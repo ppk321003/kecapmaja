@@ -313,6 +313,9 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
         itemName = getFormattedName(item.sub_komponen, 'sub_komponen');
       } else if (summaryView === 'akun') {
         itemName = getFormattedName(item.akun, 'akun');
+      } else if (summaryView === 'akun_group' || summaryView === 'account_group') {
+        // For Kelompok Akun and Kelompok Belanja, use the name field directly (already has descriptions)
+        itemName = item.name || itemCode;
       } else {
         itemName = itemCode;
       }
