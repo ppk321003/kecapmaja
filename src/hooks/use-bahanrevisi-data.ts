@@ -97,6 +97,7 @@ const fetchBudgetItems = async (sheetId: string): Promise<BudgetItem[]> => {
         submitted_date: row[24]?.trim() || '',
         updated_date: row[25]?.trim() || '',
         notes: row[26]?.trim(),
+        catatan_ppk: row[27]?.trim(),
       };
       
       if (idx === 0) {

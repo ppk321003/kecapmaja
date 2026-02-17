@@ -28,6 +28,7 @@ import {
   Akun,
 } from '@/types/bahanrevisi';
 import { formatCurrency, calculateJumlahMenjadi, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AddBudgetItemDialogProps {
   open: boolean;
@@ -80,6 +81,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
   onSubmit,
   isLoading = false,
 }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<FormData>({
     program_pembebanan: '',
     kegiatan: '',
@@ -362,7 +364,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
         sisa_anggaran: formData.jumlah_menjadi,
         blokir: 0,
         status: 'new',
-        submitted_by: '',
+        submitted_by: user?.username || '',
         submitted_date: formatDateIndonesia(new Date().toISOString()),
         updated_date: formatDateIndonesia(new Date().toISOString()),
       };

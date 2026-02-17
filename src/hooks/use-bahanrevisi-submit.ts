@@ -12,7 +12,7 @@ interface UseBahanRevisiSubmitProps {
 }
 
 /**
- * Convert BudgetItem to array for Google Sheets (26 columns)
+ * Convert BudgetItem to array for Google Sheets (28 columns)
  */
 const budgetItemToRow = (item: BudgetItem): (string | number | boolean | null)[] => {
   return [
@@ -43,6 +43,7 @@ const budgetItemToRow = (item: BudgetItem): (string | number | boolean | null)[]
     item.submitted_date,
     item.updated_date,
     item.notes || '',
+    item.catatan_ppk || '',
   ];
 };
 
@@ -97,7 +98,7 @@ const addBudgetItem = async (sheetId: string, item: Omit<BudgetItem, 'id'>): Pro
     body: {
       spreadsheetId: sheetId,
       operation: 'append',
-      range: 'budget_items!A:Z',
+      range: 'budget_items!A:AB',
       values: [row],
     },
   });

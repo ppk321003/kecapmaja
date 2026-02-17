@@ -577,6 +577,7 @@ export const exportBahanRevisiExcel = (
       'Submitted Date',
       'Updated Date',
       'Notes',
+      'Catatan PPK',
     ];
 
     const data = budgetItems.map((item) => [
@@ -606,6 +607,7 @@ export const exportBahanRevisiExcel = (
       formatDateIndonesia(item.submitted_date),
       formatDateIndonesia(item.updated_date),
       item.notes || '',
+      item.catatan_ppk || '',
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
@@ -637,6 +639,7 @@ export const exportBahanRevisiExcel = (
       { wch: 16 },  // Submitted Date
       { wch: 16 },  // Updated Date
       { wch: 40 },  // Notes
+      { wch: 40 },  // Catatan PPK
     ];
 
     applyWorksheetStyling(worksheet);

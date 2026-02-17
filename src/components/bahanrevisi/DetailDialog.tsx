@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { BudgetItem } from '@/types/bahanrevisi';
-import { formatCurrency, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
+import { formatCurrency } from '@/utils/bahanrevisi-calculations';
 
 interface DetailDialogProps {
   open: boolean;
@@ -228,19 +228,27 @@ const DetailDialog: React.FC<DetailDialogProps> = ({ open, onOpenChange, item })
           </div>
 
           {/* Pengajuan Info */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 block">Diajukan oleh</span>
-              <span className="font-medium">{item.submitted_by || '-'}</span>
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 block">Diajukan oleh</span>
+                <span className="font-medium">{item.submitted_by || '-'}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 block">Tanggal Pengajuan</span>
+                <span className="font-medium">{item.submitted_date || '-'}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-600 block">Terakhir Diupdate</span>
+                <span className="font-medium">{item.updated_date || '-'}</span>
+              </div>
             </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 block">Tanggal Pengajuan</span>
-              <span className="font-medium">{formatDateIndonesia(item.submitted_date) || '-'}</span>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <span className="text-gray-600 block">Terakhir Diupdate</span>
-              <span className="font-medium">{formatDateIndonesia(item.updated_date) || '-'}</span>
-            </div>
+            {item.catatan_ppk && (
+              <div className="bg-blue-50 border border-blue-200 p-2 rounded">
+                <span className="text-gray-600 block font-medium">Catatan PPK</span>
+                <span className="text-gray-700">{item.catatan_ppk}</span>
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>

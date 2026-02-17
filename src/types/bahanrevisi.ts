@@ -32,6 +32,7 @@ export interface BudgetItem {
   submitted_date: string; // ISO date string
   updated_date: string; // ISO date string
   notes?: string; // catatan tambahan
+  catatan_ppk?: string; // catatan dari PPK
 }
 
 export interface RPDItem {
