@@ -40,7 +40,9 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  Eye,
 } from 'lucide-react';
+import DetailDialog from './DetailDialog';
 import {
   BudgetItem,
   BahanRevisiFilters,
@@ -92,6 +94,8 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [editFormData, setEditFormData] = useState<Partial<BudgetItem>>({});
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [detailItem, setDetailItem] = useState<BudgetItem | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   // Filter items berdasarkan hideZeroPagu dan search uraian
   const filteredByZeroPagu = useMemo(() => {
@@ -349,6 +353,18 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                   {/* Aksi SM/PJK Column */}
                   <TableCell className="text-center">
                     <div className="flex gap-1 justify-center">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-purple-600 hover:bg-purple-100"
+                        onClick={() => {
+                          setDetailItem(item);
+                          setIsDetailDialogOpen(true);
+                        }}
+                        title="Lihat Detail"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -680,6 +696,13 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Detail Dialog */}
+      <DetailDialog
+        open={isDetailDialogOpen}
+        onOpenChange={setIsDetailDialogOpen}
+        item={detailItem}
+      />
     </>
   );
 };

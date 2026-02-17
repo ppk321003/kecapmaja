@@ -25,6 +25,7 @@ import { BudgetChangesTable } from './BudgetChangesTable';
 import { NewBudgetTable } from './NewBudgetTable';
 import BahanRevisiExcelImportExport from './BahanRevisiExcelImportExport';
 import { toast } from '@/hooks/use-toast';
+import SummaryCardsBar from './SummaryCardsBar';
 
 interface BahanRevisiAnggaranProps {}
 
@@ -381,6 +382,11 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 akun={filters?.akun}
               />
             </div>
+          )}
+
+          {/* Summary Cards Bar */}
+          {filteredBudgetItems.length > 0 && (
+            <SummaryCardsBar items={filteredBudgetItems} />
           )}
 
           {/* Tabs */}
