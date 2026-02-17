@@ -359,7 +359,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
         harga_satuan_menjadi: formData.harga_satuan_menjadi,
         jumlah_menjadi: formData.jumlah_menjadi,
         selisih: formData.jumlah_menjadi,
-        sisa_anggaran: 0,
+        sisa_anggaran: formData.jumlah_menjadi,
         blokir: 0,
         status: 'new',
         submitted_by: '',

@@ -226,6 +226,38 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
     return (item.jumlah_menjadi || 0) - (item.jumlah_semula || 0);
   };
 
+  // Helper function to render sortable column headers
+  const SortableHeader = ({ 
+    field, 
+    label, 
+    className = '' 
+  }: { 
+    field: keyof BudgetItem; 
+    label: string; 
+    className?: string;
+  }) => {
+    const isActive = sortBy === field;
+    return (
+      <TableHead 
+        className={`cursor-pointer hover:bg-slate-200 select-none ${className}`}
+        onClick={() => handleSort(field)}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span>{label}</span>
+          <ArrowUpDown 
+            className={`h-4 w-4 transition-colors ${
+              isActive 
+                ? sortOrder === 'asc' 
+                  ? 'text-blue-600' 
+                  : 'text-blue-600 rotate-180'
+                : 'text-slate-400'
+            }`}
+          />
+        </div>
+      </TableHead>
+    );
+  };
+
   const handleEditOpen = (item: BudgetItem) => {
     setEditingItem(item);
     setEditFormData({
@@ -327,19 +359,19 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
             <TableHeader className="bg-slate-100 sticky top-0">
               <TableRow>
                 <TableHead className="w-8">#</TableHead>
-                <TableHead className="min-w-48">Uraian Detil</TableHead>
-                <TableHead className="text-center">Volume Semula</TableHead>
-                <TableHead className="text-center">Satuan Semula</TableHead>
-                <TableHead className="text-right">Harga Satuan Semula</TableHead>
-                <TableHead className="text-right">Jumlah Semula</TableHead>
-                <TableHead className="text-center">Volume Menjadi</TableHead>
-                <TableHead className="text-center">Satuan Menjadi</TableHead>
-                <TableHead className="text-right">Harga Satuan Menjadi</TableHead>
-                <TableHead className="text-right">Jumlah Menjadi</TableHead>
-                <TableHead className="text-right">Sisa Anggaran</TableHead>
-                <TableHead className="text-right">Blokir</TableHead>
-                <TableHead className="text-right">Selisih</TableHead>
-                <TableHead className="text-center">Status</TableHead>
+                <SortableHeader field="uraian" label="Uraian Detil" className="min-w-48" />
+                <SortableHeader field="volume_semula" label="Volume Semula" className="text-center" />
+                <SortableHeader field="satuan_semula" label="Satuan Semula" className="text-center" />
+                <SortableHeader field="harga_satuan_semula" label="Harga Satuan Semula" className="text-right" />
+                <SortableHeader field="jumlah_semula" label="Jumlah Semula" className="text-right" />
+                <SortableHeader field="volume_menjadi" label="Volume Menjadi" className="text-center" />
+                <SortableHeader field="satuan_menjadi" label="Satuan Menjadi" className="text-center" />
+                <SortableHeader field="harga_satuan_menjadi" label="Harga Satuan Menjadi" className="text-right" />
+                <SortableHeader field="jumlah_menjadi" label="Jumlah Menjadi" className="text-right" />
+                <SortableHeader field="sisa_anggaran" label="Sisa Anggaran" className="text-right" />
+                <SortableHeader field="blokir" label="Blokir" className="text-right" />
+                <SortableHeader field="selisih" label="Selisih" className="text-right" />
+                <SortableHeader field="status" label="Status" className="text-center" />
                 <TableHead className="text-center">Aksi SM/PJK</TableHead>
                 {isAdmin && <TableHead className="text-center">Aksi PPK</TableHead>}
               </TableRow>
