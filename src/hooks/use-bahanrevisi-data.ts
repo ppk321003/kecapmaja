@@ -742,7 +742,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         const prog = programsQuery.data?.find(p => p.id === code);
         return {
           value: code,
-          label: prog ? `${prog.id} - ${prog.code}` : code
+          label: prog ? `${prog.id} - ${prog.name}` : code
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -758,7 +758,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         const keg = kegiatansQuery.data?.find(k => k.id === code);
         return {
           value: code,
-          label: keg ? `${keg.id} - ${keg.program_id}` : code
+          label: keg ? `${keg.id} - ${keg.name}` : code
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -774,7 +774,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         const rio = rincianOutputsQuery.data?.find(r => r.id === code);
         return {
           value: code,
-          label: rio ? `${rio.id} - ${rio.kegiatan_id}` : code
+          label: rin ? `${rin.id} - ${rin.name}` : code
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -790,7 +790,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         const ko = komponenOutputsQuery.data?.find(k => k.id === code);
         return {
           value: code,
-          label: ko ? `${ko.id} - ${ko.rincian_output_id}` : code
+          label: kom ? `${kom.id} - ${kom.name}` : code
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -806,7 +806,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         const sk = subKomponenQuery.data?.find(s => s.id === code);
         return {
           value: code,
-          label: sk ? `${sk.id} - ${sk.komponen_output_id}` : code
+          label: sub ? `${sub.id} - ${sub.name}` : code
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -822,7 +822,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         const akun = akunsQuery.data?.find(a => a.id === code);
         return {
           value: code,
-          label: akun ? `${akun.id} - ${akun.code}` : code
+          label: akun ? `${akun.id} - ${akun.name}` : code
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));

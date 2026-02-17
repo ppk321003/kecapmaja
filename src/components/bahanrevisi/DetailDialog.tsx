@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { BudgetItem } from '@/types/bahanrevisi';
-import { formatCurrency } from '@/utils/bahanrevisi-calculations';
+import { formatCurrency, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
 
 interface DetailDialogProps {
   open: boolean;
@@ -235,7 +235,11 @@ const DetailDialog: React.FC<DetailDialogProps> = ({ open, onOpenChange, item })
             </div>
             <div className="bg-gray-50 p-2 rounded">
               <span className="text-gray-600 block">Tanggal Pengajuan</span>
-              <span className="font-medium">{item.submitted_date || '-'}</span>
+              <span className="font-medium">{formatDateIndonesia(item.submitted_date) || '-'}</span>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
+              <span className="text-gray-600 block">Terakhir Diupdate</span>
+              <span className="font-medium">{formatDateIndonesia(item.updated_date) || '-'}</span>
             </div>
           </div>
         </div>

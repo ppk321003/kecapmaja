@@ -102,7 +102,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
         .filter(p => p.is_active !== false)
         .map(p => ({
           value: p.id,
-          label: `${p.id} - ${p.code}`
+          label: `${p.id} - ${p.name}`
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
@@ -192,7 +192,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
         .filter(a => a.is_active !== false)
         .map(a => ({
           value: a.id,
-          label: `${a.code} - ${a.name}`
+          label: `${a.id} - ${a.name}`
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
