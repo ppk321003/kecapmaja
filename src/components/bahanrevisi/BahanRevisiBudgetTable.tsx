@@ -574,7 +574,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
       {/* Summary Section - 3 Columns */}
       <div className="mt-4 grid grid-cols-3 gap-0 border border-slate-200 rounded overflow-hidden bg-white">
         {/* Column 1: Halaman */}
-        <div className="bg-blue-50 p-3 border-r border-slate-200">
+        <div className="bg-blue-50 p-3 border-r border-slate-200 text-center">
           <div className="text-xs font-bold text-blue-900 mb-2">Ringkasan Halaman</div>
           <div className="space-y-1 text-xs">
             <div>
@@ -593,7 +593,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
         </div>
 
         {/* Column 2: Keseluruhan */}
-        <div className="p-3 border-r border-slate-200">
+        <div className="p-3 border-r border-slate-200 text-center">
           <div className="text-xs font-bold mb-2">Ringkasan Keseluruhan</div>
           <div className="space-y-1 text-xs">
             <div>
@@ -612,7 +612,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
         </div>
 
         {/* Column 3: Info */}
-        <div className="bg-slate-50 p-3">
+        <div className="bg-slate-50 p-3 text-center">
           <div className="text-xs font-bold mb-2">Informasi</div>
           <div className="space-y-1 text-xs">
             <div>
