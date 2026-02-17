@@ -121,6 +121,10 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
     itemId: string;
     reason: string;
   } | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    itemId: string;
+    uraian: string;
+  } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchUraian, setSearchUraian] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -455,7 +459,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7 text-red-600 hover:bg-red-100"
-                        onClick={() => onDelete?.(item.id)}
+                        onClick={() => setDeleteDialog({ itemId: item.id, uraian: item.uraian })}
                         title="Delete"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -787,6 +791,41 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                 }}
               >
                 Tolak
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Delete Dialog */}
+      {deleteDialog && (
+        <Dialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Hapus Item</DialogTitle>
+              <DialogDescription>
+                Apakah Anda yakin ingin menghapus item ini?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="bg-red-50 p-3 rounded border border-red-200">
+              <p className="text-sm text-red-900 font-medium">Item yang akan dihapus:</p>
+              <p className="text-sm text-red-800 mt-1">{deleteDialog.uraian}</p>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialog(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  onDelete?.(deleteDialog.itemId);
+                  setDeleteDialog(null);
+                }}
+              >
+                Hapus
               </Button>
             </DialogFooter>
           </DialogContent>
