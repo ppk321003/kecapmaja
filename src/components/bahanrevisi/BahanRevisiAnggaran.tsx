@@ -42,7 +42,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
   // IMPORTANT: Call all hooks BEFORE any conditional returns!
   // This ensures hook count is consistent across renders
-  
+
   // Fetch data dari Google Sheets (all hooks called unconditionally)
   const {
     budgetItems,
@@ -62,11 +62,11 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     akunsOptions,
     isLoading: isLoadingData,
     error: dataError,
-    refetch,
+    refetch
   } = useBahanRevisiData({
     sheetId,
     filters,
-    enabled: !!sheetId,
+    enabled: !!sheetId
   });
 
   // Mutations untuk submit data
@@ -77,7 +77,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     approveItem,
     rejectItem,
     updateRPDItem,
-    isLoading: isSubmitting,
+    isLoading: isSubmitting
   } = useBahanRevisiSubmit({ sheetId });
 
   // NOW check if sheetId exists
@@ -88,8 +88,8 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
         <AlertDescription>
           Sheet ID untuk Bahan Revisi Anggaran tidak ditemukan. Hubungi administrator.
         </AlertDescription>
-      </Alert>
-    );
+      </Alert>);
+
   }
 
   // Handle add new item
@@ -102,13 +102,13 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       status: 'new' as const,
       approved_by: undefined,
       approved_date: undefined,
-      rejected_date: undefined,
+      rejected_date: undefined
     };
 
     addItem(newItem as any);
     toast({
       title: 'Berhasil',
-      description: 'Item baru berhasil ditambahkan',
+      description: 'Item baru berhasil ditambahkan'
     });
   };
 
@@ -118,11 +118,11 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       itemId,
       allItems: budgetItems,
       submitted_by: user?.username,
-      updated_date: formatDateIndonesia(new Date().toISOString()),
+      updated_date: formatDateIndonesia(new Date().toISOString())
     });
     toast({
       title: 'Success',
-      description: 'Item berhasil dihapus',
+      description: 'Item berhasil dihapus'
     });
   };
 
@@ -131,11 +131,11 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     approveItem({
       itemId,
       approvedBy: user?.username || 'unknown',
-      allItems: budgetItems,
+      allItems: budgetItems
     });
     toast({
       title: 'Success',
-      description: 'Item berhasil disetujui',
+      description: 'Item berhasil disetujui'
     });
   };
 
@@ -145,7 +145,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       toast({
         title: 'Error',
         description: 'Alasan penolakan tidak boleh kosong',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       return;
     }
@@ -154,36 +154,36 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       itemId,
       rejectedBy,
       rejectionReason: reason,
-      allItems: budgetItems,
+      allItems: budgetItems
     });
     toast({
       title: 'Success',
-      description: 'Item berhasil ditolak',
+      description: 'Item berhasil ditolak'
     });
   };
 
   // Handle update item
   const handleUpdateItem = (itemId: string, updates: Partial<BudgetItem>) => {
     // Find the item to update
-    const itemIndex = budgetItems.findIndex(item => item.id === itemId);
+    const itemIndex = budgetItems.findIndex((item) => item.id === itemId);
     if (itemIndex === -1) return;
-    
+
     const originalItem = budgetItems[itemIndex];
-    
+
     // Merge updates with original item
     let updatedItem = { ...originalItem, ...updates };
-    
+
     // Update submitted_by and updated_date to current user and time when editing
     updatedItem.submitted_by = user?.username || updatedItem.submitted_by;
     updatedItem.updated_date = formatDateIndonesia(new Date().toISOString());
-    
+
     // Check if ada perubahan pada data (bukan approval fields)
-    const dataChanged = 
-      originalItem.volume_menjadi !== updatedItem.volume_menjadi ||
-      originalItem.satuan_menjadi !== updatedItem.satuan_menjadi ||
-      originalItem.harga_satuan_menjadi !== updatedItem.harga_satuan_menjadi ||
-      originalItem.jumlah_menjadi !== updatedItem.jumlah_menjadi;
-    
+    const dataChanged =
+    originalItem.volume_menjadi !== updatedItem.volume_menjadi ||
+    originalItem.satuan_menjadi !== updatedItem.satuan_menjadi ||
+    originalItem.harga_satuan_menjadi !== updatedItem.harga_satuan_menjadi ||
+    originalItem.jumlah_menjadi !== updatedItem.jumlah_menjadi;
+
     // Recalculate jumlah_menjadi if volume or harga changed
     if ('volume_menjadi' in updates || 'harga_satuan_menjadi' in updates) {
       updatedItem.jumlah_menjadi = calculateJumlahMenjadi(
@@ -191,10 +191,10 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
         updatedItem.harga_satuan_menjadi
       );
     }
-    
+
     // Recalculate selisih
     updatedItem.selisih = (updatedItem.jumlah_menjadi || 0) - (updatedItem.jumlah_semula || 0);
-    
+
     // **IMPORTANT**: Jika ada perubahan data, RESET SEMUA APPROVAL STATUS
     // - Status yang approved/rejected berubah menjadi changed (revisi dianggap pengajuan ulang)
     // - Clear approved_by, approved_date, DAN rejected_date
@@ -203,7 +203,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       updatedItem.status = 'changed';
       updatedItem.approved_by = undefined;
       updatedItem.approved_date = undefined;
-      updatedItem.rejected_date = undefined;  // ← PENTING: Clear rejected status juga!
+      updatedItem.rejected_date = undefined; // ← PENTING: Clear rejected status juga!
     } else {
       // Jika tidak ada perubahan data, tentukan status dari perhitungan
       const newStatus = determineStatusFromChanges(updatedItem);
@@ -211,58 +211,58 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
         updatedItem.status = newStatus;
         updatedItem.approved_by = undefined;
         updatedItem.approved_date = undefined;
-        updatedItem.rejected_date = undefined;  // ← Clear rejected juga untuk keamanan
+        updatedItem.rejected_date = undefined; // ← Clear rejected juga untuk keamanan
       }
     }
-    
+
     updateItem({
       itemId,
       updates: updatedItem,
-      allItems: budgetItems,
+      allItems: budgetItems
     });
     toast({
       title: 'Success',
-      description: `Item berhasil diperbarui. ${dataChanged ? 'Pengajuan revisi disimpan. Status kembali menunggu persetujuan PPK.' : ''}`,
+      description: `Item berhasil diperbarui. ${dataChanged ? 'Pengajuan revisi disimpan. Status kembali menunggu persetujuan PPK.' : ''}`
     });
   };
 
   // Helper functions untuk format data untuk new components
   const getChangedBudgetItems = () => {
-    return filteredBudgetItems
-      .filter(item => item.status === 'changed')
-      .map(item => ({
-        id: item.id,
-        pembebanan: [
-          item.program_pembebanan,
-          item.komponen_output,
-          item.sub_komponen,
-          item.akun
-        ].filter(Boolean).join('.'),
-        uraian: item.uraian,
-        detailPerubahan: getDetailPerubahan(item),
-        jumlahSemula: item.jumlah_semula,
-        jumlahMenjadi: item.jumlah_menjadi,
-        selisih: item.selisih
-      }));
+    return filteredBudgetItems.
+    filter((item) => item.status === 'changed').
+    map((item) => ({
+      id: item.id,
+      pembebanan: [
+      item.program_pembebanan,
+      item.komponen_output,
+      item.sub_komponen,
+      item.akun].
+      filter(Boolean).join('.'),
+      uraian: item.uraian,
+      detailPerubahan: getDetailPerubahan(item),
+      jumlahSemula: item.jumlah_semula,
+      jumlahMenjadi: item.jumlah_menjadi,
+      selisih: item.selisih
+    }));
   };
 
   const getNewBudgetItems = () => {
-    return filteredBudgetItems
-      .filter(item => item.status === 'new')
-      .map(item => ({
-        id: item.id,
-        pembebanan: [
-          item.program_pembebanan,
-          item.komponen_output,
-          item.sub_komponen,
-          item.akun
-        ].filter(Boolean).join('.'),
-        uraian: item.uraian,
-        volume: item.volume_menjadi,
-        satuan: item.satuan_menjadi,
-        hargaSatuan: item.harga_satuan_menjadi,
-        jumlah: item.jumlah_menjadi
-      }));
+    return filteredBudgetItems.
+    filter((item) => item.status === 'new').
+    map((item) => ({
+      id: item.id,
+      pembebanan: [
+      item.program_pembebanan,
+      item.komponen_output,
+      item.sub_komponen,
+      item.akun].
+      filter(Boolean).join('.'),
+      uraian: item.uraian,
+      volume: item.volume_menjadi,
+      satuan: item.satuan_menjadi,
+      hargaSatuan: item.harga_satuan_menjadi,
+      jumlah: item.jumlah_menjadi
+    }));
   };
 
   const getDetailPerubahan = (item: BudgetItem) => {
@@ -289,8 +289,8 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
         <AlertDescription>
           Error mengambil data: {errorText}
         </AlertDescription>
-      </Alert>
-    );
+      </Alert>);
+
   }
 
   return (
@@ -304,88 +304,88 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       </div>
 
       {/* Loading State */}
-      {isLoadingData && (
-        <Card className="p-8 flex items-center justify-center gap-2 text-slate-500">
+      {isLoadingData &&
+      <Card className="p-8 flex items-center justify-center gap-2 text-slate-500">
           <Loader className="h-5 w-5 animate-spin" />
           Memuat data...
         </Card>
-      )}
+      }
 
-      {!isLoadingData && (
-        <>
+      {!isLoadingData &&
+      <>
           {/* Filter - Collapsible */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFilterExpanded(!filterExpanded)}
-                className="w-full justify-between"
-              >
+              variant="outline"
+              size="sm"
+              onClick={() => setFilterExpanded(!filterExpanded)}
+              className="w-full justify-between">
+
                 <span className="font-semibold">Filter Data</span>
-                {filterExpanded ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
+                {filterExpanded ?
+              <ChevronUp className="h-4 w-4" /> :
+
+              <ChevronDown className="h-4 w-4" />
+              }
               </Button>
             </div>
             
-            {filterExpanded && (
-              <BahanRevisiFilter
-                filters={filters}
-                setFilters={setFilters}
-                budgetItems={budgetItems}
-                programs={programs}
-                kegiatans={kegiatans}
-                rincianOutputs={rincianOutputs}
-                komponenOutputs={komponenOutputs}
-                subKomponen={subKomponen}
-                akuns={akuns}
-                programsOptions={programsOptions}
-                kegiatansOptions={kegiatansOptions}
-                rincianOutputsOptions={rincianOutputsOptions}
-                komponenOutputsOptions={komponenOutputsOptions}
-                subKomponenOptions={subKomponenOptions}
-                akunsOptions={akunsOptions}
-                loading={isSubmitting}
-                hideZeroPagu={hideZeroPagu}
-                setHideZeroPagu={setHideZeroPagu}
-              />
-            )}
+            {filterExpanded &&
+          <BahanRevisiFilter
+            filters={filters}
+            setFilters={setFilters}
+            budgetItems={budgetItems}
+            programs={programs}
+            kegiatans={kegiatans}
+            rincianOutputs={rincianOutputs}
+            komponenOutputs={komponenOutputs}
+            subKomponen={subKomponen}
+            akuns={akuns}
+            programsOptions={programsOptions}
+            kegiatansOptions={kegiatansOptions}
+            rincianOutputsOptions={rincianOutputsOptions}
+            komponenOutputsOptions={komponenOutputsOptions}
+            subKomponenOptions={subKomponenOptions}
+            akunsOptions={akunsOptions}
+            loading={isSubmitting}
+            hideZeroPagu={hideZeroPagu}
+            setHideZeroPagu={setHideZeroPagu} />
+
+          }
           </div>
 
           {/* Excel Import/Export Controls - Only for PPK */}
-          {user?.role === 'Pejabat Pembuat Komitmen' && (
-            <BahanRevisiExcelImportExport 
-              sheetId={sheetId}
-              onImportSuccess={async (budgetItems, rpdItems) => {
-                try {
-                  // Refetch data after successful import
-                  await refetch();
-                  toast({
-                    title: "Import berhasil",
-                    description: `${budgetItems.length} items berhasil diimport dari Excel`
-                  });
-                } catch (error) {
-                  console.error("Error after import:", error);
-                  toast({
-                    title: "Import berhasil tapi ada error saat refresh data",
-                    variant: "destructive"
-                  });
-                }
-              }}
-              budgetItems={budgetItems}
-              komponenOutput={filters?.komponenOutput}
-              subKomponen={filters?.subKomponen}
-              akun={filters?.akun}
-            />
-          )}
+          {user?.role === 'Pejabat Pembuat Komitmen' &&
+        <BahanRevisiExcelImportExport
+          sheetId={sheetId}
+          onImportSuccess={async (budgetItems, rpdItems) => {
+            try {
+              // Refetch data after successful import
+              await refetch();
+              toast({
+                title: "Import berhasil",
+                description: `${budgetItems.length} items berhasil diimport dari Excel`
+              });
+            } catch (error) {
+              console.error("Error after import:", error);
+              toast({
+                title: "Import berhasil tapi ada error saat refresh data",
+                variant: "destructive"
+              });
+            }
+          }}
+          budgetItems={budgetItems}
+          komponenOutput={filters?.komponenOutput}
+          subKomponen={filters?.subKomponen}
+          akun={filters?.akun} />
+
+        }
 
           {/* Summary Cards Bar */}
-          {filteredBudgetItems.length > 0 && (
-            <SummaryCardsBar items={filteredBudgetItems} />
-          )}
+          {filteredBudgetItems.length > 0 &&
+        <SummaryCardsBar items={filteredBudgetItems} />
+        }
 
           {/* Tabs */}
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
@@ -410,126 +410,126 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
             {/* Tab: Anggaran (Budget Items) */}
             <TabsContent value="anggaran" className="space-y-4">
               <BahanRevisiBudgetTable
-                items={filteredBudgetItems}
-                filters={filters}
-                isLoading={isLoadingData || isSubmitting}
-                onAdd={handleAddItem}
-                onUpdate={handleUpdateItem}
-                onDelete={handleDeleteItem}
-                onApprove={handleApproveItem}
-                onReject={handleRejectItem}
-                hideZeroPagu={hideZeroPagu}
-                programs={programs}
-                kegiatans={kegiatans}
-                rincianOutputs={rincianOutputs}
-                komponenOutputs={komponenOutputs}
-                subKomponen={subKomponen}
-                akuns={akuns}
-                programsOptions={programsOptions}
-                kegiatansOptions={kegiatansOptions}
-                rincianOutputsOptions={rincianOutputsOptions}
-                komponenOutputsOptions={komponenOutputsOptions}
-                subKomponenOptions={subKomponenOptions}
-                akunsOptions={akunsOptions}
-              />
+              items={filteredBudgetItems}
+              filters={filters}
+              isLoading={isLoadingData || isSubmitting}
+              onAdd={handleAddItem}
+              onUpdate={handleUpdateItem}
+              onDelete={handleDeleteItem}
+              onApprove={handleApproveItem}
+              onReject={handleRejectItem}
+              hideZeroPagu={hideZeroPagu}
+              programs={programs}
+              kegiatans={kegiatans}
+              rincianOutputs={rincianOutputs}
+              komponenOutputs={komponenOutputs}
+              subKomponen={subKomponen}
+              akuns={akuns}
+              programsOptions={programsOptions}
+              kegiatansOptions={kegiatansOptions}
+              rincianOutputsOptions={rincianOutputsOptions}
+              komponenOutputsOptions={komponenOutputsOptions}
+              subKomponenOptions={subKomponenOptions}
+              akunsOptions={akunsOptions} />
+
             </TabsContent>
 
             {/* Tab: RPD (Rencana Penarikan Dana) */}
             <TabsContent value="rpd" className="space-y-4">
-              <RPDTable 
-                filters={filters}
-                items={rpdItems}
-                loading={isLoadingData}
-                budgetItems={budgetItems}
-                hideZeroPagu={hideZeroPagu}
-                onUpdateItem={async (id, updates) => {
-                  try {
-                    // Calculate total_rpd and sisa_anggaran
-                    const rpdItem = rpdItems.find(item => item.id === id);
-                    if (!rpdItem) {
-                      toast({
-                        title: 'Error',
-                        description: 'Item RPD tidak ditemukan',
-                        variant: 'destructive',
-                      });
-                      return;
-                    }
-
-                    const newValues = { ...rpdItem, ...updates };
-                    const total = (newValues.jan || 0) + (newValues.feb || 0) + (newValues.mar || 0) + 
-                                 (newValues.apr || 0) + (newValues.mei || 0) + (newValues.jun || 0) + 
-                                 (newValues.jul || 0) + (newValues.aug || 0) + (newValues.sep || 0) + 
-                                 (newValues.oct || 0) + (newValues.nov || 0) + (newValues.dec || 0);
-                    
-                    const finalUpdates = {
-                      ...updates,
-                      total_rpd: total,
-                      sisa_anggaran: (rpdItem.total_pagu || 0) - total,
-                      status: 'ok',
-                      modified_by: user?.username || 'unknown',
-                      modified_date: formatDateIndonesia(new Date().toISOString()),
-                    };
-
-                    updateRPDItem({ 
-                      itemId: id, 
-                      updates: finalUpdates, 
-                      allItems: rpdItems 
-                    });
-                    
-                    toast({
-                      title: 'Berhasil',
-                      description: 'Data RPD berhasil disimpan',
-                    });
-                  } catch (error) {
-                    console.error('[RPDTable] Update error:', error);
+              <RPDTable
+              filters={filters}
+              items={rpdItems}
+              loading={isLoadingData}
+              budgetItems={budgetItems}
+              hideZeroPagu={hideZeroPagu}
+              onUpdateItem={async (id, updates) => {
+                try {
+                  // Calculate total_rpd and sisa_anggaran
+                  const rpdItem = rpdItems.find((item) => item.id === id);
+                  if (!rpdItem) {
                     toast({
                       title: 'Error',
-                      description: 'Gagal menyimpan data RPD',
-                      variant: 'destructive',
+                      description: 'Item RPD tidak ditemukan',
+                      variant: 'destructive'
                     });
+                    return;
                   }
-                }}
-              />
+
+                  const newValues = { ...rpdItem, ...updates };
+                  const total = (newValues.jan || 0) + (newValues.feb || 0) + (newValues.mar || 0) + (
+                  newValues.apr || 0) + (newValues.mei || 0) + (newValues.jun || 0) + (
+                  newValues.jul || 0) + (newValues.aug || 0) + (newValues.sep || 0) + (
+                  newValues.oct || 0) + (newValues.nov || 0) + (newValues.dec || 0);
+
+                  const finalUpdates = {
+                    ...updates,
+                    total_rpd: total,
+                    sisa_anggaran: (rpdItem.total_pagu || 0) - total,
+                    status: 'ok',
+                    modified_by: user?.username || 'unknown',
+                    modified_date: formatDateIndonesia(new Date().toISOString())
+                  };
+
+                  updateRPDItem({
+                    itemId: id,
+                    updates: finalUpdates,
+                    allItems: rpdItems
+                  });
+
+                  toast({
+                    title: 'Berhasil',
+                    description: 'Data RPD berhasil disimpan'
+                  });
+                } catch (error) {
+                  console.error('[RPDTable] Update error:', error);
+                  toast({
+                    title: 'Error',
+                    description: 'Gagal menyimpan data RPD',
+                    variant: 'destructive'
+                  });
+                }
+              }} />
+
             </TabsContent>
 
             {/* Tab: Ringkasan */}
             <TabsContent value="ringkasan" className="space-y-4">
               {/* Ringkasan dengan subtab button untuk berbagai kategori */}
-              {Array.isArray(filteredBudgetItems) && (
-                <BahanRevisiRingkasanSubtab
-                  items={filteredBudgetItems}
-                  programs={programs}
-                  kegiatans={kegiatans}
-                  rincianOutputs={rincianOutputs}
-                  komponenOutputs={komponenOutputs}
-                  subKomponen={subKomponen}
-                  akuns={akuns}
-                />
-              )}
+              {Array.isArray(filteredBudgetItems) &&
+            <BahanRevisiRingkasanSubtab
+              items={filteredBudgetItems}
+              programs={programs}
+              kegiatans={kegiatans}
+              rincianOutputs={rincianOutputs}
+              komponenOutputs={komponenOutputs}
+              subKomponen={subKomponen}
+              akuns={akuns} />
+
+            }
             </TabsContent>
           </Tabs>
 
           {/* Footer Info */}
-          <Card className="p-4 bg-slate-50 border-slate-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600">
-              <div>
-                <p className="font-semibold">Total Items: {budgetItems.length}</p>
-                <p>Filtered: {filteredBudgetItems.length}</p>
-              </div>
-              <div>
-                <p className="font-semibold">User: {user?.username}</p>
-                <p>Satker: {user?.satker}</p>
-              </div>
-              <div>
-                <p className="font-semibold">Sheet ID:</p>
-                <p className="font-mono text-xs">{sheetId.substring(0, 20)}...</p>
-              </div>
-            </div>
-          </Card>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         </>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 };
 
 export default BahanRevisiAnggaran;
