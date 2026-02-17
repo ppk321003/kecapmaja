@@ -94,72 +94,114 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
     jumlah_menjadi: 0,
   });
 
-  // Generate all options from master data arrays
+  // Generate all options from master data arrays OR use pre-computed options
   const programsDisplay = useMemo<SelectOption[]>(() => {
-    if (!programs || programs.length === 0) return [];
-    return programs
-      .filter(p => p.is_active !== false)
-      .map(p => ({
-        value: p.id,
-        label: `${p.id} - ${p.code}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [programs]);
+    // First try master data
+    if (programs && programs.length > 0) {
+      return programs
+        .filter(p => p.is_active !== false)
+        .map(p => ({
+          value: p.id,
+          label: `${p.id} - ${p.code}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to pre-computed options from hook
+    if (programsOptions && programsOptions.length > 0) {
+      return programsOptions;
+    }
+    return [];
+  }, [programs, programsOptions]);
 
   const filteredKegiatans = useMemo<SelectOption[]>(() => {
-    if (!kegiatans || kegiatans.length === 0) return [];
-    return kegiatans
-      .filter(k => k.is_active !== false)
-      .map(k => ({
-        value: k.id,
-        label: `${k.id} - ${k.name}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [kegiatans]);
+    // First try master data
+    if (kegiatans && kegiatans.length > 0) {
+      return kegiatans
+        .filter(k => k.is_active !== false)
+        .map(k => ({
+          value: k.id,
+          label: `${k.id} - ${k.name}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to pre-computed options from hook
+    if (kegiatansOptions && kegiatansOptions.length > 0) {
+      return kegiatansOptions;
+    }
+    return [];
+  }, [kegiatans, kegiatansOptions]);
 
   const filteredRincianOutputs = useMemo<SelectOption[]>(() => {
-    if (!rincianOutputs || rincianOutputs.length === 0) return [];
-    return rincianOutputs
-      .filter(r => r.is_active !== false)
-      .map(r => ({
-        value: r.id,
-        label: `${r.id} - ${r.name}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [rincianOutputs]);
+    // First try master data
+    if (rincianOutputs && rincianOutputs.length > 0) {
+      return rincianOutputs
+        .filter(r => r.is_active !== false)
+        .map(r => ({
+          value: r.id,
+          label: `${r.id} - ${r.name}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to pre-computed options from hook
+    if (rincianOutputsOptions && rincianOutputsOptions.length > 0) {
+      return rincianOutputsOptions;
+    }
+    return [];
+  }, [rincianOutputs, rincianOutputsOptions]);
 
   const filteredKomponenOutputs = useMemo<SelectOption[]>(() => {
-    if (!komponenOutputs || komponenOutputs.length === 0) return [];
-    return komponenOutputs
-      .filter(k => k.is_active !== false)
-      .map(k => ({
-        value: k.id,
-        label: `${k.id} - ${k.name}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [komponenOutputs]);
+    // First try master data
+    if (komponenOutputs && komponenOutputs.length > 0) {
+      return komponenOutputs
+        .filter(k => k.is_active !== false)
+        .map(k => ({
+          value: k.id,
+          label: `${k.id} - ${k.name}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to pre-computed options from hook
+    if (komponenOutputsOptions && komponenOutputsOptions.length > 0) {
+      return komponenOutputsOptions;
+    }
+    return [];
+  }, [komponenOutputs, komponenOutputsOptions]);
 
   const filteredSubKomponen = useMemo<SelectOption[]>(() => {
-    if (!subKomponen || subKomponen.length === 0) return [];
-    return subKomponen
-      .filter(s => s.is_active !== false)
-      .map(s => ({
-        value: s.id,
-        label: `${s.id} - ${s.name}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [subKomponen]);
+    // First try master data
+    if (subKomponen && subKomponen.length > 0) {
+      return subKomponen
+        .filter(s => s.is_active !== false)
+        .map(s => ({
+          value: s.id,
+          label: `${s.id} - ${s.name}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to pre-computed options from hook
+    if (subKomponenOptions && subKomponenOptions.length > 0) {
+      return subKomponenOptions;
+    }
+    return [];
+  }, [subKomponen, subKomponenOptions]);
 
   const akunsDisplay = useMemo<SelectOption[]>(() => {
-    if (!akuns || akuns.length === 0) return [];
-    return akuns
-      .filter(a => a.is_active !== false)
-      .map(a => ({
-        value: a.id,
-        label: `${a.code} - ${a.name}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [akuns]);
+    // First try master data
+    if (akuns && akuns.length > 0) {
+      return akuns
+        .filter(a => a.is_active !== false)
+        .map(a => ({
+          value: a.id,
+          label: `${a.code} - ${a.name}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to pre-computed options from hook
+    if (akunsOptions && akunsOptions.length > 0) {
+      return akunsOptions;
+    }
+    return [];
+  }, [akuns, akunsOptions]);
 
   // Auto-calculate jumlah_menjadi
   const calculateTotal = (volume: number, harga: number) => {
