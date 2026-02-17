@@ -309,7 +309,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                 <TableHead className="text-right">Selisih</TableHead>
                 <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-center">Aksi SM/PJK</TableHead>
-                <TableHead className="text-center">Aksi PPK</TableHead>
+                {isAdmin && <TableHead className="text-center">Aksi PPK</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -396,48 +396,47 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                       )}
                     </div>
                   </TableCell>
-                  {/* Aksi PPK Column */}
-                  <TableCell className="text-center">
-                    <div className="flex gap-1 justify-center">
-                      {!isApproved(item) && !isRejected(item) && isAdmin && (
-                        <>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-green-600 hover:bg-green-100"
-                            onClick={() => onApprove?.(item.id, user?.username || '')}
-                            title="Setujui"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-red-600 hover:bg-red-100"
-                            onClick={() =>
-                              setRejectDialog({ itemId: item.id, reason: '' })
-                            }
-                            title="Tolak"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </>
-                      )}
-                      {isApproved(item) && (
-                        <div title="Disetujui">
-                          <Check className="h-5 w-5 text-green-600" />
-                        </div>
-                      )}
-                      {isRejected(item) && (
-                        <div title="Ditolak">
-                          <X className="h-5 w-5 text-red-600" />
-                        </div>
-                      )}
-                      {needsApproval(item) && !isAdmin && (
-                        <Badge variant="secondary" className="text-xs">Menunggu</Badge>
-                      )}
-                    </div>
-                  </TableCell>
+                  {/* Aksi PPK Column - Only visible to PPK users */}
+                  {isAdmin && (
+                    <TableCell className="text-center">
+                      <div className="flex gap-1 justify-center">
+                        {!isApproved(item) && !isRejected(item) && (
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-green-600 hover:bg-green-100"
+                              onClick={() => onApprove?.(item.id, user?.username || '')}
+                              title="Setujui"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-red-600 hover:bg-red-100"
+                              onClick={() =>
+                                setRejectDialog({ itemId: item.id, reason: '' })
+                              }
+                              title="Tolak"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                        {isApproved(item) && (
+                          <div title="Disetujui">
+                            <Check className="h-5 w-5 text-green-600" />
+                          </div>
+                        )}
+                        {isRejected(item) && (
+                          <div title="Ditolak">
+                            <X className="h-5 w-5 text-red-600" />
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
