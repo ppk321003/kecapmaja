@@ -209,7 +209,7 @@ const fetchPrograms = async (sheetId: string): Promise<Program[]> => {
     body: {
       spreadsheetId: sheetId,
       operation: 'read',
-      range: 'programs!A:F',
+      range: 'programs!A:B',
     },
   });
 
@@ -225,11 +225,11 @@ const fetchPrograms = async (sheetId: string): Promise<Program[]> => {
     .filter((row: string[]) => row[0]?.trim())
     .map((row: string[]) => ({
       id: row[0]?.trim() || '',
-      code: row[1]?.trim() || '',
-      name: row[2]?.trim() || '',
-      description: row[3]?.trim(),
-      is_active: row[4]?.trim().toLowerCase() === 'true',
-      created_date: row[5]?.trim(),
+      code: row[0]?.trim() || '', // Same as id since only code is available
+      name: row[1]?.trim() || '',
+      description: undefined,
+      is_active: true,
+      created_date: undefined,
     }));
 
   console.log(`[fetchPrograms] Loaded ${programs.length} programs`);
@@ -249,7 +249,7 @@ const fetchKegiatans = async (sheetId: string): Promise<Kegiatan[]> => {
     body: {
       spreadsheetId: sheetId,
       operation: 'read',
-      range: 'kegiatans!A:G',
+      range: 'kegiatans!A:B',
     },
   });
 
@@ -265,12 +265,12 @@ const fetchKegiatans = async (sheetId: string): Promise<Kegiatan[]> => {
     .filter((row: string[]) => row[0]?.trim())
     .map((row: string[]) => ({
       id: row[0]?.trim() || '',
-      program_id: row[1]?.trim() || '',
-      program_code: row[2]?.trim() || '',
-      code: row[3]?.trim() || '',
-      name: row[4]?.trim() || '',
-      description: row[5]?.trim(),
-      is_active: row[6]?.trim().toLowerCase() === 'true',
+      program_id: '',
+      program_code: '',
+      code: row[0]?.trim() || '',
+      name: row[1]?.trim() || '',
+      description: undefined,
+      is_active: true,
     }));
 
   console.log(`[fetchKegiatans] Loaded ${kegiatans.length} kegiatans`);
@@ -290,7 +290,7 @@ const fetchRincianOutputs = async (sheetId: string): Promise<RincianOutput[]> =>
     body: {
       spreadsheetId: sheetId,
       operation: 'read',
-      range: 'rincian_outputs!A:H',
+      range: 'rincian_outputs!A:B',
     },
   });
 
@@ -306,12 +306,12 @@ const fetchRincianOutputs = async (sheetId: string): Promise<RincianOutput[]> =>
     .filter((row: string[]) => row[0]?.trim())
     .map((row: string[]) => ({
       id: row[0]?.trim() || '',
-      kegiatan_id: row[1]?.trim() || '',
-      kegiatan_code: row[2]?.trim() || '',
-      code: row[3]?.trim() || '',
-      name: row[4]?.trim() || '',
-      description: row[5]?.trim(),
-      is_active: row[6]?.trim().toLowerCase() === 'true',
+      kegiatan_id: '',
+      kegiatan_code: '',
+      code: row[0]?.trim() || '',
+      name: row[1]?.trim() || '',
+      description: undefined,
+      is_active: true,
     }));
 
   console.log(`[fetchRincianOutputs] Loaded ${outputs.length} rincian outputs`);
@@ -331,7 +331,7 @@ const fetchKomponenOutputs = async (sheetId: string): Promise<KomponenOutput[]> 
     body: {
       spreadsheetId: sheetId,
       operation: 'read',
-      range: 'komponen_outputs!A:H',
+      range: 'komponen_outputs!A:B',
     },
   });
 
@@ -347,12 +347,12 @@ const fetchKomponenOutputs = async (sheetId: string): Promise<KomponenOutput[]> 
     .filter((row: string[]) => row[0]?.trim())
     .map((row: string[]) => ({
       id: row[0]?.trim() || '',
-      rincian_output_id: row[1]?.trim() || '',
-      rincian_output_code: row[2]?.trim() || '',
-      code: row[3]?.trim() || '',
-      name: row[4]?.trim() || '',
-      description: row[5]?.trim(),
-      is_active: row[6]?.trim().toLowerCase() === 'true',
+      rincian_output_id: '',
+      rincian_output_code: '',
+      code: row[0]?.trim() || '',
+      name: row[1]?.trim() || '',
+      description: undefined,
+      is_active: true,
     }));
 
   console.log(`[fetchKomponenOutputs] Loaded ${komponens.length} komponen outputs`);
@@ -372,7 +372,7 @@ const fetchSubKomponen = async (sheetId: string): Promise<SubKomponen[]> => {
     body: {
       spreadsheetId: sheetId,
       operation: 'read',
-      range: 'sub_komponen!A:H',
+      range: 'sub_komponen!A:B',
     },
   });
 
@@ -388,12 +388,12 @@ const fetchSubKomponen = async (sheetId: string): Promise<SubKomponen[]> => {
     .filter((row: string[]) => row[0]?.trim())
     .map((row: string[]) => ({
       id: row[0]?.trim() || '',
-      komponen_output_id: row[1]?.trim() || '',
-      komponen_output_code: row[2]?.trim() || '',
-      code: row[3]?.trim() || '',
-      name: row[4]?.trim() || '',
-      description: row[5]?.trim(),
-      is_active: row[6]?.trim().toLowerCase() === 'true',
+      komponen_output_id: '',
+      komponen_output_code: '',
+      code: row[0]?.trim() || '',
+      name: row[1]?.trim() || '',
+      description: undefined,
+      is_active: true,
     }));
 
   console.log(`[fetchSubKomponen] Loaded ${subKomponen.length} sub komponens`);
@@ -413,7 +413,7 @@ const fetchAkuns = async (sheetId: string): Promise<Akun[]> => {
     body: {
       spreadsheetId: sheetId,
       operation: 'read',
-      range: 'akuns!A:H',
+      range: 'akuns!A:B',
     },
   });
 
@@ -429,12 +429,12 @@ const fetchAkuns = async (sheetId: string): Promise<Akun[]> => {
     .filter((row: string[]) => row[0]?.trim())
     .map((row: string[]) => ({
       id: row[0]?.trim() || '',
-      code: row[1]?.trim() || '',
-      name: row[2]?.trim() || '',
-      account_group: row[3]?.trim() || '',
-      account_group_name: row[4]?.trim() || '',
-      description: row[5]?.trim(),
-      is_active: row[6]?.trim().toLowerCase() === 'true',
+      code: row[0]?.trim() || '',
+      name: row[1]?.trim() || '',
+      account_group: '',
+      account_group_name: '',
+      description: undefined,
+      is_active: true,
     }));
 
   console.log(`[fetchAkuns] Loaded ${akuns.length} akuns`);
