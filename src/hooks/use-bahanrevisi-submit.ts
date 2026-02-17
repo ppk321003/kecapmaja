@@ -147,7 +147,7 @@ const updateBudgetItem = async (sheetId: string, itemId: string, updates: Partia
 };
 
 /**
- * Delete budget item (soft delete by changing status to 'deleted')
+ * Delete budget item (soft delete by changing status to 'deleted' and zeroing out menjadi values)
  */
 const deleteBudgetItem = async (sheetId: string, itemId: string, allItems: BudgetItem[]): Promise<void> => {
   if (!sheetId) throw new Error('Sheet ID tidak ditemukan');
@@ -155,7 +155,14 @@ const deleteBudgetItem = async (sheetId: string, itemId: string, allItems: Budge
   const itemIndex = allItems.findIndex(item => item.id === itemId);
   if (itemIndex === -1) throw new Error(`Item dengan ID ${itemId} tidak ditemukan`);
 
-  const deletedItem = { ...allItems[itemIndex], status: 'deleted' as const };
+  const deletedItem = {
+    ...allItems[itemIndex],
+    status: 'deleted' as const,
+    volume_menjadi: 0,
+    satuan_menjadi: '',
+    harga_satuan_menjadi: 0,
+    jumlah_menjadi: 0,
+  };
   const row = budgetItemToRow(deletedItem);
 
   const sheetRowIndex = itemIndex + 2;

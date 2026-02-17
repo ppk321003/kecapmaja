@@ -154,9 +154,10 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
 
   const [summaryView, setSummaryView] = useState<SummaryViewType>('changes');
 
-  // Separate changed and new items
+  // Separate changed, new, and deleted items
   const changedItems = useMemo(() => items.filter(item => item.status === 'changed'), [items]);
   const newItems = useMemo(() => items.filter(item => item.status === 'new'), [items]);
+  const deletedItems = useMemo(() => items.filter(item => item.status === 'deleted'), [items]);
 
   // Calculate summaries by different groupings
   const summaryByProgram = useMemo(() =>
@@ -196,10 +197,10 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const getCombinedPembebananCode = (item: BudgetItem): string => {
     const parts = [];
     if (item.program_pembebanan) parts.push(item.program_pembebanan);
-    if (item.kegiatan) parts.push(item.kegiatan);
-    if (item.rincian_output) parts.push(item.rincian_output);
+    if (item.komponen_output) parts.push(item.komponen_output);
+    if (item.sub_komponen) parts.push(item.sub_komponen);
     if (item.akun) parts.push(item.akun);
-    return parts.join(' > ');
+    return parts.join('.');
   };
 
   // Helper function to get detail perubahan text
@@ -250,6 +251,29 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
         jumlahSemula: 0,
         jumlahMenjadi,
         selisih: jumlahMenjadi,
+        realisasi,
+        persentaseRealisasi,
+      };
+    });
+  };
+
+  const getDeletedBudgetItems = (): BudgetChangeItem[] => {
+    return deletedItems.map((item) => {
+      const jumlahSemula = Number(item.jumlah_semula) || 0;
+      const jumlahMenjadi = 0;
+      const selisih = jumlahMenjadi - jumlahSemula;
+      const sisaAnggaran = Number(item.sisa_anggaran) || 0;
+      const blokir = Number(item.blokir) || 0;
+      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
+      const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
+      return {
+        id: item.id,
+        pembebanan: getCombinedPembebananCode(item),
+        uraian: item.uraian || '',
+        detailPerubahan: `Dihapus: ${item.volume_semula} ${item.satuan_semula} @ ${formatCurrency(item.harga_satuan_semula || 0)}`,
+        jumlahSemula,
+        jumlahMenjadi,
+        selisih,
         realisasi,
         persentaseRealisasi,
       };
@@ -714,6 +738,95 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                                     100
                                 ) / 100
                               : 0
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    </TableFooter>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pagu Anggaran yang dihapus */}
+          {deletedItems.length > 0 && (
+            <Card className="bg-red-50/50 border-red-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-red-700 font-bold">
+                  Pagu Anggaran yang dihapus ({deletedItems.length} item)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto border rounded-md">
+                  <Table className="w-full text-xs">
+                    <TableHeader className="bg-red-100/50">
+                      <TableRow>
+                        <TableHead className="text-left py-2 px-3 font-semibold">
+                          No
+                        </TableHead>
+                        <TableHead className="text-left py-2 px-3 font-semibold">
+                          Pembebanan
+                        </TableHead>
+                        <TableHead className="text-left py-2 px-3 font-semibold">
+                          Uraian
+                        </TableHead>
+                        <TableHead className="text-left py-2 px-3 font-semibold">
+                          Detail Penghapusan
+                        </TableHead>
+                        <TableHead className="text-right py-2 px-3 font-semibold">
+                          Jumlah Semula
+                        </TableHead>
+                        <TableHead className="text-right py-2 px-3 font-semibold">
+                          Jumlah Menjadi
+                        </TableHead>
+                        <TableHead className="text-right py-2 px-3 font-semibold">
+                          Selisih
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getDeletedBudgetItems().map((item, idx) => (
+                        <TableRow key={item.id} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
+                          <TableCell className="py-2 px-3">{idx + 1}</TableCell>
+                          <TableCell className="py-2 px-3 text-xs font-mono">
+                            {item.pembebanan}
+                          </TableCell>
+                          <TableCell className="py-2 px-3">{item.uraian}</TableCell>
+                          <TableCell className="py-2 px-3 whitespace-pre-wrap text-xs">
+                            {item.detailPerubahan}
+                          </TableCell>
+                          <TableCell className="text-right py-2 px-3">
+                            {formatCurrency(item.jumlahSemula)}
+                          </TableCell>
+                          <TableCell className="text-right py-2 px-3">
+                            {formatCurrency(item.jumlahMenjadi)}
+                          </TableCell>
+                          <TableCell
+                            className="text-right py-2 px-3 font-semibold text-red-600"
+                          >
+                            {formatCurrency(item.selisih)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                    <TableFooter>
+                      <TableRow className="font-bold">
+                        <TableCell colSpan={4} className="py-2 px-3">
+                          Total Pagu Anggaran yang dihapus
+                        </TableCell>
+                        <TableCell className="text-right py-2 px-3">
+                          {formatCurrency(
+                            getDeletedBudgetItems().reduce((sum, item) => sum + item.jumlahSemula, 0)
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right py-2 px-3">
+                          {formatCurrency(
+                            getDeletedBudgetItems().reduce((sum, item) => sum + item.jumlahMenjadi, 0)
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right py-2 px-3">
+                          {formatCurrency(
+                            getDeletedBudgetItems().reduce((sum, item) => sum + item.selisih, 0)
                           )}
                         </TableCell>
                       </TableRow>
