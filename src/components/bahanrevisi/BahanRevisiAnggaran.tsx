@@ -208,12 +208,15 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     // Recalculate selisih
     updatedItem.selisih = (updatedItem.jumlah_menjadi || 0) - (updatedItem.jumlah_semula || 0);
     
-    // **IMPORTANT**: Jika ada perubahan data, RESET APPROVAL STATUS
-    // Status yang approved berubah menjadi changed, aksi PPK kembali aktif
+    // **IMPORTANT**: Jika ada perubahan data, RESET SEMUA APPROVAL STATUS
+    // - Status yang approved/rejected berubah menjadi changed (revisi dianggap pengajuan ulang)
+    // - Clear approved_by, approved_date, DAN rejected_date
+    // - Aksi PPK kembali aktif untuk approval baru
     if (dataChanged) {
       updatedItem.status = 'changed';
       updatedItem.approved_by = undefined;
       updatedItem.approved_date = undefined;
+      updatedItem.rejected_date = undefined;  // ← PENTING: Clear rejected status juga!
     } else {
       // Jika tidak ada perubahan data, tentukan status dari perhitungan
       const newStatus = determineStatusFromChanges(updatedItem);
@@ -221,6 +224,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
         updatedItem.status = newStatus;
         updatedItem.approved_by = undefined;
         updatedItem.approved_date = undefined;
+        updatedItem.rejected_date = undefined;  // ← Clear rejected juga untuk keamanan
       }
     }
     
@@ -231,7 +235,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     });
     toast({
       title: 'Success',
-      description: `Item berhasil diperbarui. ${dataChanged ? 'Status persetujuan direset untuk persetujuan ulang oleh PPK.' : ''}`,
+      description: `Item berhasil diperbarui. ${dataChanged ? 'Pengajuan revisi disimpan. Status kembali menunggu persetujuan PPK.' : ''}`,
     });
   };
 
