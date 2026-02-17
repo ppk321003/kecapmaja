@@ -190,6 +190,13 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     // Merge updates with original item
     let updatedItem = { ...originalItem, ...updates };
     
+    // Check if ada perubahan pada data (bukan approval fields)
+    const dataChanged = 
+      originalItem.volume_menjadi !== updatedItem.volume_menjadi ||
+      originalItem.satuan_menjadi !== updatedItem.satuan_menjadi ||
+      originalItem.harga_satuan_menjadi !== updatedItem.harga_satuan_menjadi ||
+      originalItem.jumlah_menjadi !== updatedItem.jumlah_menjadi;
+    
     // Recalculate jumlah_menjadi if volume or harga changed
     if ('volume_menjadi' in updates || 'harga_satuan_menjadi' in updates) {
       updatedItem.jumlah_menjadi = calculateJumlahMenjadi(
@@ -201,14 +208,20 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     // Recalculate selisih
     updatedItem.selisih = (updatedItem.jumlah_menjadi || 0) - (updatedItem.jumlah_semula || 0);
     
-    // Determine status based on changes
-    const newStatus = determineStatusFromChanges(updatedItem);
-    
-    // If status changed to 'changed' or 'new', mark as needing approval
-    if ((newStatus === 'changed' || newStatus === 'new') && !updatedItem.approved_by) {
-      updatedItem.status = newStatus;
+    // **IMPORTANT**: Jika ada perubahan data, RESET APPROVAL STATUS
+    // Status yang approved berubah menjadi changed, aksi PPK kembali aktif
+    if (dataChanged) {
+      updatedItem.status = 'changed';
       updatedItem.approved_by = undefined;
       updatedItem.approved_date = undefined;
+    } else {
+      // Jika tidak ada perubahan data, tentukan status dari perhitungan
+      const newStatus = determineStatusFromChanges(updatedItem);
+      if ((newStatus === 'changed' || newStatus === 'new') && !updatedItem.approved_by) {
+        updatedItem.status = newStatus;
+        updatedItem.approved_by = undefined;
+        updatedItem.approved_date = undefined;
+      }
     }
     
     updateItem({
@@ -218,7 +231,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     });
     toast({
       title: 'Success',
-      description: 'Item berhasil diperbarui',
+      description: `Item berhasil diperbarui. ${dataChanged ? 'Status persetujuan direset untuk persetujuan ulang oleh PPK.' : ''}`,
     });
   };
 
