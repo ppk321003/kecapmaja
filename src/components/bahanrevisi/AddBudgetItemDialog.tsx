@@ -94,46 +94,78 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
     jumlah_menjadi: 0,
   });
 
-  // Filter kegiatans based on program_pembebanan
+  // Generate programs options from master data
+  const programsOptionsGenerated = useMemo<SelectOption[]>(() => {
+    if (!programs) return [];
+    return programs
+      .filter(p => p.is_active !== false)
+      .map(p => ({
+        value: p.id,
+        label: `${p.id} - ${p.code}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [programs]);
+
+  // Generate filtered kegiatans based on program_pembebanan selection
+  // Use master data arrays instead of pre-computed options
   const filteredKegiatans = useMemo(() => {
-    if (!formData.program_pembebanan) return [];
-    return kegiatansOptions.filter(
-      (opt) =>
-        opt.label
-          ?.includes(`- ${formData.program_pembebanan}`) ||
-        opt.label?.includes(formData.program_pembebanan)
-    );
-  }, [formData.program_pembebanan, kegiatansOptions]);
+    if (!formData.program_pembebanan || !kegiatans) return [];
+    return kegiatans
+      .filter(k => k.program_id === formData.program_pembebanan && k.is_active !== false)
+      .map(k => ({
+        value: k.id,
+        label: `${k.id} - ${k.name}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [formData.program_pembebanan, kegiatans]);
 
-  // Filter rincian outputs based on kegiatan
+  // Generate filtered rincian outputs based on kegiatan selection
   const filteredRincianOutputs = useMemo(() => {
-    if (!formData.kegiatan) return [];
-    return rincianOutputsOptions.filter(
-      (opt) =>
-        opt.label?.includes(`- ${formData.kegiatan}`) ||
-        opt.label?.includes(formData.kegiatan)
-    );
-  }, [formData.kegiatan, rincianOutputsOptions]);
+    if (!formData.kegiatan || !rincianOutputs) return [];
+    return rincianOutputs
+      .filter(r => r.kegiatan_id === formData.kegiatan && r.is_active !== false)
+      .map(r => ({
+        value: r.id,
+        label: `${r.id} - ${r.name}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [formData.kegiatan, rincianOutputs]);
 
-  // Filter komponen outputs based on rincian_output
+  // Generate filtered komponen outputs based on rincian_output selection
   const filteredKomponenOutputs = useMemo(() => {
-    if (!formData.rincian_output) return [];
-    return komponenOutputsOptions.filter(
-      (opt) =>
-        opt.label?.includes(`- ${formData.rincian_output}`) ||
-        opt.label?.includes(formData.rincian_output)
-    );
-  }, [formData.rincian_output, komponenOutputsOptions]);
+    if (!formData.rincian_output || !komponenOutputs) return [];
+    return komponenOutputs
+      .filter(k => k.rincian_output_id === formData.rincian_output && k.is_active !== false)
+      .map(k => ({
+        value: k.id,
+        label: `${k.id} - ${k.name}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [formData.rincian_output, komponenOutputs]);
 
-  // Filter sub komponen based on komponen_output
+  // Generate filtered sub komponen based on komponen_output selection
   const filteredSubKomponen = useMemo(() => {
-    if (!formData.komponen_output) return [];
-    return subKomponenOptions.filter(
-      (opt) =>
-        opt.label?.includes(`- ${formData.komponen_output}`) ||
-        opt.label?.includes(formData.komponen_output)
-    );
-  }, [formData.komponen_output, subKomponenOptions]);
+    if (!formData.komponen_output || !subKomponen) return [];
+    return subKomponen
+      .filter(s => s.komponen_output_id === formData.komponen_output && s.is_active !== false)
+      .map(s => ({
+        value: s.id,
+        label: `${s.id} - ${s.name}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [formData.komponen_output, subKomponen]);
+
+  // Generate akuns options from master data
+  const akunsOptionsGenerated = useMemo<SelectOption[]>(() => {
+    if (!akuns) return [];
+    return akuns
+      .filter(a => a.is_active !== false)
+      .map(a => ({
+        value: a.id,
+        label: `${a.code} - ${a.name}`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [akuns]);
 
   // Auto-calculate jumlah_menjadi
   const calculateTotal = (volume: number, harga: number) => {
@@ -330,7 +362,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
               <label className="text-xs font-medium">Program Pembebanan *</label>
               <SearchableSelect
                 value={formData.program_pembebanan}
-                options={programsOptions}
+                options={programsOptionsGenerated}
                 placeholder="Pilih Program..."
                 disabled={isLoading}
                 onValueChange={(value) =>
@@ -422,7 +454,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
               <label className="text-xs font-medium">Akun *</label>
               <SearchableSelect
                 value={formData.akun}
-                options={akunsOptions}
+                options={akunsOptionsGenerated}
                 placeholder="Pilih Akun..."
                 disabled={isLoading}
                 onValueChange={(value) =>
