@@ -93,30 +93,9 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
   }
 
   // Handle add new item
-  const handleAddItem = () => {
-    if (!filters.komponen_output) {
-      toast({
-        title: 'Error',
-        description: 'Silahkan pilih Komponen Output terlebih dahulu',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Find a template from filtered items
-    const template = filteredBudgetItems[0];
-    if (!template) {
-      toast({
-        title: 'Error',
-        description: 'Tidak ada data template untuk membuat item baru',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const handleAddItem = (newItemData: Omit<BudgetItem, 'id'>) => {
     const newItem = {
-      ...template,
-      id: undefined,
+      ...newItemData,
       submitted_by: user?.username || 'unknown',
       submitted_date: new Date().toISOString(),
       updated_date: new Date().toISOString(),
@@ -127,6 +106,10 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     };
 
     addItem(newItem as any);
+    toast({
+      title: 'Berhasil',
+      description: 'Item baru berhasil ditambahkan',
+    });
   };
 
   // Handle delete item
@@ -438,6 +421,18 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 onApprove={handleApproveItem}
                 onReject={handleRejectItem}
                 hideZeroPagu={hideZeroPagu}
+                programs={programs}
+                kegiatans={kegiatans}
+                rincianOutputs={rincianOutputs}
+                komponenOutputs={komponenOutputs}
+                subKomponen={subKomponen}
+                akuns={akuns}
+                programsOptions={programsOptions}
+                kegiatansOptions={kegiatansOptions}
+                rincianOutputsOptions={rincianOutputsOptions}
+                komponenOutputsOptions={komponenOutputsOptions}
+                subKomponenOptions={subKomponenOptions}
+                akunsOptions={akunsOptions}
               />
             </TabsContent>
 

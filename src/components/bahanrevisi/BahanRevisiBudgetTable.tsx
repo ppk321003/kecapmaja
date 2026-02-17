@@ -43,9 +43,17 @@ import {
   Eye,
 } from 'lucide-react';
 import DetailDialog from './DetailDialog';
+import AddBudgetItemDialog from './AddBudgetItemDialog';
+import SearchableSelect, { SelectOption } from './SearchableSelect';
 import {
   BudgetItem,
   BahanRevisiFilters,
+  Program,
+  Kegiatan,
+  RincianOutput,
+  KomponenOutput,
+  SubKomponen,
+  Akun,
 } from '@/types/bahanrevisi';
 import {
   formatCurrency,
@@ -66,6 +74,18 @@ interface BahanRevisiBudgetTableProps {
   onApprove?: (itemId: string, approvedBy: string) => void;
   onReject?: (itemId: string, rejectedBy: string, reason: string) => void;
   hideZeroPagu?: boolean;
+  programs?: Program[];
+  kegiatans?: Kegiatan[];
+  rincianOutputs?: RincianOutput[];
+  komponenOutputs?: KomponenOutput[];
+  subKomponen?: SubKomponen[];
+  akuns?: Akun[];
+  programsOptions?: SelectOption[];
+  kegiatansOptions?: SelectOption[];
+  rincianOutputsOptions?: SelectOption[];
+  komponenOutputsOptions?: SelectOption[];
+  subKomponenOptions?: SelectOption[];
+  akunsOptions?: SelectOption[];
 }
 
 const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
@@ -78,7 +98,19 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   onApprove,
   onReject,
   hideZeroPagu = false,
-}) => {
+  programs = [],
+  kegiatans = [],
+  rincianOutputs = [],
+  komponenOutputs = [],
+  subKomponen = [],
+  akuns = [],
+  programsOptions = [],
+  kegiatansOptions = [],
+  rincianOutputsOptions = [],
+  komponenOutputsOptions = [],
+  subKomponenOptions = [],
+  akunsOptions = [],
+})  => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'Pejabat Pembuat Komitmen';
   const [sortBy, setSortBy] = useState<keyof BudgetItem | null>(null);
@@ -558,15 +590,37 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
 
       {/* Add Button */}
       {onAdd && (
-        <div className="mt-4 flex justify-end">
-          <Button
-            onClick={() => setNewItemForm(true)}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Tambah Item
-          </Button>
-        </div>
+        <>
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={() => setNewItemForm(true)}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Tambah Item
+            </Button>
+          </div>
+
+          {/* Add Budget Item Dialog */}
+          <AddBudgetItemDialog
+            open={newItemForm}
+            onOpenChange={setNewItemForm}
+            programs={programs}
+            kegiatans={kegiatans}
+            rincianOutputs={rincianOutputs}
+            komponenOutputs={komponenOutputs}
+            subKomponen={subKomponen}
+            akuns={akuns}
+            programsOptions={programsOptions}
+            kegiatansOptions={kegiatansOptions}
+            rincianOutputsOptions={rincianOutputsOptions}
+            komponenOutputsOptions={komponenOutputsOptions}
+            subKomponenOptions={subKomponenOptions}
+            akunsOptions={akunsOptions}
+            onSubmit={onAdd}
+            isLoading={isLoading}
+          />
+        </>
       )}
 
       {/* Edit Dialog */}

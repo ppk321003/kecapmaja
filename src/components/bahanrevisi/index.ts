@@ -5,6 +5,7 @@
 export { default as BahanRevisiAnggaran } from './BahanRevisiAnggaran';
 export { default as BahanRevisiFilter } from './BahanRevisiFilter';
 export { default as BahanRevisiBudgetTable } from './BahanRevisiBudgetTable';
+export { default as AddBudgetItemDialog } from './AddBudgetItemDialog';
 export { default as BahanRevisiRingkasan } from './BahanRevisiRingkasan';
 export { default as DetailDialog } from './DetailDialog';
 export { default as RPDTable } from './RPDTable';

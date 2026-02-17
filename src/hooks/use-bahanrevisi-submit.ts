@@ -113,6 +113,64 @@ const addBudgetItem = async (sheetId: string, item: Omit<BudgetItem, 'id'>): Pro
 };
 
 /**
+ * Add new RPD item to Google Sheets
+ * Auto-created when budget item is added
+ */
+const addRPDItem = async (sheetId: string, budgetItem: BudgetItem): Promise<RPDItem> => {
+  if (!sheetId) throw new Error('Sheet ID tidak ditemukan');
+
+  // Create RPD item from budget item with same ID and total_pagu = jumlah_menjadi
+  const newRPDItem: RPDItem = {
+    id: budgetItem.id,
+    program_pembebanan: budgetItem.program_pembebanan,
+    kegiatan: budgetItem.kegiatan,
+    komponen_output: budgetItem.komponen_output,
+    sub_komponen: budgetItem.sub_komponen,
+    akun: budgetItem.akun,
+    uraian: budgetItem.uraian,
+    total_pagu: budgetItem.jumlah_menjadi,
+    jan: 0,
+    feb: 0,
+    mar: 0,
+    apr: 0,
+    may: 0,
+    jun: 0,
+    jul: 0,
+    aug: 0,
+    sep: 0,
+    oct: 0,
+    nov: 0,
+    dec: 0,
+    total_rpd: 0,
+    sisa_anggaran: budgetItem.jumlah_menjadi,
+    status: 'new',
+    blokir: 0,
+    modified_by: '',
+    modified_date: '',
+  };
+
+  const row = rpdItemToRow(newRPDItem);
+
+  const result = await supabase.functions.invoke('google-sheets', {
+    body: {
+      spreadsheetId: sheetId,
+      operation: 'append',
+      range: 'rpd_items!A:Z',
+      values: [row],
+    },
+  });
+
+  if (result.error) {
+    console.error('[addRPDItem] Error:', result.error);
+    const errorMsg = result.error instanceof Error ? result.error.message : String(result.error);
+    throw new Error(`Failed to add RPD item: ${errorMsg}`);
+  }
+
+  console.log('[addRPDItem] New RPD item added with id:', newRPDItem.id);
+  return newRPDItem;
+};
+
+/**
  * Update existing budget item
  */
 const updateBudgetItem = async (sheetId: string, itemId: string, updates: Partial<BudgetItem>, allItems: BudgetItem[]): Promise<BudgetItem> => {
@@ -287,10 +345,20 @@ export const useBahanRevisiSubmit = ({ sheetId }: UseBahanRevisiSubmitProps) => 
   const queryClient = useQueryClient();
 
   const addMutation = useMutation({
-    mutationFn: (newItem: Omit<BudgetItem, 'id'>) => addBudgetItem(sheetId!, newItem),
+    mutationFn: async (newItem: Omit<BudgetItem, 'id'>) => {
+      // First, add the budget item
+      const budgetItem = await addBudgetItem(sheetId!, newItem);
+      
+      // Then, add corresponding RPD item
+      await addRPDItem(sheetId!, budgetItem);
+      
+      // Return the budget item
+      return budgetItem;
+    },
     onSuccess: () => {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['bahanrevisi-budget-items', sheetId] });
+      queryClient.invalidateQueries({ queryKey: ['bahanrevisi-rpd-items', sheetId] });
     },
   });
 
