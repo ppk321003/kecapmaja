@@ -94,9 +94,14 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
     jumlah_menjadi: 0,
   });
 
-  // Generate programs options from master data
+  // Generate programs options from master data, fallback to props if master data empty
   const programsOptionsGenerated = useMemo<SelectOption[]>(() => {
-    if (!programs) return [];
+    // Use passed programsOptions if available
+    if (programsOptions && programsOptions.length > 0) {
+      return programsOptions;
+    }
+    // Otherwise generate from master data
+    if (!programs || programs.length === 0) return [];
     return programs
       .filter(p => p.is_active !== false)
       .map(p => ({
@@ -104,60 +109,112 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
         label: `${p.id} - ${p.code}`
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [programs]);
+  }, [programs, programsOptions]);
 
   // Generate filtered kegiatans based on program_pembebanan selection
-  // Use master data arrays instead of pre-computed options
-  const filteredKegiatans = useMemo(() => {
-    if (!formData.program_pembebanan || !kegiatans) return [];
-    return kegiatans
-      .filter(k => k.program_id === formData.program_pembebanan && k.is_active !== false)
-      .map(k => ({
-        value: k.id,
-        label: `${k.id} - ${k.name}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [formData.program_pembebanan, kegiatans]);
+  const filteredKegiatans = useMemo<SelectOption[]>(() => {
+    if (!formData.program_pembebanan) return [];
+    // Try to filter from master data first
+    if (kegiatans && kegiatans.length > 0) {
+      return kegiatans
+        .filter(k => k.program_id === formData.program_pembebanan && k.is_active !== false)
+        .map(k => ({
+          value: k.id,
+          label: `${k.id} - ${k.name}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to filtering from passed options if master data empty
+    if (kegiatansOptions && kegiatansOptions.length > 0) {
+      return kegiatansOptions.filter(
+        (opt) =>
+          opt.label?.includes(`- ${formData.program_pembebanan}`) ||
+          opt.label?.includes(formData.program_pembebanan)
+      );
+    }
+    return [];
+  }, [formData.program_pembebanan, kegiatans, kegiatansOptions]);
 
   // Generate filtered rincian outputs based on kegiatan selection
-  const filteredRincianOutputs = useMemo(() => {
-    if (!formData.kegiatan || !rincianOutputs) return [];
-    return rincianOutputs
-      .filter(r => r.kegiatan_id === formData.kegiatan && r.is_active !== false)
-      .map(r => ({
-        value: r.id,
-        label: `${r.id} - ${r.name}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [formData.kegiatan, rincianOutputs]);
+  const filteredRincianOutputs = useMemo<SelectOption[]>(() => {
+    if (!formData.kegiatan) return [];
+    // Try to filter from master data first
+    if (rincianOutputs && rincianOutputs.length > 0) {
+      return rincianOutputs
+        .filter(r => r.kegiatan_id === formData.kegiatan && r.is_active !== false)
+        .map(r => ({
+          value: r.id,
+          label: `${r.id} - ${r.name}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to filtering from passed options
+    if (rincianOutputsOptions && rincianOutputsOptions.length > 0) {
+      return rincianOutputsOptions.filter(
+        (opt) =>
+          opt.label?.includes(`- ${formData.kegiatan}`) ||
+          opt.label?.includes(formData.kegiatan)
+      );
+    }
+    return [];
+  }, [formData.kegiatan, rincianOutputs, rincianOutputsOptions]);
 
   // Generate filtered komponen outputs based on rincian_output selection
-  const filteredKomponenOutputs = useMemo(() => {
-    if (!formData.rincian_output || !komponenOutputs) return [];
-    return komponenOutputs
-      .filter(k => k.rincian_output_id === formData.rincian_output && k.is_active !== false)
-      .map(k => ({
-        value: k.id,
-        label: `${k.id} - ${k.name}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [formData.rincian_output, komponenOutputs]);
+  const filteredKomponenOutputs = useMemo<SelectOption[]>(() => {
+    if (!formData.rincian_output) return [];
+    // Try to filter from master data first
+    if (komponenOutputs && komponenOutputs.length > 0) {
+      return komponenOutputs
+        .filter(k => k.rincian_output_id === formData.rincian_output && k.is_active !== false)
+        .map(k => ({
+          value: k.id,
+          label: `${k.id} - ${k.name}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to filtering from passed options
+    if (komponenOutputsOptions && komponenOutputsOptions.length > 0) {
+      return komponenOutputsOptions.filter(
+        (opt) =>
+          opt.label?.includes(`- ${formData.rincian_output}`) ||
+          opt.label?.includes(formData.rincian_output)
+      );
+    }
+    return [];
+  }, [formData.rincian_output, komponenOutputs, komponenOutputsOptions]);
 
   // Generate filtered sub komponen based on komponen_output selection
-  const filteredSubKomponen = useMemo(() => {
-    if (!formData.komponen_output || !subKomponen) return [];
-    return subKomponen
-      .filter(s => s.komponen_output_id === formData.komponen_output && s.is_active !== false)
-      .map(s => ({
-        value: s.id,
-        label: `${s.id} - ${s.name}`
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [formData.komponen_output, subKomponen]);
+  const filteredSubKomponen = useMemo<SelectOption[]>(() => {
+    if (!formData.komponen_output) return [];
+    // Try to filter from master data first
+    if (subKomponen && subKomponen.length > 0) {
+      return subKomponen
+        .filter(s => s.komponen_output_id === formData.komponen_output && s.is_active !== false)
+        .map(s => ({
+          value: s.id,
+          label: `${s.id} - ${s.name}`
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    // Fallback to filtering from passed options
+    if (subKomponenOptions && subKomponenOptions.length > 0) {
+      return subKomponenOptions.filter(
+        (opt) =>
+          opt.label?.includes(`- ${formData.komponen_output}`) ||
+          opt.label?.includes(formData.komponen_output)
+      );
+    }
+    return [];
+  }, [formData.komponen_output, subKomponen, subKomponenOptions]);
 
-  // Generate akuns options from master data
+  // Generate akuns options from master data, fallback to props if master data empty
   const akunsOptionsGenerated = useMemo<SelectOption[]>(() => {
-    if (!akuns) return [];
+    // Use passed akunsOptions if available
+    if (akunsOptions && akunsOptions.length > 0) {
+      return akunsOptions;
+    }
+    // Otherwise generate from master data
+    if (!akuns || akuns.length === 0) return [];
     return akuns
       .filter(a => a.is_active !== false)
       .map(a => ({
@@ -165,7 +222,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
         label: `${a.code} - ${a.name}`
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [akuns]);
+  }, [akuns, akunsOptions]);
 
   // Auto-calculate jumlah_menjadi
   const calculateTotal = (volume: number, harga: number) => {
