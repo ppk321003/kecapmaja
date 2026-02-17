@@ -761,6 +761,32 @@ export const formatPercentage = (percentage: number): string => {
 export const calculateBudgetSummaryByKelompokAkun = (
   items: BudgetItem[]
 ): BudgetSummaryByAkun[] => {
+  // Mapping untuk deskripsi Kelompok Akun (3 digit)
+  const kelompokAkunDesc: { [key: string]: string } = {
+    '511': '511 – Belanja Gaji dan Tunjangan PNS',
+    '512': '512 – Belanja Gaji dan Tunjangan Non-PNS',
+    '521': '521 – Belanja Barang',
+    '522': '522 – Belanja Jasa',
+    '523': '523 – Belanja Pemeliharaan',
+    '524': '524 – Belanja Perjalanan Dinas',
+    '525': '525 – Belanja Sewa',
+    '526': '526 – Belanja Barang Operasional Lainnya',
+    '527': '527 – Belanja Barang Non Operasional Lainnya',
+    '531': '531 – Belanja Modal Tanah',
+    '532': '532 – Belanja Modal Peralatan dan Mesin',
+    '533': '533 – Belanja Modal Gedung dan Bangunan',
+    '534': '534 – Belanja Modal Jalan, Irigasi, dan Jaringan',
+    '535': '535 – Belanja Modal Aset Tetap Lainnya',
+    '536': '536 – Belanja Modal Aset Lainnya',
+    '541': '541 – Belanja Hibah',
+    '542': '542 – Belanja Bantuan Sosial',
+    '551': '551 – Belanja Subsidi',
+    '552': '552 – Belanja Bantuan Keuangan',
+    '553': '553 – Belanja Bagi Hasil',
+    '561': '561 – Belanja Tidak Terduga',
+    '571': '571 – Belanja Transfer ke Daerah dan Dana Desa',
+  };
+
   const groupMap = new Map<string, BudgetSummaryByAkun>();
 
   items.forEach((item) => {
@@ -772,7 +798,7 @@ export const calculateBudgetSummaryByKelompokAkun = (
     if (!groupMap.has(kelompokAkun)) {
       groupMap.set(kelompokAkun, {
         akun: kelompokAkun,
-        name: kelompokAkun,
+        name: kelompokAkunDesc[kelompokAkun] || kelompokAkun,
         total_semula: 0,
         total_menjadi: 0,
         total_selisih: 0,
@@ -807,6 +833,13 @@ export const calculateBudgetSummaryByKelompokAkun = (
 export const calculateBudgetSummaryByKelompokBelanja = (
   items: BudgetItem[]
 ): BudgetSummaryByAkun[] => {
+  // Mapping untuk deskripsi Kelompok Belanja (2 digit)
+  const kelompokBelanjaDesc: { [key: string]: string } = {
+    '51': '51 - Belanja Pegawai',
+    '52': '52 - Belanja Barang',
+    '53': '53 - Belanja Modal',
+  };
+
   const groupMap = new Map<string, BudgetSummaryByAkun>();
 
   items.forEach((item) => {
@@ -818,7 +851,7 @@ export const calculateBudgetSummaryByKelompokBelanja = (
     if (!groupMap.has(kelompokBelanja)) {
       groupMap.set(kelompokBelanja, {
         akun: kelompokBelanja,
-        name: kelompokBelanja,
+        name: kelompokBelanjaDesc[kelompokBelanja] || kelompokBelanja,
         total_semula: 0,
         total_menjadi: 0,
         total_selisih: 0,
