@@ -464,7 +464,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
                   {isAdmin && (
                     <TableCell className="text-center">
                       <div className="flex gap-1 justify-center">
-                        {!isApproved(item) && !isRejected(item) && (
+                        {item.status !== 'unchanged' && !isApproved(item) && !isRejected(item) && (
                           <>
                             <Button
                               size="icon"
