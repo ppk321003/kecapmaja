@@ -775,7 +775,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
         const rio = rincianOutputsQuery.data?.find(r => r.id === code);
         return {
           value: code,
-          label: rin ? `${rin.id} - ${rin.name}` : code
+          label: rio ? `${rio.id} - ${rio.name}` : code
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
