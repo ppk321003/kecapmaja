@@ -209,7 +209,7 @@ export const useHonorData = () => {
           const realisasiStr = row[15] || ''; // Column P: realisasi
           const bebanAnggaran = row[18] || ''; // Column S: bebanAnggaran
           const dikirimKePPK = row[19] || ''; // Column T: dikirimKePPK
-          const nik = row[22] || ''; // Column W: nik
+          const nikStr = row[22] || ''; // Column W: nik
 
           // Extract tahun dari periode
           const periodeYear = parseInt(periode.match(/\d{4}/)?.[0] || tahun.toString());
@@ -218,6 +218,7 @@ export const useHonorData = () => {
           const namaPetugasList = processMultipleValues(namaPetugasStr);
           const realisasiList = processMultipleValues(realisasiStr);
           const targetList = processMultipleValues(target); // Parse target ke array
+          const nikList = processMultipleValues(nikStr); // Parse NIK ke array (pisah dengan |)
 
           // Create honor row for each worker
           namaPetugasList.forEach((nama: string, idx: number) => {
@@ -239,7 +240,7 @@ export const useHonorData = () => {
               // Identitas Penerima
               no: rowNo++,
               namaPenerimaHonor: nama,
-              nik,
+              nik: nikList[idx] || '', // Use corresponding NIK from nikList array
               
               // Referensi Kegiatan
               noKontrakSKST: nomorSK,
