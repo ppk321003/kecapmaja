@@ -4,13 +4,14 @@
  * Dengan fitur export ke JPEG, PDF, dan Excel
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileImage, FileText, FileSpreadsheet } from 'lucide-react';
+import { FileImage, FileText, FileSpreadsheet, Loader } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, calculateRealisasi, calculatePersentaseRealisasi, formatPercentage } from '@/utils/bahanrevisi-calculations';
+import { exportSummaryToJPEG, exportSummaryToPDF, exportSummaryToExcel } from '@/utils/bahanrevisi-document-export';
 import SummaryChart from './SummaryChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -61,71 +62,96 @@ const DetailedSummaryView: React.FC<DetailedSummaryViewProps> = ({
 }) => {
   const chartAndTableRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleExportJPEG = async () => {
     if (!chartAndTableRef.current) return;
+    
     try {
+      setIsExporting(true);
       toast({
         title: 'Memproses',
         description: 'Sedang menyiapkan file JPEG...',
       });
 
-      // Implement JPEG export
-      const htmlContent = chartAndTableRef.current.innerHTML;
-      // For now, show a placeholder message
+      await exportSummaryToJPEG(
+        chartAndTableRef.current,
+        `Ringkasan_${title.replace(/\s+/g, '_')}`
+      );
+
       toast({
         title: 'Berhasil',
-        description: 'Fitur export JPEG sedang dalam pengembangan',
+        description: 'File JPEG berhasil diunduh',
       });
     } catch (error) {
+      console.error('[handleExportJPEG] Error:', error);
       toast({
         variant: 'destructive',
         title: 'Gagal',
-        description: 'Gagal mengekspor sebagai JPEG',
+        description: error instanceof Error ? error.message : 'Gagal mengekspor sebagai JPEG',
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
   const handleExportPDF = async () => {
     if (!chartAndTableRef.current) return;
+    
     try {
+      setIsExporting(true);
       toast({
         title: 'Memproses',
         description: 'Sedang menyiapkan file PDF...',
       });
 
-      // Implement PDF export
+      await exportSummaryToPDF(
+        chartAndTableRef.current,
+        `Ringkasan_${title.replace(/\s+/g, '_')}`
+      );
+
       toast({
         title: 'Berhasil',
-        description: 'Fitur export PDF sedang dalam pengembangan',
+        description: 'File PDF berhasil diunduh',
       });
     } catch (error) {
+      console.error('[handleExportPDF] Error:', error);
       toast({
         variant: 'destructive',
         title: 'Gagal',
-        description: 'Gagal mengekspor sebagai PDF',
+        description: error instanceof Error ? error.message : 'Gagal mengekspor sebagai PDF',
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
   const handleExportExcel = async () => {
     try {
+      setIsExporting(true);
       toast({
         title: 'Memproses',
         description: 'Sedang menyiapkan file Excel...',
       });
 
-      // Implement Excel export
+      exportSummaryToExcel(
+        data,
+        `Ringkasan_${title.replace(/\s+/g, '_')}`
+      );
+
       toast({
         title: 'Berhasil',
-        description: 'Fitur export Excel sedang dalam pengembangan',
+        description: 'File Excel berhasil diunduh',
       });
     } catch (error) {
+      console.error('[handleExportExcel] Error:', error);
       toast({
         variant: 'destructive',
         title: 'Gagal',
-        description: 'Gagal mengekspor sebagai Excel',
+        description: error instanceof Error ? error.message : 'Gagal mengekspor sebagai Excel',
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -137,27 +163,42 @@ const DetailedSummaryView: React.FC<DetailedSummaryViewProps> = ({
           variant="outline"
           size="sm"
           onClick={handleExportJPEG}
+          disabled={isExporting}
           className="text-xs"
         >
-          <FileImage className="h-4 w-4 mr-2" />
+          {isExporting ? (
+            <Loader className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <FileImage className="h-4 w-4 mr-2" />
+          )}
           Export JPEG
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={handleExportPDF}
+          disabled={isExporting}
           className="text-xs"
         >
-          <FileText className="h-4 w-4 mr-2" />
+          {isExporting ? (
+            <Loader className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <FileText className="h-4 w-4 mr-2" />
+          )}
           Export PDF
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={handleExportExcel}
+          disabled={isExporting}
           className="text-xs font-semibold"
         >
-          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          {isExporting ? (
+            <Loader className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+          )}
           Export Excel
         </Button>
       </div>
