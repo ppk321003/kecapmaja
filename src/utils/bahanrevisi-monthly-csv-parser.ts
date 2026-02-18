@@ -218,31 +218,82 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         const satkerIdFormatted = `${satkerCode}.${unitCode}`;
         console.log('[parseMonthlyCSV] Satker info:', satkerIdFormatted);
 
-        // Find data start row (skip headers)
-        // Look for first row that has actual data (not meta, not continuation)
-        let dataStartRow = 0;
-        for (let i = 0; i < rows.length; i++) {
+        // Find data start row (skip headers and metadata)
+        // Skip first 6 rows (title, headers, periode, metadata, etc)
+        // Then look for first row with actual numeric data
+        let dataStartRow = 6;
+        let columnIndexes: { [key: string]: number } = {
+          program: 0,
+          kegiatan: 1,
+          rincianOutput: 2,
+          komponenOutput: 3,
+          subKomponen: 4,
+          akun: 5,
+          uraian: 6,
+          sisaAnggaran: -1,
+        };
+
+        // Try to detect column indexes from header row (row 1)
+        if (rows[1] && Array.isArray(rows[1])) {
+          const headerRow = rows[1];
+          const headerStr = headerRow.map(h => String(h || '').toLowerCase()).join('|');
+          
+          console.log('[parseMonthlyCSV] Header row detected, checking columns...');
+          
+          // Check if the header is in column A as semicolon-separated text
+          if (headerRow[0] && String(headerRow[0]).includes(';')) {
+            console.log('[parseMonthlyCSV] Headers found in column A as semicolon-separated text');
+            const headerCells = String(headerRow[0]).split(';').map(h => h.trim().toLowerCase());
+            console.log('[parseMonthlyCSV] Parsed headers:', headerCells);
+            
+            // Map headers to our expected fields
+            headerCells.forEach((header, idx) => {
+              if (header.includes('program')) columnIndexes.program = idx;
+              if (header.includes('kegiatan')) columnIndexes.kegiatan = idx;
+              if (header.includes('output') && !header.includes('sub')) columnIndexes.rincianOutput = idx;
+              if (header.includes('suboutput') || (header.includes('sub') && header.includes('output'))) columnIndexes.komponenOutput = idx;
+              if (header.includes('subkomponen') || (header.includes('sub') && header.includes('komponen'))) columnIndexes.subKomponen = idx;
+              if (header.includes('akun')) columnIndexes.akun = idx;
+              if (header.includes('item') || header.includes('uraian') || header.includes('deskripsi')) columnIndexes.uraian = idx;
+            });
+          } else {
+            // Headers are in separate columns
+            for (let i = 0; i < Math.min(15, headerRow.length); i++) {
+              const header = String(headerRow[i] || '').toLowerCase();
+              if (!header) continue;
+              
+              if (header.includes('program')) columnIndexes.program = i;
+              if (header.includes('kegiatan')) columnIndexes.kegiatan = i;
+              if (header.includes('output') && !header.includes('sub')) columnIndexes.rincianOutput = i;
+              if (header.includes('suboutput') || (header.includes('sub') && header.includes('output'))) columnIndexes.komponenOutput = i;
+              if (header.includes('subkomponen') || (header.includes('sub') && header.includes('komponen'))) columnIndexes.subKomponen = i;
+              if (header.includes('akun')) columnIndexes.akun = i;
+              if (header.includes('item') || header.includes('uraian')) columnIndexes.uraian = i;
+            }
+          }
+          
+          console.log('[parseMonthlyCSV] Detected column indexes:', columnIndexes);
+        }
+
+        // Look for rows with multiple non-empty cells (actual data rows)
+        for (let i = 6; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !Array.isArray(row)) continue;
           
-          // Skip if empty row
-          if (row.every(cell => !cell || String(cell).trim() === '')) continue;
+          // Skip empty rows
+          const nonEmptyCells = row.filter(cell => cell && String(cell).trim() !== '').length;
+          if (nonEmptyCells < 2) continue;
           
           // Skip meta rows
           if (isMetaRow(row)) continue;
           
-          // Check if this row looks like a data row (has hierarchy or uraian)
-          const hasHierarchy = row[0] || row[1] || row[2] || row[3] || row[4] || row[5];
-          const hasUraian = row[13] && String(row[13]).trim();
-          
-          if (hasHierarchy || hasUraian) {
-            dataStartRow = i;
-            console.log('[parseMonthlyCSV] Data start row:', dataStartRow, 'Content:', row.slice(0, 6).join(' | '));
-            break;
-          }
+          // Found potential data row
+          dataStartRow = i;
+          console.log('[parseMonthlyCSV] Data start row:', dataStartRow, 'Non-empty cells:', nonEmptyCells, 'Content:', row.slice(0, 8));
+          break;
         }
 
-        console.log('[parseMonthlyCSV] Starting parse from row', dataStartRow);
+        console.log('[parseMonthlyCSV] Starting parse from row', dataStartRow, 'with column indexes:', columnIndexes);
 
         // Parse rows dengan inheritance
         let previousHierarchy = {
@@ -296,14 +347,14 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
           }
 
           // Update hierarchy (inheritance)
-          const colA = row[0];
-          const colB = row[1];
-          const colC = row[2];
-          const colD = row[3];
-          const colE = row[4];
-          const colF = row[5];
-          const colG = row[6];
-          const colN = String(row[13] || '').trim();
+          const colA = row[columnIndexes.program];
+          const colB = row[columnIndexes.kegiatan];
+          const colC = row[columnIndexes.rincianOutput];
+          const colD = row[columnIndexes.komponenOutput];
+          const colE = row[columnIndexes.subKomponen];
+          const colF = row[columnIndexes.akun];
+          const colG = row[columnIndexes.uraian];
+          const colN = String(colG || '').trim();
           const lastColValue = row[row.length - 1]; // Last column (Sisa Anggaran)
 
           // Update hierarchy dengan nilai yg ada
