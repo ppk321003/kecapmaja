@@ -67,23 +67,23 @@ export const extractPeriode = (periodeText: string): { bulan: number; tahun: num
  * Baris 4: Kementerian/Satker Code
  * Baris 5: Unit Organisasi Code
  */
-export const extractSatkerInfo = (rows: any[]): { satkerCode: string; unitCode: string } => {
+export const extractSatkerInfo = (rows: any[][]): { satkerCode: string; unitCode: string } => {
   let satkerCode = '';
   let unitCode = '';
 
   // Find satker info dalam baris awal
   for (let i = 0; i < Math.min(6, rows.length); i++) {
     const row = rows[i];
-    if (!Array.isArray(row)) continue;
+    if (!Array.isArray(row) || row.length < 15) continue;
 
     // Cek kolom O (index 14)
     const colO = row[14];
-    if (colO && typeof colO === 'number' && colO.toString().match(/^\d{3}$/)) {
-      satkerCode = colO.toString();
-      if (i + 1 < rows.length && rows[i + 1][14]) {
+    if (colO && (typeof colO === 'number' || /^\d{3}$/.test(String(colO)))) {
+      satkerCode = String(colO).trim();
+      if (i + 1 < rows.length && rows[i + 1] && Array.isArray(rows[i + 1]) && rows[i + 1].length > 14) {
         const nextColO = rows[i + 1][14];
-        if (nextColO && typeof nextColO === 'number' && nextColO.toString().match(/^\d{2}$/)) {
-          unitCode = nextColO.toString();
+        if (nextColO && /^\d{2}$/.test(String(nextColO))) {
+          unitCode = String(nextColO).trim();
         }
       }
       break;
@@ -171,11 +171,9 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         const workbook = XLSX.read(data, { type: 'binary' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 0, defval: '' }) as any[];
-
-        // Convert to array of arrays for easier processing
-        const aoa = XLSX.utils.sheet_to_json(worksheet, { header: 0, raw: false, defval: '' }) as any[];
-        const rows = aoa as any[];
+        
+        // Get array of arrays (not objects)
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
 
         const errors: string[] = [];
         const warnings: string[] = [];
@@ -194,12 +192,13 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         for (let i = 0; i < Math.min(5, rows.length); i++) {
           const row = rows[i];
           if (Array.isArray(row)) {
-            const concatenated = row.join(' ');
+            const concatenated = row.map(v => String(v || '')).join(' ');
             if (concatenated.toLowerCase().includes('periode')) {
               periodeText = concatenated;
               const extracted = extractPeriode(concatenated);
               if (extracted) {
                 periodeInfo = extracted;
+                console.log('[parseMonthlyCSV] Found periode:', extracted);
               }
               break;
             }
@@ -207,12 +206,17 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         }
 
         if (periodeInfo.bulan === 0) {
-          errors.push('Tidak bisa mengekstrak periode (bulan/tahun) dari CSV');
+          errors.push('Tidak bisa mengekstrak periode (bulan/tahun) dari CSV. Pastikan CSV memiliki baris "Periode <BULAN> <TAHUN>"');
+          console.warn('[parseMonthlyCSV] Checked rows:', rows.slice(0, 5).map((r, i) => ({
+            index: i,
+            content: Array.isArray(r) ? r.map(v => String(v || '')).join(' | ') : 'not an array'
+          })));
         }
 
         // Extract satker info dari kolom O
         const { satkerCode, unitCode } = extractSatkerInfo(rows);
         const satkerIdFormatted = `${satkerCode}.${unitCode}`;
+        console.log('[parseMonthlyCSV] Satker info:', satkerIdFormatted);
 
         // Find data start row (skip headers)
         let dataStartRow = 0;

@@ -264,12 +264,15 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
                       <div>
                         <p className="text-gray-600">Periode</p>
                         <p className="font-semibold">
-                          {monthNames[uploadState.parsedData.bulan - 1]} {uploadState.parsedData.tahun}
+                          {uploadState.parsedData.bulan > 0 
+                            ? `${monthNames[uploadState.parsedData.bulan - 1]} ${uploadState.parsedData.tahun}`
+                            : '⚠️ Tidak terdeteksi'
+                          }
                         </p>
                       </div>
                       <div>
                         <p className="text-gray-600">Satker</p>
-                        <p className="font-semibold">{uploadState.parsedData.satkerId}</p>
+                        <p className="font-semibold">{uploadState.parsedData.satkerId || '—'}</p>
                       </div>
                       <div>
                         <p className="text-gray-600">Total Items Parsed</p>
@@ -281,84 +284,112 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
                       </div>
                     </div>
 
+                    {uploadState.parsedData.errors.length > 0 && (
+                      <Alert className="bg-red-50 border-red-200">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-xs">
+                          <p className="font-semibold text-red-700">❌ Error pada parsing:</p>
+                          <ul className="ml-4 mt-1 list-disc text-red-600">
+                            {uploadState.parsedData.errors.map((err, i) => (
+                              <li key={i}>{err}</li>
+                            ))}
+                          </ul>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     {uploadState.parsedData.warnings.length > 0 && (
                       <Alert className="bg-yellow-50 border-yellow-200">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="text-xs">
-                          {uploadState.parsedData.warnings.length} warning(s) pada parsing
+                          <p className="font-semibold text-yellow-700">⚠️ {uploadState.parsedData.warnings.length} warning(s):</p>
+                          <ul className="ml-4 mt-1 list-disc text-yellow-600">
+                            {uploadState.parsedData.warnings.slice(0, 3).map((warn, i) => (
+                              <li key={i}>{warn}</li>
+                            ))}
+                            {uploadState.parsedData.warnings.length > 3 && (
+                              <li>... dan {uploadState.parsedData.warnings.length - 3} warning lainnya</li>
+                            )}
+                          </ul>
                         </AlertDescription>
                       </Alert>
                     )}
                   </CardContent>
                 </Card>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold">Konfirmasi Periode</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select value={uploadState.selectedMonth}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {monthOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={uploadState.selectedYear}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {yearOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                {uploadState.parsedData.errors.length === 0 && uploadState.parsedData.stats.itemsParsed > 0 && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold">Konfirmasi Periode</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select 
+                          value={uploadState.selectedMonth}
+                          onValueChange={(value) => 
+                            setUploadState(prev => ({ ...prev, selectedMonth: value }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {monthOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select 
+                          value={uploadState.selectedYear}
+                          onValueChange={(value) => 
+                            setUploadState(prev => ({ ...prev, selectedYear: value }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {yearOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-                {importErrors.length > 0 && (
-                  <div className="space-y-2">
-                    {importErrors.map((error, idx) => (
-                      <Alert key={idx} variant="destructive" className="text-sm">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          <p className="font-semibold">{error.message}</p>
-                          {error.details && (
-                            <ul className="ml-4 mt-1 list-disc text-xs">
-                              {error.details.map((detail, i) => (
-                                <li key={i}>{detail}</li>
-                              ))}
-                            </ul>
-                          )}
-                        </AlertDescription>
-                      </Alert>
-                    ))}
-                  </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="default"
+                        className="flex-1"
+                        onClick={handleProcessUpload}
+                        disabled={isImporting}
+                      >
+                        {isImporting ? 'Sedang Proses...' : 'Lanjut Proses'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleResetAndClose}
+                        disabled={isImporting}
+                      >
+                        Batal
+                      </Button>
+                    </div>
+                  </>
                 )}
 
-                <div className="flex gap-2">
-                  <Button
-                    variant="default"
-                    className="flex-1"
-                    onClick={handleProcessUpload}
-                    disabled={isImporting}
-                  >
-                    {isImporting ? 'Sedang Proses...' : 'Lanjut Proses'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleResetAndClose}
-                    disabled={isImporting}
-                  >
-                    Batal
-                  </Button>
-                </div>
+                {(uploadState.parsedData.errors.length > 0 || uploadState.parsedData.stats.itemsParsed === 0) && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleResetAndClose}
+                    >
+                      ← Ulang Upload
+                    </Button>
+                  </div>
+                )}
               </>
             )}
 
