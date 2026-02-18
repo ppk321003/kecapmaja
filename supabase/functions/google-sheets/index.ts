@@ -392,12 +392,39 @@ serve(async (req: Request) => {
 
       console.log(`sisaAnggaranIndex: ${sisaAnggaranIndex}, updatedDateIndex: ${updatedDateIndex}`);
 
+      // Build a map of existing rows for faster lookup
+      console.log('📊 Building row map for faster matching...');
+      const rowMap = new Map<string, {rowIndex: number, data: any[]}>();
+      
+      for (let rowIndex = 1; rowIndex < readData.values.length; rowIndex++) {
+        const sheetRow = readData.values[rowIndex];
+        const sheetKey = [
+          normalizeForMatching(sheetRow[headerIndexes['program']]),
+          normalizeForMatching(sheetRow[headerIndexes['kegiatan']]),
+          normalizeForMatching(sheetRow[headerIndexes['rincian_output']]),
+          normalizeForMatching(sheetRow[headerIndexes['komponen_output']]),
+          normalizeForMatching(sheetRow[headerIndexes['sub_komponen']]),
+          normalizeForMatching(sheetRow[headerIndexes['akun']]),
+          normalizeForMatching(sheetRow[headerIndexes['uraian']]),
+        ].join('|');
+        
+        rowMap.set(sheetKey, { rowIndex: rowIndex + 1, data: sheetRow });
+
+        if ((rowIndex) % 100 === 0) {
+          console.log(`Indexed ${rowIndex} rows...`);
+        }
+      }
+      
+      console.log(`✓ Row map built with ${rowMap.size} entries`);
+
       // Find matching rows and prepare updates
       const updates: { rowIndex: number; values: any[] }[] = [];
       const versionedRows: any[][] = [headers]; // Start with headers
       let matchedCount = 0;
+      let unmatchedCount = 0;
 
-      itemsToUpdate.forEach((item: any) => {
+      console.log(`🔍 Matching ${itemsToUpdate.length} items against ${rowMap.size} rows...`);
+      itemsToUpdate.forEach((item: any, idx: number) => {
         // Create matching key from item
         const itemKey = [
           normalizeForMatching(item.program),
@@ -409,52 +436,39 @@ serve(async (req: Request) => {
           normalizeForMatching(item.uraian),
         ].join('|');
 
-        // Find matching row in sheet
-        let foundRow = false;
-        for (let rowIndex = 1; rowIndex < readData.values.length; rowIndex++) {
-          const sheetRow = readData.values[rowIndex];
-          const sheetKey = [
-            normalizeForMatching(sheetRow[headerIndexes['program']]),
-            normalizeForMatching(sheetRow[headerIndexes['kegiatan']]),
-            normalizeForMatching(sheetRow[headerIndexes['rincian_output']]),
-            normalizeForMatching(sheetRow[headerIndexes['komponen_output']]),
-            normalizeForMatching(sheetRow[headerIndexes['sub_komponen']]),
-            normalizeForMatching(sheetRow[headerIndexes['akun']]),
-            normalizeForMatching(sheetRow[headerIndexes['uraian']]),
-          ].join('|');
-
-          if (itemKey === sheetKey) {
-            // Prepare row update for main sheet
-            const newRow = [...sheetRow];
-            newRow[sisaAnggaranIndex] = item.sisa_anggaran;
-            if (updatedDateIndex !== undefined) {
-              newRow[updatedDateIndex] = item.updated_date;
-            }
-
-            updates.push({
-              rowIndex: rowIndex + 1, // +1 because row 1 is headers
-              values: [newRow],
-            });
-
-            // Also save for versioned sheet
-            versionedRows.push(newRow);
-
-            matchedCount++;
-            foundRow = true;
-            console.log(`✓ Matched row ${rowIndex + 1}: ${itemKey.substring(0, 50)}...`);
-            break;
+        const foundMatch = rowMap.get(itemKey);
+        
+        if (foundMatch) {
+          // Update the row data
+          const newRow = [...foundMatch.data];
+          newRow[sisaAnggaranIndex] = item.sisa_anggaran;
+          if (updatedDateIndex !== undefined) {
+            newRow[updatedDateIndex] = item.updated_date;
           }
-        }
 
-        if (!foundRow) {
-          console.warn(`✗ No match found for: ${itemKey.substring(0, 50)}...`);
+          updates.push({
+            rowIndex: foundMatch.rowIndex,
+            values: [newRow],
+          });
+
+          // Also save for versioned sheet
+          versionedRows.push(newRow);
+
+          matchedCount++;
+          
+          if ((idx + 1) % 100 === 0) {
+            console.log(`Matched ${idx + 1}/${itemsToUpdate.length} items...`);
+          }
+        } else {
+          unmatchedCount++;
         }
       });
 
-      console.log(`Found ${matchedCount} matching rows out of ${itemsToUpdate.length}`);
+      console.log(`✅ Matching complete: ${matchedCount} matched, ${unmatchedCount} unmatched out of ${itemsToUpdate.length}`);
 
       // Step 1: Create versioned sheet with matched data
       console.log(`📊 Creating versioned sheet: ${versionedSheetName}...`);
+      let versionedSheetId = 0;
       try {
         const createSheetResponse = await fetch(
           `${baseUrl}:batchUpdate`,
@@ -476,15 +490,46 @@ serve(async (req: Request) => {
           }
         );
         const createSheetResult = await createSheetResponse.json();
-        console.log(`✓ Versioned sheet created:`, createSheetResult);
+        if (createSheetResponse.ok && createSheetResult.replies?.[0]?.addSheet?.properties?.sheetId !== undefined) {
+          versionedSheetId = createSheetResult.replies[0].addSheet.properties.sheetId;
+          console.log(`✓ Versioned sheet created with ID: ${versionedSheetId}`);
+        } else {
+          console.warn(`⚠️ Could not create new versioned sheet (may already exist). Trying to clear existing...`);
+        }
       } catch (error) {
         console.warn(`⚠️ Could not create versioned sheet (may already exist):`, error);
       }
 
-      // Step 2: Write data to versioned sheet
+      // Step 2: Write data to versioned sheet (truncate and rewrite)
       if (versionedRows.length > 0) {
         console.log(`📝 Writing ${versionedRows.length} rows to versioned sheet...`);
         try {
+          // First, clear existing data in versioned sheet
+          if (versionedSheetId) {
+            console.log('Clearing existing data in versioned sheet...');
+            const clearResponse = await fetch(
+              `${baseUrl}:batchUpdate`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  requests: [{
+                    updateCells: {
+                      range: {
+                        sheetId: versionedSheetId,
+                      },
+                      fields: 'userEnteredValue',
+                    },
+                  }],
+                }),
+              }
+            );
+            console.log('Clear response:', clearResponse.status);
+          }
+
           const writeVersionResponse = await fetch(
             `${baseUrl}/values/${versionedSheetName}?valueInputOption=USER_ENTERED`,
             {
@@ -507,41 +552,68 @@ serve(async (req: Request) => {
         }
       }
 
-      // Step 3: Apply all updates to main sheet using individual update operations
+      // Step 3: Apply all updates to main sheet using batch update API (more efficient)
       let successCount = 0;
       const updateErrors: string[] = [];
 
-      console.log(`🔄 Updating main sheet (${mainSheetName}) with ${updates.length} rows...`);
-      for (const update of updates) {
-        try {
-          const cellRange = `${mainSheetName}!A${update.rowIndex}`;
-          console.log(`Updating row ${update.rowIndex}...`);
+      console.log(`🔄 Updating main sheet (${mainSheetName}) with ${updates.length} rows using batch update...`);
+      
+      // Prepare batch update data
+      const updateCellsData: any[] = [];
+      updates.forEach((update) => {
+        update.values[0].forEach((value: any, colIndex: number) => {
+          updateCellsData.push({
+            range: {
+              sheetName: mainSheetName,
+              rowIndex: update.rowIndex - 1, // 0-based
+              columnIndex: colIndex,
+            },
+            values: [[value]],
+          });
+        });
+      });
 
-          const updateResponse = await fetch(
-            `${baseUrl}/values/${cellRange}?valueInputOption=USER_ENTERED`,
-            {
-              method: 'PUT',
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ values: update.values }),
+      try {
+        if (updates.length > 0) {
+          // Use batch update with individual row updates
+          for (const update of updates) {
+            try {
+              const cellRange = `${mainSheetName}!A${update.rowIndex}`;
+              console.log(`Updating row ${update.rowIndex}...`);
+
+              const updateResponse = await fetch(
+                `${baseUrl}/values/${cellRange}?valueInputOption=USER_ENTERED`,
+                {
+                  method: 'PUT',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ values: update.values }),
+                }
+              );
+
+              if (!updateResponse.ok) {
+                const updateResult = await updateResponse.json();
+                updateErrors.push(`Row ${update.rowIndex}: ${JSON.stringify(updateResult)}`);
+                console.error(`✗ Failed to update row ${update.rowIndex}:`, updateResult);
+              } else {
+                successCount++;
+                if (successCount % 50 === 0) {
+                  console.log(`✓ Updated ${successCount} rows so far...`);
+                }
+              }
+            } catch (error) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              updateErrors.push(`Row ${update.rowIndex}: ${errorMsg}`);
+              console.error(`✗ Error updating row ${update.rowIndex}:`, error);
             }
-          );
-
-          const updateResult = await updateResponse.json();
-          if (!updateResponse.ok) {
-            updateErrors.push(`Row ${update.rowIndex}: ${JSON.stringify(updateResult)}`);
-            console.error(`✗ Failed to update row ${update.rowIndex}:`, updateResult);
-          } else {
-            successCount++;
-            console.log(`✓ Updated row ${update.rowIndex}`);
           }
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : String(error);
-          updateErrors.push(`Row ${update.rowIndex}: ${errorMsg}`);
-          console.error(`✗ Error updating row ${update.rowIndex}:`, error);
         }
+      } catch (error) {
+        console.error('Error in batch update:', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        updateErrors.push(`Batch error: ${errorMsg}`);
       }
 
       console.log(`✅ Update complete: ${successCount}/${updates.length} rows updated in main sheet`);
@@ -555,7 +627,7 @@ serve(async (req: Request) => {
         versioned_sheet: versionedSheetName,
         bulan,
         tahun,
-        errors: updateErrors.length > 0 ? updateErrors : undefined,
+        errors: updateErrors.length > 0 ? updateErrors.slice(0, 10) : undefined,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

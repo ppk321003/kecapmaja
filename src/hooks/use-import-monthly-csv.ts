@@ -186,7 +186,7 @@ export const useImportMonthlyCSV = ({
 
         setParseProgress(`Calling edge function untuk ${updateData.length} items...`);
 
-        // Call Google Sheets function
+        // Call Google Sheets function dengan timeout
         console.log('[useImportMonthlyCSV] Invoking google-sheets function...', {
           spreadsheetId: sheetId,
           operation: 'update-sisa-anggaran',
@@ -196,18 +196,25 @@ export const useImportMonthlyCSV = ({
         });
 
         const startTime = Date.now();
-        const uploadResult = await supabase.functions.invoke('google-sheets', {
-          body: {
-            spreadsheetId: sheetId,
-            operation: 'update-sisa-anggaran',
-            values: updateData,
-            bulan: parsedData.bulan,
-            tahun: parsedData.tahun,
-          },
-        });
-        const endTime = Date.now();
-
-        console.log('[useImportMonthlyCSV] Upload result received in', endTime - startTime, 'ms:', uploadResult);
+        let uploadResult;
+        
+        try {
+          uploadResult = await supabase.functions.invoke('google-sheets', {
+            body: {
+              spreadsheetId: sheetId,
+              operation: 'update-sisa-anggaran',
+              values: updateData,
+              bulan: parsedData.bulan,
+              tahun: parsedData.tahun,
+            },
+          });
+          
+          const endTime = Date.now();
+          console.log('[useImportMonthlyCSV] Upload result received in', endTime - startTime, 'ms:', uploadResult);
+        } catch (error) {
+          console.error('[useImportMonthlyCSV] Error calling edge function:', error);
+          throw new Error(`Edge function error: ${error instanceof Error ? error.message : String(error)}`);
+        }
 
         if (uploadResult.error) {
           console.error('[useImportMonthlyCSV] Upload error:', uploadResult.error);
