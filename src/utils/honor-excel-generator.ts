@@ -83,6 +83,11 @@ const isNumericColumn = (key: string): boolean => {
   return ['satuanBiaya', 'jumlahWaktu', 'totalBruto', 'pph', 'totalNetto'].includes(key);
 };
 
+// Determine if column should always be treated as text (never as number)
+const isTextColumn = (key: string): boolean => {
+  return ['nik', 'noKontrakSKST', 'noSPM', 'noSP2D', 'periode'].includes(key);
+};
+
 // Extract value from row based on column key
 const getRowValue = (row: HonorRow, key: string): any => {
   return (row as any)[key] ?? '';
@@ -148,6 +153,23 @@ export const generateHonorExcel = ({
 
   // Create worksheet
   const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+  // Force text columns to be stored as text (prevents Excel auto-conversion)
+  // Process all data rows to ensure text columns are properly formatted
+  for (let i = 3; i < 3 + dataRowCount; i++) {
+    for (let j = 0; j < columnKeys.length; j++) {
+      const columnKey = columnKeys[j];
+      if (isTextColumn(columnKey)) {
+        const cellRef = XLSX.utils.encode_cell({ r: i, c: j });
+        const cell = ws[cellRef];
+        if (cell) {
+          // Convert to string and set cell type
+          cell.v = String(cell.v);
+          cell.t = 's'; // Force text type
+        }
+      }
+    }
+  }
 
   // Set column widths dynamically based on number of columns
   const columnWidths = columnKeys.map(key => {
@@ -222,8 +244,12 @@ export const generateHonorExcel = ({
       const cell = ws[cellRef];
       
       if (cell) {
+        // Force text type for text columns (especially NIK)
+        if (isTextColumn(columnKey)) {
+          cell.t = 's'; // Set cell type to string/text
+        }
         // Apply number format for numeric columns
-        if (isNumericColumn(columnKey)) {
+        else if (isNumericColumn(columnKey)) {
           cell.z = '#,##0'; // Number format with thousands separator
         }
 
