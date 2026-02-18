@@ -13,11 +13,13 @@ const corsHeaders = {
 
 interface SheetOperation {
   spreadsheetId: string;
-  operation: 'read' | 'append' | 'update' | 'delete';
+  operation: 'read' | 'append' | 'update' | 'delete' | 'update-sisa-anggaran';
   range?: string;
   values?: any[][];
   rowIndex?: number;
   sheetName?: string;
+  bulan?: number;
+  tahun?: number;
 }
 
 async function getAccessToken() {
@@ -182,6 +184,23 @@ async function getSheetIdByName(spreadsheetId: string, accessToken: string, shee
   }
 }
 
+// Normalize values for consistent matching
+function normalizeForMatching(value: any): string {
+  if (!value) return '';
+  
+  const str = String(value).toLowerCase().trim();
+  
+  // Normalize sub_komponen to 3 digits (pad with zeros)
+  if (/^\d+$/.test(str)) {
+    return str.padStart(3, '0');
+  }
+  
+  // Strip kode prefix like "000081. " or "81. "
+  const withoutPrefix = str.replace(/^\d+\.\s*/, '');
+  
+  return withoutPrefix;
+}
+
 serve(async (req: Request) => {
   console.log('Google Sheets function invoked');
   
@@ -325,6 +344,154 @@ serve(async (req: Request) => {
       }
       
       return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (operation === 'update-sisa-anggaran') {
+      console.log('🔄 Updating sisa_anggaran values...');
+      const { values: itemsToUpdate, bulan, tahun } = body;
+      
+      if (!itemsToUpdate || !Array.isArray(itemsToUpdate)) {
+        throw new Error('values must be an array of items');
+      }
+
+      console.log(`Processing ${itemsToUpdate.length} items for bulan=${bulan}, tahun=${tahun}`);
+
+      // Read budget_items sheet to find matching rows
+      const sheetName = 'budget_items';
+      const readResponse = await fetch(
+        `${baseUrl}/values/${sheetName}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      const readData = await readResponse.json();
+      
+      if (!readData.values || readData.values.length < 2) {
+        throw new Error('Budget items sheet is empty or not found');
+      }
+
+      const headers = readData.values[0];
+      const headerIndexes: { [key: string]: number } = {};
+      headers.forEach((header: string, index: number) => {
+        headerIndexes[header.toLowerCase()] = index;
+      });
+
+      console.log('Sheet headers:', headers);
+      const sisaAnggaranIndex = headerIndexes['sisa_anggaran'];
+      const updatedDateIndex = headerIndexes['updated_date'];
+
+      if (sisaAnggaranIndex === undefined) {
+        throw new Error('sisa_anggaran column not found in budget_items sheet');
+      }
+
+      console.log(`sisaAnggaranIndex: ${sisaAnggaranIndex}, updatedDateIndex: ${updatedDateIndex}`);
+
+      // Find matching rows and prepare updates
+      const updates: { rowIndex: number; values: any[] }[] = [];
+      let matchedCount = 0;
+
+      itemsToUpdate.forEach((item: any) => {
+        // Create matching key from item
+        const itemKey = [
+          normalizeForMatching(item.program),
+          normalizeForMatching(item.kegiatan),
+          normalizeForMatching(item.rincian_output),
+          normalizeForMatching(item.komponen_output),
+          normalizeForMatching(item.sub_komponen),
+          normalizeForMatching(item.akun),
+          normalizeForMatching(item.uraian),
+        ].join('|');
+
+        // Find matching row in sheet
+        let foundRow = false;
+        for (let rowIndex = 1; rowIndex < readData.values.length; rowIndex++) {
+          const sheetRow = readData.values[rowIndex];
+          const sheetKey = [
+            normalizeForMatching(sheetRow[headerIndexes['program']]),
+            normalizeForMatching(sheetRow[headerIndexes['kegiatan']]),
+            normalizeForMatching(sheetRow[headerIndexes['rincian_output']]),
+            normalizeForMatching(sheetRow[headerIndexes['komponen_output']]),
+            normalizeForMatching(sheetRow[headerIndexes['sub_komponen']]),
+            normalizeForMatching(sheetRow[headerIndexes['akun']]),
+            normalizeForMatching(sheetRow[headerIndexes['uraian']]),
+          ].join('|');
+
+          if (itemKey === sheetKey) {
+            // Prepare row update
+            const newRow = [...sheetRow];
+            newRow[sisaAnggaranIndex] = item.sisa_anggaran;
+            if (updatedDateIndex !== undefined) {
+              newRow[updatedDateIndex] = item.updated_date;
+            }
+
+            updates.push({
+              rowIndex: rowIndex + 1, // +1 because row 1 is headers
+              values: [newRow],
+            });
+
+            matchedCount++;
+            foundRow = true;
+            console.log(`✓ Matched row ${rowIndex + 1}: ${itemKey.substring(0, 50)}...`);
+            break;
+          }
+        }
+
+        if (!foundRow) {
+          console.warn(`✗ No match found for: ${itemKey.substring(0, 50)}...`);
+        }
+      });
+
+      console.log(`Found ${matchedCount} matching rows out of ${itemsToUpdate.length}`);
+
+      // Apply all updates using individual update operations
+      let successCount = 0;
+      const updateErrors: string[] = [];
+
+      for (const update of updates) {
+        try {
+          const cellRange = `${sheetName}!A${update.rowIndex}`;
+          console.log(`Updating row ${update.rowIndex}...`);
+
+          const updateResponse = await fetch(
+            `${baseUrl}/values/${cellRange}?valueInputOption=USER_ENTERED`,
+            {
+              method: 'PUT',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ values: update.values }),
+            }
+          );
+
+          const updateResult = await updateResponse.json();
+          if (!updateResponse.ok) {
+            updateErrors.push(`Row ${update.rowIndex}: ${JSON.stringify(updateResult)}`);
+            console.error(`✗ Failed to update row ${update.rowIndex}:`, updateResult);
+          } else {
+            successCount++;
+            console.log(`✓ Updated row ${update.rowIndex}`);
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          updateErrors.push(`Row ${update.rowIndex}: ${errorMsg}`);
+          console.error(`✗ Error updating row ${update.rowIndex}:`, error);
+        }
+      }
+
+      console.log(`✅ Update complete: ${successCount}/${updates.length} rows updated`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        matched: matchedCount,
+        updated: successCount,
+        total_requested: itemsToUpdate.length,
+        bulan,
+        tahun,
+        errors: updateErrors.length > 0 ? updateErrors : undefined,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

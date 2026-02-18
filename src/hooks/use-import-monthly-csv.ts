@@ -176,6 +176,8 @@ export const useImportMonthlyCSV = ({
           },
         });
 
+        console.log('[useImportMonthlyCSV] Upload result:', uploadResult);
+
         if (uploadResult.error) {
           console.error('[useImportMonthlyCSV] Upload error:', uploadResult.error);
           errors.push({
@@ -186,6 +188,20 @@ export const useImportMonthlyCSV = ({
           setImportErrors(errors);
           return;
         }
+
+        const uploadData = uploadResult.data;
+        if (!uploadData.success) {
+          console.error('[useImportMonthlyCSV] Upload returned success:false', uploadData);
+          errors.push({
+            type: 'upload',
+            message: 'Gagal update data di Google Sheets',
+            details: uploadData.errors || ['Unknown error during update'],
+          });
+          setImportErrors(errors);
+          return;
+        }
+
+        console.log(`[useImportMonthlyCSV] Successfully updated ${uploadData.updated} out of ${uploadData.matched} matched items`);
 
         setParseProgress('');
 
