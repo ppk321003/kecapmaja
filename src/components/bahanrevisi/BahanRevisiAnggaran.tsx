@@ -24,8 +24,11 @@ import BudgetChangesSummary from './BudgetChangesSummary';
 import { BudgetChangesTable } from './BudgetChangesTable';
 import { NewBudgetTable } from './NewBudgetTable';
 import BahanRevisiExcelImportExport from './BahanRevisiExcelImportExport';
+import BahanRevisiUploadBulanan from './BahanRevisiUploadBulanan';
 import { toast } from '@/hooks/use-toast';
 import SummaryCardsBar from './SummaryCardsBar';
+import { MatchResult } from '@/hooks/use-import-monthly-csv';
+import { ParsedMonthlyData } from '@/utils/bahanrevisi-monthly-csv-parser';
 
 interface BahanRevisiAnggaranProps {}
 
@@ -36,6 +39,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
   const [selectedTab, setSelectedTab] = useState('anggaran');
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [hideZeroPagu, setHideZeroPagu] = useState(true);
+  const [lastMonthlyImport, setLastMonthlyImport] = useState<{ bulan: number; tahun: number } | null>(null);
 
   // Get sheet ID untuk bahanrevisi module
   const sheetId = satkerConfig?.getUserSatkerSheetId('bahanrevisi');
@@ -409,6 +413,32 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
             {/* Tab: Anggaran (Budget Items) */}
             <TabsContent value="anggaran" className="space-y-4">
+              {/* Upload Bulanan - Only for PPK */}
+              {user?.role === 'Pejabat Pembuat Komitmen' && (
+                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm">
+                    <p className="font-semibold text-blue-900">📊 Update Sisa Anggaran Bulanan</p>
+                    {lastMonthlyImport && (
+                      <p className="text-xs text-blue-700 mt-1">
+                        Last update: {lastMonthlyImport.bulan < 10 ? '0' : ''}{lastMonthlyImport.bulan}/{lastMonthlyImport.tahun}
+                      </p>
+                    )}
+                  </div>
+                  <BahanRevisiUploadBulanan
+                    sheetId={sheetId}
+                    budgetItems={budgetItems}
+                    onImportSuccess={(matchResult, parsedData) => {
+                      setLastMonthlyImport({
+                        bulan: parsedData.bulan,
+                        tahun: parsedData.tahun,
+                      });
+                      // Refetch data for updated sisa_anggaran
+                      refetch();
+                    }}
+                  />
+                </div>
+              )}
+
               <BahanRevisiBudgetTable
               items={filteredBudgetItems}
               filters={filters}
