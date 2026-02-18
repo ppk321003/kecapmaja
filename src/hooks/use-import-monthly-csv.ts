@@ -164,8 +164,12 @@ export const useImportMonthlyCSV = ({
         });
 
         console.log('[useImportMonthlyCSV] Uploading', updateData.length, 'items to Google Sheets...');
+        console.log('[useImportMonthlyCSV] First item sample:', updateData[0]);
+
+        setParseProgress(`Calling edge function untuk ${updateData.length} items...`);
 
         // Call Google Sheets function
+        console.log('[useImportMonthlyCSV] Invoking google-sheets function...');
         const uploadResult = await supabase.functions.invoke('google-sheets', {
           body: {
             spreadsheetId: sheetId,
@@ -176,13 +180,13 @@ export const useImportMonthlyCSV = ({
           },
         });
 
-        console.log('[useImportMonthlyCSV] Upload result:', uploadResult);
+        console.log('[useImportMonthlyCSV] Upload result received:', uploadResult);
 
         if (uploadResult.error) {
           console.error('[useImportMonthlyCSV] Upload error:', uploadResult.error);
           errors.push({
             type: 'upload',
-            message: 'Gagal upload ke Google Sheets',
+            message: 'Gagal upload ke Google Sheets: ' + (uploadResult.error.message || String(uploadResult.error)),
             details: [uploadResult.error.message || uploadResult.error.toString()],
           });
           setImportErrors(errors);
@@ -190,12 +194,12 @@ export const useImportMonthlyCSV = ({
         }
 
         const uploadData = uploadResult.data;
-        if (!uploadData.success) {
+        if (!uploadData?.success) {
           console.error('[useImportMonthlyCSV] Upload returned success:false', uploadData);
           errors.push({
             type: 'upload',
             message: 'Gagal update data di Google Sheets',
-            details: uploadData.errors || ['Unknown error during update'],
+            details: uploadData?.errors || ['Unknown error during update'],
           });
           setImportErrors(errors);
           return;

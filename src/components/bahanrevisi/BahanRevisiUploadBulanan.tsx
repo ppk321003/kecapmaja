@@ -39,6 +39,7 @@ interface UploadState {
   matchResult: MatchResult | null;
   selectedMonth: string;
   selectedYear: string;
+  originalFile: File | null;
 }
 
 const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
@@ -53,6 +54,7 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
     matchResult: null,
     selectedMonth: new Date().getMonth().toString().padStart(2, '0'),
     selectedYear: new Date().getFullYear().toString(),
+    originalFile: null,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,6 +96,7 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
     setUploadState((prev) => ({
       ...prev,
       step: 'processing',
+      originalFile: file,
     }));
 
     try {
@@ -107,6 +110,7 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
         parsedData: parsed,
         selectedMonth: String(parsed.bulan).padStart(2, '0'),
         selectedYear: String(parsed.tahun),
+        originalFile: file,
       }));
 
       // Reset file input
@@ -122,6 +126,7 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
       setUploadState((prev) => ({
         ...prev,
         step: 'idle',
+        originalFile: null,
       }));
     }
   };
@@ -132,7 +137,8 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
 
   const handleProcessUpload = async () => {
     const parsed = uploadState.parsedData;
-    if (!parsed) return;
+    const file = uploadState.originalFile;
+    if (!parsed || !file) return;
 
     // Verify month/year
     if (parseInt(uploadState.selectedMonth) !== parsed.bulan) {
@@ -149,10 +155,8 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
       step: 'processing',
     }));
 
-    // Call import function with parsed data
-    await handleImportFile(
-      new File([JSON.stringify(parsed)], `parsed_${uploadState.selectedMonth}_${uploadState.selectedYear}.json`)
-    );
+    // Call import function with ORIGINAL FILE (already tested and parsed)
+    await handleImportFile(file);
   };
 
   const handleResetAndClose = () => {
@@ -162,6 +166,7 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
       matchResult: null,
       selectedMonth: new Date().getMonth().toString().padStart(2, '0'),
       selectedYear: new Date().getFullYear().toString(),
+      originalFile: null,
     });
     setIsDialogOpen(false);
     clearErrors();
