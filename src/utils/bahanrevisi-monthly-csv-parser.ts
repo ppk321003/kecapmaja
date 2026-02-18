@@ -131,6 +131,16 @@ const isParenthesisBalanced = (text: string): boolean => {
 };
 
 /**
+ * Check if row is summary/total row (contains "JUMLAH" in first column)
+ */
+const isSummaryRow = (row: any[]): boolean => {
+  const colA = row[0];
+  if (!colA) return false;
+  const text = String(colA).trim().toUpperCase();
+  return text.includes('JUMLAH') || text.includes('TOTAL');
+};
+
+/**
  * Check if row is meta/note row (starts with * in column B)
  */
 const isMetaRow = (row: any[]): boolean => {
@@ -218,10 +228,9 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         const satkerIdFormatted = `${satkerCode}.${unitCode}`;
         console.log('[parseMonthlyCSV] Satker info:', satkerIdFormatted);
 
-        // Find data start row (skip headers and metadata)
-        // Skip first 6 rows (title, headers, periode, metadata, etc)
-        // Then look for first row with actual numeric data
-        let dataStartRow = 6;
+        // Find REAL data start row
+        // Look for row with "Uraian" or similar header indicators
+        let dataStartRow = 8;
         let columnIndexes: { [key: string]: number } = {
           program: 0,
           kegiatan: 1,
@@ -232,68 +241,63 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
           uraian: 6,
           sisaAnggaran: -1,
         };
-
-        // Try to detect column indexes from header row (row 1)
-        if (rows[1] && Array.isArray(rows[1])) {
-          const headerRow = rows[1];
-          const headerStr = headerRow.map(h => String(h || '').toLowerCase()).join('|');
-          
-          console.log('[parseMonthlyCSV] Header row detected, checking columns...');
-          
-          // Check if the header is in column A as semicolon-separated text
-          if (headerRow[0] && String(headerRow[0]).includes(';')) {
-            console.log('[parseMonthlyCSV] Headers found in column A as semicolon-separated text');
-            const headerCells = String(headerRow[0]).split(';').map(h => h.trim().toLowerCase());
-            console.log('[parseMonthlyCSV] Parsed headers:', headerCells);
-            
-            // Map headers to our expected fields
-            headerCells.forEach((header, idx) => {
-              if (header.includes('program')) columnIndexes.program = idx;
-              if (header.includes('kegiatan')) columnIndexes.kegiatan = idx;
-              if (header.includes('output') && !header.includes('sub')) columnIndexes.rincianOutput = idx;
-              if (header.includes('suboutput') || (header.includes('sub') && header.includes('output'))) columnIndexes.komponenOutput = idx;
-              if (header.includes('subkomponen') || (header.includes('sub') && header.includes('komponen'))) columnIndexes.subKomponen = idx;
-              if (header.includes('akun')) columnIndexes.akun = idx;
-              if (header.includes('item') || header.includes('uraian') || header.includes('deskripsi')) columnIndexes.uraian = idx;
-            });
-          } else {
-            // Headers are in separate columns
-            for (let i = 0; i < Math.min(15, headerRow.length); i++) {
-              const header = String(headerRow[i] || '').toLowerCase();
-              if (!header) continue;
-              
-              if (header.includes('program')) columnIndexes.program = i;
-              if (header.includes('kegiatan')) columnIndexes.kegiatan = i;
-              if (header.includes('output') && !header.includes('sub')) columnIndexes.rincianOutput = i;
-              if (header.includes('suboutput') || (header.includes('sub') && header.includes('output'))) columnIndexes.komponenOutput = i;
-              if (header.includes('subkomponen') || (header.includes('sub') && header.includes('komponen'))) columnIndexes.subKomponen = i;
-              if (header.includes('akun')) columnIndexes.akun = i;
-              if (header.includes('item') || header.includes('uraian')) columnIndexes.uraian = i;
-            }
-          }
-          
-          console.log('[parseMonthlyCSV] Detected column indexes:', columnIndexes);
-        }
-
-        // Look for rows with multiple non-empty cells (actual data rows)
-        for (let i = 6; i < rows.length; i++) {
+        let actualHeaders: string[] = [];
+        
+        for (let i = 5; i < Math.min(10, rows.length); i++) {
           const row = rows[i];
           if (!row || !Array.isArray(row)) continue;
           
-          // Skip empty rows
-          const nonEmptyCells = row.filter(cell => cell && String(cell).trim() !== '').length;
-          if (nonEmptyCells < 2) continue;
+          const firstCell = String(row[0] || '').trim().toLowerCase();
           
-          // Skip meta rows
-          if (isMetaRow(row)) continue;
-          
-          // Found potential data row
-          dataStartRow = i;
-          console.log('[parseMonthlyCSV] Data start row:', dataStartRow, 'Non-empty cells:', nonEmptyCells, 'Content:', row.slice(0, 8));
-          break;
+          // Check if this looks like a header row
+          if (firstCell.includes('uraian') || firstCell.includes('deskripsi') || 
+              firstCell.includes('program') || firstCell.includes('item')) {
+            actualHeaders = row.map(h => String(h || '').trim().toLowerCase());
+            dataStartRow = i + 1; // Data starts after header row
+            
+            console.log('[parseMonthlyCSV] Found actual header row at row', i);
+            console.log('[parseMonthlyCSV] Headers:', actualHeaders.slice(0, 10));
+            break;
+          }
         }
 
-        console.log('[parseMonthlyCSV] Starting parse from row', dataStartRow, 'with column indexes:', columnIndexes);
+        // Auto-detect columns from actual header row
+        if (actualHeaders.length > 0) {
+          actualHeaders.forEach((header, idx) => {
+            if (header.includes('program')) columnIndexes.program = idx;
+            if (header.includes('kegiatan')) columnIndexes.kegiatan = idx;
+            if (header.includes('output') && !header.includes('sub')) columnIndexes.rincianOutput = idx;
+            if (header.includes('suboutput') || (header.includes('sub') && header.includes('output'))) columnIndexes.komponenOutput = idx;
+            if (header.includes('subkomponen')) columnIndexes.subKomponen = idx;
+            if (header.includes('akun')) columnIndexes.akun = idx;
+            if (header.includes('uraian') || header.includes('item') || header.includes('deskripsi')) columnIndexes.uraian = idx;
+            if (header.includes('sisa') || header.includes('pagu') || header.includes('realisasi')) columnIndexes.sisaAnggaran = idx;
+          });
+          
+          console.log('[parseMonthlyCSV] Detected columns from actual header:', columnIndexes);
+        }
+
+        // Look for rows with actual data (non-zero budget values)
+        for (let i = dataStartRow; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !Array.isArray(row)) continue;
+          
+          // Skip summary rows
+          if (isSummaryRow(row)) {
+            console.log('[parseMonthlyCSV] Skipping summary row at', i);
+            continue;
+          }
+          
+          // Check if row has non-zero budget value in last column
+          const lastCol = row[row.length - 1];
+          const hasValue = lastCol && String(lastCol).trim() !== '' && String(lastCol) !== '0';
+          
+          if (hasValue) {
+            dataStartRow = i;
+            console.log('[parseMonthlyCSV] Found first real data row at', i, 'with value:', lastCol);
+            break;
+          }
+        }
 
         // Parse rows dengan inheritance
         let previousHierarchy = {
@@ -327,6 +331,13 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
 
           // Skip meta rows
           if (isMetaRow(row)) {
+            stats.skippedRows++;
+            i++;
+            continue;
+          }
+
+          // Skip summary/total rows
+          if (isSummaryRow(row)) {
             stats.skippedRows++;
             i++;
             continue;
@@ -390,6 +401,14 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
               if (!isNaN(numValue)) {
                 sisaAnggaran = numValue;
               }
+            }
+
+            // Skip rows with zero sisa_anggaran (no actual budget)
+            if (sisaAnggaran === 0) {
+              warnings.push(`Row ${i + 1}: Sisa Anggaran adalah 0, skip item`);
+              stats.skippedRows++;
+              i++;
+              continue;
             }
 
             // Normalize sub komponen

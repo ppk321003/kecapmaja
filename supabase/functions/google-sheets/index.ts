@@ -356,12 +356,16 @@ serve(async (req: Request) => {
         throw new Error('values must be an array of items');
       }
 
+      const monthStr = String(bulan).padStart(2, '0');
+      const versionedSheetName = `budget_items_${tahun}${monthStr}`;
+      
       console.log(`Processing ${itemsToUpdate.length} items for bulan=${bulan}, tahun=${tahun}`);
+      console.log(`Will create versioned sheet: ${versionedSheetName}`);
 
       // Read budget_items sheet to find matching rows
-      const sheetName = 'budget_items';
+      const mainSheetName = 'budget_items';
       const readResponse = await fetch(
-        `${baseUrl}/values/${sheetName}`,
+        `${baseUrl}/values/${mainSheetName}`,
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
@@ -390,6 +394,7 @@ serve(async (req: Request) => {
 
       // Find matching rows and prepare updates
       const updates: { rowIndex: number; values: any[] }[] = [];
+      const versionedRows: any[][] = [headers]; // Start with headers
       let matchedCount = 0;
 
       itemsToUpdate.forEach((item: any) => {
@@ -419,7 +424,7 @@ serve(async (req: Request) => {
           ].join('|');
 
           if (itemKey === sheetKey) {
-            // Prepare row update
+            // Prepare row update for main sheet
             const newRow = [...sheetRow];
             newRow[sisaAnggaranIndex] = item.sisa_anggaran;
             if (updatedDateIndex !== undefined) {
@@ -430,6 +435,9 @@ serve(async (req: Request) => {
               rowIndex: rowIndex + 1, // +1 because row 1 is headers
               values: [newRow],
             });
+
+            // Also save for versioned sheet
+            versionedRows.push(newRow);
 
             matchedCount++;
             foundRow = true;
@@ -445,13 +453,68 @@ serve(async (req: Request) => {
 
       console.log(`Found ${matchedCount} matching rows out of ${itemsToUpdate.length}`);
 
-      // Apply all updates using individual update operations
+      // Step 1: Create versioned sheet with matched data
+      console.log(`📊 Creating versioned sheet: ${versionedSheetName}...`);
+      try {
+        const createSheetResponse = await fetch(
+          `${baseUrl}:batchUpdate`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              requests: [{
+                addSheet: {
+                  properties: {
+                    title: versionedSheetName,
+                  },
+                },
+              }],
+            }),
+          }
+        );
+        const createSheetResult = await createSheetResponse.json();
+        console.log(`✓ Versioned sheet created:`, createSheetResult);
+      } catch (error) {
+        console.warn(`⚠️ Could not create versioned sheet (may already exist):`, error);
+      }
+
+      // Step 2: Write data to versioned sheet
+      if (versionedRows.length > 0) {
+        console.log(`📝 Writing ${versionedRows.length} rows to versioned sheet...`);
+        try {
+          const writeVersionResponse = await fetch(
+            `${baseUrl}/values/${versionedSheetName}?valueInputOption=USER_ENTERED`,
+            {
+              method: 'PUT',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ values: versionedRows }),
+            }
+          );
+          const writeVersionResult = await writeVersionResponse.json();
+          if (writeVersionResponse.ok) {
+            console.log(`✓ Versioned sheet updated with ${versionedRows.length} rows`);
+          } else {
+            console.error(`✗ Failed to write versioned sheet:`, writeVersionResult);
+          }
+        } catch (error) {
+          console.error(`✗ Error writing versioned sheet:`, error);
+        }
+      }
+
+      // Step 3: Apply all updates to main sheet using individual update operations
       let successCount = 0;
       const updateErrors: string[] = [];
 
+      console.log(`🔄 Updating main sheet (${mainSheetName}) with ${updates.length} rows...`);
       for (const update of updates) {
         try {
-          const cellRange = `${sheetName}!A${update.rowIndex}`;
+          const cellRange = `${mainSheetName}!A${update.rowIndex}`;
           console.log(`Updating row ${update.rowIndex}...`);
 
           const updateResponse = await fetch(
@@ -481,13 +544,15 @@ serve(async (req: Request) => {
         }
       }
 
-      console.log(`✅ Update complete: ${successCount}/${updates.length} rows updated`);
+      console.log(`✅ Update complete: ${successCount}/${updates.length} rows updated in main sheet`);
+      console.log(`✅ Versioned sheet '${versionedSheetName}' created with ${matchedCount} matched items`);
 
       return new Response(JSON.stringify({
         success: true,
         matched: matchedCount,
         updated: successCount,
         total_requested: itemsToUpdate.length,
+        versioned_sheet: versionedSheetName,
         bulan,
         tahun,
         errors: updateErrors.length > 0 ? updateErrors : undefined,
