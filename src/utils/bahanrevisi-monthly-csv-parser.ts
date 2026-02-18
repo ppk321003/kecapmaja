@@ -219,17 +219,30 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         console.log('[parseMonthlyCSV] Satker info:', satkerIdFormatted);
 
         // Find data start row (skip headers)
+        // Look for first row that has actual data (not meta, not continuation)
         let dataStartRow = 0;
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
-          if (!isMetaRow(row) && !isContinuationRow(row)) {
-            // Check if this row has some hierarchy data
-            if (row[0] || row[1] || row[2] || row[13]) {
-              dataStartRow = i;
-              break;
-            }
+          if (!row || !Array.isArray(row)) continue;
+          
+          // Skip if empty row
+          if (row.every(cell => !cell || String(cell).trim() === '')) continue;
+          
+          // Skip meta rows
+          if (isMetaRow(row)) continue;
+          
+          // Check if this row looks like a data row (has hierarchy or uraian)
+          const hasHierarchy = row[0] || row[1] || row[2] || row[3] || row[4] || row[5];
+          const hasUraian = row[13] && String(row[13]).trim();
+          
+          if (hasHierarchy || hasUraian) {
+            dataStartRow = i;
+            console.log('[parseMonthlyCSV] Data start row:', dataStartRow, 'Content:', row.slice(0, 6).join(' | '));
+            break;
           }
         }
+
+        console.log('[parseMonthlyCSV] Starting parse from row', dataStartRow);
 
         // Parse rows dengan inheritance
         let previousHierarchy = {
@@ -242,11 +255,23 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         };
 
         let i = dataStartRow;
+        let rowsChecked = 0;
         while (i < rows.length) {
           const row = rows[i];
           if (!row || !Array.isArray(row)) {
             i++;
             continue;
+          }
+
+          rowsChecked++;
+          if (rowsChecked <= 5) {
+            console.log(`[parseMonthlyCSV] Checking row ${i}:`, {
+              'A(0)': row[0],
+              'B(1)': row[1],
+              'C(2)': row[2],
+              'N(13)': row[13],
+              'Last': row[row.length - 1],
+            });
           }
 
           // Skip meta rows
@@ -340,6 +365,21 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
 
             items.push(item);
             stats.itemsParsed++;
+            
+            if (items.length <= 3) {
+              console.log(`[parseMonthlyCSV] Item ${items.length}:`, {
+                program: item.program,
+                kegiatan: item.kegiatan,
+                akun: item.akun,
+                uraian: item.uraian.substring(0, 40),
+                sisaAnggaran: item.sisaAnggaran,
+              });
+            }
+          } else {
+            // No uraian in column N
+            if (i === dataStartRow && items.length === 0) {
+              console.warn('[parseMonthlyCSV] First row has no uraian in column N. colN value:', colN, 'row:', row.slice(0, 6));
+            }
           }
 
           i++;
