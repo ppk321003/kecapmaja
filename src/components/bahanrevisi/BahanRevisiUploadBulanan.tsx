@@ -140,6 +140,12 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
     const file = uploadState.originalFile;
     if (!parsed || !file) return;
 
+    console.log('[BahanRevisiUploadBulanan] handleProcessUpload started', {
+      parsedItems: parsed.items.length,
+      bulan: parsed.bulan,
+      selectedMonth: uploadState.selectedMonth,
+    });
+
     // Verify month/year
     if (parseInt(uploadState.selectedMonth) !== parsed.bulan) {
       toast({
@@ -155,8 +161,19 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
       step: 'processing',
     }));
 
+    console.log('[BahanRevisiUploadBulanan] State changed to processing, calling handleImportFile...');
+
     // Call import function with ORIGINAL FILE (already tested and parsed)
-    await handleImportFile(file);
+    try {
+      await handleImportFile(file);
+      console.log('[BahanRevisiUploadBulanan] handleImportFile completed successfully');
+    } catch (error) {
+      console.error('[BahanRevisiUploadBulanan] handleImportFile failed:', error);
+      setUploadState((prev) => ({
+        ...prev,
+        step: 'preview',
+      }));
+    }
   };
 
   const handleResetAndClose = () => {

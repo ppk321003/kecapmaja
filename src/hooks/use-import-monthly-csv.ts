@@ -46,6 +46,11 @@ export const useImportMonthlyCSV = ({
 
   const matching = useCallback(
     (parsedData: ParsedMonthlyData): MatchResult => {
+      console.log('[useImportMonthlyCSV] Starting matching...', {
+        parsedItems: parsedData.items.length,
+        budgetItems: budgetItems.length,
+      });
+
       const result: MatchResult = {
         matched: 0,
         notMatched: 0,
@@ -60,8 +65,10 @@ export const useImportMonthlyCSV = ({
         budgetItemMap.set(key, item);
       });
 
+      console.log('[useImportMonthlyCSV] Budget item map created:', budgetItemMap.size);
+
       // Match parsed items dengan budget items
-      parsedData.items.forEach((parsedItem) => {
+      parsedData.items.forEach((parsedItem, idx) => {
         const key = createUniqueKey(parsedItem);
         const budgetItem = budgetItemMap.get(key);
 
@@ -78,6 +85,17 @@ export const useImportMonthlyCSV = ({
             reason: `Tidak ditemukan di BudgetItem (key: ${key.substring(0, 50)}...)`,
           });
         }
+
+        // Log progress every 100 items
+        if ((idx + 1) % 100 === 0) {
+          console.log(`[useImportMonthlyCSV] Matching progress: ${idx + 1}/${parsedData.items.length}, Matched so far: ${result.matched}`);
+        }
+      });
+
+      console.log('[useImportMonthlyCSV] Matching complete:', {
+        matched: result.matched,
+        notMatched: result.notMatched,
+        total: result.matched + result.notMatched,
       });
 
       return result;
@@ -169,7 +187,15 @@ export const useImportMonthlyCSV = ({
         setParseProgress(`Calling edge function untuk ${updateData.length} items...`);
 
         // Call Google Sheets function
-        console.log('[useImportMonthlyCSV] Invoking google-sheets function...');
+        console.log('[useImportMonthlyCSV] Invoking google-sheets function...', {
+          spreadsheetId: sheetId,
+          operation: 'update-sisa-anggaran',
+          itemsToUpdate: updateData.length,
+          bulan: parsedData.bulan,
+          tahun: parsedData.tahun,
+        });
+
+        const startTime = Date.now();
         const uploadResult = await supabase.functions.invoke('google-sheets', {
           body: {
             spreadsheetId: sheetId,
@@ -179,8 +205,9 @@ export const useImportMonthlyCSV = ({
             tahun: parsedData.tahun,
           },
         });
+        const endTime = Date.now();
 
-        console.log('[useImportMonthlyCSV] Upload result received:', uploadResult);
+        console.log('[useImportMonthlyCSV] Upload result received in', endTime - startTime, 'ms:', uploadResult);
 
         if (uploadResult.error) {
           console.error('[useImportMonthlyCSV] Upload error:', uploadResult.error);
