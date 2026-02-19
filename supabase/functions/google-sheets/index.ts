@@ -643,11 +643,10 @@ serve(async (req: Request) => {
               else if (headerLower === 'rincian_output') unmatchedRow.push(unmatchedItem.rincian_output || '');
               else if (headerLower === 'komponen_output') unmatchedRow.push(unmatchedItem.komponen_output || '');
               else if (headerLower === 'sub_komponen') {
-                // Normalize sub_komponen to 3 digits
+                // Normalize sub_komponen to 3 digits with single quote for USER_ENTERED
                 if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
                   const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
-                  // RAW mode: send plain value without quotes
-                  unmatchedRow.push(normalized || '');
+                  unmatchedRow.push(`'${normalized || ''}`); // Single quote for USER_ENTERED
                 } else {
                   unmatchedRow.push('');
                 }
@@ -744,11 +743,11 @@ serve(async (req: Request) => {
               const normalizedValue = normalizeSubKomponenValue(rawValue);
               if (rawValue !== normalizedValue) {
                 console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
-                versionedRow[subKomponenIndex] = normalizedValue; // RAW mode, no quote needed
+                versionedRow[subKomponenIndex] = `'${normalizedValue}`; // Add single quote for USER_ENTERED
                 normalizedCount++;
               } else if (rawValue) {
-                // Ensure no single quote prefix with RAW mode
-                versionedRow[subKomponenIndex] = normalizedValue;
+                // Ensure single quote prefix for USER_ENTERED
+                versionedRow[subKomponenIndex] = `'${normalizedValue}`;
               }
             }
           }
@@ -783,7 +782,7 @@ serve(async (req: Request) => {
           }
 
           const writeVersionResponse = await fetch(
-            `${baseUrl}/values/${versionedSheetName}?valueInputOption=RAW`,
+            `${baseUrl}/values/${versionedSheetName}?valueInputOption=USER_ENTERED`,
             {
               method: 'PUT',
               headers: {
@@ -827,8 +826,9 @@ serve(async (req: Request) => {
               const dataBlocks = [];
               
               // Block 1: sub_komponen column with EXPLICIT TEXT format
+              // Block 1: sub_komponen column (with single quote prefix for text)
               if (subKomponenIndex !== undefined) {
-                batch.forEach(update => {
+                const subKomponenData = batch.map(update => {
                   let rawValue = update.values[0][subKomponenIndex];
                   
                   // Remove single quote prefix if already present
@@ -839,73 +839,35 @@ serve(async (req: Request) => {
                   const normalizedValue = normalizeSubKomponenValue(rawValue);
                   console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
                   
-                  // Set both TEXT format AND value using updateCells
-                  dataBlocks.push({
-                    updateCells: {
-                      rows: [{
-                        values: [{
-                          userEnteredValue: { stringValue: normalizedValue },
-                          userEnteredFormat: { 
-                            numberFormat: { type: 'TEXT' }
-                          }
-                        }]
-                      }],
-                      fields: 'userEnteredValue,userEnteredFormat.numberFormat',
-                      start: {
-                        sheetId: 0, // First sheet (main sheet is always ID 0)
-                        rowIndex: update.rowIndex - 1, // Convert to 0-indexed
-                        columnIndex: subKomponenIndex
-                      }
-                    }
-                  });
+                  return {
+                    range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
+                    values: [[`'${normalizedValue}`]], // Single quote for text
+                  };
                 });
+                dataBlocks.push(...subKomponenData);
               }
               
               // Block 2: sisa_anggaran column
-              batch.forEach(update => {
-                dataBlocks.push({
-                  updateCells: {
-                    rows: [{
-                      values: [{
-                        userEnteredValue: { numberValue: update.values[0][sisaAnggaranIndex] }
-                      }]
-                    }],
-                    fields: 'userEnteredValue',
-                    start: {
-                      sheetId: 0,
-                      rowIndex: update.rowIndex - 1,
-                      columnIndex: sisaAnggaranIndex
-                    }
-                  }
-                });
-              });
+              const sisaAnggaranData = batch.map(update => ({
+                range: `${mainSheetName}!${indexToColumnLetter(sisaAnggaranIndex)}${update.rowIndex}`,
+                values: [[update.values[0][sisaAnggaranIndex]]],
+              }));
+              dataBlocks.push(...sisaAnggaranData);
               
               // Block 3: updated_date column (only if exists)
               if (updatedDateIndex !== undefined) {
-                batch.forEach(update => {
-                  dataBlocks.push({
-                    updateCells: {
-                      rows: [{
-                        values: [{
-                          userEnteredValue: { stringValue: update.values[0][updatedDateIndex] }
-                        }]
-                      }],
-                      fields: 'userEnteredValue',
-                      start: {
-                        sheetId: 0,
-                        rowIndex: update.rowIndex - 1,
-                        columnIndex: updatedDateIndex
-                      }
-                    }
-                  });
-                });
+                const updatedDateData = batch.map(update => ({
+                  range: `${mainSheetName}!${indexToColumnLetter(updatedDateIndex)}${update.rowIndex}`,
+                  values: [[update.values[0][updatedDateIndex]]],
+                }));
+                dataBlocks.push(...updatedDateData);
               }
               
               console.log(`  📤 Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: sending ${dataBlocks.length} cell updates for ${batch.length} rows`);
 
-              // Use batchUpdate with updateCells for TEXT format control
+              // Use values:batchUpdate with USER_ENTERED to interpret single quote as text
               const updateResponse = await fetch(
-                `${baseUrl}:batchUpdate`,
+                `${baseUrl}/values:batchUpdate`,
                 {
                   method: 'POST',
                   headers: {
@@ -913,7 +875,8 @@ serve(async (req: Request) => {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    requests: dataBlocks,
+                    data: dataBlocks,
+                    valueInputOption: 'USER_ENTERED', // Interpret single quote as text
                   }),
                 }
               );
