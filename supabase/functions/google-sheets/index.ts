@@ -562,16 +562,11 @@ serve(async (req: Request) => {
           const newRow = [...foundMatch.data];
           newRow[sisaAnggaranIndex] = item.sisa_anggaran;
           
-          // Normalize sub_komponen to 3 digits (force as text with single quote)
+          // Normalize sub_komponen to 3 digits
           if (subKomponenIndex !== undefined && item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
             try {
               const normalizedValue = normalizeSubKomponenValue(item.sub_komponen);
-              // Ensure single quote prefix (don't double-quote if already has it)
-              if (normalizedValue && !String(normalizedValue).startsWith("'")) {
-                newRow[subKomponenIndex] = `'${normalizedValue}`;
-              } else {
-                newRow[subKomponenIndex] = normalizedValue;
-              }
+              newRow[subKomponenIndex] = normalizedValue; // RAW, no quote needed
               if (newRow[subKomponenIndex] !== item.sub_komponen && normalizedValue) {
                 normalizedCount++;
               }
@@ -648,15 +643,11 @@ serve(async (req: Request) => {
               else if (headerLower === 'rincian_output') unmatchedRow.push(unmatchedItem.rincian_output || '');
               else if (headerLower === 'komponen_output') unmatchedRow.push(unmatchedItem.komponen_output || '');
               else if (headerLower === 'sub_komponen') {
-                // Normalize sub_komponen to 3 digits, force as text
+                // Normalize sub_komponen to 3 digits
                 if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
                   const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
-                  // Ensure single quote prefix (don't double-quote if already has it)
-                  if (normalized && !String(normalized).startsWith("'")) {
-                    unmatchedRow.push(`'${normalized}`);
-                  } else {
-                    unmatchedRow.push(normalized || '');
-                  }
+                  // RAW mode: send plain value without quotes
+                  unmatchedRow.push(normalized || '');
                 } else {
                   unmatchedRow.push('');
                 }
@@ -745,7 +736,7 @@ serve(async (req: Request) => {
             if (versionedRow && versionedRow.length > subKomponenIndex) {
               let rawValue = versionedRow[subKomponenIndex];
               
-              // Remove single quote prefix if already present (from earlier normalization)
+              // Remove single quote prefix if present (from earlier normalization, no longer needed with RAW)
               if (typeof rawValue === 'string' && rawValue.startsWith("'")) {
                 rawValue = rawValue.substring(1);
               }
@@ -753,11 +744,11 @@ serve(async (req: Request) => {
               const normalizedValue = normalizeSubKomponenValue(rawValue);
               if (rawValue !== normalizedValue) {
                 console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
-                versionedRow[subKomponenIndex] = `'${normalizedValue}`; // Force as text with single quote prefix
+                versionedRow[subKomponenIndex] = normalizedValue; // RAW mode, no quote needed
                 normalizedCount++;
               } else if (rawValue) {
-                // Even if not changed, ensure it's forced as text with single quote
-                versionedRow[subKomponenIndex] = `'${normalizedValue}`;
+                // Ensure no single quote prefix with RAW mode
+                versionedRow[subKomponenIndex] = normalizedValue;
               }
             }
           }
@@ -792,7 +783,7 @@ serve(async (req: Request) => {
           }
 
           const writeVersionResponse = await fetch(
-            `${baseUrl}/values/${versionedSheetName}?valueInputOption=USER_ENTERED`,
+            `${baseUrl}/values/${versionedSheetName}?valueInputOption=RAW`,
             {
               method: 'PUT',
               headers: {
@@ -835,12 +826,12 @@ serve(async (req: Request) => {
               // Build batchUpdate request with 3 separate data blocks (no gaps/overwrites)
               const dataBlocks = [];
               
-              // Block 1: sub_komponen column (NORMALIZE to 3 digits, force as text)
+              // Block 1: sub_komponen column (NORMALIZE to 3 digits)
               if (subKomponenIndex !== undefined) {
                 const subKomponenData = batch.map(update => {
                   let rawValue = update.values[0][subKomponenIndex];
                   
-                  // Remove single quote prefix if already present (from line 570)
+                  // Remove single quote prefix if already present (no longer needed with RAW)
                   if (typeof rawValue === 'string' && rawValue.startsWith("'")) {
                     rawValue = rawValue.substring(1);
                   }
@@ -849,7 +840,7 @@ serve(async (req: Request) => {
                   console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
                   return {
                     range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
-                    values: [[`'${normalizedValue}`]], // Force as text with single quote
+                    values: [[normalizedValue]], // RAW mode: send plain 3-digit value
                   };
                 });
                 dataBlocks.push(...subKomponenData);
@@ -873,7 +864,7 @@ serve(async (req: Request) => {
               
               console.log(`  📤 Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: sending ${dataBlocks.length} cell updates for ${batch.length} rows`);
 
-              // Use values:batchUpdate to update multiple ranges in one request
+              // Use values:batchUpdate with RAW (no formula interpretation, preserves leading zeros)
               const updateResponse = await fetch(
                 `${baseUrl}/values:batchUpdate`,
                 {
@@ -884,7 +875,7 @@ serve(async (req: Request) => {
                   },
                   body: JSON.stringify({
                     data: dataBlocks,
-                    valueInputOption: 'USER_ENTERED',
+                    valueInputOption: 'RAW', // RAW to preserve leading zeros and prevent auto-conversion to numbers
                   }),
                 }
               );
