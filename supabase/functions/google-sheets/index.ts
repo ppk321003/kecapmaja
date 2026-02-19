@@ -262,6 +262,21 @@ serve(async (req: Request) => {
   }
 
   try {
+    const body = await req.json();
+    console.log('Request body:', JSON.stringify(body));
+    
+    // Health check endpoint
+    if (body.operation === 'health') {
+      return new Response(JSON.stringify({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        hasGoogleCredentials: !!(Deno.env.get('GOOGLE_PRIVATE_KEY') && Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL'))
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     // Check for required environment variables early
     const googlePrivateKeyEnv = Deno.env.get('GOOGLE_PRIVATE_KEY');
     const googleServiceAccountEmailEnv = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');
