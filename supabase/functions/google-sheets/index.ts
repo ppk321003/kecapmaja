@@ -638,17 +638,26 @@ serve(async (req: Request) => {
         });
       }
 
-      if (updates.length === 0) {
-        console.warn('⚠️  No updates to apply - all items unmatched');
+      // Check if we have ANY items to process (matched or unmatched)
+      const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
+      const hasAnyItems = updates.length > 0 || unmatchedItemsArg.length > 0;
+      
+      if (!hasAnyItems) {
+        console.warn('⚠️  No items to process - both matched and unmatched are empty');
         return new Response(
           JSON.stringify({
             success: false,
-            message: 'No matching items found',
+            message: 'No items found to process (matched or unmatched)',
             matched: matchedCount,
             unmatched: unmatchedCount,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
+      }
+
+      if (updates.length === 0) {
+        console.warn('⚠️  No matched items to update in main sheet - all items are unmatched');
+        console.log(`   But ${unmatchedItemsArg.length} unmatched items will be added to versioned sheet`);
       }
 
       // Add unmatched items to versioned sheet as NEW rows
