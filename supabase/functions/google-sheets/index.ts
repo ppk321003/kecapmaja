@@ -876,6 +876,36 @@ serve(async (req: Request) => {
 
                 console.log(`✅ Created blank unmatched items sheet ${unmatchedSheetName}`);
                 hasHeaderRow = false; // Sheet baru, belum ada header
+                
+                // EXPLICITLY SET HEADER ROW using PUT (more reliable than append)
+                try {
+                  const headerRowData = [headers];
+                  const putHeaderResponse = await fetch(
+                    `${baseUrl}/values/${unmatchedSheetName}!A1:${indexToColumnLetter(headers.length - 1)}1`,
+                    {
+                      method: 'PUT',
+                      headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        values: headerRowData,
+                        majorDimension: 'ROWS',
+                      }),
+                    }
+                  );
+                  
+                  if (putHeaderResponse.ok) {
+                    console.log(`✅ Header row written to ${unmatchedSheetName}`);
+                    hasHeaderRow = true;
+                  } else {
+                    const headerErr = await putHeaderResponse.json();
+                    console.warn(`⚠️ Failed to write header row:`, headerErr.error?.message);
+                  }
+                } catch (headerErr) {
+                  const errorMsg = headerErr instanceof Error ? headerErr.message : String(headerErr);
+                  console.warn(`⚠️ Error writing header row:`, errorMsg);
+                }
               } catch (sheetError) {
                 const errorMsg = sheetError instanceof Error ? sheetError.message : String(sheetError);
                 console.warn(`⚠️ Failed to create unmatched sheet:`, errorMsg);
@@ -883,14 +913,8 @@ serve(async (req: Request) => {
               }
             }
 
-            // Build rows for unmatched items (including header row if not exists)
+            // Build rows for unmatched items - DATA ONLY (header already set via PUT)
             const unmatchedRows: any[][] = [];
-            
-            // Add header row if sheet doesn't have it
-            if (!hasHeaderRow) {
-              console.log(`Adding header row to ${unmatchedSheetName}`);
-              unmatchedRows.push(headers);
-            }
             
             unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
               const unmatchedRow = new Array(headers.length).fill('');
@@ -947,7 +971,7 @@ serve(async (req: Request) => {
               }
             });
             
-            console.log(`✓ Prepared ${unmatchedRows.length} rows for append to ${unmatchedSheetName} (includes header: ${!hasHeaderRow})`);
+            console.log(`✓ Prepared ${unmatchedRows.length} data rows for append to ${unmatchedSheetName} (header already set via PUT)`);
             
             // Append to unmatched sheet (NOT to budget_items)
             if (unmatchedRows.length > 0) {
@@ -967,8 +991,8 @@ serve(async (req: Request) => {
               
               const appendResult = await appendResponse.json();
               if (appendResponse.ok) {
-                appendCountUnmatched = unmatchedRows.length - (hasHeaderRow ? 0 : 1); // Subtract header row count
-                console.log(`✅ Appended ${appendCountUnmatched} unmatched items + header to ${unmatchedSheetName}`);
+                appendCountUnmatched = unmatchedRows.length; // All rows are data (header already set via PUT)
+                console.log(`✅ Appended ${appendCountUnmatched} unmatched items to ${unmatchedSheetName}`);
               } else {
                 const errorMsg = appendResult?.error?.message || 'Unknown error';
                 console.warn(`⚠️ Failed to append unmatched items:`, errorMsg);
