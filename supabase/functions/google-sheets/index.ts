@@ -783,8 +783,26 @@ serve(async (req: Request) => {
         // Step 3a: Identify rows to delete (matching this period)
         const rowsToDelete: number[] = [];
         const periodDateFilter = `${tahun}-${monthStr}`;
+        const itemKeysInThisUpload = new Set<string>();
+        
+        // Build set of all 7-field keys from items being uploaded (for matching)
+        itemsToUpdate.forEach(item => {
+          const itemKey = [
+            normalizeForMatching(item.program),
+            normalizeForMatching(item.kegiatan),
+            normalizeForMatching(item.rincian_output),
+            normalizeForMatching(item.komponen_output),
+            normalizeForMatching(item.sub_komponen),
+            normalizeForMatching(item.akun),
+            normalizeForMatching(item.uraian),
+          ].join('|');
+          itemKeysInThisUpload.add(itemKey);
+        });
+        
+        console.log(`🔍 Identifying rows to delete using ${itemKeysInThisUpload.size} item keys from this upload...`);
         
         if (submittedDateIndex !== undefined) {
+          // Strategy 1: Delete by submitted_date match
           for (let rowIndex = 1; rowIndex < readData.values.length; rowIndex++) {
             const sheetRow = readData.values[rowIndex];
             const submittedDate = sheetRow[submittedDateIndex];
@@ -793,14 +811,50 @@ serve(async (req: Request) => {
               rowsToDelete.push(rowIndex); // Store 0-based index
             }
           }
-          
-          console.log(`🗑️ Found ${rowsToDelete.length} existing rows for period ${monthStr}/${tahun} to delete`);
+          console.log(`  By submitted_date: Found ${rowsToDelete.length} rows with period ${monthStr}/${tahun}`);
         } else {
-          console.warn(`⚠️ submitted_date column not found, will use 7-field matching for deletion`);
+          console.warn(`⚠️ submitted_date column not found, will use 7-field key matching for deletion`);
+        }
+        
+        // Strategy 2: Fallback - Also delete rows matching item keys from this upload
+        // (in case submitted_date not set or empty)
+        const additionalRowsToDelete: number[] = [];
+        for (let rowIndex = 1; rowIndex < readData.values.length; rowIndex++) {
+          // Skip if already marked for deletion
+          if (rowsToDelete.includes(rowIndex)) continue;
+          
+          const sheetRow = readData.values[rowIndex];
+          const sheetKey = [
+            normalizeForMatching(sheetRow[headerIndexes['program']]),
+            normalizeForMatching(sheetRow[headerIndexes['kegiatan']]),
+            normalizeForMatching(sheetRow[headerIndexes['rincian_output']]),
+            normalizeForMatching(sheetRow[headerIndexes['komponen_output']]),
+            normalizeForMatching(sheetRow[headerIndexes['sub_komponen']]),
+            normalizeForMatching(sheetRow[headerIndexes['akun']]),
+            normalizeForMatching(sheetRow[headerIndexes['uraian']]),
+          ].join('|');
+          
+          // If this row key matches any item in current upload, mark for deletion
+          if (itemKeysInThisUpload.has(sheetKey)) {
+            additionalRowsToDelete.push(rowIndex);
+          }
+        }
+        
+        if (additionalRowsToDelete.length > 0) {
+          console.log(`  By 7-field key match: Found ${additionalRowsToDelete.length} additional rows matching items in this upload`);
+          rowsToDelete.push(...additionalRowsToDelete);
+        }
+        
+        // Remove duplicates and sort in reverse
+        const uniqueRowsToDelete = Array.from(new Set(rowsToDelete)).sort((a, b) => b - a);
+        console.log(`🗑️ Total rows marked for deletion: ${uniqueRowsToDelete.length}`);
+        
+        if (uniqueRowsToDelete.length > 0) {
+          console.log(`  Rows to delete (0-based indices): ${uniqueRowsToDelete.join(', ')}`);
         }
 
         // Step 3b: Delete matching period rows from main sheet (in reverse order to maintain indices)
-        if (rowsToDelete.length > 0) {
+        if (uniqueRowsToDelete.length > 0) {
           // Get main sheet ID first
           const sheetsResponse = await fetch(
             `${baseUrl}`,
@@ -810,8 +864,8 @@ serve(async (req: Request) => {
           const mainSheetId = sheetsData.sheets?.[0]?.properties?.sheetId || 0;
           
           // Delete rows in reverse order to maintain indices
-          for (let i = rowsToDelete.length - 1; i >= 0; i--) {
-            const rowIndexToDelete = rowsToDelete[i];
+          for (let i = 0; i < uniqueRowsToDelete.length; i++) {
+            const rowIndexToDelete = uniqueRowsToDelete[i];
             
             try {
               const deleteResponse = await fetch(
@@ -847,12 +901,24 @@ serve(async (req: Request) => {
             }
           }
           
-          console.log(`✓ Deleted ${deletedRowCount}/${rowsToDelete.length} old rows for period ${monthStr}/${tahun}`);
+          console.log(`✓ Deleted ${deletedRowCount}/${uniqueRowsToDelete.length} old rows for period ${monthStr}/${tahun}`);
         }
 
-        // Step 3c: Append new rows from this upload
+        // Step 3c: Append new rows from this upload - with submitted_date set for future deletion
         if (updates.length > 0) {
-          const newRows = updates.map(u => u.values[0]);
+          // Prepare new rows and ensure submitted_date is set for period matching
+          const newRows = updates.map(u => {
+            const row = [...u.values[0]];
+            // Set submitted_date to this period (YYYY-MM-01) if not already set
+            if (submittedDateIndex !== undefined) {
+              const submittedDate = `${tahun}-${monthStr}-01`;
+              row[submittedDateIndex] = submittedDate;
+              console.log(`  Setting submitted_date[${submittedDateIndex}] = ${submittedDate}`);
+            }
+            return row;
+          });
+          
+          console.log(`📝 Appending ${newRows.length} rows with submitted_date = ${tahun}-${monthStr}-01...`);
           
           const appendResponse = await fetch(
             `${baseUrl}/values/${mainSheetName}:append?valueInputOption=USER_ENTERED`,
@@ -870,7 +936,7 @@ serve(async (req: Request) => {
           
           if (appendResponse.ok) {
             successCount = updates.length;
-            console.log(`✅ Appended ${updates.length} new rows for period ${monthStr}/${tahun}`);
+            console.log(`✅ Appended ${updates.length} new rows for period ${monthStr}/${tahun} with submitted_date set`);
           } else {
             const errorMsg = appendResult?.error?.message || 'Unknown error';
             console.error(`❌ Append failed:`, errorMsg);
