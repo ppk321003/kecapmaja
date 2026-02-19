@@ -863,11 +863,17 @@ serve(async (req: Request) => {
           const sheetsData = await sheetsResponse.json();
           const mainSheetId = sheetsData.sheets?.[0]?.properties?.sheetId || 0;
           
-          // Delete rows in reverse order to maintain indices
-          for (let i = 0; i < uniqueRowsToDelete.length; i++) {
+          console.log(`🗑️ Deleting ${uniqueRowsToDelete.length} rows in reverse order (to maintain indices)...`);
+          
+          // Delete rows in REVERSE order (highest index first) to maintain indices
+          // This is CRITICAL: if we delete row 5 then row 3, row 3 gets deleted correctly
+          // But if we delete row 3 then row 5, after row 3 is deleted, row 5 shifts to row 4!
+          for (let i = uniqueRowsToDelete.length - 1; i >= 0; i--) {
             const rowIndexToDelete = uniqueRowsToDelete[i];
             
             try {
+              console.log(`  Deleting row ${rowIndexToDelete + 1} (0-based: ${rowIndexToDelete})...`);
+              
               const deleteResponse = await fetch(
                 `${baseUrl}:batchUpdate`,
                 {
@@ -892,9 +898,11 @@ serve(async (req: Request) => {
               );
               
               if (!deleteResponse.ok) {
-                console.warn(`⚠️ Failed to delete row ${rowIndexToDelete + 1}, continuing...`);
+                const deleteErr = await deleteResponse.json();
+                console.warn(`⚠️ Failed to delete row ${rowIndexToDelete + 1}:`, deleteErr);
               } else {
                 deletedRowCount++;
+                console.log(`  ✓ Row ${rowIndexToDelete + 1} deleted successfully`);
               }
             } catch (error) {
               console.warn(`⚠️ Error deleting row ${rowIndexToDelete + 1}:`, error);
