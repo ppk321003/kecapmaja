@@ -1042,12 +1042,13 @@ serve(async (req: Request) => {
               console.log(`  + Creating new RPD item`);
               
               // Build row: [id, program, kegiatan, komponen, sub_komponen, akun, uraian, total_pagu, jan-dec, total_rpd, sisa_anggaran, status, modified_by, modified_date]
+              const normalizedSubKomponen = normalizeSubKomponenValue(budgetItem.sub_komponen || '');
               const rpdRow = [
                 itemId,
                 budgetItem.program_pembebanan || '',
                 budgetItem.kegiatan || '',
                 budgetItem.komponen_output || '',
-                budgetItem.sub_komponen || '',
+                normalizedSubKomponen,
                 budgetItem.akun || '',
                 budgetItem.uraian || '',
                 budgetItem.jumlah_menjadi || budgetItem.sisa_anggaran || 0, // total_pagu
