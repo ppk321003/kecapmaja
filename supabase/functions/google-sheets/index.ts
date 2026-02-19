@@ -453,9 +453,9 @@ serve(async (req: Request) => {
         const monthStr = String(bulan).padStart(2, '0');
         
         console.log(`Processing ${itemsToUpdate.length} items for bulan=${bulan}, tahun=${tahun}`);
-        console.log('Strategy: Matched items UPDATE in place, unmatched items APPEND directly to budget_items');
+        console.log('Strategy: Trust frontend matching - INSERT matched items directly into budget_items');
 
-        // Read budget_items sheet to find matching rows
+        // Read budget_items sheet to identify columns
         const mainSheetName = 'budget_items';
         const readResponse = await fetch(
           `${baseUrl}/values/${mainSheetName}`,
@@ -474,122 +474,58 @@ serve(async (req: Request) => {
           throw new Error('Budget items sheet is empty or not found');
         }
 
-        // Fetch spreadsheet metadata to get the sheetId for budget_items
-        console.log('📊 Fetching spreadsheet metadata to get sheetId...');
-        let mainSheetId = 0;
-        try {
-          const metadataResponse = await fetch(
-            `${baseUrl.replace('/values', '')}`,
-            {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            }
-          );
-          if (metadataResponse.ok) {
-            const metadata = await metadataResponse.json();
-            const sheet = metadata.sheets?.find((s: any) => s.properties.title === mainSheetName);
-            if (sheet) {
-              mainSheetId = sheet.properties.sheetId;
-              console.log(`✓ Found sheetId for ${mainSheetName}: ${mainSheetId}`);
-            } else {
-              console.warn(`⚠️ Could not find sheet named "${mainSheetName}" in metadata`);
-            }
-          } else {
-            console.warn(`⚠️ Could not fetch spreadsheet metadata`);
-          }
-        } catch (error) {
-          console.warn(`⚠️ Error fetching spreadsheet metadata:`, error);
+        const headers = readData.values[0];
+        const headerIndexes: { [key: string]: number } = {};
+        headers.forEach((header: string, index: number) => {
+          headerIndexes[header.toLowerCase()] = index;
+        });
+
+        console.log('📊 Sheet headers found:', headers.length, 'columns');
+        
+        const subKomponenIndex = headerIndexes['sub_komponen'];
+        
+        if (subKomponenIndex === undefined) {
+          console.warn('⚠️  sub_komponen column not found, will skip normalization');
         }
 
-      const headers = readData.values[0];
-      const headerIndexes: { [key: string]: number } = {};
-      headers.forEach((header: string, index: number) => {
-        headerIndexes[header.toLowerCase()] = index;
-      });
+        // SIMPLIFIED: Trust frontend matching - just prepare rows to INSERT
+        // Frontend already correctly matched these 609 items to existing budget items
+        // We just need to format them as sheet rows
+        const rowsToInsert: any[] = [];
+        let normalizedCount = 0;
 
-      console.log('📊 Sheet headers found:', headers.length, 'columns');
-      console.log('   Headers:', headers.join(' | '));
-      
-      const sisaAnggaranIndex = headerIndexes['sisa_anggaran'];
-      const updatedDateIndex = headerIndexes['updated_date'];
-
-      if (sisaAnggaranIndex === undefined) {
-        throw new Error('sisa_anggaran column not found in budget_items sheet');
-      }
-
-      console.log(`✓ Header map built:`, Object.keys(headerIndexes).slice(0, 10).join(', '), '...');
-      console.log(`  sisaAnggaranIndex: ${sisaAnggaranIndex}, updatedDateIndex: ${updatedDateIndex}`);
-
-      const subKomponenIndex = headerIndexes['sub_komponen'];
-      console.log(`  subKomponenIndex: ${subKomponenIndex}`);
-
-      if (subKomponenIndex === undefined) {
-        console.warn('⚠️  sub_komponen column not found, will skip normalization');
-      }
-      console.log('📊 Building row map for faster matching...');
-      const rowMap = new Map<string, {rowIndex: number, data: any[]}>();
-      
-      for (let rowIndex = 1; rowIndex < readData.values.length; rowIndex++) {
-        const sheetRow = readData.values[rowIndex];
-        const sheetKey = [
-          normalizeForMatching(sheetRow[headerIndexes['program']]),
-          normalizeForMatching(sheetRow[headerIndexes['kegiatan']]),
-          normalizeForMatching(sheetRow[headerIndexes['rincian_output']]),
-          normalizeForMatching(sheetRow[headerIndexes['komponen_output']]),
-          normalizeForMatching(sheetRow[headerIndexes['sub_komponen']]),
-          normalizeForMatching(sheetRow[headerIndexes['akun']]),
-          normalizeForMatching(sheetRow[headerIndexes['uraian']]),
-        ].join('|');
-        
-        rowMap.set(sheetKey, { rowIndex: rowIndex + 1, data: sheetRow });
-
-        if ((rowIndex) % 100 === 0) {
-          console.log(`Indexed ${rowIndex} rows...`);
-        }
-      }
-      
-      console.log(`✓ Row map built with ${rowMap.size} entries`);
-
-      // Find matching rows and prepare updates
-      const updates: { rowIndex: number; values: any[] }[] = [];
-      let matchedCount = 0;
-      let unmatchedCount = 0;
-      let normalizedCount = 0;
-
-      console.log(`🔍 Matching ${itemsToUpdate.length} items against ${rowMap.size} rows...`);
-      itemsToUpdate.forEach((item: any, idx: number) => {
-        // Normalize sub_komponen BEFORE creating matching key so '1' matches '001' in sheet
-        const normalizedSubKomponen = normalizeSubKomponenValue(item.sub_komponen || '');
-        
-        // Create matching key from item - MUST match property names from BudgetItem interface
-        const itemKey = [
-          normalizeForMatching(item.program_pembebanan || item.program),
-          normalizeForMatching(item.kegiatan),
-          normalizeForMatching(item.rincian_output),
-          normalizeForMatching(item.komponen_output),
-          normalizeForMatching(normalizedSubKomponen),
-          normalizeForMatching(item.akun),
-          normalizeForMatching(item.uraian),
-        ].join('|');
-
-        const foundMatch = rowMap.get(itemKey);
-        
-        if (foundMatch) {
-          // Update the row data with ALL columns from CSV item (not just sisa_anggaran)
-          const newRow = [...foundMatch.data];
+        console.log(`📝 Preparing ${itemsToUpdate.length} items to INSERT into ${mainSheetName}`);
+        itemsToUpdate.forEach((item: any, idx: number) => {
+          const newRow = new Array(headers.length).fill('');
           
-          // Map all available columns from CSV item to sheet columns
+          // Map all columns from item to row
           headers.forEach((header: string, colIndex: number) => {
             const headerLower = header.toLowerCase();
             
-            // Copy column values from CSV item where available
-            if (headerLower === 'program_pembebanan') newRow[colIndex] = item.program_pembebanan || newRow[colIndex];
-            else if (headerLower === 'kegiatan') newRow[colIndex] = item.kegiatan || newRow[colIndex];
-            else if (headerLower === 'rincian_output') newRow[colIndex] = item.rincian_output || newRow[colIndex];
-            else if (headerLower === 'komponen_output') newRow[colIndex] = item.komponen_output || newRow[colIndex];
+            // Copy column values from item where available
+            if (headerLower === 'id') newRow[colIndex] = item.id || '';
+            else if (headerLower === 'program_pembebanan') newRow[colIndex] = item.program_pembebanan || '';
+            else if (headerLower === 'kegiatan') newRow[colIndex] = item.kegiatan || '';
+            else if (headerLower === 'rincian_output') newRow[colIndex] = item.rincian_output || '';
+            else if (headerLower === 'komponen_output') newRow[colIndex] = item.komponen_output || '';
             else if (headerLower === 'sub_komponen') {
-              // Will be handled below with normalization
-            } else if (headerLower === 'akun') newRow[colIndex] = item.akun || newRow[colIndex];
-            else if (headerLower === 'uraian') newRow[colIndex] = item.uraian || newRow[colIndex];
+              // Will normalize below
+              if (item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
+                try {
+                  const normalizedValue = normalizeSubKomponenValue(item.sub_komponen);
+                  newRow[colIndex] = `'${normalizedValue}`;
+                  if (newRow[colIndex] !== item.sub_komponen && normalizedValue) {
+                    normalizedCount++;
+                  }
+                } catch (e) {
+                  console.warn('Error normalizing sub_komponen for item:', item.uraian, e);
+                  newRow[colIndex] = item.sub_komponen || '';
+                }
+              } else {
+                newRow[colIndex] = item.sub_komponen || '';
+              }
+            } else if (headerLower === 'akun') newRow[colIndex] = item.akun || '';
+            else if (headerLower === 'uraian') newRow[colIndex] = item.uraian || '';
             else if (headerLower === 'volume_semula') newRow[colIndex] = item.volume_semula !== undefined ? item.volume_semula : 0;
             else if (headerLower === 'satuan_semula') newRow[colIndex] = item.satuan_semula || '';
             else if (headerLower === 'harga_satuan_semula') newRow[colIndex] = item.harga_satuan_semula !== undefined ? item.harga_satuan_semula : 0;
@@ -612,248 +548,45 @@ serve(async (req: Request) => {
             else if (headerLower === 'catatan_ppk') newRow[colIndex] = item.catatan_ppk || '';
           });
           
-          // Normalize sub_komponen to 3 digits with single quote prefix
-          if (subKomponenIndex !== undefined && item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
-            try {
-              const normalizedValue = normalizeSubKomponenValue(item.sub_komponen);
-              newRow[subKomponenIndex] = `'${normalizedValue}`; // Add single quote for USER_ENTERED
-              if (newRow[subKomponenIndex] !== item.sub_komponen && normalizedValue) {
-                normalizedCount++;
-              }
-            } catch (e) {
-              console.warn('Error normalizing sub_komponen for item:', item.uraian, e);
-              // Keep original value if normalize fails
-            }
-          }
-
-          updates.push({
-            rowIndex: foundMatch.rowIndex,
-            values: [newRow],
-          });
-
-          matchedCount++;
+          rowsToInsert.push(newRow);
           
           if ((idx + 1) % 100 === 0) {
-            console.log(`Matched ${idx + 1}/${itemsToUpdate.length} items...`);
+            console.log(`Prepared ${idx + 1}/${itemsToUpdate.length} rows...`);
           }
-        } else {
-          unmatchedCount++;
-        }
-      });
-
-      console.log(`✅ Matching complete: ${matchedCount} matched, ${unmatchedCount} unmatched out of ${itemsToUpdate.length}`);
-      console.log(`✅ Sub_komponen normalized: ${normalizedCount} items`);
-      console.log(`✅ Column index for sub_komponen: ${subKomponenIndex} (header: '${headers[subKomponenIndex] || 'NOT FOUND'}')`);
-      console.log(`✅ Column index for sisa_anggaran: ${sisaAnggaranIndex} (header: '${headers[sisaAnggaranIndex] || 'NOT FOUND'}')`);
-      
-      if (updates.length > 0) {
-        console.log('📋 Sample update [0]:', {
-          rowIndex: updates[0].rowIndex,
-          subKomponenValue: updates[0].values[0][subKomponenIndex],
-          sisaAnggaranValue: updates[0].values[0][sisaAnggaranIndex],
-          firstValues: updates[0].values[0].slice(0, 10),
         });
-      }
 
-      // Check if we have ANY items to process (matched or unmatched)
-      const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
-      const hasAnyItems = updates.length > 0 || unmatchedItemsArg.length > 0;
-      
-      if (!hasAnyItems) {
-        console.warn('⚠️  No items to process - both matched and unmatched are empty');
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: 'No items found to process (matched or unmatched)',
-            matched: matchedCount,
-            unmatched: unmatchedCount,
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      if (updates.length === 0) {
-        console.warn('⚠️  No matched items to update in main sheet - all items are unmatched');
-        console.log(`   But ${unmatchedItemsArg.length} unmatched items will be appended to budget_items`);
-      }
-
-      // Step 3: Apply all updates to main sheet - WITH sub_komponen normalization
-      let successCount = 0;
-      const updateErrors: string[] = [];
-      const BATCH_SIZE = 10; // Update 10 rows per batch
-
-      console.log(`🔄 Updating main sheet (${mainSheetName}) with ${updates.length} rows (with sub_komponen normalization)...`);
-      
-      try {
-        if (updates.length > 0) {
-          // Sort updates by rowIndex for batch processing
-          const sortedUpdates = [...updates].sort((a, b) => a.rowIndex - b.rowIndex);
-          
-          // Process in batches
-          for (let batchIdx = 0; batchIdx < sortedUpdates.length; batchIdx += BATCH_SIZE) {
-            const batch = sortedUpdates.slice(batchIdx, Math.min(batchIdx + BATCH_SIZE, sortedUpdates.length));
-            
-            try {
-              // Build batchUpdate request using values:batchUpdate API (more reliable than updateCells)
-              const dataBlocks = [];
-              
-              // Block 1: sub_komponen column with single quote prefix for text
-              if (subKomponenIndex !== undefined) {
-                const subKomponenData = batch.map(update => {
-                  let rawValue = update.values[0][subKomponenIndex];
-                  
-                  // Remove single quote prefix if already present
-                  if (typeof rawValue === 'string' && rawValue.startsWith("'")) {
-                    rawValue = rawValue.substring(1);
-                  }
-                  
-                  const normalizedValue = normalizeSubKomponenValue(rawValue);
-                  console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
-                  
-                  return {
-                    range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
-                    values: [[`'${normalizedValue}`]], // Single quote prefix for text format
-                  };
-                });
-                dataBlocks.push(...subKomponenData);
-              }
-              
-              // Block 2: sisa_anggaran column
-              const sisaAnggaranData = batch.map(update => ({
-                range: `${mainSheetName}!${indexToColumnLetter(sisaAnggaranIndex)}${update.rowIndex}`,
-                values: [[update.values[0][sisaAnggaranIndex]]],
-              }));
-              dataBlocks.push(...sisaAnggaranData);
-              
-              // Block 3: updated_date column (only if exists)
-              if (updatedDateIndex !== undefined) {
-                const updatedDateData = batch.map(update => ({
-                  range: `${mainSheetName}!${indexToColumnLetter(updatedDateIndex)}${update.rowIndex}`,
-                  values: [[update.values[0][updatedDateIndex]]],
-                }));
-                dataBlocks.push(...updatedDateData);
-              }
-              
-              console.log(`  📤 Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: sending ${dataBlocks.length} cell updates for ${batch.length} rows`);
-
-              // Use values:batchUpdate with USER_ENTERED to interpret single quote as text
-              const updateResponse = await fetch(
-                `${baseUrl}/values:batchUpdate`,
-                {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    data: dataBlocks,
-                    valueInputOption: 'USER_ENTERED', // Interpret single quote as text
-                  }),
-                }
-              );
-
-              const updateResult = await updateResponse.json();
-              
-              if (updateResponse.ok) {
-                successCount += batch.length;
-                console.log(`  ✓ Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: ${successCount}/${updates.length} rows updated`);
-              } else {
-                const errorMsg = updateResult?.error?.message || 'Unknown error';
-                console.warn(`⚠️ Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1} failed:`, errorMsg);
-                batch.forEach(u => {
-                  updateErrors.push(`Row ${u.rowIndex}: ${errorMsg}`);
-                });
-              }
-            } catch (error) {
-              const errorMsg = error instanceof Error ? error.message : String(error);
-              console.warn(`⚠️ Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1} exception:`, errorMsg);
-              batch.forEach(u => {
-                updateErrors.push(`Row ${u.rowIndex}: ${errorMsg}`);
-              });
-            }
-
-            // Small delay between batches to avoid rate limiting
-            if ((batchIdx + BATCH_SIZE) < sortedUpdates.length) {
-              await new Promise(r => setTimeout(r, 100));
-            }
-          }
-
-          console.log(`✅ Update completed: ${successCount}/${updates.length} rows updated successfully`);
+        console.log(`✅ Prepared ${rowsToInsert.length} rows for INSERT`);
+        console.log(`✅ Sub_komponen normalized: ${normalizedCount} items`);
+        
+        if (rowsToInsert.length > 0) {
+          console.log('📋 Sample row [0] (first 10 cols):', rowsToInsert[0].slice(0, 10));
         }
-      } catch (error) {
-        console.error('❌ Critical error in batch update:', error);
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        updateErrors.push(`Critical error: ${errorMsg}`);
-      }
 
-      console.log(`✅ Update complete: ${successCount}/${updates.length} rows updated in main sheet`);
+        // Check if we have ANY items to process
+        const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
+        const totalItems = rowsToInsert.length + unmatchedItemsArg.length;
+        
+        if (totalItems === 0) {
+          console.warn('⚠️  No items to process - both matched and unmatched are empty');
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: 'No items found to process (matched or unmatched)',
+              matched: 0,
+              unmatched: 0,
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
 
-      // Step 4: Append unmatched items directly to budget_items (not to versioned sheet)
-      let appendCount = 0;
-      const appendErrors: string[] = [];
-      
-      if (unmatchedItemsArg.length > 0) {
-        console.log(`📥 Appending ${unmatchedItemsArg.length} unmatched items directly to ${mainSheetName}...`);
+        // Step 3: APPEND matched items directly to budget_items (trust frontend's matching)
+        let appendCountMatched = 0;
+        const appendErrors: string[] = [];
+
+        console.log(`📥 Step 1: Appending ${rowsToInsert.length} matched items to ${mainSheetName}...`);
         
         try {
-          // Build rows for append (same structure as budget_items headers)
-          const appendRows: any[][] = [];
-          
-          unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
-            // Create a row array in the same order as headers
-            const appendRow: any[] = [];
-            headers.forEach((header: string) => {
-              const headerLower = header.toLowerCase();
-              // Map fields to header - COPY ALL COLUMNS just like matched items
-              if (headerLower === 'id') appendRow.push(unmatchedItem.id || '');
-              else if (headerLower === 'program_pembebanan') appendRow.push(unmatchedItem.program_pembebanan || '');
-              else if (headerLower === 'kegiatan') appendRow.push(unmatchedItem.kegiatan || '');
-              else if (headerLower === 'rincian_output') appendRow.push(unmatchedItem.rincian_output || '');
-              else if (headerLower === 'komponen_output') appendRow.push(unmatchedItem.komponen_output || '');
-              else if (headerLower === 'sub_komponen') {
-                // Normalize sub_komponen with single quote
-                if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
-                  const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
-                  appendRow.push(`'${normalized || ''}`);
-                } else {
-                  appendRow.push('');
-                }
-              }
-              else if (headerLower === 'akun') appendRow.push(unmatchedItem.akun || '');
-              else if (headerLower === 'uraian') appendRow.push(unmatchedItem.uraian || '');
-              else if (headerLower === 'volume_semula') appendRow.push(unmatchedItem.volume_semula !== undefined ? unmatchedItem.volume_semula : 0);
-              else if (headerLower === 'satuan_semula') appendRow.push(unmatchedItem.satuan_semula || '');
-              else if (headerLower === 'harga_satuan_semula') appendRow.push(unmatchedItem.harga_satuan_semula !== undefined ? unmatchedItem.harga_satuan_semula : 0);
-              else if (headerLower === 'jumlah_semula') appendRow.push(unmatchedItem.jumlah_semula !== undefined ? unmatchedItem.jumlah_semula : 0);
-              else if (headerLower === 'volume_menjadi') appendRow.push(unmatchedItem.volume_menjadi !== undefined ? unmatchedItem.volume_menjadi : 1);
-              else if (headerLower === 'satuan_menjadi') appendRow.push(unmatchedItem.satuan_menjadi || '');
-              else if (headerLower === 'harga_satuan_menjadi') appendRow.push(unmatchedItem.harga_satuan_menjadi !== undefined ? unmatchedItem.harga_satuan_menjadi : 0);
-              else if (headerLower === 'jumlah_menjadi') appendRow.push(unmatchedItem.jumlah_menjadi !== undefined ? unmatchedItem.jumlah_menjadi : 0);
-              else if (headerLower === 'selisih') appendRow.push(unmatchedItem.selisih !== undefined ? unmatchedItem.selisih : 0);
-              else if (headerLower === 'sisa_anggaran') appendRow.push(unmatchedItem.sisa_anggaran !== undefined ? unmatchedItem.sisa_anggaran : 0);
-              else if (headerLower === 'blokir') appendRow.push(unmatchedItem.blokir !== undefined ? unmatchedItem.blokir : 0);
-              else if (headerLower === 'status') appendRow.push(unmatchedItem.status || 'new');
-              else if (headerLower === 'approved_by') appendRow.push(unmatchedItem.approved_by || '');
-              else if (headerLower === 'approved_date') appendRow.push(unmatchedItem.approved_date || '');
-              else if (headerLower === 'rejected_date') appendRow.push(unmatchedItem.rejected_date || '');
-              else if (headerLower === 'submitted_by') appendRow.push(unmatchedItem.submitted_by || 'import');
-              else if (headerLower === 'submitted_date') appendRow.push(unmatchedItem.submitted_date || '');
-              else if (headerLower === 'updated_date') appendRow.push(unmatchedItem.updated_date !== undefined ? unmatchedItem.updated_date : new Date().toISOString());
-              else if (headerLower === 'notes') appendRow.push(unmatchedItem.notes || '');
-              else if (headerLower === 'catatan_ppk') appendRow.push(unmatchedItem.catatan_ppk || '');
-              else appendRow.push(''); // Unknown columns
-            });
-            
-            appendRows.push(appendRow);
-            if ((itemIdx + 1) % 100 === 0) {
-              console.log(`  Prepared ${itemIdx + 1}/${unmatchedItemsArg.length} rows for append`);
-            }
-          });
-          
-          console.log(`✓ Prepared ${appendRows.length} rows for append to ${mainSheetName}`);
-          
-          // Append to main sheet
-          if (appendRows.length > 0) {
+          if (rowsToInsert.length > 0) {
             const appendResponse = await fetch(
               `${baseUrl}/values/${mainSheetName}:append?valueInputOption=USER_ENTERED`,
               {
@@ -863,32 +596,132 @@ serve(async (req: Request) => {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  values: appendRows,
+                  values: rowsToInsert,
                 }),
               }
             );
             
             const appendResult = await appendResponse.json();
             if (appendResponse.ok) {
-              appendCount = appendRows.length;
-              console.log(`✅ Appended ${appendCount} unmatched items to ${mainSheetName}`);
+              appendCountMatched = rowsToInsert.length;
+              console.log(`✅ Appended ${appendCountMatched} matched items to ${mainSheetName}`);
             } else {
               const errorMsg = appendResult?.error?.message || 'Unknown error';
-              console.warn(`⚠️ Failed to append unmatched items:`, errorMsg);
-              appendErrors.push(errorMsg);
+              console.warn(`⚠️ Failed to append matched items:`, errorMsg);
+              appendErrors.push(`Matched items: ${errorMsg}`);
             }
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
-          console.error('❌ Error appending unmatched items:', errorMsg);
-          appendErrors.push(errorMsg);
+          console.error('❌ Error appending matched items:', errorMsg);
+          appendErrors.push(`Matched items error: ${errorMsg}`);
         }
-      }
-      
-      // Step 5: Update rpd_items dengan bulan updates dan auto-calc total_rpd + sisa_anggaran
-      let rpdUpdateCount = 0;
-      let rpdCreateCount = 0;
-      const rpdUpdateErrors: string[] = [];
+
+        // Step 4: APPEND unmatched items to budget_items
+        let appendCountUnmatched = 0;
+        
+        if (unmatchedItemsArg.length > 0) {
+          console.log(`📥 Step 2: Appending ${unmatchedItemsArg.length} unmatched items to ${mainSheetName}...`);
+          
+          try {
+            // Build rows for unmatched items (same structure as matched items)
+            const unmatchedRows: any[][] = [];
+            
+            unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
+              const unmatchedRow = new Array(headers.length).fill('');
+              
+              // Map all columns from unmatched item to row
+              headers.forEach((header: string, colIndex: number) => {
+                const headerLower = header.toLowerCase();
+                
+                // Copy column values from item where available
+                if (headerLower === 'id') unmatchedRow[colIndex] = unmatchedItem.id || '';
+                else if (headerLower === 'program_pembebanan') unmatchedRow[colIndex] = unmatchedItem.program_pembebanan || '';
+                else if (headerLower === 'kegiatan') unmatchedRow[colIndex] = unmatchedItem.kegiatan || '';
+                else if (headerLower === 'rincian_output') unmatchedRow[colIndex] = unmatchedItem.rincian_output || '';
+                else if (headerLower === 'komponen_output') unmatchedRow[colIndex] = unmatchedItem.komponen_output || '';
+                else if (headerLower === 'sub_komponen') {
+                  // Normalize sub_komponen with single quote
+                  if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
+                    try {
+                      const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
+                      unmatchedRow[colIndex] = `'${normalized || ''}`;
+                    } catch (e) {
+                      unmatchedRow[colIndex] = unmatchedItem.sub_komponen || '';
+                    }
+                  } else {
+                    unmatchedRow[colIndex] = '';
+                  }
+                } else if (headerLower === 'akun') unmatchedRow[colIndex] = unmatchedItem.akun || '';
+                else if (headerLower === 'uraian') unmatchedRow[colIndex] = unmatchedItem.uraian || '';
+                else if (headerLower === 'volume_semula') unmatchedRow[colIndex] = unmatchedItem.volume_semula !== undefined ? unmatchedItem.volume_semula : 0;
+                else if (headerLower === 'satuan_semula') unmatchedRow[colIndex] = unmatchedItem.satuan_semula || '';
+                else if (headerLower === 'harga_satuan_semula') unmatchedRow[colIndex] = unmatchedItem.harga_satuan_semula !== undefined ? unmatchedItem.harga_satuan_semula : 0;
+                else if (headerLower === 'jumlah_semula') unmatchedRow[colIndex] = unmatchedItem.jumlah_semula !== undefined ? unmatchedItem.jumlah_semula : 0;
+                else if (headerLower === 'volume_menjadi') unmatchedRow[colIndex] = unmatchedItem.volume_menjadi !== undefined ? unmatchedItem.volume_menjadi : 1;
+                else if (headerLower === 'satuan_menjadi') unmatchedRow[colIndex] = unmatchedItem.satuan_menjadi || '';
+                else if (headerLower === 'harga_satuan_menjadi') unmatchedRow[colIndex] = unmatchedItem.harga_satuan_menjadi !== undefined ? unmatchedItem.harga_satuan_menjadi : 0;
+                else if (headerLower === 'jumlah_menjadi') unmatchedRow[colIndex] = unmatchedItem.jumlah_menjadi !== undefined ? unmatchedItem.jumlah_menjadi : 0;
+                else if (headerLower === 'selisih') unmatchedRow[colIndex] = unmatchedItem.selisih !== undefined ? unmatchedItem.selisih : 0;
+                else if (headerLower === 'sisa_anggaran') unmatchedRow[colIndex] = unmatchedItem.sisa_anggaran !== undefined ? unmatchedItem.sisa_anggaran : 0;
+                else if (headerLower === 'blokir') unmatchedRow[colIndex] = unmatchedItem.blokir !== undefined ? unmatchedItem.blokir : 0;
+                else if (headerLower === 'status') unmatchedRow[colIndex] = unmatchedItem.status || 'new';
+                else if (headerLower === 'approved_by') unmatchedRow[colIndex] = unmatchedItem.approved_by || '';
+                else if (headerLower === 'approved_date') unmatchedRow[colIndex] = unmatchedItem.approved_date || '';
+                else if (headerLower === 'rejected_date') unmatchedRow[colIndex] = unmatchedItem.rejected_date || '';
+                else if (headerLower === 'submitted_by') unmatchedRow[colIndex] = unmatchedItem.submitted_by || 'import';
+                else if (headerLower === 'submitted_date') unmatchedRow[colIndex] = unmatchedItem.submitted_date || '';
+                else if (headerLower === 'updated_date') unmatchedRow[colIndex] = unmatchedItem.updated_date !== undefined ? unmatchedItem.updated_date : new Date().toISOString();
+                else if (headerLower === 'notes') unmatchedRow[colIndex] = unmatchedItem.notes || '';
+                else if (headerLower === 'catatan_ppk') unmatchedRow[colIndex] = unmatchedItem.catatan_ppk || '';
+              });
+              
+              unmatchedRows.push(unmatchedRow);
+              if ((itemIdx + 1) % 100 === 0) {
+                console.log(`  Prepared ${itemIdx + 1}/${unmatchedItemsArg.length} unmatched rows`);
+              }
+            });
+            
+            console.log(`✓ Prepared ${unmatchedRows.length} rows for append to ${mainSheetName}`);
+            
+            // Append to main sheet
+            if (unmatchedRows.length > 0) {
+              const appendResponse = await fetch(
+                `${baseUrl}/values/${mainSheetName}:append?valueInputOption=USER_ENTERED`,
+                {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    values: unmatchedRows,
+                  }),
+                }
+              );
+              
+              const appendResult = await appendResponse.json();
+              if (appendResponse.ok) {
+                appendCountUnmatched = unmatchedRows.length;
+                console.log(`✅ Appended ${appendCountUnmatched} unmatched items to ${mainSheetName}`);
+              } else {
+                const errorMsg = appendResult?.error?.message || 'Unknown error';
+                console.warn(`⚠️ Failed to append unmatched items:`, errorMsg);
+                appendErrors.push(`Unmatched items: ${errorMsg}`);
+              }
+            }
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            console.error('❌ Error appending unmatched items:', errorMsg);
+            appendErrors.push(`Unmatched error: ${errorMsg}`);
+          }
+        }
+
+        // Step 5: Update rpd_items dengan bulan updates dan auto-calc total_rpd + sisa_anggaran
+        let rpdUpdateCount = 0;
+        let rpdCreateCount = 0;
+        const rpdUpdateErrors: string[] = [];
+        
       
       if (body.rpdUpdates && Array.isArray(body.rpdUpdates) && body.rpdUpdates.length > 0) {
         console.log(`🔄 Step 4: Updating rpd_items with ${body.rpdUpdates.length} monthly values...`);
@@ -1134,26 +967,26 @@ serve(async (req: Request) => {
       
       console.log(`✅ RPD Step 5 complete: ${rpdUpdateCount} updated, ${rpdCreateCount} created`);
       
-      // Return success - all data (matched, updated, and appended) is now in budget_items
+      // Return success - all data (matched and unmatched) is now appended to budget_items
       const successResponse = {
         success: true,
-        matched: matchedCount,
-        updated: successCount,
-        appended: appendCount,
-        unmatched: unmatchedCount,
+        matched_appended: appendCountMatched,
+        unmatched_appended: appendCountUnmatched,
+        total_matched: rowsToInsert.length,
+        total_unmatched: unmatchedItemsArg.length,
+        total_appended: appendCountMatched + appendCountUnmatched,
         rpd_updated: rpdUpdateCount,
         rpd_created: rpdCreateCount,
         total_requested: itemsToUpdate.length,
-        total_processed: matchedCount + unmatchedCount,
+        total_processed: appendCountMatched + appendCountUnmatched,
         bulan,
         tahun,
-        errors: updateErrors.length > 0 ? updateErrors.slice(0, 10) : undefined,
-        append_errors: appendErrors.length > 0 ? appendErrors.slice(0, 10) : undefined,
+        errors: appendErrors.length > 0 ? appendErrors.slice(0, 10) : undefined,
         rpd_errors: rpdUpdateErrors.length > 0 ? rpdUpdateErrors.slice(0, 10) : undefined,
       };
 
       // No more background async operations - everything is complete now
-      console.log(`✅ All operations complete: ${matchedCount} matched + ${appendCount} appended = ${matchedCount + appendCount} total rows in ${mainSheetName}`);
+      console.log(`✅ All operations complete: ${appendCountMatched} matched + ${appendCountUnmatched} unmatched = ${appendCountMatched + appendCountUnmatched} total rows appended to ${mainSheetName}`);
 
       return new Response(JSON.stringify(successResponse), {
         status: 200,
