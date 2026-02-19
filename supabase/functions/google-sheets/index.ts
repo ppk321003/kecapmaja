@@ -15,13 +15,15 @@ const corsHeaders = {
 
 interface SheetOperation {
   spreadsheetId: string;
-  operation: 'read' | 'append' | 'update' | 'delete' | 'update-sisa-anggaran';
+  operation: 'read' | 'append' | 'update' | 'delete' | 'update-sisa-anggaran' | 'health';
   range?: string;
   values?: any[][];
   rowIndex?: number;
   sheetName?: string;
   bulan?: number;
   tahun?: number;
+  unmatchedItems?: any[];
+  rpdUpdates?: any[];
 }
 
 async function getAccessToken() {
@@ -265,8 +267,10 @@ serve(async (req: Request) => {
     const body = await req.json();
     console.log('Request body:', JSON.stringify(body));
     
-    // Health check endpoint
-    if (body.operation === 'health') {
+    const { spreadsheetId, operation, range, values, rowIndex, sheetName }: SheetOperation = body;
+    
+    // Health check endpoint - no credentials needed
+    if (operation === 'health') {
       return new Response(JSON.stringify({ 
         status: 'ok', 
         timestamp: new Date().toISOString(),
@@ -277,11 +281,11 @@ serve(async (req: Request) => {
       });
     }
     
-    // Check for required environment variables early
+    // Check for required environment variables before processing any real operations
     const googlePrivateKeyEnv = Deno.env.get('GOOGLE_PRIVATE_KEY');
     const googleServiceAccountEmailEnv = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');
     
-    if (!googlePrivateKeyEnv && !googleServiceAccountEmailEnv) {
+    if (!googlePrivateKeyEnv || !googleServiceAccountEmailEnv) {
       const errorMsg = 'Missing required environment variables: GOOGLE_PRIVATE_KEY and/or GOOGLE_SERVICE_ACCOUNT_EMAIL';
       console.error(errorMsg);
       return new Response(JSON.stringify({ error: errorMsg }), {
@@ -289,11 +293,6 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    
-    const body = await req.json();
-    console.log('Request body:', JSON.stringify(body));
-    
-    const { spreadsheetId, operation, range, values, rowIndex, sheetName }: SheetOperation = body;
     
     console.log('Getting access token...');
     const accessToken = await getAccessToken();
@@ -546,13 +545,16 @@ serve(async (req: Request) => {
 
       console.log(`🔍 Matching ${itemsToUpdate.length} items against ${rowMap.size} rows...`);
       itemsToUpdate.forEach((item: any, idx: number) => {
+        // Normalize sub_komponen BEFORE creating matching key so '1' matches '001' in sheet
+        const normalizedSubKomponen = normalizeSubKomponenValue(item.sub_komponen || '');
+        
         // Create matching key from item - MUST match property names from BudgetItem interface
         const itemKey = [
           normalizeForMatching(item.program_pembebanan || item.program),
           normalizeForMatching(item.kegiatan),
           normalizeForMatching(item.rincian_output),
           normalizeForMatching(item.komponen_output),
-          normalizeForMatching(item.sub_komponen),
+          normalizeForMatching(normalizedSubKomponen),
           normalizeForMatching(item.akun),
           normalizeForMatching(item.uraian),
         ].join('|');
@@ -777,7 +779,6 @@ serve(async (req: Request) => {
       // Step 4: Append unmatched items directly to budget_items (not to versioned sheet)
       let appendCount = 0;
       const appendErrors: string[] = [];
-      const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
       
       if (unmatchedItemsArg.length > 0) {
         console.log(`📥 Appending ${unmatchedItemsArg.length} unmatched items directly to ${mainSheetName}...`);
