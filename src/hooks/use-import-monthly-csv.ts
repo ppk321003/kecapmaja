@@ -227,14 +227,14 @@ export const useImportMonthlyCSV = ({
             item: match.budgetItem,
             bulan: parsedData.bulan,
             bulanColumn: bulanColumn,
-            sisaAnggaran: match.item.sisaAnggaran,
+            periodeIni: match.item.periodeIni,  // Column 24: Monthly realization (Periode Ini)
           };
         });
 
         console.log('[useImportMonthlyCSV] RPD update data prepared for bulan', parsedData.bulan, 'column', bulanColumn);
         console.log('[useImportMonthlyCSV] Sample RPD update:', {
           item_id: rpdUpdateData[0]?.item.id,
-          sisaAnggaran: rpdUpdateData[0]?.sisaAnggaran,
+          periodeIni: rpdUpdateData[0]?.periodeIni,
           bulanColumn: rpdUpdateData[0]?.bulanColumn,
         });
 
