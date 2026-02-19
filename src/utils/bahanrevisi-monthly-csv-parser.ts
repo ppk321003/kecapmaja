@@ -12,8 +12,7 @@ export interface ParsedMonthlyItem {
   subKomponen: string;
   akun: string;
   uraian: string;
-  periodeIni: number;  // Column 24: Monthly realization (Periode Ini) → for rpd_items[bulan]
-  sisaAnggaran: number;  // Column AE: Remaining budget (SISA ANGGARAN) → for budget_items.sisa_anggaran
+  sisaAnggaran: number;
 }
 
 export interface ParsedMonthlyData {
@@ -301,23 +300,12 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
             } else if (leadingSemicolons >= 11) {
               // Level 11+: ;;;;;;;;;;;;;000001. text... → Item description with value
               
-              // Extract from column 24 (index 23) = "Periode Ini" (Monthly realization)
-              // → This goes to rpd_items[bulan_column]
-              let periodeIni = 0;
+              // Extract from column 24 (index 23) = "Periode Ini" (Monthly Period value)
+              // This is the actual month value to store in rpd_items, can be 0 or empty
+              let sisaAnggaran = 0;
               if (parts.length > 23) {
                 const periodeIniValue = parts[23];
                 const numValue = parseFloat(periodeIniValue.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'));
-                if (!isNaN(numValue) && numValue >= 0) {
-                  periodeIni = numValue;
-                }
-              }
-
-              // Extract from column AE (index 30) = "SISA ANGGARAN" (Remaining budget)
-              // → This goes to budget_items.sisa_anggaran
-              let sisaAnggaran = 0;
-              if (parts.length > 30) {
-                const sisaAnggAranValue = parts[30];
-                const numValue = parseFloat(sisaAnggAranValue.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'));
                 if (!isNaN(numValue) && numValue >= 0) {
                   sisaAnggaran = numValue;
                 }
@@ -333,7 +321,7 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
               }
 
               // Only create item if we have valid uraian and hierarchy is complete
-              // Note: both periodeIni and sisaAnggaran can be 0 (valid states)
+              // Note: sisaAnggaran can be 0, which is valid (no realization yet for that month)
               if (uraian && hierarchy.program && hierarchy.kegiatan) {
                 // Ensure sub_komponen is always 3-digit normalized
                 let normalizedSubKomponen = hierarchy.subKomponen;
@@ -357,8 +345,7 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                   subKomponen: normalizedSubKomponen,
                   akun: hierarchy.akun,
                   uraian: uraian,
-                  periodeIni: periodeIni,  // Column 24: Monthly value for rpd_items
-                  sisaAnggaran: sisaAnggaran,  // Column AE: Budget remaining for budget_items
+                  sisaAnggaran: sisaAnggaran,
                 };
 
                 items.push(item);
