@@ -257,6 +257,19 @@ serve(async (req: Request) => {
   }
 
   try {
+    // Check for required environment variables early
+    const googlePrivateKeyEnv = Deno.env.get('GOOGLE_PRIVATE_KEY');
+    const googleServiceAccountEmailEnv = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+    
+    if (!googlePrivateKeyEnv && !googleServiceAccountEmailEnv) {
+      const errorMsg = 'Missing required environment variables: GOOGLE_PRIVATE_KEY and/or GOOGLE_SERVICE_ACCOUNT_EMAIL';
+      console.error(errorMsg);
+      return new Response(JSON.stringify({ error: errorMsg }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     const body = await req.json();
     console.log('Request body:', JSON.stringify(body));
     
