@@ -249,61 +249,6 @@ function indexToColumnLetter(index: number): string {
   return result;
 }
 
-// Async background function to update versioned sheet (doesn't block response)
-async function updateVersionedSheetAsync(versionedSheetName: string, versionedRows: any[][], accessToken: string, baseUrl: string) {
-  console.log(`🔄 [ASYNC] Starting versioned sheet update: ${versionedSheetName} with ${versionedRows.length} rows`);
-  
-  try {
-    // Step 1: Create versioned sheet if not exists
-    let versionedSheetId = 0;
-    try {
-      const createSheetResponse = await fetch(`${baseUrl}:batchUpdate`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requests: [{
-            addSheet: {
-              properties: { title: versionedSheetName },
-            },
-          }],
-        }),
-      });
-      const createSheetResult = await createSheetResponse.json();
-      if (createSheetResult.replies?.[0]?.addSheet?.properties?.sheetId !== undefined) {
-        versionedSheetId = createSheetResult.replies[0].addSheet.properties.sheetId;
-        console.log(`✓ [ASYNC] Versioned sheet created with ID: ${versionedSheetId}`);
-      }
-    } catch (error) {
-      console.warn(`⚠️ [ASYNC] Could not create versioned sheet (may exist):`, error);
-    }
-
-    // Step 2: Write data to versioned sheet
-    if (versionedRows.length > 0) {
-      const writeVersionResponse = await fetch(
-        `${baseUrl}/values/${versionedSheetName}?valueInputOption=USER_ENTERED`,
-        {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ values: versionedRows }),
-        }
-      );
-      if (writeVersionResponse.ok) {
-        console.log(`✓ [ASYNC] Versioned sheet '${versionedSheetName}' written with ${versionedRows.length} rows`);
-      } else {
-        console.warn(`⚠️ [ASYNC] Failed to write versioned sheet:`, writeVersionResponse.status);
-      }
-    }
-  } catch (error) {
-    console.warn(`⚠️ [ASYNC] Versioned sheet error (non-blocking):`, error);
-  }
-}
-
 serve(async (req: Request) => {
   console.log('Google Sheets function invoked');
   
@@ -563,7 +508,6 @@ serve(async (req: Request) => {
 
       // Find matching rows and prepare updates
       const updates: { rowIndex: number; values: any[] }[] = [];
-      const versionedRows: any[][] = [headers]; // Start with headers
       let matchedCount = 0;
       let unmatchedCount = 0;
       let normalizedCount = 0;
@@ -641,9 +585,6 @@ serve(async (req: Request) => {
             values: [newRow],
           });
 
-          // Also save for versioned sheet
-          versionedRows.push(newRow);
-
           matchedCount++;
           
           if ((idx + 1) % 100 === 0) {
@@ -687,69 +628,7 @@ serve(async (req: Request) => {
 
       if (updates.length === 0) {
         console.warn('⚠️  No matched items to update in main sheet - all items are unmatched');
-        console.log(`   But ${unmatchedItemsArg.length} unmatched items will be added to versioned sheet`);
-      }
-
-      // Add unmatched items to versioned sheet as NEW rows
-      if (unmatchedItemsArg.length > 0) {
-        console.log(`📝 Adding ${unmatchedItemsArg.length} unmatched items to versioned sheet (${versionedRows.length} total rows after this)...`);
-        
-        try {
-          unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
-            // Create a row array in the same order as headers
-            const unmatchedRow: any[] = [];
-            headers.forEach((header: string) => {
-              const headerLower = header.toLowerCase();
-              // Map fields to header
-              if (headerLower === 'id') unmatchedRow.push(unmatchedItem.id || '');
-              else if (headerLower === 'program_pembebanan') unmatchedRow.push(unmatchedItem.program_pembebanan || '');
-              else if (headerLower === 'kegiatan') unmatchedRow.push(unmatchedItem.kegiatan || '');
-              else if (headerLower === 'rincian_output') unmatchedRow.push(unmatchedItem.rincian_output || '');
-              else if (headerLower === 'komponen_output') unmatchedRow.push(unmatchedItem.komponen_output || '');
-              else if (headerLower === 'sub_komponen') {
-                // Normalize sub_komponen to 3 digits with single quote for USER_ENTERED
-                if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
-                  const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
-                  unmatchedRow.push(`'${normalized || ''}`); // Single quote for USER_ENTERED
-                } else {
-                  unmatchedRow.push('');
-                }
-              } else if (headerLower === 'akun') unmatchedRow.push(unmatchedItem.akun || '');
-              else if (headerLower === 'uraian') unmatchedRow.push(unmatchedItem.uraian || '');
-              else if (headerLower === 'volume_semula') unmatchedRow.push(unmatchedItem.volume_semula || 1);
-              else if (headerLower === 'satuan_semula') unmatchedRow.push(unmatchedItem.satuan_semula || '');
-              else if (headerLower === 'harga_satuan_semula') unmatchedRow.push(unmatchedItem.harga_satuan_semula || 0);
-              else if (headerLower === 'jumlah_semula') unmatchedRow.push(unmatchedItem.jumlah_semula || 0);
-              else if (headerLower === 'volume_menjadi') unmatchedRow.push(unmatchedItem.volume_menjadi || 1);
-              else if (headerLower === 'satuan_menjadi') unmatchedRow.push(unmatchedItem.satuan_menjadi || '');
-              else if (headerLower === 'harga_satuan_menjadi') unmatchedRow.push(unmatchedItem.harga_satuan_menjadi || 0);
-              else if (headerLower === 'jumlah_menjadi') unmatchedRow.push(unmatchedItem.jumlah_menjadi || 0);
-              else if (headerLower === 'selisih') unmatchedRow.push(unmatchedItem.selisih || 0);
-              else if (headerLower === 'sisa_anggaran') unmatchedRow.push(unmatchedItem.sisa_anggaran || 0);
-              else if (headerLower === 'blokir') unmatchedRow.push(unmatchedItem.blokir || 0);
-              else if (headerLower === 'status') unmatchedRow.push(unmatchedItem.status || 'new');
-              else if (headerLower === 'approved_by') unmatchedRow.push(unmatchedItem.approved_by || '');
-              else if (headerLower === 'approved_date') unmatchedRow.push(unmatchedItem.approved_date || '');
-              else if (headerLower === 'rejected_date') unmatchedRow.push(unmatchedItem.rejected_date || '');
-              else if (headerLower === 'submitted_by') unmatchedRow.push(unmatchedItem.submitted_by || 'import');
-              else if (headerLower === 'submitted_date') unmatchedRow.push(unmatchedItem.submitted_date || '');
-              else if (headerLower === 'updated_date') unmatchedRow.push(unmatchedItem.updated_date || '');
-              else if (headerLower === 'notes') unmatchedRow.push(unmatchedItem.notes || '');
-              else if (headerLower === 'catatan_ppk') unmatchedRow.push(unmatchedItem.catatan_ppk || '');
-              else unmatchedRow.push(''); // Unknown columns get empty
-            });
-            
-            versionedRows.push(unmatchedRow);
-            if ((itemIdx + 1) % 5 === 0) {
-              console.log(`  Added ${itemIdx + 1}/${unmatchedItemsArg.length} unmatched items`);
-            }
-          });
-          
-          console.log(`✓ Added ${unmatchedItemsArg.length} unmatched items, versioned sheet now has ${versionedRows.length} rows total`);
-        } catch (error) {
-          console.error('Error preparing unmatched items:', error);
-          throw new Error(`Error preparing unmatched items: ${error instanceof Error ? error.message : String(error)}`);
-        }
+        console.log(`   But ${unmatchedItemsArg.length} unmatched items will be appended to budget_items`);
       }
 
       // Step 3: Apply all updates to main sheet - WITH sub_komponen normalization
