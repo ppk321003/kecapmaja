@@ -434,8 +434,16 @@ serve(async (req: Request) => {
       try {
         const { values: itemsToUpdate, bulan, tahun } = body;
         
+        console.log('📦 Request body keys:', Object.keys(body).join(', '));
+        console.log('📦 itemsToUpdate exists:', !!itemsToUpdate, 'isArray:', Array.isArray(itemsToUpdate));
+        
         if (!itemsToUpdate || !Array.isArray(itemsToUpdate)) {
-          throw new Error('values must be an array of items');
+          const errorMsg = `Invalid itemsToUpdate: ${!itemsToUpdate ? 'null/undefined' : `not array, type=${typeof itemsToUpdate}`}`;
+          console.error('❌ ' + errorMsg);
+          return new Response(JSON.stringify({ error: errorMsg }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
 
         const monthStr = String(bulan).padStart(2, '0');
