@@ -826,47 +826,86 @@ serve(async (req: Request) => {
               // Build batchUpdate request with 3 separate data blocks (no gaps/overwrites)
               const dataBlocks = [];
               
-              // Block 1: sub_komponen column (NORMALIZE to 3 digits)
+              // Block 1: sub_komponen column with EXPLICIT TEXT format
               if (subKomponenIndex !== undefined) {
-                const subKomponenData = batch.map(update => {
+                batch.forEach(update => {
                   let rawValue = update.values[0][subKomponenIndex];
                   
-                  // Remove single quote prefix if already present (no longer needed with RAW)
+                  // Remove single quote prefix if already present
                   if (typeof rawValue === 'string' && rawValue.startsWith("'")) {
                     rawValue = rawValue.substring(1);
                   }
                   
                   const normalizedValue = normalizeSubKomponenValue(rawValue);
                   console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
-                  return {
-                    range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
-                    values: [[normalizedValue]], // RAW mode: send plain 3-digit value
-                  };
+                  
+                  // Set both TEXT format AND value using updateCells
+                  dataBlocks.push({
+                    updateCells: {
+                      rows: [{
+                        values: [{
+                          userEnteredValue: { stringValue: normalizedValue },
+                          userEnteredFormat: { 
+                            numberFormat: { type: 'TEXT' }
+                          }
+                        }]
+                      }],
+                      fields: 'userEnteredValue,userEnteredFormat.numberFormat',
+                      start: {
+                        sheetId: 0, // First sheet (main sheet is always ID 0)
+                        rowIndex: update.rowIndex - 1, // Convert to 0-indexed
+                        columnIndex: subKomponenIndex
+                      }
+                    }
+                  });
                 });
-                dataBlocks.push(...subKomponenData);
               }
               
               // Block 2: sisa_anggaran column
-              const sisaAnggaranData = batch.map(update => ({
-                range: `${mainSheetName}!${indexToColumnLetter(sisaAnggaranIndex)}${update.rowIndex}`,
-                values: [[update.values[0][sisaAnggaranIndex]]],
-              }));
-              dataBlocks.push(...sisaAnggaranData);
+              batch.forEach(update => {
+                dataBlocks.push({
+                  updateCells: {
+                    rows: [{
+                      values: [{
+                        userEnteredValue: { numberValue: update.values[0][sisaAnggaranIndex] }
+                      }]
+                    }],
+                    fields: 'userEnteredValue',
+                    start: {
+                      sheetId: 0,
+                      rowIndex: update.rowIndex - 1,
+                      columnIndex: sisaAnggaranIndex
+                    }
+                  }
+                });
+              });
               
               // Block 3: updated_date column (only if exists)
               if (updatedDateIndex !== undefined) {
-                const updatedDateData = batch.map(update => ({
-                  range: `${mainSheetName}!${indexToColumnLetter(updatedDateIndex)}${update.rowIndex}`,
-                  values: [[update.values[0][updatedDateIndex]]],
-                }));
-                dataBlocks.push(...updatedDateData);
+                batch.forEach(update => {
+                  dataBlocks.push({
+                    updateCells: {
+                      rows: [{
+                        values: [{
+                          userEnteredValue: { stringValue: update.values[0][updatedDateIndex] }
+                        }]
+                      }],
+                      fields: 'userEnteredValue',
+                      start: {
+                        sheetId: 0,
+                        rowIndex: update.rowIndex - 1,
+                        columnIndex: updatedDateIndex
+                      }
+                    }
+                  });
+                });
               }
               
               console.log(`  📤 Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: sending ${dataBlocks.length} cell updates for ${batch.length} rows`);
 
-              // Use values:batchUpdate with RAW (no formula interpretation, preserves leading zeros)
+              // Use batchUpdate with updateCells for TEXT format control
               const updateResponse = await fetch(
-                `${baseUrl}/values:batchUpdate`,
+                `${baseUrl}:batchUpdate`,
                 {
                   method: 'POST',
                   headers: {
@@ -874,8 +913,7 @@ serve(async (req: Request) => {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    data: dataBlocks,
-                    valueInputOption: 'RAW', // RAW to preserve leading zeros and prevent auto-conversion to numbers
+                    requests: dataBlocks,
                   }),
                 }
               );
