@@ -327,44 +327,60 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
     );
   }
 
+  // Search Input - Always visible, even when no results
+  const searchInputSection = (
+    <div className="mb-4 flex items-center gap-2">
+      <Input
+        type="text"
+        placeholder="Cari berdasarkan uraian..."
+        value={searchUraian}
+        onChange={(e) => {
+          setSearchUraian(e.target.value);
+          setCurrentPage(1);
+        }}
+        className="flex-1"
+      />
+      {searchUraian && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSearchUraian('')}
+          className="text-xs"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+
   if (filteredByZeroPagu.length === 0 && hideZeroPagu) {
     return (
-      <Card className="p-8">
-        <div className="flex items-center justify-center gap-2 text-slate-500">
-          <AlertCircle className="h-5 w-5" />
-          <span>Tidak ada data budget items dengan jumlah pagu lebih dari 0</span>
-        </div>
-      </Card>
+      <>
+        {searchInputSection}
+        <Card className="p-8">
+          <div className="flex items-center justify-center gap-2 text-slate-500">
+            <AlertCircle className="h-5 w-5" />
+            <span>Tidak ada data budget items dengan jumlah pagu lebih dari 0</span>
+          </div>
+        </Card>
+      </>
     );
   }
 
   return (
     <>
-      {/* Search Input */}
-      <div className="mb-4 flex items-center gap-2">
-        <Input
-          type="text"
-          placeholder="Cari berdasarkan uraian..."
-          value={searchUraian}
-          onChange={(e) => {
-            setSearchUraian(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="flex-1"
-        />
-        {searchUraian && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSearchUraian('')}
-            className="text-xs"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+      {searchInputSection}
 
-      <Card className="overflow-hidden">
+      {sortedItems.length === 0 && searchUraian ? (
+        <Card className="p-8">
+          <div className="flex items-center justify-center gap-2 text-slate-500">
+            <AlertCircle className="h-5 w-5" />
+            <span>Tidak ada data yang cocok dengan pencarian "{searchUraian}". Silakan coba kata kunci lain</span>
+          </div>
+        </Card>
+      ) : (
+        <>
+          <Card className="overflow-hidden">
 
         {/* Table */}
         <div className="overflow-x-auto">
@@ -843,6 +859,8 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
         onOpenChange={setIsDetailDialogOpen}
         item={detailItem}
       />
+        </>
+      )}
     </>
   );
 };
