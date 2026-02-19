@@ -562,7 +562,7 @@ serve(async (req: Request) => {
           const newRow = [...foundMatch.data];
           newRow[sisaAnggaranIndex] = item.sisa_anggaran;
           
-          // Normalize sub_komponen to 3 digits - use dynamic column index
+          // Normalize sub_komponen to 3 digits (force as text with single quote)
           if (subKomponenIndex !== undefined && item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
             try {
               const originalValue = newRow[subKomponenIndex];
@@ -728,9 +728,9 @@ serve(async (req: Request) => {
         console.log(`📝 Writing ${versionedRows.length} rows to versioned sheet...`);
         
         // Normalize all sub_komponen in versioned rows before writing (safety pass)
-        console.log(`  🔄 Normalizing sub_komponen in all ${versionedRows.length} versioned rows...`);
-        let normalizedCount = 0;
         if (subKomponenIndex !== undefined) {
+          console.log(`  🔄 Normalizing sub_komponen in all ${versionedRows.length} versioned rows (index: ${subKomponenIndex})...`);
+          let normalizedCount = 0;
           for (let i = 0; i < versionedRows.length; i++) {
             const versionedRow = versionedRows[i];
             if (versionedRow && versionedRow.length > subKomponenIndex) {
@@ -738,7 +738,7 @@ serve(async (req: Request) => {
               const normalizedValue = normalizeSubKomponenValue(rawValue);
               if (rawValue !== normalizedValue) {
                 console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
-                versionedRow[subKomponenIndex] = `'${normalizedValue}`; // Force as text with single quote
+                versionedRow[subKomponenIndex] = `'${normalizedValue}`; // Force as text with single quote prefix
                 normalizedCount++;
               } else if (rawValue) {
                 // Even if not changed, ensure it's forced as text
@@ -746,8 +746,8 @@ serve(async (req: Request) => {
               }
             }
           }
+          console.log(`  ✓ Normalized ${normalizedCount} sub_komponen values in versioned rows`);
         }
-        console.log(`  ✓ Normalized ${normalizedCount} sub_komponen values in versioned rows`);
         
         try {
           // First, clear existing data in versioned sheet
@@ -823,7 +823,7 @@ serve(async (req: Request) => {
               // Block 1: sub_komponen column (NORMALIZE to 3 digits, force as text)
               if (subKomponenIndex !== undefined) {
                 const subKomponenData = batch.map(update => {
-                  const rawValue = update.values[0][subKomponenIndex]; // Use dynamic index
+                  const rawValue = update.values[0][subKomponenIndex];
                   const normalizedValue = normalizeSubKomponenValue(rawValue);
                   console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
                   return {
