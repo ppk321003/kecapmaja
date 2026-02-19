@@ -584,9 +584,43 @@ serve(async (req: Request) => {
         const foundMatch = rowMap.get(itemKey);
         
         if (foundMatch) {
-          // Update the row data
+          // Update the row data with ALL columns from CSV item (not just sisa_anggaran)
           const newRow = [...foundMatch.data];
-          newRow[sisaAnggaranIndex] = item.sisa_anggaran;
+          
+          // Map all available columns from CSV item to sheet columns
+          headers.forEach((header: string, colIndex: number) => {
+            const headerLower = header.toLowerCase();
+            
+            // Copy column values from CSV item where available
+            if (headerLower === 'program_pembebanan') newRow[colIndex] = item.program_pembebanan || newRow[colIndex];
+            else if (headerLower === 'kegiatan') newRow[colIndex] = item.kegiatan || newRow[colIndex];
+            else if (headerLower === 'rincian_output') newRow[colIndex] = item.rincian_output || newRow[colIndex];
+            else if (headerLower === 'komponen_output') newRow[colIndex] = item.komponen_output || newRow[colIndex];
+            else if (headerLower === 'sub_komponen') {
+              // Will be handled below with normalization
+            } else if (headerLower === 'akun') newRow[colIndex] = item.akun || newRow[colIndex];
+            else if (headerLower === 'uraian') newRow[colIndex] = item.uraian || newRow[colIndex];
+            else if (headerLower === 'volume_semula') newRow[colIndex] = item.volume_semula !== undefined ? item.volume_semula : 0;
+            else if (headerLower === 'satuan_semula') newRow[colIndex] = item.satuan_semula || '';
+            else if (headerLower === 'harga_satuan_semula') newRow[colIndex] = item.harga_satuan_semula !== undefined ? item.harga_satuan_semula : 0;
+            else if (headerLower === 'jumlah_semula') newRow[colIndex] = item.jumlah_semula !== undefined ? item.jumlah_semula : 0;
+            else if (headerLower === 'volume_menjadi') newRow[colIndex] = item.volume_menjadi !== undefined ? item.volume_menjadi : 1;
+            else if (headerLower === 'satuan_menjadi') newRow[colIndex] = item.satuan_menjadi || '';
+            else if (headerLower === 'harga_satuan_menjadi') newRow[colIndex] = item.harga_satuan_menjadi !== undefined ? item.harga_satuan_menjadi : 0;
+            else if (headerLower === 'jumlah_menjadi') newRow[colIndex] = item.jumlah_menjadi !== undefined ? item.jumlah_menjadi : 0;
+            else if (headerLower === 'selisih') newRow[colIndex] = item.selisih !== undefined ? item.selisih : 0;
+            else if (headerLower === 'sisa_anggaran') newRow[colIndex] = item.sisa_anggaran !== undefined ? item.sisa_anggaran : 0;
+            else if (headerLower === 'blokir') newRow[colIndex] = item.blokir !== undefined ? item.blokir : 0;
+            else if (headerLower === 'status') newRow[colIndex] = item.status || 'updated';
+            else if (headerLower === 'approved_by') newRow[colIndex] = item.approved_by || '';
+            else if (headerLower === 'approved_date') newRow[colIndex] = item.approved_date || '';
+            else if (headerLower === 'rejected_date') newRow[colIndex] = item.rejected_date || '';
+            else if (headerLower === 'submitted_by') newRow[colIndex] = item.submitted_by || 'import';
+            else if (headerLower === 'submitted_date') newRow[colIndex] = item.submitted_date || '';
+            else if (headerLower === 'updated_date') newRow[colIndex] = item.updated_date !== undefined ? item.updated_date : new Date().toISOString();
+            else if (headerLower === 'notes') newRow[colIndex] = item.notes || '';
+            else if (headerLower === 'catatan_ppk') newRow[colIndex] = item.catatan_ppk || '';
+          });
           
           // Normalize sub_komponen to 3 digits with single quote prefix
           if (subKomponenIndex !== undefined && item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
@@ -600,10 +634,6 @@ serve(async (req: Request) => {
               console.warn('Error normalizing sub_komponen for item:', item.uraian, e);
               // Keep original value if normalize fails
             }
-          }
-          
-          if (updatedDateIndex !== undefined) {
-            newRow[updatedDateIndex] = item.updated_date;
           }
 
           updates.push({
