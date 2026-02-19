@@ -189,12 +189,24 @@ async function getSheetIdByName(spreadsheetId: string, accessToken: string, shee
 }
 
 // Normalize values for consistent matching
+// Handles ALL case variations (GG, gg, Gg, gG, BMA, bma, etc.) + extra spaces/special chars
 function normalizeForMatching(value: any): string {
   if (!value) return '';
   
-  const str = String(value).toLowerCase().trim();
+  let str = String(value)
+    .toUpperCase() // ALL cases → uppercase (gg=GG, bma=BMA, bm=BM)
+    .trim() // Remove leading/trailing spaces
+    .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+    .replace(/[\s_-]+/g, '_'); // Normalize separators to underscore (_)
   
   // Normalize sub_komponen to 3 digits (pad with zeros)
+  if (/^\d+(_|$)/.test(str)) {
+    const parts = str.split('_');
+    parts[0] = parts[0].padStart(3, '0');
+    return parts.join('_');
+  }
+  
+  // Handle pure numeric strings
   if (/^\d+$/.test(str)) {
     return str.padStart(3, '0');
   }
@@ -202,7 +214,7 @@ function normalizeForMatching(value: any): string {
   // Strip kode prefix like "000081. " or "81. "
   const withoutPrefix = str.replace(/^\d+\.\s*/, '');
   
-  return withoutPrefix;
+  return withoutPrefix.trim();
 }
 
 // Normalize sub_komponen value to 3-digit format with text prefix
@@ -794,14 +806,99 @@ serve(async (req: Request) => {
           appendErrors.push(`Main update error: ${errorMsg}`);
         }
 
-        // Step 4b: APPEND unmatched items to budget_items
+        // Step 4b: APPEND unmatched items to SEPARATE SHEET (NOT to budget_items)
         let appendCountUnmatched = 0;
+        const unmatchedSheetName = `budget_items_unmatched_${bulanName}_${tahun}`;
         
         if (unmatchedItemsArg.length > 0) {
-          console.log(`📥 Step 2: Appending ${unmatchedItemsArg.length} unmatched items to ${mainSheetName}...`);
+          console.log(`📥 Step 3: Appending ${unmatchedItemsArg.length} unmatched items to separate sheet ${unmatchedSheetName}...`);
           
           try {
-            // Build rows for unmatched items (same structure as matched items)
+            // First, check if unmatched sheet exists by trying to read it
+            let unmatchedSheetExists = false;
+            try {
+              const checkResponse = await fetch(
+                `${baseUrl}/values/${unmatchedSheetName}!A1`,
+                {
+                  method: 'GET',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                  },
+                }
+              );
+              unmatchedSheetExists = checkResponse.ok;
+            } catch (e) {
+              unmatchedSheetExists = false;
+            }
+
+            // If sheet doesn't exist, create it with headers
+            if (!unmatchedSheetExists) {
+              console.log(`Creating new unmatched items sheet: ${unmatchedSheetName}`);
+              
+              try {
+                // Create sheet using batchUpdate
+                const createSheetResponse = await fetch(
+                  `${baseUrl}/batchUpdate`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      Authorization: `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      requests: [
+                        {
+                          addSheet: {
+                            properties: {
+                              title: unmatchedSheetName,
+                              gridProperties: {
+                                rowCount: 1000,
+                                columnCount: headers.length,
+                              },
+                            },
+                          },
+                        },
+                      ],
+                    }),
+                  }
+                );
+
+                const createResult = await createSheetResponse.json();
+                if (!createSheetResponse.ok) {
+                  throw new Error(createResult?.error?.message || 'Failed to create unmatched sheet');
+                }
+
+                // Insert header row
+                const headerRow = [headers];
+                const headerResponse = await fetch(
+                  `${baseUrl}/values/${unmatchedSheetName}!A1:${indexToColumnLetter(headers.length - 1)}1`,
+                  {
+                    method: 'PUT',
+                    headers: {
+                      Authorization: `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      values: headerRow,
+                      majorDimension: 'ROWS',
+                    }),
+                  }
+                );
+
+                if (!headerResponse.ok) {
+                  const headerError = await headerResponse.json();
+                  throw new Error(headerError?.error?.message || 'Failed to insert headers');
+                }
+
+                console.log(`✅ Created unmatched items sheet ${unmatchedSheetName} with headers`);
+              } catch (sheetError) {
+                const errorMsg = sheetError instanceof Error ? sheetError.message : String(sheetError);
+                console.warn(`⚠️ Failed to create unmatched sheet:`, errorMsg);
+                appendErrors.push(`Unmatched sheet creation: ${errorMsg}`);
+              }
+            }
+
+            // Build rows for unmatched items
             const unmatchedRows: any[][] = [];
             
             unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
@@ -859,12 +956,12 @@ serve(async (req: Request) => {
               }
             });
             
-            console.log(`✓ Prepared ${unmatchedRows.length} rows for append to ${mainSheetName}`);
+            console.log(`✓ Prepared ${unmatchedRows.length} rows for append to ${unmatchedSheetName}`);
             
-            // Append to main sheet
+            // Append to unmatched sheet (NOT to budget_items)
             if (unmatchedRows.length > 0) {
               const appendResponse = await fetch(
-                `${baseUrl}/values/${mainSheetName}:append?valueInputOption=USER_ENTERED`,
+                `${baseUrl}/values/${unmatchedSheetName}:append?valueInputOption=USER_ENTERED`,
                 {
                   method: 'POST',
                   headers: {
@@ -880,7 +977,7 @@ serve(async (req: Request) => {
               const appendResult = await appendResponse.json();
               if (appendResponse.ok) {
                 appendCountUnmatched = unmatchedRows.length;
-                console.log(`✅ Appended ${appendCountUnmatched} unmatched items to ${mainSheetName}`);
+                console.log(`✅ Appended ${appendCountUnmatched} unmatched items to ${unmatchedSheetName}`);
               } else {
                 const errorMsg = appendResult?.error?.message || 'Unknown error';
                 console.warn(`⚠️ Failed to append unmatched items:`, errorMsg);

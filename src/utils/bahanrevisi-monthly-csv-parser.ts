@@ -415,58 +415,52 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
 };
 
 /**
- * Normalize untuk matching - sama dengan normalizeForMatching di google-sheets function
- * Handles: "2" → "002", "51.0A" → "051", "051_GG" → "051_gg" etc.
+ * Normalize untuk matching - SAMA dengan normalizeForMatching di google-sheets function
+ * Handles ALL variations:
+ * - Case: "GG" = "gg" = "Gg" → "GG"
+ * - Spaces: "bma   001" = "bma 001" → "BMA 001"
+ * - Separators: "051-GG" = "051_GG" = "051 GG" → "051_GG"
+ * - Numbers: "2" → "002", "51.0A" → "051_0A"
  */
 function normalizeForMatching(value: any): string {
   if (!value) return '';
   
-  const str = String(value).toLowerCase().trim();
+  let str = String(value)
+    .toUpperCase() // ALL cases → uppercase (gg=GG, bma=BMA, bm=BM)
+    .trim() // Remove leading/trailing spaces
+    .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+    .replace(/[\s_-]+/g, '_'); // Normalize separators to underscore (_)
   
-  // Normalize sub_komponen to 3 digits (pad with zeros)
-  if (/^\d+$/.test(str)) {
-    return str.padStart(3, '0');
+  // Normalize numbers with suffix like "051_GG" or "051 GG"
+  if (/^\d+(_|$)/.test(str)) {
+    const parts = str.split('_');
+    parts[0] = parts[0].padStart(3, '0');
+    return parts.join('_');
   }
   
-  // Handle format like "51.0A" - extract just digits and normalize
-  const digitMatch = str.match(/^(\d+)/);
-  if (digitMatch) {
-    const numPart = digitMatch[1].padStart(3, '0');
-    const suffix = str.substring(digitMatch[1].length);
-    // Keep suffix like _.GG but remove .0A type suffixes for matching
-    if (suffix.startsWith('_')) {
-      return numPart + suffix;
-    }
-    return numPart; // Ignore .0A suffix for matching purposes
+  // Handle pure numeric strings
+  if (/^\d+$/.test(str)) {
+    return str.padStart(3, '0');
   }
   
   // Strip kode prefix like "000081. " or "81. "
   const withoutPrefix = str.replace(/^\d+\.\s*/, '');
   
-  return withoutPrefix;
+  return withoutPrefix.trim();
 }
 
 /**
  * Create unique key dari item untuk matching
- * CRITICAL: Normalize sub_komponen to ensure consistent matching between CSV and DB
+ * CRITICAL: Normalize ALL fields for case-insensitive matching (gg vs GG, bm vs BM)
  */
 export const createUniqueKey = (item: ParsedMonthlyItem | any): string => {
-  const subKompValue = item.subKomponen || item.sub_komponen || '';
-  
   return [
-    item.program || item.program_pembebanan || '',
-    item.kegiatan || '',
-    item.rincianOutput || item.rincian_output || '',
-    item.komponenOutput || item.komponen_output || '',
-    normalizeForMatching(subKompValue), // NORMALIZE sub_komponen here!
-    item.akun || '',
-    item.uraian || '',
-  ]
-    .map((s) => {
-      // Don't normalize again if it's already normalized
-      const str = String(s || '').toLowerCase().trim();
-      // Only normalize if it's not already the sub_komponen field (which we already normalized)
-      return s !== subKompValue ? str : str;
-    })
-    .join('|');
+    normalizeForMatching(item.program || item.program_pembebanan || ''),
+    normalizeForMatching(item.kegiatan || ''),
+    normalizeForMatching(item.rincianOutput || item.rincian_output || ''),
+    normalizeForMatching(item.komponenOutput || item.komponen_output || ''),
+    normalizeForMatching(item.subKomponen || item.sub_komponen || ''),
+    normalizeForMatching(item.akun || ''),
+    normalizeForMatching(item.uraian || ''),
+  ].join('|');
 };
