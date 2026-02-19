@@ -453,9 +453,16 @@ serve(async (req: Request) => {
         const monthStr = String(bulan).padStart(2, '0');
         
         console.log(`Processing ${itemsToUpdate.length} items for bulan=${bulan}, tahun=${tahun}`);
-        console.log('Strategy: Trust frontend matching - INSERT matched items directly into budget_items');
+        console.log('Strategy: Create new monthly sheet and append items there');
 
-        // Read budget_items sheet to identify columns
+        // Create versioned sheet name: budget_items_jan_2026, budget_items_feb_2026, etc.
+        const bulanNames = ['', 'jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'agu', 'sep', 'okt', 'nov', 'des'];
+        const bulanName = bulanNames[bulan] || String(bulan).padStart(2, '0');
+        const versionedSheetName = `budget_items_${bulanName}_${tahun}`;
+        
+        console.log(`📅 Creating/using versioned sheet: ${versionedSheetName}`);
+
+        // Read budget_items sheet to get header structure
         const mainSheetName = 'budget_items';
         const readResponse = await fetch(
           `${baseUrl}/values/${mainSheetName}`,
@@ -562,33 +569,72 @@ serve(async (req: Request) => {
           console.log('📋 Sample row [0] (first 10 cols):', rowsToInsert[0].slice(0, 10));
         }
 
-        // Check if we have ANY items to process
-        const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
-        const totalItems = rowsToInsert.length + unmatchedItemsArg.length;
+        // Step 3: Create versioned sheet if it doesn't exist
+        console.log(`📋 Checking if ${versionedSheetName} exists...`);
         
-        if (totalItems === 0) {
-          console.warn('⚠️  No items to process - both matched and unmatched are empty');
-          return new Response(
-            JSON.stringify({
-              success: false,
-              message: 'No items found to process (matched or unmatched)',
-              matched: 0,
-              unmatched: 0,
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        let versionedSheetExists = false;
+        try {
+          // Try to read the versioned sheet
+          const versionedReadResponse = await fetch(
+            `${baseUrl}/values/${versionedSheetName}`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
           );
+          
+          if (versionedReadResponse.ok) {
+            const versionedData = await versionedReadResponse.json();
+            if (versionedData.values && versionedData.values.length > 0) {
+              versionedSheetExists = true;
+              console.log(`✓ ${versionedSheetName} already exists with ${versionedData.values.length} rows`);
+            }
+          }
+        } catch (err) {
+          console.log(`⚠️ Could not check ${versionedSheetName}, will create if needed`);
         }
 
-        // Step 3: APPEND matched items directly to budget_items (trust frontend's matching)
+        // If versioned sheet doesn't exist, create it with header
+        if (!versionedSheetExists) {
+          console.log(`📊 Creating new sheet: ${versionedSheetName}`);
+          try {
+            // Insert header row as the first append
+            const headerInsertResponse = await fetch(
+              `${baseUrl}/values/${versionedSheetName}:append?valueInputOption=USER_ENTERED`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  values: [headers], // Insert header row
+                }),
+              }
+            );
+            
+            if (headerInsertResponse.ok) {
+              console.log(`✅ Created ${versionedSheetName} with header row`);
+              versionedSheetExists = true;
+            } else {
+              const errorData = await headerInsertResponse.json();
+              console.warn(`⚠️ Failed to create ${versionedSheetName}:`, errorData.error?.message);
+            }
+          } catch (error) {
+            console.warn(`⚠️ Error creating ${versionedSheetName}:`, error);
+          }
+        }
+
+        // Step 4: APPEND matched items to versioned sheet
         let appendCountMatched = 0;
         const appendErrors: string[] = [];
 
-        console.log(`📥 Step 1: Appending ${rowsToInsert.length} matched items to ${mainSheetName}...`);
+        console.log(`📥 Step 1: Appending ${rowsToInsert.length} matched items to ${versionedSheetName}...`);
+        
         
         try {
           if (rowsToInsert.length > 0) {
             const appendResponse = await fetch(
-              `${baseUrl}/values/${mainSheetName}:append?valueInputOption=USER_ENTERED`,
+              `${baseUrl}/values/${versionedSheetName}:append?valueInputOption=USER_ENTERED`,
               {
                 method: 'POST',
                 headers: {
@@ -604,7 +650,7 @@ serve(async (req: Request) => {
             const appendResult = await appendResponse.json();
             if (appendResponse.ok) {
               appendCountMatched = rowsToInsert.length;
-              console.log(`✅ Appended ${appendCountMatched} matched items to ${mainSheetName}`);
+              console.log(`✅ Appended ${appendCountMatched} matched items to ${versionedSheetName}`);
             } else {
               const errorMsg = appendResult?.error?.message || 'Unknown error';
               console.warn(`⚠️ Failed to append matched items:`, errorMsg);
