@@ -562,11 +562,11 @@ serve(async (req: Request) => {
           const newRow = [...foundMatch.data];
           newRow[sisaAnggaranIndex] = item.sisa_anggaran;
           
-          // Normalize sub_komponen to 3 digits
+          // Normalize sub_komponen to 3 digits with single quote prefix
           if (subKomponenIndex !== undefined && item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
             try {
               const normalizedValue = normalizeSubKomponenValue(item.sub_komponen);
-              newRow[subKomponenIndex] = normalizedValue; // RAW, no quote needed
+              newRow[subKomponenIndex] = `'${normalizedValue}`; // Add single quote for USER_ENTERED
               if (newRow[subKomponenIndex] !== item.sub_komponen && normalizedValue) {
                 normalizedCount++;
               }
