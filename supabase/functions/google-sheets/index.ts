@@ -770,56 +770,52 @@ serve(async (req: Request) => {
         }
       }
 
-      // Step 3: Apply all updates to main sheet - use batchUpdate for safe column-specific updates
+      // Step 3: Apply updates to main sheet with period-based overwrite (Hybrid Approach)
+      // Delete only rows matching this period, keep other periods intact
       let successCount = 0;
+      let deletedRowCount = 0;
       const updateErrors: string[] = [];
-      const BATCH_SIZE = 10; // Update 10 rows per batch
+      const submittedDateIndex = headerIndexes['submitted_date'];
 
-      console.log(`🔄 Updating main sheet (${mainSheetName}) with ${updates.length} rows (safe per-column batches)...`);
+      console.log(`🔄 Step 3: Updated main sheet (${mainSheetName}) - overwriting only ${monthStr}/${tahun} period data...`);
       
       try {
-        if (updates.length > 0) {
-          // Sort updates by rowIndex for batch processing
-          const sortedUpdates = [...updates].sort((a, b) => a.rowIndex - b.rowIndex);
+        // Step 3a: Identify rows to delete (matching this period)
+        const rowsToDelete: number[] = [];
+        const periodDateFilter = `${tahun}-${monthStr}`;
+        
+        if (submittedDateIndex !== undefined) {
+          for (let rowIndex = 1; rowIndex < readData.values.length; rowIndex++) {
+            const sheetRow = readData.values[rowIndex];
+            const submittedDate = sheetRow[submittedDateIndex];
+            
+            if (submittedDate && String(submittedDate).startsWith(periodDateFilter)) {
+              rowsToDelete.push(rowIndex); // Store 0-based index
+            }
+          }
           
-          // Process in batches
-          for (let batchIdx = 0; batchIdx < sortedUpdates.length; batchIdx += BATCH_SIZE) {
-            const batch = sortedUpdates.slice(batchIdx, Math.min(batchIdx + BATCH_SIZE, sortedUpdates.length));
+          console.log(`🗑️ Found ${rowsToDelete.length} existing rows for period ${monthStr}/${tahun} to delete`);
+        } else {
+          console.warn(`⚠️ submitted_date column not found, will use 7-field matching for deletion`);
+        }
+
+        // Step 3b: Delete matching period rows from main sheet (in reverse order to maintain indices)
+        if (rowsToDelete.length > 0) {
+          // Get main sheet ID first
+          const sheetsResponse = await fetch(
+            `${baseUrl}`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          const sheetsData = await sheetsResponse.json();
+          const mainSheetId = sheetsData.sheets?.[0]?.properties?.sheetId || 0;
+          
+          // Delete rows in reverse order to maintain indices
+          for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            const rowIndexToDelete = rowsToDelete[i];
             
             try {
-              // Build batchUpdate request with 3 separate data blocks (no gaps/overwrites)
-              const dataBlocks = [];
-              
-              // Block 1: sub_komponen column (only if exists)
-              if (subKomponenIndex !== undefined) {
-                const subKomponenData = batch.map(update => ({
-                  range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
-                  values: [[update.values[0][subKomponenIndex]]],
-                }));
-                dataBlocks.push(...subKomponenData);
-              }
-              
-              // Block 2: sisa_anggaran column
-              const sisaAnggaranData = batch.map(update => ({
-                range: `${mainSheetName}!${indexToColumnLetter(sisaAnggaranIndex)}${update.rowIndex}`,
-                values: [[update.values[0][sisaAnggaranIndex]]],
-              }));
-              dataBlocks.push(...sisaAnggaranData);
-              
-              // Block 3: updated_date column (only if exists)
-              if (updatedDateIndex !== undefined) {
-                const updatedDateData = batch.map(update => ({
-                  range: `${mainSheetName}!${indexToColumnLetter(updatedDateIndex)}${update.rowIndex}`,
-                  values: [[update.values[0][updatedDateIndex]]],
-                }));
-                dataBlocks.push(...updatedDateData);
-              }
-              
-              console.log(`  📤 Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: sending ${dataBlocks.length} cell updates for ${batch.length} rows`);
-
-              // Use values:batchUpdate to update multiple ranges in one request
-              const updateResponse = await fetch(
-                `${baseUrl}/values:batchUpdate`,
+              const deleteResponse = await fetch(
+                `${baseUrl}:batchUpdate`,
                 {
                   method: 'POST',
                   headers: {
@@ -827,47 +823,70 @@ serve(async (req: Request) => {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    data: dataBlocks,
-                    valueInputOption: 'USER_ENTERED',
+                    requests: [{
+                      deleteDimension: {
+                        range: {
+                          sheetId: mainSheetId,
+                          dimension: 'ROWS',
+                          startIndex: rowIndexToDelete,
+                          endIndex: rowIndexToDelete + 1,
+                        },
+                      },
+                    }],
                   }),
                 }
               );
-
-              const updateResult = await updateResponse.json();
               
-              if (updateResponse.ok) {
-                successCount += batch.length;
-                console.log(`  ✓ Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: ${successCount}/${updates.length} rows updated`);
+              if (!deleteResponse.ok) {
+                console.warn(`⚠️ Failed to delete row ${rowIndexToDelete + 1}, continuing...`);
               } else {
-                const errorMsg = updateResult?.error?.message || 'Unknown error';
-                console.warn(`⚠️ Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1} failed:`, errorMsg);
-                batch.forEach(u => {
-                  updateErrors.push(`Row ${u.rowIndex}: ${errorMsg}`);
-                });
+                deletedRowCount++;
               }
             } catch (error) {
-              const errorMsg = error instanceof Error ? error.message : String(error);
-              console.warn(`⚠️ Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1} exception:`, errorMsg);
-              batch.forEach(u => {
-                updateErrors.push(`Row ${u.rowIndex}: ${errorMsg}`);
-              });
-            }
-
-            // Small delay between batches to avoid rate limiting
-            if ((batchIdx + BATCH_SIZE) < sortedUpdates.length) {
-              await new Promise(r => setTimeout(r, 100));
+              console.warn(`⚠️ Error deleting row ${rowIndexToDelete + 1}:`, error);
             }
           }
+          
+          console.log(`✓ Deleted ${deletedRowCount}/${rowsToDelete.length} old rows for period ${monthStr}/${tahun}`);
+        }
 
-          console.log(`✅ Update completed: ${successCount}/${updates.length} rows updated successfully`);
+        // Step 3c: Append new rows from this upload
+        if (updates.length > 0) {
+          const newRows = updates.map(u => u.values[0]);
+          
+          const appendResponse = await fetch(
+            `${baseUrl}/values/${mainSheetName}:append?valueInputOption=USER_ENTERED`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ values: newRows }),
+            }
+          );
+          
+          const appendResult = await appendResponse.json();
+          
+          if (appendResponse.ok) {
+            successCount = updates.length;
+            console.log(`✅ Appended ${updates.length} new rows for period ${monthStr}/${tahun}`);
+          } else {
+            const errorMsg = appendResult?.error?.message || 'Unknown error';
+            console.error(`❌ Append failed:`, errorMsg);
+            throw new Error(`Append failed: ${errorMsg}`);
+          }
         }
       } catch (error) {
-        console.error('❌ Critical error in batch update:', error);
         const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error('❌ Critical error in main sheet update:', errorMsg);
         updateErrors.push(`Critical error: ${errorMsg}`);
+        throw error;
       }
 
-      console.log(`✅ Update complete: ${successCount}/${updates.length} rows updated in main sheet`);
+      if (updateErrors.length === 0) {
+        console.log(`✅ Main sheet update complete: ${deletedRowCount} rows deleted, ${successCount}/${updates.length} new rows added`);
+      }
       
       // Step 4: Update rpd_items dengan bulan updates dan auto-calc total_rpd + sisa_anggaran
       let rpdUpdateCount = 0;
