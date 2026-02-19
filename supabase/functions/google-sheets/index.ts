@@ -661,7 +661,6 @@ serve(async (req: Request) => {
       }
 
       // Add unmatched items to versioned sheet as NEW rows
-      const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
       if (unmatchedItemsArg.length > 0) {
         console.log(`📝 Adding ${unmatchedItemsArg.length} unmatched items to versioned sheet (${versionedRows.length} total rows after this)...`);
         
