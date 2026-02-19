@@ -544,9 +544,9 @@ serve(async (req: Request) => {
 
       console.log(`🔍 Matching ${itemsToUpdate.length} items against ${rowMap.size} rows...`);
       itemsToUpdate.forEach((item: any, idx: number) => {
-        // Create matching key from item
+        // Create matching key from item - MUST match property names from BudgetItem interface
         const itemKey = [
-          normalizeForMatching(item.program),
+          normalizeForMatching(item.program_pembebanan || item.program),
           normalizeForMatching(item.kegiatan),
           normalizeForMatching(item.rincian_output),
           normalizeForMatching(item.komponen_output),
