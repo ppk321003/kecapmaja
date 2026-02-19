@@ -486,6 +486,32 @@ serve(async (req: Request) => {
           throw new Error('Budget items sheet is empty or not found');
         }
 
+        // Fetch spreadsheet metadata to get the sheetId for budget_items
+        console.log('📊 Fetching spreadsheet metadata to get sheetId...');
+        let mainSheetId = 0;
+        try {
+          const metadataResponse = await fetch(
+            `${baseUrl.replace('/values', '')}`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
+          if (metadataResponse.ok) {
+            const metadata = await metadataResponse.json();
+            const sheet = metadata.sheets?.find((s: any) => s.properties.title === mainSheetName);
+            if (sheet) {
+              mainSheetId = sheet.properties.sheetId;
+              console.log(`✓ Found sheetId for ${mainSheetName}: ${mainSheetId}`);
+            } else {
+              console.warn(`⚠️ Could not find sheet named "${mainSheetName}" in metadata`);
+            }
+          } else {
+            console.warn(`⚠️ Could not fetch spreadsheet metadata`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Error fetching spreadsheet metadata:`, error);
+        }
+
       const headers = readData.values[0];
       const headerIndexes: { [key: string]: number } = {};
       headers.forEach((header: string, index: number) => {
@@ -842,7 +868,7 @@ serve(async (req: Request) => {
                   return {
                     updateCells: {
                       range: {
-                        sheetId: 0, // budget_items sheet is always first sheet (0)
+                        sheetId: mainSheetId, // ← USE ACTUAL SHEET ID!
                         startRowIndex: update.rowIndex - 1, // 0-based
                         endRowIndex: update.rowIndex,
                         startColumnIndex: subKomponenIndex,
@@ -867,7 +893,7 @@ serve(async (req: Request) => {
               const sisaAnggaranRequests = batch.map(update => ({
                 updateCells: {
                   range: {
-                    sheetId: 0,
+                    sheetId: mainSheetId, // ← USE ACTUAL SHEET ID!
                     startRowIndex: update.rowIndex - 1,
                     endRowIndex: update.rowIndex,
                     startColumnIndex: sisaAnggaranIndex,
@@ -888,7 +914,7 @@ serve(async (req: Request) => {
                 const updatedDateRequests = batch.map(update => ({
                   updateCells: {
                     range: {
-                      sheetId: 0,
+                      sheetId: mainSheetId, // ← USE ACTUAL SHEET ID!
                       startRowIndex: update.rowIndex - 1,
                       endRowIndex: update.rowIndex,
                       startColumnIndex: updatedDateIndex,
