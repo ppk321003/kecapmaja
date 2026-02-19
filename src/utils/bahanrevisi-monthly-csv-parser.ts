@@ -415,18 +415,58 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
 };
 
 /**
+ * Normalize untuk matching - sama dengan normalizeForMatching di google-sheets function
+ * Handles: "2" → "002", "51.0A" → "051", "051_GG" → "051_gg" etc.
+ */
+function normalizeForMatching(value: any): string {
+  if (!value) return '';
+  
+  const str = String(value).toLowerCase().trim();
+  
+  // Normalize sub_komponen to 3 digits (pad with zeros)
+  if (/^\d+$/.test(str)) {
+    return str.padStart(3, '0');
+  }
+  
+  // Handle format like "51.0A" - extract just digits and normalize
+  const digitMatch = str.match(/^(\d+)/);
+  if (digitMatch) {
+    const numPart = digitMatch[1].padStart(3, '0');
+    const suffix = str.substring(digitMatch[1].length);
+    // Keep suffix like _.GG but remove .0A type suffixes for matching
+    if (suffix.startsWith('_')) {
+      return numPart + suffix;
+    }
+    return numPart; // Ignore .0A suffix for matching purposes
+  }
+  
+  // Strip kode prefix like "000081. " or "81. "
+  const withoutPrefix = str.replace(/^\d+\.\s*/, '');
+  
+  return withoutPrefix;
+}
+
+/**
  * Create unique key dari item untuk matching
+ * CRITICAL: Normalize sub_komponen to ensure consistent matching between CSV and DB
  */
 export const createUniqueKey = (item: ParsedMonthlyItem | any): string => {
+  const subKompValue = item.subKomponen || item.sub_komponen || '';
+  
   return [
     item.program || item.program_pembebanan || '',
     item.kegiatan || '',
     item.rincianOutput || item.rincian_output || '',
     item.komponenOutput || item.komponen_output || '',
-    item.subKomponen || item.sub_komponen || '',
+    normalizeForMatching(subKompValue), // NORMALIZE sub_komponen here!
     item.akun || '',
     item.uraian || '',
   ]
-    .map((s) => String(s || '').toLowerCase().trim())
+    .map((s) => {
+      // Don't normalize again if it's already normalized
+      const str = String(s || '').toLowerCase().trim();
+      // Only normalize if it's not already the sub_komponen field (which we already normalized)
+      return s !== subKompValue ? str : str;
+    })
     .join('|');
 };
