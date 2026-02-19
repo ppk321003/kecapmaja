@@ -208,26 +208,33 @@ function normalizeSubKomponenValue(value: any): string {
   
   const str = String(value).trim();
   
-  // If it already has program suffix like "051_GG", keep it as-is with quote prefix
+  // If it already has program suffix like "051_GG", keep it as-is
+  // Don't add quote prefix - Google Sheets will handle format properly
   if (str.includes('_')) {
-    return `'${str}`;
+    console.log(`[normalizeSubKomponenValue] Special case with program suffix: ${str}`);
+    return str;
   }
   
-  // If it's just digits, pad to 3
+  // If it's just digits, pad to 3 (e.g., "1" → "001", "51" → "051")
   if (/^\d+$/.test(str)) {
-    // Add single quote prefix to force Google Sheets to treat as text
-    return `'${str.padStart(3, '0')}`;
+    const padded = str.padStart(3, '0');
+    console.log(`[normalizeSubKomponenValue] Digit normalization: ${str} → ${padded}`);
+    return padded;
   }
   
-  // If it has format like "52.0A", normalize the numeric part
+  // If it has format like "52.0A", normalize the numeric part to 3 digits
   const match = str.match(/^(\d+)(\..*)?$/);
   if (match) {
     const numPart = match[1].padStart(3, '0');
     const suffix = match[2] || '';
-    return `'${numPart}${suffix}`;
+    const result = `${numPart}${suffix}`;
+    console.log(`[normalizeSubKomponenValue] Format normalization: ${str} → ${result}`);
+    return result;
   }
   
-  return `'${str}`;
+  // For other formats, keep as-is
+  console.log(`[normalizeSubKomponenValue] Unknown format, keeping as-is: ${str}`);
+  return str;
 }
 
 // Convert column index (0-based) to column letter (A, B, C, ..., Z, AA, AB, etc.)

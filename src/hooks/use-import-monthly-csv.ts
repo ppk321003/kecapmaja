@@ -209,6 +209,7 @@ export const useImportMonthlyCSV = ({
         // Prepare data untuk update budget_items
         const updateData = matchResult.matched_items.map((match) => {
           const updated = { ...match.budgetItem };
+          updated.sub_komponen = match.item.subKomponen;  // Update with normalized value from parser
           updated.sisa_anggaran = match.item.sisaAnggaran;
           updated.updated_date = formatDateIndonesia(new Date().toISOString());
           return updated;

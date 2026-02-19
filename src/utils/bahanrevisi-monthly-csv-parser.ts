@@ -335,10 +335,8 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
               // Note: periodeIni and sisaAnggaran can be 0, which is valid
               if (uraian && hierarchy.program && hierarchy.kegiatan) {
                 // Ensure sub_komponen is always 3-digit normalized
-                let normalizedSubKomponen = hierarchy.subKomponen;
-                if (normalizedSubKomponen && /^\d{1,3}$/.test(normalizedSubKomponen)) {
-                  normalizedSubKomponen = normalizedSubKomponen.padStart(3, '0');
-                }
+                // Always apply normalizeSubKomponen to ensure consistent 3-digit format (001, 002, etc.)
+                let normalizedSubKomponen = normalizeSubKomponen(hierarchy.subKomponen);
                 
                 // Append program code to sub_komponen ONLY for specific values: 051, 053, 054
                 // e.g., "051" + "GG" → "051_GG"
