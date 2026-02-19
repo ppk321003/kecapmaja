@@ -562,12 +562,12 @@ serve(async (req: Request) => {
           const newRow = [...foundMatch.data];
           newRow[sisaAnggaranIndex] = item.sisa_anggaran;
           
-          // Normalize sub_komponen to 3 digits (column 4, column E)
-          if (item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
+          // Normalize sub_komponen to 3 digits - use dynamic column index
+          if (subKomponenIndex !== undefined && item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
             try {
-              const originalValue = newRow[4];
+              const originalValue = newRow[subKomponenIndex];
               const normalizedValue = normalizeSubKomponenValue(item.sub_komponen);
-              newRow[4] = `'${normalizedValue}`; // Force as text with single quote
+              newRow[subKomponenIndex] = `'${normalizedValue}`; // Force as text with single quote
               if (originalValue !== normalizedValue && normalizedValue) {
                 normalizedCount++;
               }
@@ -730,18 +730,20 @@ serve(async (req: Request) => {
         // Normalize all sub_komponen in versioned rows before writing (safety pass)
         console.log(`  🔄 Normalizing sub_komponen in all ${versionedRows.length} versioned rows...`);
         let normalizedCount = 0;
-        for (let i = 0; i < versionedRows.length; i++) {
-          const versionedRow = versionedRows[i];
-          if (versionedRow && versionedRow.length > 4) { // sub_komponen is at index 4 (column E)
-            const rawValue = versionedRow[4];
-            const normalizedValue = normalizeSubKomponenValue(rawValue);
-            if (rawValue !== normalizedValue) {
-              console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
-              versionedRow[4] = `'${normalizedValue}`; // Force as text with single quote prefix
-              normalizedCount++;
-            } else if (rawValue) {
-              // Even if not changed, ensure it's forced as text
-              versionedRow[4] = `'${normalizedValue}`;
+        if (subKomponenIndex !== undefined) {
+          for (let i = 0; i < versionedRows.length; i++) {
+            const versionedRow = versionedRows[i];
+            if (versionedRow && versionedRow.length > subKomponenIndex) {
+              const rawValue = versionedRow[subKomponenIndex];
+              const normalizedValue = normalizeSubKomponenValue(rawValue);
+              if (rawValue !== normalizedValue) {
+                console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
+                versionedRow[subKomponenIndex] = `'${normalizedValue}`; // Force as text with single quote
+                normalizedCount++;
+              } else if (rawValue) {
+                // Even if not changed, ensure it's forced as text
+                versionedRow[subKomponenIndex] = `'${normalizedValue}`;
+              }
             }
           }
         }
@@ -819,16 +821,18 @@ serve(async (req: Request) => {
               const dataBlocks = [];
               
               // Block 1: sub_komponen column (NORMALIZE to 3 digits, force as text)
-              const subKomponenData = batch.map(update => {
-                const rawValue = update.values[0][4]; // sub_komponen is at column index 4 (column E)
-                const normalizedValue = normalizeSubKomponenValue(rawValue);
-                console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
-                return {
-                  range: `${mainSheetName}!E${update.rowIndex}`,
-                  values: [[`'${normalizedValue}`]], // Force as text with single quote
-                };
-              });
-              dataBlocks.push(...subKomponenData);
+              if (subKomponenIndex !== undefined) {
+                const subKomponenData = batch.map(update => {
+                  const rawValue = update.values[0][subKomponenIndex]; // Use dynamic index
+                  const normalizedValue = normalizeSubKomponenValue(rawValue);
+                  console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
+                  return {
+                    range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
+                    values: [[`'${normalizedValue}`]], // Force as text with single quote
+                  };
+                });
+                dataBlocks.push(...subKomponenData);
+              }
               
               // Block 2: sisa_anggaran column
               const sisaAnggaranData = batch.map(update => ({
