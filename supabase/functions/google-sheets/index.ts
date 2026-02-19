@@ -569,6 +569,9 @@ serve(async (req: Request) => {
           console.log('📋 Sample row [0] (first 10 cols):', rowsToInsert[0].slice(0, 10));
         }
 
+        // Get unmatched items from body
+        const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
+
         // Step 3: Create versioned sheet if it doesn't exist
         console.log(`📋 Checking if ${versionedSheetName} exists...`);
         
@@ -597,9 +600,9 @@ serve(async (req: Request) => {
         if (!versionedSheetExists) {
           console.log(`📊 Creating new sheet: ${versionedSheetName}`);
           try {
-            // Insert header row as the first append
-            const headerInsertResponse = await fetch(
-              `${baseUrl}/values/${versionedSheetName}:append?valueInputOption=USER_ENTERED`,
+            // Use batchUpdate API to add a new sheet
+            const createSheetResponse = await fetch(
+              `${baseUrl.replace('/values', '')}:batchUpdate`,
               {
                 method: 'POST',
                 headers: {
@@ -607,20 +610,61 @@ serve(async (req: Request) => {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  values: [headers], // Insert header row
+                  requests: [
+                    {
+                      addSheet: {
+                        properties: {
+                          title: versionedSheetName,
+                          gridProperties: {
+                            rowCount: 1000,
+                            columnCount: headers.length,
+                          },
+                        },
+                      },
+                    },
+                  ],
                 }),
               }
             );
             
-            if (headerInsertResponse.ok) {
-              console.log(`✅ Created ${versionedSheetName} with header row`);
+            const createResult = await createSheetResponse.json();
+            if (createSheetResponse.ok && createResult.replies && createResult.replies[0]) {
+              console.log(`✅ Created sheet: ${versionedSheetName}`);
               versionedSheetExists = true;
+              
+              // Now insert the header row
+              try {
+                const headerInsertResponse = await fetch(
+                  `${baseUrl}/values/${versionedSheetName}!A1:${String.fromCharCode(64 + headers.length)}1`,
+                  {
+                    method: 'PUT',
+                    headers: {
+                      Authorization: `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      values: [headers],
+                      majorDimension: 'ROWS',
+                    }),
+                  }
+                );
+                
+                if (headerInsertResponse.ok) {
+                  console.log(`✅ Inserted header row into ${versionedSheetName}`);
+                } else {
+                  const headerError = await headerInsertResponse.json();
+                  console.warn(`⚠️ Failed to insert header:`, headerError.error?.message);
+                }
+              } catch (headerError) {
+                console.warn(`⚠️ Error inserting header:`, headerError);
+              }
             } else {
-              const errorData = await headerInsertResponse.json();
-              console.warn(`⚠️ Failed to create ${versionedSheetName}:`, errorData.error?.message);
+              const errorMsg = createResult?.error?.message || 'Unknown error';
+              console.warn(`⚠️ Failed to create sheet:`, errorMsg);
+              console.warn(`Response:`, createResult);
             }
           } catch (error) {
-            console.warn(`⚠️ Error creating ${versionedSheetName}:`, error);
+            console.warn(`⚠️ Error creating sheet:`, error);
           }
         }
 
