@@ -726,6 +726,26 @@ serve(async (req: Request) => {
       // Step 2: Write data to versioned sheet (truncate and rewrite)
       if (versionedRows.length > 0) {
         console.log(`📝 Writing ${versionedRows.length} rows to versioned sheet...`);
+        
+        // Normalize all sub_komponen in versioned rows before writing (safety pass)
+        if (subKomponenIndex !== undefined) {
+          console.log(`  🔄 Normalizing sub_komponen in all ${versionedRows.length} versioned rows...`);
+          let normalizedCount = 0;
+          for (let i = 0; i < versionedRows.length; i++) {
+            const versionedRow = versionedRows[i];
+            if (versionedRow && versionedRow.length > subKomponenIndex) {
+              const rawValue = versionedRow[subKomponenIndex];
+              const normalizedValue = normalizeSubKomponenValue(rawValue);
+              if (rawValue !== normalizedValue) {
+                console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
+                versionedRow[subKomponenIndex] = normalizedValue;
+                normalizedCount++;
+              }
+            }
+          }
+          console.log(`  ✓ Normalized ${normalizedCount} sub_komponen values in versioned rows`);
+        }
+        
         try {
           // First, clear existing data in versioned sheet
           if (versionedSheetId) {
@@ -777,12 +797,12 @@ serve(async (req: Request) => {
         }
       }
 
-      // Step 3: Apply all updates to main sheet - use batchUpdate for safe column-specific updates
+      // Step 3: Apply all updates to main sheet - WITH sub_komponen normalization
       let successCount = 0;
       const updateErrors: string[] = [];
       const BATCH_SIZE = 10; // Update 10 rows per batch
 
-      console.log(`🔄 Updating main sheet (${mainSheetName}) with ${updates.length} rows (safe per-column batches)...`);
+      console.log(`🔄 Updating main sheet (${mainSheetName}) with ${updates.length} rows (with sub_komponen normalization)...`);
       
       try {
         if (updates.length > 0) {
@@ -797,12 +817,17 @@ serve(async (req: Request) => {
               // Build batchUpdate request with 3 separate data blocks (no gaps/overwrites)
               const dataBlocks = [];
               
-              // Block 1: sub_komponen column (only if exists)
+              // Block 1: sub_komponen column (NORMALIZE to 3 digits)
               if (subKomponenIndex !== undefined) {
-                const subKomponenData = batch.map(update => ({
-                  range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
-                  values: [[update.values[0][subKomponenIndex]]],
-                }));
+                const subKomponenData = batch.map(update => {
+                  const rawValue = update.values[0][subKomponenIndex];
+                  const normalizedValue = normalizeSubKomponenValue(rawValue);
+                  console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
+                  return {
+                    range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
+                    values: [[normalizedValue]],
+                  };
+                });
                 dataBlocks.push(...subKomponenData);
               }
               
