@@ -18,6 +18,25 @@ import {
 } from '@/types/bahanrevisi';
 import { filterBudgetItems, getFilteredDropdownValues, roundToThousands, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
 
+/**
+ * Normalize sub_komponen to 3-digit format
+ * "52" → "052", "5" → "005", "052.0A" → "052"
+ */
+const normalizeSubKomponen = (value: string): string => {
+  if (!value) return '';
+  const str = value.trim();
+  
+  // Extract numeric part if it has suffix like ".0A"
+  const match = str.match(/^(\d+)(\..*)?$/);
+  if (match) {
+    const numPart = match[1];
+    const suffix = match[2] || '';
+    return numPart.padStart(3, '0') + suffix;
+  }
+  
+  return str;
+};
+
 // Summary types untuk analisis data berdasarkan berbagai dimensi
 export type BudgetSummary = {
   label: string;
@@ -158,7 +177,7 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
         program_pembebanan: row[1]?.trim() || '',
         kegiatan: row[2]?.trim() || '',
         komponen_output: row[3]?.trim() || '',
-        sub_komponen: row[4]?.trim() || '',
+        sub_komponen: normalizeSubKomponen(row[4]?.trim() || ''),
         akun: row[5]?.trim() || '',
         uraian: row[6]?.trim() || '',
         total_pagu: totalPagu,

@@ -201,6 +201,102 @@ function normalizeForMatching(value: any): string {
   return withoutPrefix;
 }
 
+// Normalize sub_komponen value to 3-digit format with text prefix
+// Handles both plain numbers (051) and with program suffix (051_GG)
+function normalizeSubKomponenValue(value: any): string {
+  if (!value) return '';
+  
+  const str = String(value).trim();
+  
+  // If it already has program suffix like "051_GG", keep it as-is with quote prefix
+  if (str.includes('_')) {
+    return `'${str}`;
+  }
+  
+  // If it's just digits, pad to 3
+  if (/^\d+$/.test(str)) {
+    // Add single quote prefix to force Google Sheets to treat as text
+    return `'${str.padStart(3, '0')}`;
+  }
+  
+  // If it has format like "52.0A", normalize the numeric part
+  const match = str.match(/^(\d+)(\..*)?$/);
+  if (match) {
+    const numPart = match[1].padStart(3, '0');
+    const suffix = match[2] || '';
+    return `'${numPart}${suffix}`;
+  }
+  
+  return `'${str}`;
+}
+
+// Convert column index (0-based) to column letter (A, B, C, ..., Z, AA, AB, etc.)
+function indexToColumnLetter(index: number): string {
+  let result = '';
+  index = index + 1; // Convert to 1-based for column letters
+  while (index > 0) {
+    index--; // Adjust for 0-based calculation
+    result = String.fromCharCode(65 + (index % 26)) + result;
+    index = Math.floor(index / 26);
+  }
+  return result;
+}
+
+// Async background function to update versioned sheet (doesn't block response)
+async function updateVersionedSheetAsync(versionedSheetName: string, versionedRows: any[][], accessToken: string, baseUrl: string) {
+  console.log(`🔄 [ASYNC] Starting versioned sheet update: ${versionedSheetName} with ${versionedRows.length} rows`);
+  
+  try {
+    // Step 1: Create versioned sheet if not exists
+    let versionedSheetId = 0;
+    try {
+      const createSheetResponse = await fetch(`${baseUrl}:batchUpdate`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{
+            addSheet: {
+              properties: { title: versionedSheetName },
+            },
+          }],
+        }),
+      });
+      const createSheetResult = await createSheetResponse.json();
+      if (createSheetResult.replies?.[0]?.addSheet?.properties?.sheetId !== undefined) {
+        versionedSheetId = createSheetResult.replies[0].addSheet.properties.sheetId;
+        console.log(`✓ [ASYNC] Versioned sheet created with ID: ${versionedSheetId}`);
+      }
+    } catch (error) {
+      console.warn(`⚠️ [ASYNC] Could not create versioned sheet (may exist):`, error);
+    }
+
+    // Step 2: Write data to versioned sheet
+    if (versionedRows.length > 0) {
+      const writeVersionResponse = await fetch(
+        `${baseUrl}/values/${versionedSheetName}?valueInputOption=USER_ENTERED`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ values: versionedRows }),
+        }
+      );
+      if (writeVersionResponse.ok) {
+        console.log(`✓ [ASYNC] Versioned sheet '${versionedSheetName}' written with ${versionedRows.length} rows`);
+      } else {
+        console.warn(`⚠️ [ASYNC] Failed to write versioned sheet:`, writeVersionResponse.status);
+      }
+    }
+  } catch (error) {
+    console.warn(`⚠️ [ASYNC] Versioned sheet error (non-blocking):`, error);
+  }
+}
+
 serve(async (req: Request) => {
   console.log('Google Sheets function invoked');
   
@@ -350,31 +446,38 @@ serve(async (req: Request) => {
 
     if (operation === 'update-sisa-anggaran') {
       console.log('🔄 Updating sisa_anggaran values...');
-      const { values: itemsToUpdate, bulan, tahun } = body;
       
-      if (!itemsToUpdate || !Array.isArray(itemsToUpdate)) {
-        throw new Error('values must be an array of items');
-      }
-
-      const monthStr = String(bulan).padStart(2, '0');
-      const versionedSheetName = `budget_items_${tahun}${monthStr}`;
-      
-      console.log(`Processing ${itemsToUpdate.length} items for bulan=${bulan}, tahun=${tahun}`);
-      console.log(`Will create versioned sheet: ${versionedSheetName}`);
-
-      // Read budget_items sheet to find matching rows
-      const mainSheetName = 'budget_items';
-      const readResponse = await fetch(
-        `${baseUrl}/values/${mainSheetName}`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
+      try {
+        const { values: itemsToUpdate, bulan, tahun } = body;
+        
+        if (!itemsToUpdate || !Array.isArray(itemsToUpdate)) {
+          throw new Error('values must be an array of items');
         }
-      );
-      const readData = await readResponse.json();
-      
-      if (!readData.values || readData.values.length < 2) {
-        throw new Error('Budget items sheet is empty or not found');
-      }
+
+        const monthStr = String(bulan).padStart(2, '0');
+        const versionedSheetName = `budget_items_${tahun}${monthStr}`;
+        
+        console.log(`Processing ${itemsToUpdate.length} items for bulan=${bulan}, tahun=${tahun}`);
+        console.log(`Will create versioned sheet: ${versionedSheetName}`);
+
+        // Read budget_items sheet to find matching rows
+        const mainSheetName = 'budget_items';
+        const readResponse = await fetch(
+          `${baseUrl}/values/${mainSheetName}`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+        
+        if (!readResponse.ok) {
+          throw new Error(`Failed to read main sheet: ${readResponse.status}`);
+        }
+        
+        const readData = await readResponse.json();
+        
+        if (!readData.values || readData.values.length < 2) {
+          throw new Error('Budget items sheet is empty or not found');
+        }
 
       const headers = readData.values[0];
       const headerIndexes: { [key: string]: number } = {};
@@ -382,7 +485,9 @@ serve(async (req: Request) => {
         headerIndexes[header.toLowerCase()] = index;
       });
 
-      console.log('Sheet headers:', headers);
+      console.log('📊 Sheet headers found:', headers.length, 'columns');
+      console.log('   Headers:', headers.join(' | '));
+      
       const sisaAnggaranIndex = headerIndexes['sisa_anggaran'];
       const updatedDateIndex = headerIndexes['updated_date'];
 
@@ -390,9 +495,15 @@ serve(async (req: Request) => {
         throw new Error('sisa_anggaran column not found in budget_items sheet');
       }
 
-      console.log(`sisaAnggaranIndex: ${sisaAnggaranIndex}, updatedDateIndex: ${updatedDateIndex}`);
+      console.log(`✓ Header map built:`, Object.keys(headerIndexes).slice(0, 10).join(', '), '...');
+      console.log(`  sisaAnggaranIndex: ${sisaAnggaranIndex}, updatedDateIndex: ${updatedDateIndex}`);
 
-      // Build a map of existing rows for faster lookup
+      const subKomponenIndex = headerIndexes['sub_komponen'];
+      console.log(`  subKomponenIndex: ${subKomponenIndex}`);
+
+      if (subKomponenIndex === undefined) {
+        console.warn('⚠️  sub_komponen column not found, will skip normalization');
+      }
       console.log('📊 Building row map for faster matching...');
       const rowMap = new Map<string, {rowIndex: number, data: any[]}>();
       
@@ -422,6 +533,7 @@ serve(async (req: Request) => {
       const versionedRows: any[][] = [headers]; // Start with headers
       let matchedCount = 0;
       let unmatchedCount = 0;
+      let normalizedCount = 0;
 
       console.log(`🔍 Matching ${itemsToUpdate.length} items against ${rowMap.size} rows...`);
       itemsToUpdate.forEach((item: any, idx: number) => {
@@ -442,6 +554,22 @@ serve(async (req: Request) => {
           // Update the row data
           const newRow = [...foundMatch.data];
           newRow[sisaAnggaranIndex] = item.sisa_anggaran;
+          
+          // Normalize sub_komponen to 3 digits if column exists
+          if (subKomponenIndex !== undefined && item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
+            try {
+              const originalValue = newRow[subKomponenIndex];
+              const normalizedValue = normalizeSubKomponenValue(item.sub_komponen);
+              newRow[subKomponenIndex] = normalizedValue;
+              if (originalValue !== normalizedValue && normalizedValue) {
+                normalizedCount++;
+              }
+            } catch (e) {
+              console.warn('Error normalizing sub_komponen for item:', item.uraian, e);
+              // Keep original value if normalize fails
+            }
+          }
+          
           if (updatedDateIndex !== undefined) {
             newRow[updatedDateIndex] = item.updated_date;
           }
@@ -465,6 +593,94 @@ serve(async (req: Request) => {
       });
 
       console.log(`✅ Matching complete: ${matchedCount} matched, ${unmatchedCount} unmatched out of ${itemsToUpdate.length}`);
+      console.log(`✅ Sub_komponen normalized: ${normalizedCount} items`);
+      console.log(`✅ Column index for sub_komponen: ${subKomponenIndex} (header: '${headers[subKomponenIndex] || 'NOT FOUND'}')`);
+      console.log(`✅ Column index for sisa_anggaran: ${sisaAnggaranIndex} (header: '${headers[sisaAnggaranIndex] || 'NOT FOUND'}')`);
+      
+      if (updates.length > 0) {
+        console.log('📋 Sample update [0]:', {
+          rowIndex: updates[0].rowIndex,
+          subKomponenValue: updates[0].values[0][subKomponenIndex],
+          sisaAnggaranValue: updates[0].values[0][sisaAnggaranIndex],
+          firstValues: updates[0].values[0].slice(0, 10),
+        });
+      }
+
+      if (updates.length === 0) {
+        console.warn('⚠️  No updates to apply - all items unmatched');
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: 'No matching items found',
+            matched: matchedCount,
+            unmatched: unmatchedCount,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+
+      // Add unmatched items to versioned sheet as NEW rows
+      const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
+      if (unmatchedItemsArg.length > 0) {
+        console.log(`📝 Adding ${unmatchedItemsArg.length} unmatched items to versioned sheet (${versionedRows.length} total rows after this)...`);
+        
+        try {
+          unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
+            // Create a row array in the same order as headers
+            const unmatchedRow: any[] = [];
+            headers.forEach((header: string) => {
+              const headerLower = header.toLowerCase();
+              // Map fields to header
+              if (headerLower === 'id') unmatchedRow.push(unmatchedItem.id || '');
+              else if (headerLower === 'program_pembebanan') unmatchedRow.push(unmatchedItem.program_pembebanan || '');
+              else if (headerLower === 'kegiatan') unmatchedRow.push(unmatchedItem.kegiatan || '');
+              else if (headerLower === 'rincian_output') unmatchedRow.push(unmatchedItem.rincian_output || '');
+              else if (headerLower === 'komponen_output') unmatchedRow.push(unmatchedItem.komponen_output || '');
+              else if (headerLower === 'sub_komponen') {
+                // Normalize sub_komponen to 3 digits
+                if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
+                  const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
+                  unmatchedRow.push(normalized || '');
+                } else {
+                  unmatchedRow.push('');
+                }
+              } else if (headerLower === 'akun') unmatchedRow.push(unmatchedItem.akun || '');
+              else if (headerLower === 'uraian') unmatchedRow.push(unmatchedItem.uraian || '');
+              else if (headerLower === 'volume_semula') unmatchedRow.push(unmatchedItem.volume_semula || 1);
+              else if (headerLower === 'satuan_semula') unmatchedRow.push(unmatchedItem.satuan_semula || '');
+              else if (headerLower === 'harga_satuan_semula') unmatchedRow.push(unmatchedItem.harga_satuan_semula || 0);
+              else if (headerLower === 'jumlah_semula') unmatchedRow.push(unmatchedItem.jumlah_semula || 0);
+              else if (headerLower === 'volume_menjadi') unmatchedRow.push(unmatchedItem.volume_menjadi || 1);
+              else if (headerLower === 'satuan_menjadi') unmatchedRow.push(unmatchedItem.satuan_menjadi || '');
+              else if (headerLower === 'harga_satuan_menjadi') unmatchedRow.push(unmatchedItem.harga_satuan_menjadi || 0);
+              else if (headerLower === 'jumlah_menjadi') unmatchedRow.push(unmatchedItem.jumlah_menjadi || 0);
+              else if (headerLower === 'selisih') unmatchedRow.push(unmatchedItem.selisih || 0);
+              else if (headerLower === 'sisa_anggaran') unmatchedRow.push(unmatchedItem.sisa_anggaran || 0);
+              else if (headerLower === 'blokir') unmatchedRow.push(unmatchedItem.blokir || 0);
+              else if (headerLower === 'status') unmatchedRow.push(unmatchedItem.status || 'new');
+              else if (headerLower === 'approved_by') unmatchedRow.push(unmatchedItem.approved_by || '');
+              else if (headerLower === 'approved_date') unmatchedRow.push(unmatchedItem.approved_date || '');
+              else if (headerLower === 'rejected_date') unmatchedRow.push(unmatchedItem.rejected_date || '');
+              else if (headerLower === 'submitted_by') unmatchedRow.push(unmatchedItem.submitted_by || 'import');
+              else if (headerLower === 'submitted_date') unmatchedRow.push(unmatchedItem.submitted_date || '');
+              else if (headerLower === 'updated_date') unmatchedRow.push(unmatchedItem.updated_date || '');
+              else if (headerLower === 'notes') unmatchedRow.push(unmatchedItem.notes || '');
+              else if (headerLower === 'catatan_ppk') unmatchedRow.push(unmatchedItem.catatan_ppk || '');
+              else unmatchedRow.push(''); // Unknown columns get empty
+            });
+            
+            versionedRows.push(unmatchedRow);
+            if ((itemIdx + 1) % 5 === 0) {
+              console.log(`  Added ${itemIdx + 1}/${unmatchedItemsArg.length} unmatched items`);
+            }
+          });
+          
+          console.log(`✓ Added ${unmatchedItemsArg.length} unmatched items, versioned sheet now has ${versionedRows.length} rows total`);
+        } catch (error) {
+          console.error('Error preparing unmatched items:', error);
+          throw new Error(`Error preparing unmatched items: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
 
       // Step 1: Create versioned sheet with matched data
       console.log(`📊 Creating versioned sheet: ${versionedSheetName}...`);
@@ -546,91 +762,404 @@ serve(async (req: Request) => {
             console.log(`✓ Versioned sheet updated with ${versionedRows.length} rows`);
           } else {
             console.error(`✗ Failed to write versioned sheet:`, writeVersionResult);
+            console.warn(`⚠️  Continuing despite versioned sheet write error...`);
           }
         } catch (error) {
-          console.error(`✗ Error writing versioned sheet:`, error);
+          console.error('❌ Error writing versioned sheet:', error);
+          console.warn(`⚠️  Continuing despite versioned sheet error to apply main sheet updates...`);
         }
       }
 
-      // Step 3: Apply all updates to main sheet using batch update API (more efficient)
+      // Step 3: Apply all updates to main sheet - use batchUpdate for safe column-specific updates
       let successCount = 0;
       const updateErrors: string[] = [];
+      const BATCH_SIZE = 10; // Update 10 rows per batch
 
-      console.log(`🔄 Updating main sheet (${mainSheetName}) with ${updates.length} rows using batch update...`);
+      console.log(`🔄 Updating main sheet (${mainSheetName}) with ${updates.length} rows (safe per-column batches)...`);
       
-      // Prepare batch update data
-      const updateCellsData: any[] = [];
-      updates.forEach((update) => {
-        update.values[0].forEach((value: any, colIndex: number) => {
-          updateCellsData.push({
-            range: {
-              sheetName: mainSheetName,
-              rowIndex: update.rowIndex - 1, // 0-based
-              columnIndex: colIndex,
-            },
-            values: [[value]],
-          });
-        });
-      });
-
       try {
         if (updates.length > 0) {
-          // Use batch update with individual row updates
-          for (const update of updates) {
+          // Sort updates by rowIndex for batch processing
+          const sortedUpdates = [...updates].sort((a, b) => a.rowIndex - b.rowIndex);
+          
+          // Process in batches
+          for (let batchIdx = 0; batchIdx < sortedUpdates.length; batchIdx += BATCH_SIZE) {
+            const batch = sortedUpdates.slice(batchIdx, Math.min(batchIdx + BATCH_SIZE, sortedUpdates.length));
+            
             try {
-              const cellRange = `${mainSheetName}!A${update.rowIndex}`;
-              console.log(`Updating row ${update.rowIndex}...`);
+              // Build batchUpdate request with 3 separate data blocks (no gaps/overwrites)
+              const dataBlocks = [];
+              
+              // Block 1: sub_komponen column (only if exists)
+              if (subKomponenIndex !== undefined) {
+                const subKomponenData = batch.map(update => ({
+                  range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
+                  values: [[update.values[0][subKomponenIndex]]],
+                }));
+                dataBlocks.push(...subKomponenData);
+              }
+              
+              // Block 2: sisa_anggaran column
+              const sisaAnggaranData = batch.map(update => ({
+                range: `${mainSheetName}!${indexToColumnLetter(sisaAnggaranIndex)}${update.rowIndex}`,
+                values: [[update.values[0][sisaAnggaranIndex]]],
+              }));
+              dataBlocks.push(...sisaAnggaranData);
+              
+              // Block 3: updated_date column (only if exists)
+              if (updatedDateIndex !== undefined) {
+                const updatedDateData = batch.map(update => ({
+                  range: `${mainSheetName}!${indexToColumnLetter(updatedDateIndex)}${update.rowIndex}`,
+                  values: [[update.values[0][updatedDateIndex]]],
+                }));
+                dataBlocks.push(...updatedDateData);
+              }
+              
+              console.log(`  📤 Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: sending ${dataBlocks.length} cell updates for ${batch.length} rows`);
 
+              // Use values:batchUpdate to update multiple ranges in one request
               const updateResponse = await fetch(
-                `${baseUrl}/values/${cellRange}?valueInputOption=USER_ENTERED`,
+                `${baseUrl}/values:batchUpdate`,
+                {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    data: dataBlocks,
+                    valueInputOption: 'USER_ENTERED',
+                  }),
+                }
+              );
+
+              const updateResult = await updateResponse.json();
+              
+              if (updateResponse.ok) {
+                successCount += batch.length;
+                console.log(`  ✓ Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: ${successCount}/${updates.length} rows updated`);
+              } else {
+                const errorMsg = updateResult?.error?.message || 'Unknown error';
+                console.warn(`⚠️ Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1} failed:`, errorMsg);
+                batch.forEach(u => {
+                  updateErrors.push(`Row ${u.rowIndex}: ${errorMsg}`);
+                });
+              }
+            } catch (error) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              console.warn(`⚠️ Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1} exception:`, errorMsg);
+              batch.forEach(u => {
+                updateErrors.push(`Row ${u.rowIndex}: ${errorMsg}`);
+              });
+            }
+
+            // Small delay between batches to avoid rate limiting
+            if ((batchIdx + BATCH_SIZE) < sortedUpdates.length) {
+              await new Promise(r => setTimeout(r, 100));
+            }
+          }
+
+          console.log(`✅ Update completed: ${successCount}/${updates.length} rows updated successfully`);
+        }
+      } catch (error) {
+        console.error('❌ Critical error in batch update:', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        updateErrors.push(`Critical error: ${errorMsg}`);
+      }
+
+      console.log(`✅ Update complete: ${successCount}/${updates.length} rows updated in main sheet`);
+      
+      // Step 4: Update rpd_items dengan bulan updates dan auto-calc total_rpd + sisa_anggaran
+      let rpdUpdateCount = 0;
+      let rpdCreateCount = 0;
+      const rpdUpdateErrors: string[] = [];
+      
+      if (body.rpdUpdates && Array.isArray(body.rpdUpdates) && body.rpdUpdates.length > 0) {
+        console.log(`🔄 Step 4: Updating rpd_items with ${body.rpdUpdates.length} monthly values...`);
+        
+        try {
+          // Read rpd_items sheet
+          const rpdReadResponse = await fetch(
+            `${baseUrl}/values/rpd_items`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          
+          if (!rpdReadResponse.ok) {
+            console.warn(`⚠️ Could not read rpd_items sheet, will create new ones if needed`);
+          } 
+          
+          const rpdData = await rpdReadResponse.json();
+          const rpdUpdateBatches: any[] = [];
+          const rpdCreateRows: any[] = [];
+          
+          // Extract existing RPD item IDs
+          const existingRpdIds = new Set<string>();
+          const rpdRowMap = new Map<string, number>(); // ID -> row index (0-based)
+          let rpdDataStartIndex = 1; // Assume header at row 0
+          
+          if (rpdData.values && rpdData.values.length > 0) {
+            console.log(`📊 RPD sheet has ${rpdData.values.length} rows`);
+            
+            // Check if first row is header
+            const firstRow = rpdData.values[0];
+            let idIndex = 0;
+            
+            if (Array.isArray(firstRow) && firstRow.length > 0) {
+              const firstCell = String(firstRow[0]).toLowerCase().trim();
+              if (firstCell === 'id' || isNaN(parseFloat(firstCell))) {
+                console.log(`📊 Header row detected`);
+                rpdDataStartIndex = 1;
+                // Find id column
+                for (let i = 0; i < firstRow.length; i++) {
+                  if (String(firstRow[i]).toLowerCase().trim() === 'id') {
+                    idIndex = i;
+                    break;
+                  }
+                }
+              } else {
+                console.log(`📊 No header row, treating as data`);
+                rpdDataStartIndex = 0;
+                idIndex = 0;
+              }
+            }
+            
+            // Build map of existing IDs
+            for (let i = rpdDataStartIndex; i < rpdData.values.length; i++) {
+              const row = rpdData.values[i];
+              if (row && row.length > idIndex) {
+                const rowId = String(row[idIndex] || '').trim();
+                if (rowId) {
+                  existingRpdIds.add(rowId);
+                  rpdRowMap.set(rowId, i);
+                }
+              }
+            }
+            
+            console.log(`📊 Found ${existingRpdIds.size} existing RPD items`);
+          } else {
+            console.log(`📊 RPD sheet is empty, will insert header and create all items`);
+            
+            // Insert header row first
+            const headerRow = [
+              'id', 'program_pembebanan', 'kegiatan', 'komponen_output', 'sub_komponen', 'akun', 'uraian',
+              'total_pagu', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+              'total_rpd', 'sisa_anggaran', 'status', 'modified_by', 'modified_date'
+            ];
+            
+            try {
+              const headerResponse = await fetch(
+                `${baseUrl}/values/rpd_items`,
                 {
                   method: 'PUT',
                   headers: {
                     Authorization: `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({ values: update.values }),
+                  body: JSON.stringify({
+                    values: [headerRow],
+                    majorDimension: 'ROWS',
+                  }),
                 }
               );
-
-              if (!updateResponse.ok) {
-                const updateResult = await updateResponse.json();
-                updateErrors.push(`Row ${update.rowIndex}: ${JSON.stringify(updateResult)}`);
-                console.error(`✗ Failed to update row ${update.rowIndex}:`, updateResult);
+              
+              if (headerResponse.ok) {
+                console.log(`✅ RPD header row created`);
+                rpdDataStartIndex = 1; // Header at row 1, data starts at row 2
               } else {
-                successCount++;
-                if (successCount % 50 === 0) {
-                  console.log(`✓ Updated ${successCount} rows so far...`);
-                }
+                console.warn(`⚠️ Failed to create RPD header row`);
               }
-            } catch (error) {
-              const errorMsg = error instanceof Error ? error.message : String(error);
-              updateErrors.push(`Row ${update.rowIndex}: ${errorMsg}`);
-              console.error(`✗ Error updating row ${update.rowIndex}:`, error);
+            } catch (err) {
+              console.warn(`⚠️ Error creating RPD header:`, err);
             }
           }
+          
+          // Process each rpd update
+          for (const rpdUpdate of body.rpdUpdates) {
+            const itemId = rpdUpdate.item.id;
+            const bulanColumnLetter = rpdUpdate.bulanColumn; // 'I', 'J', etc.
+            const sisaAnggaran = rpdUpdate.sisaAnggaran;
+            const bulanNum = rpdUpdate.bulan; // 1-12
+            const budgetItem = rpdUpdate.item;
+            
+            console.log(`  🔄 Processing: ${itemId}, bulan ${bulanNum}, value ${sisaAnggaran}`);
+            
+            if (existingRpdIds.has(itemId)) {
+              // Item exists - update it
+              const rpdRowIndex = rpdRowMap.get(itemId)! + 1; // Convert to 1-indexed for sheets
+              
+              console.log(`  ✓ Updating existing item at row ${rpdRowIndex}`);
+              
+              rpdUpdateBatches.push({
+                range: `rpd_items!${bulanColumnLetter}${rpdRowIndex}`,
+                values: [[sisaAnggaran]],
+              });
+              
+              rpdUpdateBatches.push({
+                range: `rpd_items!U${rpdRowIndex}`,
+                values: [[`=SUM(I${rpdRowIndex}:T${rpdRowIndex})` ]],
+              });
+              
+              rpdUpdateBatches.push({
+                range: `rpd_items!V${rpdRowIndex}`,
+                values: [[`=H${rpdRowIndex}-U${rpdRowIndex}`]],
+              });
+              
+              rpdUpdateCount++;
+            } else {
+              // New item - create it
+              console.log(`  + Creating new RPD item`);
+              
+              // Build row: [id, program, kegiatan, komponen, sub_komponen, akun, uraian, total_pagu, jan-dec, total_rpd, sisa_anggaran, status, modified_by, modified_date]
+              const rpdRow = [
+                itemId,
+                budgetItem.program_pembebanan || '',
+                budgetItem.kegiatan || '',
+                budgetItem.komponen_output || '',
+                budgetItem.sub_komponen || '',
+                budgetItem.akun || '',
+                budgetItem.uraian || '',
+                budgetItem.jumlah_menjadi || budgetItem.sisa_anggaran || 0, // total_pagu
+              ];
+              
+              // Add 12 month columns (initially 0, filling in the one with data)
+              for (let m = 1; m <= 12; m++) {
+                rpdRow.push(m === bulanNum ? sisaAnggaran : 0);
+              }
+              
+              // Calculate the future row number when this will be appended
+              // If rpd_items has header at row 1 and current data up to row N,
+              // new rows will be appended starting at row N+1
+              // Row number in sheet = rpdCreateRows.length + rpdDataStartIndex + 1
+              const futureRowNum = rpdCreateRows.length + rpdDataStartIndex + 1;
+              
+              console.log(`  📍 Calculated future row number: ${futureRowNum} (createRows.length=${rpdCreateRows.length}, dataStartIndex=${rpdDataStartIndex})`);
+              
+              // total_rpd + sisa_anggaran + status + modified_by + modified_date
+              rpdRow.push(
+                `=SUM(I${futureRowNum}:T${futureRowNum})`, // total_rpd
+                `=H${futureRowNum}-U${futureRowNum}`, // sisa_anggaran
+                'new', // status
+                '', // modified_by
+                new Date().toISOString() // modified_date
+              );
+              
+              rpdCreateRows.push(rpdRow);
+              rpdCreateCount++;
+            }
+          }
+          
+          console.log(`📊 RPD Processing: ${rpdUpdateCount} updates, ${rpdCreateCount} creates from ${body.rpdUpdates.length} items`);
+          
+          // Send batch updates if any
+          if (rpdUpdateBatches.length > 0) {
+            console.log(`📤 Sending ${rpdUpdateBatches.length} RPD update batches...`);
+            
+            const rpdBatchResponse = await fetch(
+              `${baseUrl}/values:batchUpdate`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  data: rpdUpdateBatches,
+                  valueInputOption: 'USER_ENTERED',
+                }),
+              }
+            );
+            
+            const rpdBatchResult = await rpdBatchResponse.json();
+            if (!rpdBatchResponse.ok) {
+              const errorMsg = rpdBatchResult?.error?.message || 'Unknown error';
+              console.warn(`⚠️ RPD batch update failed:`, errorMsg);
+              rpdUpdateErrors.push(`RPD batch update failed: ${errorMsg}`);
+            } else {
+              console.log(`✅ RPD batch updates sent successfully`);
+            }
+          }
+          
+          // Append new RPD items if any
+          if (rpdCreateRows.length > 0) {
+            console.log(`📤 Appending ${rpdCreateRows.length} new RPD items...`);
+            
+            const rpdAppendResponse = await fetch(
+              `${baseUrl}/values/rpd_items:append`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  values: rpdCreateRows,
+                  valueInputOption: 'RAW',
+                  insertDataOption: 'INSERT_ROWS',
+                }),
+              }
+            );
+            
+            const rpdAppendResult = await rpdAppendResponse.json();
+            if (!rpdAppendResponse.ok) {
+              const errorMsg = rpdAppendResult?.error?.message || 'Unknown error';
+              console.warn(`⚠️ RPD append failed:`, errorMsg);
+              rpdUpdateErrors.push(`RPD item creation failed: ${errorMsg}`);
+            } else {
+              console.log(`✅ RPD items appended successfully: ${rpdCreateCount} items`);
+            }
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.warn(`⚠️ RPD operation error (non-blocking):`, errorMsg);
+          rpdUpdateErrors.push(`${errorMsg}`);
         }
-      } catch (error) {
-        console.error('Error in batch update:', error);
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        updateErrors.push(`Batch error: ${errorMsg}`);
       }
-
-      console.log(`✅ Update complete: ${successCount}/${updates.length} rows updated in main sheet`);
-      console.log(`✅ Versioned sheet '${versionedSheetName}' created with ${matchedCount} matched items`);
-
-      return new Response(JSON.stringify({
+      
+      console.log(`✅ RPD Step 4 complete: ${rpdUpdateCount} updated, ${rpdCreateCount} created`);
+      
+      // Return success immediately - main sheet is updated successfully
+      // Versioned sheet operations are secondary and shouldn't block response
+      const successResponse = {
         success: true,
         matched: matchedCount,
         updated: successCount,
+        rpd_updated: rpdUpdateCount,
+        rpd_created: rpdCreateCount,
         total_requested: itemsToUpdate.length,
-        versioned_sheet: versionedSheetName,
         bulan,
         tahun,
+        versioned_sheet: versionedSheetName,
         errors: updateErrors.length > 0 ? updateErrors.slice(0, 10) : undefined,
-      }), {
+        rpd_errors: rpdUpdateErrors.length > 0 ? rpdUpdateErrors.slice(0, 10) : undefined,
+      };
+
+      // Start versioned sheet operations in background (don't await, don't block response)
+      if (unmatchedItemsArg.length > 0 || matchedCount > 0) {
+        console.log(`📊 Starting background versioned sheet operations (${versionedSheetName})...`);
+        // This runs after we return but won't block the client
+        updateVersionedSheetAsync(versionedSheetName, versionedRows, accessToken, baseUrl)
+          .catch(err => {
+            console.warn(`⚠️ Versioned sheet background operation error (non-blocking):`, err);
+          });
+      }
+
+      return new Response(JSON.stringify(successResponse), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+      } catch (operationError) {
+        const errorMsg = operationError instanceof Error ? operationError.message : String(operationError);
+        console.error(`❌ Error in update-sisa-anggaran operation:`, errorMsg);
+        console.error('Stack:', operationError instanceof Error ? operationError.stack : 'N/A');
+        return new Response(JSON.stringify({
+          error: errorMsg,
+          operation: 'update-sisa-anggaran',
+          timestamp: new Date().toISOString(),
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     console.error('Invalid operation:', operation);

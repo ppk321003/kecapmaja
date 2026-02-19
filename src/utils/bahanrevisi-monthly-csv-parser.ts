@@ -68,9 +68,10 @@ export const extractPeriode = (periodeText: string): { bulan: number; tahun: num
 const normalizeSubKomponen = (subKomp: string): string => {
   if (!subKomp) return '';
   // Remove .0A suffix jika ada
-  const cleaned = subKomp.split('.')[0];
-  // Pad dengan leading zero ke 3 digit
-  return cleaned.padStart(3, '0');
+  const cleaned = subKomp.split('.')[0].trim();
+  // Remove leading zeros first then pad to 3 digit
+  const numPart = cleaned.replace(/^0+/, '') || '0';
+  return numPart.padStart(3, '0');
 };
 
 /**
@@ -85,14 +86,11 @@ const stripUraianPrefix = (uraian: string): string => {
 };
 
 /**
- * Count leading semicolons to determine hierarchy level
- */
-const getHierarchyLevel = (line: string): number => {
-  return line.search(/[^;]/);
-};
-
-/**
- * Parse CSV bulanan ke structured data
+ * Parse CSV bulanan ke structured data dengan proper hierarchical parsing
+ * Structure: leading semicolons indicate hierarchy level
+ *   ;GG;... → Program level
+ *   ;GG.2897;... → Kegiatan level
+ *   ;;BMA;... → Output level
  */
 export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
   return new Promise((resolve, reject) => {
@@ -116,13 +114,16 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
           continuationsMerged: 0,
         };
 
-        // Extract periode (bulan/tahun) and satker info from first lines
+        // Extract periode (bulan/tahun) and satker info from first 20 lines
         let periodeInfo = { bulan: 0, tahun: 0 };
         let satkerCode = '';
         let unitCode = '';
         
-        for (let i = 0; i < Math.min(10, lines.length); i++) {
+        console.log('[parseMonthlyCSV] Starting extraction from', Math.min(20, lines.length), 'lines');
+        
+        for (let i = 0; i < Math.min(20, lines.length); i++) {
           const line = lines[i];
+          console.log(`[parseMonthlyCSV] Line ${i}: ${line.substring(0, 60)}`);
           
           // Extract periode
           if (line.toLowerCase().includes('periode')) {
@@ -133,58 +134,57 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
             }
           }
           
-          // Extract satker info (usually lines with numbers in quotes)
-          if (satkerCode === '' && line.includes('054')) {
-            const parts = line.split(';');
-            const numPart = parts.find(p => /^\d{3}$/.test(p.trim()));
-            if (numPart) satkerCode = numPart.trim();
+          // Extract Kementerian code - try multiple patterns
+          if (line.toLowerCase().includes('kementerian') && !satkerCode) {
+            // Pattern 1: "Kementerian: 054"
+            let match = line.match(/kementerian:\s*(\d{3})/i);
+            // Pattern 2: "Kementerian; 054" (semicolon instead of colon)
+            if (!match) match = line.match(/kementerian;\s*(\d{3})/i);
+            // Pattern 3: Look for any 3-digit number in Kementerian line
+            if (!match) match = line.match(/(\d{3})/);
+            
+            if (match) {
+              satkerCode = match[1];
+              console.log('[parseMonthlyCSV] Found kementerian code:', satkerCode);
+            }
           }
-          if (unitCode === '' && line.includes('01') && i > 0) {
-            const parts = line.split(';');
-            const numPart = parts.find(p => /^\d{2}$/.test(p.trim()));
-            if (numPart) unitCode = numPart.trim();
-          }
-        }
-
-        const satkerIdFormatted = satkerCode && unitCode ? `${satkerCode}.${unitCode}` : '';
-        console.log('[parseMonthlyCSV] Extracted periode:', periodeInfo, 'Satker:', satkerIdFormatted);
-
-        // Find data start - look for line with hierarchy pattern (mixed semicolons and content)
-        let dataStartRow = 0;
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          // Skip header/metadata rows (contain special text)
-          if (
-            line.toLowerCase().includes('laporan realisasi') ||
-            line.toLowerCase().includes('periode') ||
-            line.toLowerCase().includes('kementerian') ||
-            line.toLowerCase().includes('satuan kerja') ||
-            line.toLowerCase().includes('uraian') ||
-            line.includes('*Lock Pagu') ||
-            line.includes('*SPM')
-          ) {
-            continue;
-          }
-
-          // Found start of data when we see hierarchical pattern with numbers
-          if (line.includes(';') && /\d{6}\./.test(line)) {
-            dataStartRow = i;
-            console.log('[parseMonthlyCSV] Found data start at row', i);
-            break;
+          
+          // Extract Unit Organisasi code - try multiple patterns
+          if (line.toLowerCase().includes('unit organisasi') && !unitCode) {
+            // Pattern 1: "Unit Organisasi: 01"
+            let match = line.match(/unit organisasi:\s*(\d{2})/i);
+            // Pattern 2: "Unit Organisasi; 01" (semicolon instead of colon)
+            if (!match) match = line.match(/unit organisasi;\s*(\d{2})/i);
+            // Pattern 3: Look for any 2-digit number after first number
+            if (!match && satkerCode) match = line.match(/(\d{2})(?!.*\d{2})/);
+            
+            if (match) {
+              unitCode = match[1];
+              console.log('[parseMonthlyCSV] Found unit code:', unitCode);
+            }
           }
         }
 
-        // Parse data rows
-        let previousHierarchy = {
-          program: '',
-          kegiatan: '',
-          rincianOutput: '',
-          komponenOutput: '',
-          subKomponen: '',
-          akun: '',
+        const satkerIdFormatted = satkerCode || unitCode ? 
+          (satkerCode && unitCode ? `${satkerCode}.${unitCode}` : (satkerCode || unitCode)) 
+          : '';
+        console.log('[parseMonthlyCSV] Extracted periode:', periodeInfo, 'Satker:', satkerIdFormatted, '(code=' + satkerCode + ', unit=' + unitCode + ')');
+
+        // Parse data rows dengan hierarchical tracking
+        let hierarchy = {
+          program: '', // ;GG; → GG
+          programFull: '', // 054.01.GG
+          kegiatan: '', // GG.2897 → 2897
+          kegiatanFull: '', // GG.2897
+          rincianOutput: '', // ;;BMA; → BMA (akan jadi 2897.bma)
+          rincianOutputCode: '', // BMA code only
+          komponenOutput: '', // ;;;052.004; → 052.004 (akan jadi 2897.bma.004)
+          komponenOutputCode: '', // komponen code only
+          subKomponen: '', // ;;;;;052.0A;
+          akun: '', // ;;;;;;;524113;
         };
 
-        let i = dataStartRow;
+        let i = 0;
         while (i < lines.length) {
           const line = lines[i];
 
@@ -195,8 +195,15 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
           }
 
           // Skip metadata rows
-          if (line.includes('*Lock Pagu') || line.includes('*SPM')) {
-            stats.skippedRows++;
+          if (
+            line.includes('*Lock Pagu') ||
+            line.includes('*SPM') ||
+            line.toLowerCase().includes('laporan realisasi') ||
+            line.toLowerCase().includes('periode') ||
+            line.toLowerCase().includes('kementerian') ||
+            line.toLowerCase().includes('satuan kerja') ||
+            line.toLowerCase().includes('uraian;')
+          ) {
             i++;
             continue;
           }
@@ -208,108 +215,164 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
             continue;
           }
 
-          // Parse the line - split by semicolon
+          // Count leading semicolons to detect hierarchy level
+          const leadingSemicolons = line.search(/[^;]/);
           const parts = line.split(';').map(p => p.trim());
-          
-          // Detect the hierarchy level from leading semicolons
-          const hierarchyLevel = getHierarchyLevel(line);
-          
-          // The structure is: Program ; Kegiatan ; Output ; SubOutput ; Komponen ; SubKomponen ; Akun ; Item/Description ; ... ; Sisa Anggaran
-          // But with leading semicolons indicating level
-          
-          // Find the last numeric value (Sisa Anggaran)
-          let sisaAnggaran = 0;
-          let lastNumericIndex = -1;
-          for (let j = parts.length - 1; j >= 0; j--) {
-            const value = parts[j];
-            const numValue = parseFloat(value.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'));
-            if (!isNaN(numValue) && numValue >= 0) {
-              sisaAnggaran = numValue;
-              lastNumericIndex = j;
-              break;
+
+          // Get first non-empty field after leading semicolons
+          const firstFieldAfterSemicolons = parts.find(p => p !== '');
+
+          // Detect hierarchy level and update tracking
+          if (firstFieldAfterSemicolons) {
+            if (leadingSemicolons === 1) {
+              // Level 1: ;GG; or ;GG.2897;
+              if (/^[A-Z]{2}$/.test(firstFieldAfterSemicolons)) {
+                // Pure program code like GG
+                hierarchy.program = firstFieldAfterSemicolons;
+                // Build full program code with satker prefix if available
+                const prefix = satkerCode && unitCode ? `${satkerCode}.${unitCode}` : (satkerCode || unitCode || '');
+                hierarchy.programFull = prefix ? `${prefix}.${firstFieldAfterSemicolons}` : firstFieldAfterSemicolons;
+                hierarchy.kegiatan = '';
+                hierarchy.kegiatanFull = '';
+                console.log(`[parseMonthlyCSV] Program level: ${hierarchy.programFull}`);
+              } else if (/^[A-Z]{2}\.\d{4}$/.test(firstFieldAfterSemicolons)) {
+                // Kegiatan code like GG.2897
+                hierarchy.kegiatanFull = firstFieldAfterSemicolons;
+                hierarchy.program = firstFieldAfterSemicolons.split('.')[0];
+                // Build full program code with satker prefix if available
+                const prefix = satkerCode && unitCode ? `${satkerCode}.${unitCode}` : (satkerCode || unitCode || '');
+                hierarchy.programFull = prefix ? `${prefix}.${hierarchy.program}` : hierarchy.program;
+                // Extract kegiatan number
+                const match = firstFieldAfterSemicolons.match(/^[A-Z]{2}\.(\d{4})$/);
+                hierarchy.kegiatan = match ? match[1] : '';
+              }
+            } else if (leadingSemicolons === 2) {
+              // Level 2: ;;BMA; or ;;BMA.004; → Output/Rincian Output level
+              // If contains dot (e.g., BMA.004), it's the full detail code
+              // If no dot (e.g., BMA), it's just the base output code
+              
+              if (firstFieldAfterSemicolons.includes('.')) {
+                // Full format like BMA.004
+                hierarchy.komponenOutputCode = firstFieldAfterSemicolons;
+                const basePart = firstFieldAfterSemicolons.split('.')[0]; // BMA
+                hierarchy.rincianOutputCode = basePart;
+                
+                if (hierarchy.kegiatan && basePart) {
+                  hierarchy.rincianOutput = `${hierarchy.kegiatan}.${basePart}`.toUpperCase();
+                  hierarchy.komponenOutput = `${hierarchy.kegiatan}.${firstFieldAfterSemicolons}`.toUpperCase();
+                  console.log(`[parseMonthlyCSV] Level 2 with dot: set rincianOutput=${hierarchy.rincianOutput}, komponenOutput=${hierarchy.komponenOutput}`);
+                }
+              } else {
+                // Just the base code like BMA
+                hierarchy.rincianOutputCode = firstFieldAfterSemicolons;
+                if (hierarchy.kegiatan && firstFieldAfterSemicolons) {
+                  hierarchy.rincianOutput = `${hierarchy.kegiatan}.${firstFieldAfterSemicolons}`.toUpperCase();
+                  console.log(`[parseMonthlyCSV] Level 2 no dot: set rincianOutput=${hierarchy.rincianOutput}`);
+                } else {
+                  hierarchy.rincianOutput = firstFieldAfterSemicolons.toUpperCase();
+                  console.log(`[parseMonthlyCSV] Level 2 no kegiatan: set rincianOutput=${hierarchy.rincianOutput}`);
+                }
+              }
+            } else if (leadingSemicolons === 3) {
+              // Level 3: ;;;052; → Komponen level (if not already set at level 2)
+              // Only update if we haven't set it yet at level 2
+              if (!hierarchy.komponenOutput && hierarchy.rincianOutputCode && firstFieldAfterSemicolons) {
+                hierarchy.komponenOutputCode = firstFieldAfterSemicolons;
+                if (hierarchy.kegiatan) {
+                  hierarchy.komponenOutput = `${hierarchy.kegiatan}.${hierarchy.rincianOutputCode}.${firstFieldAfterSemicolons}`.toUpperCase();
+                }
+              }
+            } else if (leadingSemicolons === 4) {
+              // Level 4: ;;;;052; or ;;;;052.0A; or ;;;;58; → sub_komponen (can be 1-3 digit)
+              if (/^\d{1,3}(\.\d{1,2}[A-Z])?$/.test(firstFieldAfterSemicolons)) {
+                hierarchy.subKomponen = normalizeSubKomponen(firstFieldAfterSemicolons);
+              }
+            } else if (leadingSemicolons === 5) {
+              // Level 5: ;;;;;052.0A; → Sub-komponen (alternative format, can be 1-3 digit)
+              if (/^\d{1,3}(\.\d{1,2}[A-Z])?$/.test(firstFieldAfterSemicolons)) {
+                hierarchy.subKomponen = normalizeSubKomponen(firstFieldAfterSemicolons);
+              }
+            } else if (leadingSemicolons === 7) {
+              // Level 7: ;;;;;;;524113; → Account code
+              if (/^\d{6}$/.test(firstFieldAfterSemicolons)) {
+                hierarchy.akun = firstFieldAfterSemicolons;
+              }
+            } else if (leadingSemicolons >= 11) {
+              // Level 11+: ;;;;;;;;;;;;;000001. text... → Item description with value
+              
+              // Extract from column 24 (index 23) = "Periode Ini" (Monthly Period value)
+              // This is the actual month value to store in rpd_items, can be 0 or empty
+              let sisaAnggaran = 0;
+              if (parts.length > 23) {
+                const periodeIniValue = parts[23];
+                const numValue = parseFloat(periodeIniValue.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'));
+                if (!isNaN(numValue) && numValue >= 0) {
+                  sisaAnggaran = numValue;
+                }
+              }
+
+              // Extract uraian (description) - usually in format XXXXXX. text
+              let uraian = '';
+              for (const part of parts) {
+                if (/^\d{6,}\./.test(part) || /^000\d{3}\./.test(part)) {
+                  uraian = stripUraianPrefix(part);
+                  break;
+                }
+              }
+
+              // Only create item if we have valid uraian and hierarchy is complete
+              // Note: sisaAnggaran can be 0, which is valid (no realization yet for that month)
+              if (uraian && hierarchy.program && hierarchy.kegiatan) {
+                // Ensure sub_komponen is always 3-digit normalized
+                let normalizedSubKomponen = hierarchy.subKomponen;
+                if (normalizedSubKomponen && /^\d{1,3}$/.test(normalizedSubKomponen)) {
+                  normalizedSubKomponen = normalizedSubKomponen.padStart(3, '0');
+                }
+                
+                // Append program code to sub_komponen ONLY for specific values: 051, 053, 054
+                // e.g., "051" + "GG" → "051_GG"
+                if (normalizedSubKomponen && ['051', '053', '054'].includes(normalizedSubKomponen) && hierarchy.program) {
+                  const programCode = hierarchy.program.split('.').pop(); // Get last part (GG from 054.01.GG)
+                  normalizedSubKomponen = `${normalizedSubKomponen}_${programCode}`;
+                  console.log(`[parseMonthlyCSV] Sub-komponen with program (special): ${normalizedSubKomponen}`);
+                }
+
+                const item: ParsedMonthlyItem = {
+                  program: hierarchy.programFull,
+                  kegiatan: hierarchy.kegiatan,
+                  rincianOutput: hierarchy.rincianOutput,
+                  komponenOutput: hierarchy.komponenOutput,
+                  subKomponen: normalizedSubKomponen,
+                  akun: hierarchy.akun,
+                  uraian: uraian,
+                  sisaAnggaran: sisaAnggaran,
+                };
+
+                items.push(item);
+                stats.itemsParsed++;
+
+                if (items.length <= 3) {
+                  console.log(`[parseMonthlyCSV] Item ${items.length}:`, {
+                    program: item.program,
+                    kegiatan: item.kegiatan,
+                    rincianOutput: item.rincianOutput,
+                    komponenOutput: item.komponenOutput,
+                    subKomponen: item.subKomponen,
+                    akun: item.akun,
+                    uraian: item.uraian.substring(0, 40),
+                    sisaAnggaran: item.sisaAnggaran,
+                  });
+                }
+              } else if (uraian) {
+                if (!hierarchy.program) {
+                  warnings.push(`Row ${i + 1}: Program not set, skipping item: ${uraian.substring(0, 30)}`);
+                }
+                if (!hierarchy.kegiatan) {
+                  warnings.push(`Row ${i + 1}: Kegiatan not set, skipping item: ${uraian.substring(0, 30)}`);
+                }
+                stats.skippedRows++;
+              }
             }
-          }
-
-          // Skip rows with zero sisa anggaran
-          if (sisaAnggaran === 0) {
-            stats.skippedRows++;
-            i++;
-            continue;
-          }
-
-          // Find the description (usually contains a number prefix like 000001.)
-          let uraian = '';
-          let akun = '';
-          let subKomponen = '';
-          
-          for (let j = lastNumericIndex - 1; j >= 0; j--) {
-            const value = parts[j].trim();
-            
-            // Description pattern: XXXXXX. text...
-            if (/^\d{6,}\./.test(value) || /^000\d{3}\./.test(value)) {
-              uraian = stripUraianPrefix(value);
-              break;
-            }
-            
-            // Account code pattern: 5XXXXX
-            if (/^\d{6}$/.test(value) && !akun) {
-              akun = value;
-            }
-            
-            // Sub-komponen pattern: XXX or XXX.0A
-            if (/^\d{3}(\.\d{1,2}[A-Z])?$/.test(value) && !subKomponen) {
-              subKomponen = value;
-            }
-          }
-
-          // Update hierarchy based on level
-          // Level 0-1: Program
-          // Level 2-3: Kegiatan
-          // Level 4-5: Output
-          // Level 6-7: SubOutput/Komponen
-          const contentBefore = parts.slice(0, Math.max(0, parts.length - 2)).map(p => p.trim()).filter(p => p && p.length > 0);
-          
-          if (contentBefore.length > 0) {
-            const firstNonEmpty = contentBefore[0];
-            if (/^;+[A-Z]/.test(line)) {
-              // This is a category/hierarchy row
-              if (hierarchyLevel === 1) previousHierarchy.program = firstNonEmpty;
-              else if (hierarchyLevel === 3) previousHierarchy.kegiatan = firstNonEmpty;
-              else if (hierarchyLevel === 5) previousHierarchy.rincianOutput = firstNonEmpty;
-              else if (hierarchyLevel === 7) previousHierarchy.komponenOutput = firstNonEmpty;
-            }
-          }
-
-          if (subKomponen) previousHierarchy.subKomponen = normalizeSubKomponen(subKomponen);
-          if (akun) previousHierarchy.akun = akun;
-
-          // Only create item if we have a valid uraian
-          if (uraian && sisaAnggaran > 0) {
-            const item: ParsedMonthlyItem = {
-              program: previousHierarchy.program,
-              kegiatan: previousHierarchy.kegiatan,
-              rincianOutput: previousHierarchy.rincianOutput,
-              komponenOutput: previousHierarchy.komponenOutput,
-              subKomponen: previousHierarchy.subKomponen,
-              akun: previousHierarchy.akun,
-              uraian: uraian,
-              sisaAnggaran: sisaAnggaran,
-            };
-
-            items.push(item);
-            stats.itemsParsed++;
-
-            if (items.length <= 3) {
-              console.log(`[parseMonthlyCSV] Item ${items.length}:`, {
-                program: item.program,
-                kegiatan: item.kegiatan,
-                akun: item.akun,
-                uraian: item.uraian.substring(0, 40),
-                sisaAnggaran: item.sisaAnggaran,
-              });
-            }
-          } else {
-            stats.skippedRows++;
           }
 
           i++;

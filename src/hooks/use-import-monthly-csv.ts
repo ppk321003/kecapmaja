@@ -60,9 +60,20 @@ export const useImportMonthlyCSV = ({
 
       // Create map dari budget items untuk faster lookup
       const budgetItemMap = new Map<string, BudgetItem>();
-      budgetItems.forEach((item) => {
+      budgetItems.forEach((item, idx) => {
         const key = createUniqueKey(item);
         budgetItemMap.set(key, item);
+        
+        // Log first 3 items untuk debug
+        if (idx < 3) {
+          console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
+            program_pembebanan: item.program_pembebanan,
+            kegiatan: item.kegiatan,
+            akun: item.akun,
+            uraian: item.uraian.substring(0, 30),
+            key: key.substring(0, 80),
+          });
+        }
       });
 
       console.log('[useImportMonthlyCSV] Budget item map created:', budgetItemMap.size);
@@ -71,6 +82,18 @@ export const useImportMonthlyCSV = ({
       parsedData.items.forEach((parsedItem, idx) => {
         const key = createUniqueKey(parsedItem);
         const budgetItem = budgetItemMap.get(key);
+
+        // Log first 3 parsed items untuk debug
+        if (idx < 3) {
+          console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
+            program: parsedItem.program,
+            kegiatan: parsedItem.kegiatan,
+            akun: parsedItem.akun,
+            uraian: parsedItem.uraian.substring(0, 30),
+            key: key.substring(0, 80),
+            found: !!budgetItem,
+          });
+        }
 
         if (budgetItem) {
           result.matched++;
@@ -97,6 +120,16 @@ export const useImportMonthlyCSV = ({
         notMatched: result.notMatched,
         total: result.matched + result.notMatched,
       });
+
+      // Log detailed unmatched items untuk debug
+      if (result.not_matched_items.length > 0) {
+        console.log(`[useImportMonthlyCSV] ⚠️ ${result.not_matched_items.length} unmatched items:`);
+        result.not_matched_items.forEach((item, idx) => {
+          console.log(`  ${idx + 1}. Program: ${item.item.program}, Kegiatan: ${item.item.kegiatan}, RincianOutput: ${item.item.rincianOutput}, KomponenOutput: ${item.item.komponenOutput}, SubKomponen: ${item.item.subKomponen}, Akun: ${item.item.akun}`);
+          console.log(`     Uraian: ${item.item.uraian}`);
+          console.log(`     SisaAnggaran: ${item.item.sisaAnggaran}, Reason: ${item.reason}`);
+        });
+      }
 
       return result;
     },
@@ -173,7 +206,7 @@ export const useImportMonthlyCSV = ({
 
         setParseProgress('Upload ke Google Sheets...');
 
-        // Prepare data untuk update
+        // Prepare data untuk update budget_items
         const updateData = matchResult.matched_items.map((match) => {
           const updated = { ...match.budgetItem };
           updated.sisa_anggaran = match.item.sisaAnggaran;
@@ -181,16 +214,76 @@ export const useImportMonthlyCSV = ({
           return updated;
         });
 
-        console.log('[useImportMonthlyCSV] Uploading', updateData.length, 'items to Google Sheets...');
-        console.log('[useImportMonthlyCSV] First item sample:', updateData[0]);
+        // Prepare data untuk update rpd_items (kolom bulan sesuai periode, plus total_rpd & sisa_anggaran auto-calc)
+        // Mapping bulan ke kolom: Jan=I(8), Feb=J(9), ..., Dec=T(19)
+        const bulanColumnMap: { [key: number]: string } = {
+          1: 'I', 2: 'J', 3: 'K', 4: 'L', 5: 'M', 6: 'N',
+          7: 'O', 8: 'P', 9: 'Q', 10: 'R', 11: 'S', 12: 'T'
+        };
+        const bulanColumn = bulanColumnMap[parsedData.bulan];
+        
+        const rpdUpdateData = matchResult.matched_items.map((match) => {
+          return {
+            item: match.budgetItem,
+            bulan: parsedData.bulan,
+            bulanColumn: bulanColumn,
+            sisaAnggaran: match.item.sisaAnggaran,
+          };
+        });
 
-        setParseProgress(`Calling edge function untuk ${updateData.length} items...`);
+        console.log('[useImportMonthlyCSV] RPD update data prepared for bulan', parsedData.bulan, 'column', bulanColumn);
+        console.log('[useImportMonthlyCSV] Sample RPD update:', {
+          item_id: rpdUpdateData[0]?.item.id,
+          sisaAnggaran: rpdUpdateData[0]?.sisaAnggaran,
+          bulanColumn: rpdUpdateData[0]?.bulanColumn,
+        });
+
+        // Prepare unmatched items untuk insert ke versioned sheet
+        const unmatchedData = matchResult.not_matched_items.map((item) => {
+          // Create a budget item structure untuk unmatched items
+          return {
+            id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            program_pembebanan: item.item.program,
+            kegiatan: item.item.kegiatan,
+            rincian_output: item.item.rincianOutput,
+            komponen_output: item.item.komponenOutput,
+            sub_komponen: item.item.subKomponen,
+            akun: item.item.akun,
+            uraian: item.item.uraian,
+            volume_semula: 1,
+            satuan_semula: 'OK',
+            harga_satuan_semula: item.item.sisaAnggaran,
+            jumlah_semula: item.item.sisaAnggaran,
+            volume_menjadi: 1,
+            satuan_menjadi: 'OK',
+            harga_satuan_menjadi: item.item.sisaAnggaran,
+            jumlah_menjadi: item.item.sisaAnggaran,
+            selisih: 0,
+            sisa_anggaran: item.item.sisaAnggaran,
+            blokir: 0,
+            status: 'new',
+            approved_by: '',
+            approved_date: '',
+            rejected_date: '',
+            submitted_by: 'import',
+            submitted_date: formatDateIndonesia(new Date().toISOString()),
+            updated_date: formatDateIndonesia(new Date().toISOString()),
+            notes: `[Kegiatan Baru] ${item.reason}`,
+            catatan_ppk: '',
+          };
+        });
+
+        console.log('[useImportMonthlyCSV] Uploading', updateData.length, 'matched items + ', unmatchedData.length, ' unmatched items to Google Sheets...');
+        console.log('[useImportMonthlyCSV] First matched item sample:', updateData[0]);
+        if (unmatchedData.length > 0) {
+          console.log('[useImportMonthlyCSV] First unmatched item sample:', unmatchedData[0]);
+        }
 
         // Call Google Sheets function dengan timeout
         console.log('[useImportMonthlyCSV] Invoking google-sheets function...', {
-          spreadsheetId: sheetId,
           operation: 'update-sisa-anggaran',
-          itemsToUpdate: updateData.length,
+          matchedItems: updateData.length,
+          unmatchedItems: unmatchedData.length,
           bulan: parsedData.bulan,
           tahun: parsedData.tahun,
         });
@@ -204,15 +297,27 @@ export const useImportMonthlyCSV = ({
               spreadsheetId: sheetId,
               operation: 'update-sisa-anggaran',
               values: updateData,
+              rpdUpdates: rpdUpdateData,
+              unmatchedItems: unmatchedData,
               bulan: parsedData.bulan,
               tahun: parsedData.tahun,
             },
           });
           
           const endTime = Date.now();
-          console.log('[useImportMonthlyCSV] Upload result received in', endTime - startTime, 'ms:', uploadResult);
+          console.log('[useImportMonthlyCSV] Upload result received in', endTime - startTime, 'ms');
+          console.log('[useImportMonthlyCSV] Result:', {
+            hasError: !!uploadResult.error,
+            errorMessage: uploadResult.error?.message,
+            statusCode: uploadResult.error?.context?.response?.status,
+            data: uploadResult.data,
+          });
         } catch (error) {
           console.error('[useImportMonthlyCSV] Error calling edge function:', error);
+          console.error('[useImportMonthlyCSV] Error details:', {
+            message: error instanceof Error ? error.message : String(error),
+            status: error instanceof Error && 'status' in error ? (error as any).status : 'N/A',
+          });
           throw new Error(`Edge function error: ${error instanceof Error ? error.message : String(error)}`);
         }
 
