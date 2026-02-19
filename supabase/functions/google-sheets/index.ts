@@ -430,17 +430,22 @@ serve(async (req: Request) => {
 
     if (operation === 'update-sisa-anggaran') {
       console.log('🔄 Updating sisa_anggaran values...');
+      console.log('📦 Full body received:', JSON.stringify(body).substring(0, 500)); // Log first 500 chars
       
       try {
-        const { values: itemsToUpdate, bulan, tahun } = body;
+        const { values: itemsToUpdate, bulan, tahun, rpdUpdates, unmatchedItems } = body;
         
         console.log('📦 Request body keys:', Object.keys(body).join(', '));
-        console.log('📦 itemsToUpdate exists:', !!itemsToUpdate, 'isArray:', Array.isArray(itemsToUpdate));
+        console.log('📦 Destructured values:');
+        console.log('   - itemsToUpdate:', typeof itemsToUpdate, 'isArray:', Array.isArray(itemsToUpdate), 'length:', Array.isArray(itemsToUpdate) ? itemsToUpdate.length : 'N/A');
+        console.log('   - bulan:', bulan, 'tahun:', tahun);
+        console.log('   - rpdUpdates:', typeof rpdUpdates, 'isArray:', Array.isArray(rpdUpdates), 'length:', Array.isArray(rpdUpdates) ? rpdUpdates.length : 'N/A');
+        console.log('   - unmatchedItems:', typeof unmatchedItems, 'isArray:', Array.isArray(unmatchedItems), 'length:', Array.isArray(unmatchedItems) ? unmatchedItems.length : 'N/A');
         
         if (!itemsToUpdate || !Array.isArray(itemsToUpdate)) {
-          const errorMsg = `Invalid itemsToUpdate: ${!itemsToUpdate ? 'null/undefined' : `not array, type=${typeof itemsToUpdate}`}`;
+          const errorMsg = `Invalid itemsToUpdate: ${!itemsToUpdate ? 'null/undefined' : `not array, type=${typeof itemsToUpdate}`}. Body keys: ${Object.keys(body).join(', ')}`;
           console.error('❌ ' + errorMsg);
-          return new Response(JSON.stringify({ error: errorMsg }), {
+          return new Response(JSON.stringify({ error: errorMsg, receivedKeys: Object.keys(body) }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
