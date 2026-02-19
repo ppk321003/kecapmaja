@@ -562,12 +562,12 @@ serve(async (req: Request) => {
           const newRow = [...foundMatch.data];
           newRow[sisaAnggaranIndex] = item.sisa_anggaran;
           
-          // Normalize sub_komponen to 3 digits if column exists
-          if (subKomponenIndex !== undefined && item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
+          // Normalize sub_komponen to 3 digits (column 4, column E)
+          if (item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
             try {
-              const originalValue = newRow[subKomponenIndex];
+              const originalValue = newRow[4];
               const normalizedValue = normalizeSubKomponenValue(item.sub_komponen);
-              newRow[subKomponenIndex] = normalizedValue;
+              newRow[4] = `'${normalizedValue}`; // Force as text with single quote
               if (originalValue !== normalizedValue && normalizedValue) {
                 normalizedCount++;
               }
@@ -644,10 +644,10 @@ serve(async (req: Request) => {
               else if (headerLower === 'rincian_output') unmatchedRow.push(unmatchedItem.rincian_output || '');
               else if (headerLower === 'komponen_output') unmatchedRow.push(unmatchedItem.komponen_output || '');
               else if (headerLower === 'sub_komponen') {
-                // Normalize sub_komponen to 3 digits
+                // Normalize sub_komponen to 3 digits, force as text
                 if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
                   const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
-                  unmatchedRow.push(normalized || '');
+                  unmatchedRow.push(`'${normalized || ''}`); // Force as text with single quote
                 } else {
                   unmatchedRow.push('');
                 }
@@ -728,23 +728,24 @@ serve(async (req: Request) => {
         console.log(`📝 Writing ${versionedRows.length} rows to versioned sheet...`);
         
         // Normalize all sub_komponen in versioned rows before writing (safety pass)
-        if (subKomponenIndex !== undefined) {
-          console.log(`  🔄 Normalizing sub_komponen in all ${versionedRows.length} versioned rows...`);
-          let normalizedCount = 0;
-          for (let i = 0; i < versionedRows.length; i++) {
-            const versionedRow = versionedRows[i];
-            if (versionedRow && versionedRow.length > subKomponenIndex) {
-              const rawValue = versionedRow[subKomponenIndex];
-              const normalizedValue = normalizeSubKomponenValue(rawValue);
-              if (rawValue !== normalizedValue) {
-                console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
-                versionedRow[subKomponenIndex] = normalizedValue;
-                normalizedCount++;
-              }
+        console.log(`  🔄 Normalizing sub_komponen in all ${versionedRows.length} versioned rows...`);
+        let normalizedCount = 0;
+        for (let i = 0; i < versionedRows.length; i++) {
+          const versionedRow = versionedRows[i];
+          if (versionedRow && versionedRow.length > 4) { // sub_komponen is at index 4 (column E)
+            const rawValue = versionedRow[4];
+            const normalizedValue = normalizeSubKomponenValue(rawValue);
+            if (rawValue !== normalizedValue) {
+              console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
+              versionedRow[4] = `'${normalizedValue}`; // Force as text with single quote prefix
+              normalizedCount++;
+            } else if (rawValue) {
+              // Even if not changed, ensure it's forced as text
+              versionedRow[4] = `'${normalizedValue}`;
             }
           }
-          console.log(`  ✓ Normalized ${normalizedCount} sub_komponen values in versioned rows`);
         }
+        console.log(`  ✓ Normalized ${normalizedCount} sub_komponen values in versioned rows`);
         
         try {
           // First, clear existing data in versioned sheet
@@ -817,19 +818,17 @@ serve(async (req: Request) => {
               // Build batchUpdate request with 3 separate data blocks (no gaps/overwrites)
               const dataBlocks = [];
               
-              // Block 1: sub_komponen column (NORMALIZE to 3 digits)
-              if (subKomponenIndex !== undefined) {
-                const subKomponenData = batch.map(update => {
-                  const rawValue = update.values[0][subKomponenIndex];
-                  const normalizedValue = normalizeSubKomponenValue(rawValue);
-                  console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
-                  return {
-                    range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
-                    values: [[normalizedValue]],
-                  };
-                });
-                dataBlocks.push(...subKomponenData);
-              }
+              // Block 1: sub_komponen column (NORMALIZE to 3 digits, force as text)
+              const subKomponenData = batch.map(update => {
+                const rawValue = update.values[0][4]; // sub_komponen is at column index 4 (column E)
+                const normalizedValue = normalizeSubKomponenValue(rawValue);
+                console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
+                return {
+                  range: `${mainSheetName}!E${update.rowIndex}`,
+                  values: [[`'${normalizedValue}`]], // Force as text with single quote
+                };
+              });
+              dataBlocks.push(...subKomponenData);
               
               // Block 2: sisa_anggaran column
               const sisaAnggaranData = batch.map(update => ({
@@ -1048,7 +1047,7 @@ serve(async (req: Request) => {
                 budgetItem.program_pembebanan || '',
                 budgetItem.kegiatan || '',
                 budgetItem.komponen_output || '',
-                normalizedSubKomponen,
+                `'${normalizedSubKomponen}`, // Force sub_komponen as text with single quote
                 budgetItem.akun || '',
                 budgetItem.uraian || '',
                 budgetItem.jumlah_menjadi || budgetItem.sisa_anggaran || 0, // total_pagu
