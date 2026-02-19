@@ -1114,19 +1114,19 @@ serve(async (req: Request) => {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-    } catch (operationError) {
-      const errorMsg = operationError instanceof Error ? operationError.message : String(operationError);
-      console.error(`❌ Error in update-sisa-anggaran operation:`, errorMsg);
-      console.error('Stack:', operationError instanceof Error ? operationError.stack : 'N/A');
-      return new Response(JSON.stringify({
-        error: errorMsg,
-        operation: 'update-sisa-anggaran',
-        timestamp: new Date().toISOString(),
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+      } catch (operationError) {
+        const errorMsg = operationError instanceof Error ? operationError.message : String(operationError);
+        console.error(`❌ Error in update-sisa-anggaran operation:`, errorMsg);
+        console.error('Stack:', operationError instanceof Error ? operationError.stack : 'N/A');
+        return new Response(JSON.stringify({
+          error: errorMsg,
+          operation: 'update-sisa-anggaran',
+          timestamp: new Date().toISOString(),
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     console.error('Invalid operation:', operation);
