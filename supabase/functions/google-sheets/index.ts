@@ -880,8 +880,13 @@ serve(async (req: Request) => {
                 // EXPLICITLY SET HEADER ROW using PUT (more reliable than append)
                 try {
                   const headerRowData = [headers];
+                  const lastColumn = indexToColumnLetter(headers.length - 1);
+                  const headerRange = `${unmatchedSheetName}!A1:${lastColumn}1`;
+                  
+                  console.log(`📝 Writing header row to ${headerRange}. Headers:`, headers.slice(0, 5), '...');
+                  
                   const putHeaderResponse = await fetch(
-                    `${baseUrl}/values/${unmatchedSheetName}!A1:${indexToColumnLetter(headers.length - 1)}1`,
+                    `${baseUrl}/values/${headerRange}`,
                     {
                       method: 'PUT',
                       headers: {
@@ -895,16 +900,22 @@ serve(async (req: Request) => {
                     }
                   );
                   
+                  const headerResponseBody = await putHeaderResponse.json();
+                  console.log(`Header PUT response status: ${putHeaderResponse.status}`, headerResponseBody);
+                  
                   if (putHeaderResponse.ok) {
                     console.log(`✅ Header row written to ${unmatchedSheetName}`);
                     hasHeaderRow = true;
                   } else {
-                    const headerErr = await putHeaderResponse.json();
-                    console.warn(`⚠️ Failed to write header row:`, headerErr.error?.message);
+                    const errorMsg = headerResponseBody?.error?.message || `HTTP ${putHeaderResponse.status}`;
+                    console.error(`❌ Failed to write header row: ${errorMsg}`);
+                    console.error(`Full error response:`, JSON.stringify(headerResponseBody));
+                    appendErrors.push(`Header write failed: ${errorMsg}`);
                   }
                 } catch (headerErr) {
                   const errorMsg = headerErr instanceof Error ? headerErr.message : String(headerErr);
-                  console.warn(`⚠️ Error writing header row:`, errorMsg);
+                  console.error(`❌ Error writing header row:`, errorMsg);
+                  appendErrors.push(`Header error: ${errorMsg}`);
                 }
               } catch (sheetError) {
                 const errorMsg = sheetError instanceof Error ? sheetError.message : String(sheetError);
@@ -915,6 +926,10 @@ serve(async (req: Request) => {
 
             // Build rows for unmatched items - DATA ONLY (header already set via PUT)
             const unmatchedRows: any[][] = [];
+            
+            // Find status column index for logging
+            const statusColumnIndex = headerIndexes['status'] !== undefined ? headerIndexes['status'] : -1;
+            console.log(`📊 Status column index: ${statusColumnIndex}, Total columns: ${headers.length}`);
             
             unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
               const unmatchedRow = new Array(headers.length).fill('');
@@ -954,7 +969,10 @@ serve(async (req: Request) => {
                 else if (headerLower === 'selisih') unmatchedRow[colIndex] = unmatchedItem.selisih !== undefined ? unmatchedItem.selisih : 0;
                 else if (headerLower === 'sisa_anggaran') unmatchedRow[colIndex] = unmatchedItem.sisa_anggaran !== undefined ? unmatchedItem.sisa_anggaran : 0;
                 else if (headerLower === 'blokir') unmatchedRow[colIndex] = unmatchedItem.blokir !== undefined ? unmatchedItem.blokir : 0;
-                else if (headerLower === 'status') unmatchedRow[colIndex] = 'UNMATCHED'; // Mark as unmatched
+                else if (headerLower === 'status') {
+                  unmatchedRow[colIndex] = 'UNMATCHED';
+                  if (itemIdx === 0) console.log(`✔️ Status column (index ${colIndex}) set to 'UNMATCHED'`);
+                }
                 else if (headerLower === 'approved_by') unmatchedRow[colIndex] = '';
                 else if (headerLower === 'approved_date') unmatchedRow[colIndex] = '';
                 else if (headerLower === 'rejected_date') unmatchedRow[colIndex] = '';
