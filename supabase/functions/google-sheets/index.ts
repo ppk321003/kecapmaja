@@ -977,11 +977,11 @@ serve(async (req: Request) => {
           for (const rpdUpdate of body.rpdUpdates) {
             const itemId = rpdUpdate.item.id;
             const bulanColumnLetter = rpdUpdate.bulanColumn; // 'I', 'J', etc.
-            const sisaAnggaran = rpdUpdate.sisaAnggaran;
+            const periodeIni = rpdUpdate.periodeIni;  // Column 24: Monthly realization value (Periode Ini)
             const bulanNum = rpdUpdate.bulan; // 1-12
             const budgetItem = rpdUpdate.item;
             
-            console.log(`  🔄 Processing: ${itemId}, bulan ${bulanNum}, value ${sisaAnggaran}`);
+            console.log(`  🔄 Processing: ${itemId}, bulan ${bulanNum}, periodeIni value ${periodeIni}`);
             
             if (existingRpdIds.has(itemId)) {
               // Item exists - update it
@@ -991,7 +991,7 @@ serve(async (req: Request) => {
               
               rpdUpdateBatches.push({
                 range: `rpd_items!${bulanColumnLetter}${rpdRowIndex}`,
-                values: [[sisaAnggaran]],
+                values: [[periodeIni]],
               });
               
               rpdUpdateBatches.push({
@@ -1023,7 +1023,7 @@ serve(async (req: Request) => {
               
               // Add 12 month columns (initially 0, filling in the one with data)
               for (let m = 1; m <= 12; m++) {
-                rpdRow.push(m === bulanNum ? sisaAnggaran : 0);
+                rpdRow.push(m === bulanNum ? periodeIni : 0);
               }
               
               // Calculate the future row number when this will be appended
