@@ -669,12 +669,11 @@ serve(async (req: Request) => {
           }
         }
 
-        // Step 4: APPEND matched items to versioned sheet
-        let appendCountMatched = 0;
+        // Step 4: APPEND matched items to VERSIONED sheet (for historical record)
+        let appendCountMatched = rowsToInsert.length; // Ini akan di-append nanti
         const appendErrors: string[] = [];
 
         console.log(`📥 Step 1: Appending ${rowsToInsert.length} matched items to ${versionedSheetName}...`);
-        
         
         try {
           if (rowsToInsert.length > 0) {
@@ -694,23 +693,23 @@ serve(async (req: Request) => {
             
             const appendResult = await appendResponse.json();
             if (appendResponse.ok) {
-              appendCountMatched = rowsToInsert.length;
               console.log(`✅ Appended ${appendCountMatched} matched items to ${versionedSheetName}`);
             } else {
               const errorMsg = appendResult?.error?.message || 'Unknown error';
-              console.warn(`⚠️ Failed to append matched items:`, errorMsg);
-              appendErrors.push(`Matched items: ${errorMsg}`);
+              console.warn(`⚠️ Failed to append matched items to versioned sheet:`, errorMsg);
+              appendErrors.push(`Versioned sheet append: ${errorMsg}`);
             }
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
-          console.error('❌ Error appending matched items:', errorMsg);
-          appendErrors.push(`Matched items error: ${errorMsg}`);
+          console.error('❌ Error appending to versioned sheet:', errorMsg);
+          appendErrors.push(`Versioned sheet error: ${errorMsg}`);
         }
 
-        // Step 4a: UPDATE main sheet budget_items with new sisa_anggaran values for matched items
-        console.log(`🔄 Step 1b: Updating ${rowsToInsert.length} items in main ${mainSheetName} sheet with new sisa_anggaran...`);
+        // Step 4a: UPDATE main sheet budget_items (DON'T APPEND - ONLY UPDATE existing rows)
+        console.log(`🔄 Step 2: Updating existing rows in main ${mainSheetName} sheet (DO NOT ADD NEW ROWS)...`);
         
+        let updateCountMain = 0;
         try {
           // Build row map of main sheet for matching
           const mainRowMap = new Map<string, {rowIndex: number, data: any[]}>();
@@ -728,6 +727,7 @@ serve(async (req: Request) => {
               normalizeForMatching(sheetRow[headerIndexes['uraian']]),
             ].join('|');
             
+
             mainRowMap.set(sheetKey, { rowIndex: rowIndex + 1, data: sheetRow });
           }
           
