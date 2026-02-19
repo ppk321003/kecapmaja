@@ -1126,7 +1126,7 @@ serve(async (req: Request) => {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-    }
+    } // Close if (operation === 'update-sisa-anggaran')
 
     console.error('Invalid operation:', operation);
     return new Response(JSON.stringify({ error: 'Invalid operation' }), {
