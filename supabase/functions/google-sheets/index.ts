@@ -707,7 +707,93 @@ serve(async (req: Request) => {
           appendErrors.push(`Matched items error: ${errorMsg}`);
         }
 
-        // Step 4: APPEND unmatched items to budget_items
+        // Step 4a: UPDATE main sheet budget_items with new sisa_anggaran values for matched items
+        console.log(`🔄 Step 1b: Updating ${rowsToInsert.length} items in main ${mainSheetName} sheet with new sisa_anggaran...`);
+        
+        try {
+          // Build row map of main sheet for matching
+          const mainRowMap = new Map<string, {rowIndex: number, data: any[]}>();
+          const sisaAnggaranIndex = headerIndexes['sisa_anggaran'];
+          
+          for (let rowIndex = 1; rowIndex < readData.values.length; rowIndex++) {
+            const sheetRow = readData.values[rowIndex];
+            const sheetKey = [
+              normalizeForMatching(sheetRow[headerIndexes['program_pembebanan']]),
+              normalizeForMatching(sheetRow[headerIndexes['kegiatan']]),
+              normalizeForMatching(sheetRow[headerIndexes['rincian_output']]),
+              normalizeForMatching(sheetRow[headerIndexes['komponen_output']]),
+              normalizeForMatching(sheetRow[headerIndexes['sub_komponen']]),
+              normalizeForMatching(sheetRow[headerIndexes['akun']]),
+              normalizeForMatching(sheetRow[headerIndexes['uraian']]),
+            ].join('|');
+            
+            mainRowMap.set(sheetKey, { rowIndex: rowIndex + 1, data: sheetRow });
+          }
+          
+          console.log(`📊 Built row map with ${mainRowMap.size} entries from main sheet`);
+          
+          // Prepare batch updates for sisa_anggaran column
+          const updateBatches: any[] = [];
+          let updateCount = 0;
+          
+          for (const item of itemsToUpdate) {
+            const normalizedSubKomponen = normalizeSubKomponenValue(item.sub_komponen || '');
+            const itemKey = [
+              normalizeForMatching(item.program_pembebanan || item.program),
+              normalizeForMatching(item.kegiatan),
+              normalizeForMatching(item.rincian_output),
+              normalizeForMatching(item.komponen_output),
+              normalizeForMatching(normalizedSubKomponen),
+              normalizeForMatching(item.akun),
+              normalizeForMatching(item.uraian),
+            ].join('|');
+            
+            const foundMatch = mainRowMap.get(itemKey);
+            if (foundMatch && sisaAnggaranIndex !== undefined) {
+              // Prepare batch update for sisa_anggaran column
+              const columnLetter = indexToColumnLetter(sisaAnggaranIndex);
+              updateBatches.push({
+                range: `${mainSheetName}!${columnLetter}${foundMatch.rowIndex}`,
+                values: [[item.sisa_anggaran !== undefined ? item.sisa_anggaran : 0]],
+              });
+              updateCount++;
+            }
+          }
+          
+          console.log(`📝 Prepared ${updateCount} batch updates for sisa_anggaran in ${mainSheetName}`);
+          
+          // Send batch updates
+          if (updateBatches.length > 0) {
+            const batchUpdateResponse = await fetch(
+              `${baseUrl}/values:batchUpdate`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  data: updateBatches,
+                  valueInputOption: 'RAW',
+                }),
+              }
+            );
+            
+            if (batchUpdateResponse.ok) {
+              console.log(`✅ Updated ${updateCount} items' sisa_anggaran in ${mainSheetName}`);
+            } else {
+              const batchError = await batchUpdateResponse.json();
+              console.warn(`⚠️ Failed to update main sheet:`, batchError.error?.message);
+              appendErrors.push(`Main sheet update: ${batchError.error?.message}`);
+            }
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.warn(`⚠️ Error updating main sheet:`, errorMsg);
+          appendErrors.push(`Main update error: ${errorMsg}`);
+        }
+
+        // Step 4b: APPEND unmatched items to budget_items
         let appendCountUnmatched = 0;
         
         if (unmatchedItemsArg.length > 0) {
