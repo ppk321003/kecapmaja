@@ -214,6 +214,13 @@ export const useImportMonthlyCSV = ({
           updated.sisa_anggaran = match.item.sisaAnggaran;
           updated.updated_date = formatDateIndonesia(new Date().toISOString());
           // No need to set periodeIni here - it's only for RPD items
+          
+          // Clean up undefined values to avoid serialization issues
+          Object.keys(updated).forEach(key => {
+            if (updated[key as keyof typeof updated] === undefined) {
+              delete updated[key as keyof typeof updated];
+            }
+          });
           return updated;
         });
 

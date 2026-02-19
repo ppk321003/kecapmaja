@@ -430,7 +430,6 @@ serve(async (req: Request) => {
 
     if (operation === 'update-sisa-anggaran') {
       console.log('🔄 Updating sisa_anggaran values...');
-      console.log('📦 Full body received:', JSON.stringify(body).substring(0, 500)); // Log first 500 chars
       
       try {
         const { values: itemsToUpdate, bulan, tahun, rpdUpdates, unmatchedItems } = body;
