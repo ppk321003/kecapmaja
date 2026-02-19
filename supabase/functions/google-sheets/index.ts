@@ -634,8 +634,9 @@ serve(async (req: Request) => {
               
               // Now insert the header row
               try {
+                const endColumnLetter = indexToColumnLetter(headers.length - 1);
                 const headerInsertResponse = await fetch(
-                  `${baseUrl}/values/${versionedSheetName}!A1:${String.fromCharCode(64 + headers.length)}1`,
+                  `${baseUrl}/values/${versionedSheetName}!A1:${endColumnLetter}1`,
                   {
                     method: 'PUT',
                     headers: {
