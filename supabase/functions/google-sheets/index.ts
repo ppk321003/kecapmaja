@@ -420,10 +420,9 @@ serve(async (req: Request) => {
         }
 
         const monthStr = String(bulan).padStart(2, '0');
-        const versionedSheetName = `budget_items_${tahun}${monthStr}`;
         
         console.log(`Processing ${itemsToUpdate.length} items for bulan=${bulan}, tahun=${tahun}`);
-        console.log(`Will create versioned sheet: ${versionedSheetName}`);
+        console.log('Strategy: Matched items UPDATE in place, unmatched items APPEND directly to budget_items');
 
         // Read budget_items sheet to find matching rows
         const mainSheetName = 'budget_items';
