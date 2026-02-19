@@ -908,7 +908,7 @@ serve(async (req: Request) => {
               headers.forEach((header: string, colIndex: number) => {
                 const headerLower = header.toLowerCase();
                 
-                // Copy column values from item where available
+                // Copy column values from unmatched item
                 if (headerLower === 'id') unmatchedRow[colIndex] = unmatchedItem.id || '';
                 else if (headerLower === 'program_pembebanan') unmatchedRow[colIndex] = unmatchedItem.program_pembebanan || '';
                 else if (headerLower === 'kegiatan') unmatchedRow[colIndex] = unmatchedItem.kegiatan || '';
@@ -939,15 +939,15 @@ serve(async (req: Request) => {
                 else if (headerLower === 'selisih') unmatchedRow[colIndex] = unmatchedItem.selisih !== undefined ? unmatchedItem.selisih : 0;
                 else if (headerLower === 'sisa_anggaran') unmatchedRow[colIndex] = unmatchedItem.sisa_anggaran !== undefined ? unmatchedItem.sisa_anggaran : 0;
                 else if (headerLower === 'blokir') unmatchedRow[colIndex] = unmatchedItem.blokir !== undefined ? unmatchedItem.blokir : 0;
-                else if (headerLower === 'status') unmatchedRow[colIndex] = unmatchedItem.status || 'new';
-                else if (headerLower === 'approved_by') unmatchedRow[colIndex] = unmatchedItem.approved_by || '';
-                else if (headerLower === 'approved_date') unmatchedRow[colIndex] = unmatchedItem.approved_date || '';
-                else if (headerLower === 'rejected_date') unmatchedRow[colIndex] = unmatchedItem.rejected_date || '';
-                else if (headerLower === 'submitted_by') unmatchedRow[colIndex] = unmatchedItem.submitted_by || 'import';
-                else if (headerLower === 'submitted_date') unmatchedRow[colIndex] = unmatchedItem.submitted_date || '';
-                else if (headerLower === 'updated_date') unmatchedRow[colIndex] = unmatchedItem.updated_date !== undefined ? unmatchedItem.updated_date : new Date().toISOString();
-                else if (headerLower === 'notes') unmatchedRow[colIndex] = unmatchedItem.notes || '';
-                else if (headerLower === 'catatan_ppk') unmatchedRow[colIndex] = unmatchedItem.catatan_ppk || '';
+                else if (headerLower === 'status') unmatchedRow[colIndex] = 'UNMATCHED'; // Mark as unmatched
+                else if (headerLower === 'approved_by') unmatchedRow[colIndex] = '';
+                else if (headerLower === 'approved_date') unmatchedRow[colIndex] = '';
+                else if (headerLower === 'rejected_date') unmatchedRow[colIndex] = '';
+                else if (headerLower === 'submitted_by') unmatchedRow[colIndex] = 'system';
+                else if (headerLower === 'submitted_date') unmatchedRow[colIndex] = new Date().toISOString();
+                else if (headerLower === 'updated_date') unmatchedRow[colIndex] = new Date().toISOString();
+                else if (headerLower === 'notes') unmatchedRow[colIndex] = 'Item tidak ditemukan di budget_items utama - perlu pengecekan/persetujuan manual';
+                else if (headerLower === 'catatan_ppk') unmatchedRow[colIndex] = 'Menunggu review PPK';
               });
               
               unmatchedRows.push(unmatchedRow);
