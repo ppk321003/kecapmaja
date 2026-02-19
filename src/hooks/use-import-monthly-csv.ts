@@ -206,12 +206,14 @@ export const useImportMonthlyCSV = ({
 
         setParseProgress('Upload ke Google Sheets...');
 
-        // Prepare data untuk update budget_items
+        // Prepare data untuk update budget_items - COPY ALL COLUMNS from CSV, not just sisa_anggaran
         const updateData = matchResult.matched_items.map((match) => {
           const updated = { ...match.budgetItem };
-          updated.sub_komponen = match.item.subKomponen;  // Update with normalized value from parser
+          // Update with ALL columns from CSV (periodeIni is for RPD, but other fields go here)
+          updated.sub_komponen = match.item.subKomponen;
           updated.sisa_anggaran = match.item.sisaAnggaran;
           updated.updated_date = formatDateIndonesia(new Date().toISOString());
+          // No need to set periodeIni here - it's only for RPD items
           return updated;
         });
 

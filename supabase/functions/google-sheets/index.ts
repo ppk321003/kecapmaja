@@ -752,123 +752,6 @@ serve(async (req: Request) => {
         }
       }
 
-      // Step 1: Create versioned sheet with matched data
-      console.log(`📊 Creating versioned sheet: ${versionedSheetName}...`);
-      let versionedSheetId = 0;
-      try {
-        const createSheetResponse = await fetch(
-          `${baseUrl}:batchUpdate`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              requests: [{
-                addSheet: {
-                  properties: {
-                    title: versionedSheetName,
-                  },
-                },
-              }],
-            }),
-          }
-        );
-        const createSheetResult = await createSheetResponse.json();
-        if (createSheetResponse.ok && createSheetResult.replies?.[0]?.addSheet?.properties?.sheetId !== undefined) {
-          versionedSheetId = createSheetResult.replies[0].addSheet.properties.sheetId;
-          console.log(`✓ Versioned sheet created with ID: ${versionedSheetId}`);
-        } else {
-          console.warn(`⚠️ Could not create new versioned sheet (may already exist). Trying to clear existing...`);
-        }
-      } catch (error) {
-        console.warn(`⚠️ Could not create versioned sheet (may already exist):`, error);
-      }
-
-      // Step 2: Write data to versioned sheet (truncate and rewrite)
-      if (versionedRows.length > 0) {
-        console.log(`📝 Writing ${versionedRows.length} rows to versioned sheet...`);
-        
-        // Normalize all sub_komponen in versioned rows before writing (safety pass)
-        if (subKomponenIndex !== undefined) {
-          console.log(`  🔄 Normalizing sub_komponen in all ${versionedRows.length} versioned rows (index: ${subKomponenIndex})...`);
-          let normalizedCount = 0;
-          for (let i = 0; i < versionedRows.length; i++) {
-            const versionedRow = versionedRows[i];
-            if (versionedRow && versionedRow.length > subKomponenIndex) {
-              let rawValue = versionedRow[subKomponenIndex];
-              
-              // Remove single quote prefix if present (from earlier normalization, no longer needed with RAW)
-              if (typeof rawValue === 'string' && rawValue.startsWith("'")) {
-                rawValue = rawValue.substring(1);
-              }
-              
-              const normalizedValue = normalizeSubKomponenValue(rawValue);
-              if (rawValue !== normalizedValue) {
-                console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
-                versionedRow[subKomponenIndex] = `'${normalizedValue}`; // Add single quote for USER_ENTERED
-                normalizedCount++;
-              } else if (rawValue) {
-                // Ensure single quote prefix for USER_ENTERED
-                versionedRow[subKomponenIndex] = `'${normalizedValue}`;
-              }
-            }
-          }
-          console.log(`  ✓ Normalized ${normalizedCount} sub_komponen values in versioned rows`);
-        }
-        
-        try {
-          // First, clear existing data in versioned sheet
-          if (versionedSheetId) {
-            console.log('Clearing existing data in versioned sheet...');
-            const clearResponse = await fetch(
-              `${baseUrl}:batchUpdate`,
-              {
-                method: 'POST',
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  requests: [{
-                    updateCells: {
-                      range: {
-                        sheetId: versionedSheetId,
-                      },
-                      fields: 'userEnteredValue',
-                    },
-                  }],
-                }),
-              }
-            );
-            console.log('Clear response:', clearResponse.status);
-          }
-
-          const writeVersionResponse = await fetch(
-            `${baseUrl}/values/${versionedSheetName}?valueInputOption=USER_ENTERED`,
-            {
-              method: 'PUT',
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ values: versionedRows }),
-            }
-          );
-          const writeVersionResult = await writeVersionResponse.json();
-          if (writeVersionResponse.ok) {
-            console.log(`✓ Versioned sheet updated with ${versionedRows.length} rows`);
-          } else {
-            console.error(`✗ Failed to write versioned sheet:`, writeVersionResult);
-            console.warn(`⚠️  Continuing despite versioned sheet write error...`);
-          }
-        } catch (error) {
-          console.error('❌ Error writing versioned sheet:', error);
-          console.warn(`⚠️  Continuing despite versioned sheet error to apply main sheet updates...`);
-        }
-      }
-
       // Step 3: Apply all updates to main sheet - WITH sub_komponen normalization
       let successCount = 0;
       const updateErrors: string[] = [];
@@ -979,8 +862,106 @@ serve(async (req: Request) => {
       }
 
       console.log(`✅ Update complete: ${successCount}/${updates.length} rows updated in main sheet`);
+
+      // Step 4: Append unmatched items directly to budget_items (not to versioned sheet)
+      let appendCount = 0;
+      const appendErrors: string[] = [];
+      const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
       
-      // Step 4: Update rpd_items dengan bulan updates dan auto-calc total_rpd + sisa_anggaran
+      if (unmatchedItemsArg.length > 0) {
+        console.log(`📥 Appending ${unmatchedItemsArg.length} unmatched items directly to ${mainSheetName}...`);
+        
+        try {
+          // Build rows for append (same structure as budget_items headers)
+          const appendRows: any[][] = [];
+          
+          unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
+            // Create a row array in the same order as headers
+            const appendRow: any[] = [];
+            headers.forEach((header: string) => {
+              const headerLower = header.toLowerCase();
+              // Map fields to header - COPY ALL COLUMNS just like matched items
+              if (headerLower === 'id') appendRow.push(unmatchedItem.id || '');
+              else if (headerLower === 'program_pembebanan') appendRow.push(unmatchedItem.program_pembebanan || '');
+              else if (headerLower === 'kegiatan') appendRow.push(unmatchedItem.kegiatan || '');
+              else if (headerLower === 'rincian_output') appendRow.push(unmatchedItem.rincian_output || '');
+              else if (headerLower === 'komponen_output') appendRow.push(unmatchedItem.komponen_output || '');
+              else if (headerLower === 'sub_komponen') {
+                // Normalize sub_komponen with single quote
+                if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
+                  const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
+                  appendRow.push(`'${normalized || ''}`);
+                } else {
+                  appendRow.push('');
+                }
+              }
+              else if (headerLower === 'akun') appendRow.push(unmatchedItem.akun || '');
+              else if (headerLower === 'uraian') appendRow.push(unmatchedItem.uraian || '');
+              else if (headerLower === 'volume_semula') appendRow.push(unmatchedItem.volume_semula !== undefined ? unmatchedItem.volume_semula : 0);
+              else if (headerLower === 'satuan_semula') appendRow.push(unmatchedItem.satuan_semula || '');
+              else if (headerLower === 'harga_satuan_semula') appendRow.push(unmatchedItem.harga_satuan_semula !== undefined ? unmatchedItem.harga_satuan_semula : 0);
+              else if (headerLower === 'jumlah_semula') appendRow.push(unmatchedItem.jumlah_semula !== undefined ? unmatchedItem.jumlah_semula : 0);
+              else if (headerLower === 'volume_menjadi') appendRow.push(unmatchedItem.volume_menjadi !== undefined ? unmatchedItem.volume_menjadi : 1);
+              else if (headerLower === 'satuan_menjadi') appendRow.push(unmatchedItem.satuan_menjadi || '');
+              else if (headerLower === 'harga_satuan_menjadi') appendRow.push(unmatchedItem.harga_satuan_menjadi !== undefined ? unmatchedItem.harga_satuan_menjadi : 0);
+              else if (headerLower === 'jumlah_menjadi') appendRow.push(unmatchedItem.jumlah_menjadi !== undefined ? unmatchedItem.jumlah_menjadi : 0);
+              else if (headerLower === 'selisih') appendRow.push(unmatchedItem.selisih !== undefined ? unmatchedItem.selisih : 0);
+              else if (headerLower === 'sisa_anggaran') appendRow.push(unmatchedItem.sisa_anggaran !== undefined ? unmatchedItem.sisa_anggaran : 0);
+              else if (headerLower === 'blokir') appendRow.push(unmatchedItem.blokir !== undefined ? unmatchedItem.blokir : 0);
+              else if (headerLower === 'status') appendRow.push(unmatchedItem.status || 'new');
+              else if (headerLower === 'approved_by') appendRow.push(unmatchedItem.approved_by || '');
+              else if (headerLower === 'approved_date') appendRow.push(unmatchedItem.approved_date || '');
+              else if (headerLower === 'rejected_date') appendRow.push(unmatchedItem.rejected_date || '');
+              else if (headerLower === 'submitted_by') appendRow.push(unmatchedItem.submitted_by || 'import');
+              else if (headerLower === 'submitted_date') appendRow.push(unmatchedItem.submitted_date || '');
+              else if (headerLower === 'updated_date') appendRow.push(unmatchedItem.updated_date !== undefined ? unmatchedItem.updated_date : new Date().toISOString());
+              else if (headerLower === 'notes') appendRow.push(unmatchedItem.notes || '');
+              else if (headerLower === 'catatan_ppk') appendRow.push(unmatchedItem.catatan_ppk || '');
+              else appendRow.push(''); // Unknown columns
+            });
+            
+            appendRows.push(appendRow);
+            if ((itemIdx + 1) % 100 === 0) {
+              console.log(`  Prepared ${itemIdx + 1}/${unmatchedItemsArg.length} rows for append`);
+            }
+          });
+          
+          console.log(`✓ Prepared ${appendRows.length} rows for append to ${mainSheetName}`);
+          
+          // Append to main sheet
+          if (appendRows.length > 0) {
+            const appendResponse = await fetch(
+              `${baseUrl}/values/${mainSheetName}:append?valueInputOption=USER_ENTERED`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  values: appendRows,
+                }),
+              }
+            );
+            
+            const appendResult = await appendResponse.json();
+            if (appendResponse.ok) {
+              appendCount = appendRows.length;
+              console.log(`✅ Appended ${appendCount} unmatched items to ${mainSheetName}`);
+            } else {
+              const errorMsg = appendResult?.error?.message || 'Unknown error';
+              console.warn(`⚠️ Failed to append unmatched items:`, errorMsg);
+              appendErrors.push(errorMsg);
+            }
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.error('❌ Error appending unmatched items:', errorMsg);
+          appendErrors.push(errorMsg);
+        }
+      }
+      
+      // Step 5: Update rpd_items dengan bulan updates dan auto-calc total_rpd + sisa_anggaran
       let rpdUpdateCount = 0;
       let rpdCreateCount = 0;
       const rpdUpdateErrors: string[] = [];
@@ -1227,39 +1208,33 @@ serve(async (req: Request) => {
         }
       }
       
-      console.log(`✅ RPD Step 4 complete: ${rpdUpdateCount} updated, ${rpdCreateCount} created`);
+      console.log(`✅ RPD Step 5 complete: ${rpdUpdateCount} updated, ${rpdCreateCount} created`);
       
-      // Return success immediately - main sheet is updated successfully
-      // Versioned sheet operations are secondary and shouldn't block response
+      // Return success - all data (matched, updated, and appended) is now in budget_items
       const successResponse = {
         success: true,
         matched: matchedCount,
         updated: successCount,
+        appended: appendCount,
+        unmatched: unmatchedCount,
         rpd_updated: rpdUpdateCount,
         rpd_created: rpdCreateCount,
         total_requested: itemsToUpdate.length,
+        total_processed: matchedCount + unmatchedCount,
         bulan,
         tahun,
-        versioned_sheet: versionedSheetName,
         errors: updateErrors.length > 0 ? updateErrors.slice(0, 10) : undefined,
+        append_errors: appendErrors.length > 0 ? appendErrors.slice(0, 10) : undefined,
         rpd_errors: rpdUpdateErrors.length > 0 ? rpdUpdateErrors.slice(0, 10) : undefined,
       };
 
-      // Start versioned sheet operations in background (don't await, don't block response)
-      if (unmatchedItemsArg.length > 0 || matchedCount > 0) {
-        console.log(`📊 Starting background versioned sheet operations (${versionedSheetName})...`);
-        // This runs after we return but won't block the client
-        updateVersionedSheetAsync(versionedSheetName, versionedRows, accessToken, baseUrl)
-          .catch(err => {
-            console.warn(`⚠️ Versioned sheet background operation error (non-blocking):`, err);
-          });
-      }
+      // No more background async operations - everything is complete now
+      console.log(`✅ All operations complete: ${matchedCount} matched + ${appendCount} appended = ${matchedCount + appendCount} total rows in ${mainSheetName}`);
 
       return new Response(JSON.stringify(successResponse), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-      } catch (operationError) {
         const errorMsg = operationError instanceof Error ? operationError.message : String(operationError);
         console.error(`❌ Error in update-sisa-anggaran operation:`, errorMsg);
         console.error('Stack:', operationError instanceof Error ? operationError.stack : 'N/A');
