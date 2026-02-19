@@ -822,13 +822,13 @@ serve(async (req: Request) => {
             const batch = sortedUpdates.slice(batchIdx, Math.min(batchIdx + BATCH_SIZE, sortedUpdates.length));
             
             try {
-              // Build batchUpdate request with 3 separate data blocks (no gaps/overwrites)
-              const dataBlocks = [];
+              // Build batchUpdate request - use :batchUpdate API (not values:batchUpdate) to set explicit TEXT format
+              const requests = [];
               
-              // Block 1: sub_komponen column with EXPLICIT TEXT format
-              // Block 1: sub_komponen column (with single quote prefix for text)
+              // Block 1: sub_komponen column with EXPLICIT TEXT format (@)
+              // This is CRITICAL: we must set numberFormat to TEXT to prevent Google Sheets from converting "001" to 1
               if (subKomponenIndex !== undefined) {
-                const subKomponenData = batch.map(update => {
+                const subKomponenRequests = batch.map(update => {
                   let rawValue = update.values[0][subKomponenIndex];
                   
                   // Remove single quote prefix if already present
@@ -840,34 +840,76 @@ serve(async (req: Request) => {
                   console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
                   
                   return {
-                    range: `${mainSheetName}!${indexToColumnLetter(subKomponenIndex)}${update.rowIndex}`,
-                    values: [[`'${normalizedValue}`]], // Single quote for text
+                    updateCells: {
+                      range: {
+                        sheetId: 0, // budget_items sheet is always first sheet (0)
+                        startRowIndex: update.rowIndex - 1, // 0-based
+                        endRowIndex: update.rowIndex,
+                        startColumnIndex: subKomponenIndex,
+                        endColumnIndex: subKomponenIndex + 1,
+                      },
+                      rows: [{
+                        values: [{
+                          userEnteredValue: { stringValue: normalizedValue },
+                          userEnteredFormat: {
+                            numberFormat: { type: 'TEXT' }, // ← FORCE TEXT FORMAT!
+                          },
+                        }],
+                      }],
+                      fields: 'userEnteredValue,userEnteredFormat',
+                    },
                   };
                 });
-                dataBlocks.push(...subKomponenData);
+                requests.push(...subKomponenRequests);
               }
               
-              // Block 2: sisa_anggaran column
-              const sisaAnggaranData = batch.map(update => ({
-                range: `${mainSheetName}!${indexToColumnLetter(sisaAnggaranIndex)}${update.rowIndex}`,
-                values: [[update.values[0][sisaAnggaranIndex]]],
+              // Block 2: sisa_anggaran column (standard values update - no format needed)
+              const sisaAnggaranRequests = batch.map(update => ({
+                updateCells: {
+                  range: {
+                    sheetId: 0,
+                    startRowIndex: update.rowIndex - 1,
+                    endRowIndex: update.rowIndex,
+                    startColumnIndex: sisaAnggaranIndex,
+                    endColumnIndex: sisaAnggaranIndex + 1,
+                  },
+                  rows: [{
+                    values: [{
+                      userEnteredValue: { numberValue: parseFloat(String(update.values[0][sisaAnggaranIndex])) || 0 },
+                    }],
+                  }],
+                  fields: 'userEnteredValue',
+                },
               }));
-              dataBlocks.push(...sisaAnggaranData);
+              requests.push(...sisaAnggaranRequests);
               
-              // Block 3: updated_date column (only if exists)
+              // Block 3: updated_date column
               if (updatedDateIndex !== undefined) {
-                const updatedDateData = batch.map(update => ({
-                  range: `${mainSheetName}!${indexToColumnLetter(updatedDateIndex)}${update.rowIndex}`,
-                  values: [[update.values[0][updatedDateIndex]]],
+                const updatedDateRequests = batch.map(update => ({
+                  updateCells: {
+                    range: {
+                      sheetId: 0,
+                      startRowIndex: update.rowIndex - 1,
+                      endRowIndex: update.rowIndex,
+                      startColumnIndex: updatedDateIndex,
+                      endColumnIndex: updatedDateIndex + 1,
+                    },
+                    rows: [{
+                      values: [{
+                        userEnteredValue: { stringValue: String(update.values[0][updatedDateIndex]) },
+                      }],
+                    }],
+                    fields: 'userEnteredValue',
+                  },
                 }));
-                dataBlocks.push(...updatedDateData);
+                requests.push(...updatedDateRequests);
               }
               
-              console.log(`  📤 Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: sending ${dataBlocks.length} cell updates for ${batch.length} rows`);
+              console.log(`  📤 Batch ${Math.floor(batchIdx / BATCH_SIZE) + 1}: sending ${requests.length} updateCells requests for ${batch.length} rows`);
 
-              // Use values:batchUpdate with USER_ENTERED to interpret single quote as text
+              // Use :batchUpdate API with updateCells to set explicit TEXT format for sub_komponen
               const updateResponse = await fetch(
-                `${baseUrl}/values:batchUpdate`,
+                `${baseUrl}:batchUpdate`,
                 {
                   method: 'POST',
                   headers: {
@@ -875,8 +917,7 @@ serve(async (req: Request) => {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    data: dataBlocks,
-                    valueInputOption: 'USER_ENTERED', // Interpret single quote as text
+                    requests: requests,
                   }),
                 }
               );
