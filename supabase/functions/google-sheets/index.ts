@@ -565,10 +565,14 @@ serve(async (req: Request) => {
           // Normalize sub_komponen to 3 digits (force as text with single quote)
           if (subKomponenIndex !== undefined && item.sub_komponen !== undefined && item.sub_komponen !== null && item.sub_komponen !== '') {
             try {
-              const originalValue = newRow[subKomponenIndex];
               const normalizedValue = normalizeSubKomponenValue(item.sub_komponen);
-              newRow[subKomponenIndex] = `'${normalizedValue}`; // Force as text with single quote
-              if (originalValue !== normalizedValue && normalizedValue) {
+              // Ensure single quote prefix (don't double-quote if already has it)
+              if (normalizedValue && !String(normalizedValue).startsWith("'")) {
+                newRow[subKomponenIndex] = `'${normalizedValue}`;
+              } else {
+                newRow[subKomponenIndex] = normalizedValue;
+              }
+              if (newRow[subKomponenIndex] !== item.sub_komponen && normalizedValue) {
                 normalizedCount++;
               }
             } catch (e) {
@@ -647,7 +651,12 @@ serve(async (req: Request) => {
                 // Normalize sub_komponen to 3 digits, force as text
                 if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
                   const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
-                  unmatchedRow.push(`'${normalized || ''}`); // Force as text with single quote
+                  // Ensure single quote prefix (don't double-quote if already has it)
+                  if (normalized && !String(normalized).startsWith("'")) {
+                    unmatchedRow.push(`'${normalized}`);
+                  } else {
+                    unmatchedRow.push(normalized || '');
+                  }
                 } else {
                   unmatchedRow.push('');
                 }
@@ -734,14 +743,20 @@ serve(async (req: Request) => {
           for (let i = 0; i < versionedRows.length; i++) {
             const versionedRow = versionedRows[i];
             if (versionedRow && versionedRow.length > subKomponenIndex) {
-              const rawValue = versionedRow[subKomponenIndex];
+              let rawValue = versionedRow[subKomponenIndex];
+              
+              // Remove single quote prefix if already present (from earlier normalization)
+              if (typeof rawValue === 'string' && rawValue.startsWith("'")) {
+                rawValue = rawValue.substring(1);
+              }
+              
               const normalizedValue = normalizeSubKomponenValue(rawValue);
               if (rawValue !== normalizedValue) {
                 console.log(`    Row ${i + 1}: "${rawValue}" → "${normalizedValue}"`);
                 versionedRow[subKomponenIndex] = `'${normalizedValue}`; // Force as text with single quote prefix
                 normalizedCount++;
               } else if (rawValue) {
-                // Even if not changed, ensure it's forced as text
+                // Even if not changed, ensure it's forced as text with single quote
                 versionedRow[subKomponenIndex] = `'${normalizedValue}`;
               }
             }
@@ -823,7 +838,13 @@ serve(async (req: Request) => {
               // Block 1: sub_komponen column (NORMALIZE to 3 digits, force as text)
               if (subKomponenIndex !== undefined) {
                 const subKomponenData = batch.map(update => {
-                  const rawValue = update.values[0][subKomponenIndex];
+                  let rawValue = update.values[0][subKomponenIndex];
+                  
+                  // Remove single quote prefix if already present (from line 570)
+                  if (typeof rawValue === 'string' && rawValue.startsWith("'")) {
+                    rawValue = rawValue.substring(1);
+                  }
+                  
                   const normalizedValue = normalizeSubKomponenValue(rawValue);
                   console.log(`    Normalizing sub_komponen[${update.rowIndex}]: "${rawValue}" → "${normalizedValue}"`);
                   return {
