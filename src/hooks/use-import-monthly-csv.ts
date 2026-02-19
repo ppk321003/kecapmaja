@@ -127,7 +127,7 @@ export const useImportMonthlyCSV = ({
         result.not_matched_items.forEach((item, idx) => {
           console.log(`  ${idx + 1}. Program: ${item.item.program}, Kegiatan: ${item.item.kegiatan}, RincianOutput: ${item.item.rincianOutput}, KomponenOutput: ${item.item.komponenOutput}, SubKomponen: ${item.item.subKomponen}, Akun: ${item.item.akun}`);
           console.log(`     Uraian: ${item.item.uraian}`);
-          console.log(`     SisaAnggaran: ${item.item.sisaAnggaran}, Reason: ${item.reason}`);
+          console.log(`     PeriodeIni (Col 24): ${item.item.periodeIni}, SisaAnggaran (Col AE): ${item.item.sisaAnggaran}, Reason: ${item.reason}`);
         });
       }
 
@@ -209,7 +209,7 @@ export const useImportMonthlyCSV = ({
         // Prepare data untuk update budget_items
         const updateData = matchResult.matched_items.map((match) => {
           const updated = { ...match.budgetItem };
-          updated.sisa_anggaran = match.item.sisaAnggaran;
+          updated.sisa_anggaran = match.item.sisaAnggaran;  // Column AE: SISA ANGGARAN
           updated.updated_date = formatDateIndonesia(new Date().toISOString());
           return updated;
         });
@@ -227,20 +227,21 @@ export const useImportMonthlyCSV = ({
             item: match.budgetItem,
             bulan: parsedData.bulan,
             bulanColumn: bulanColumn,
-            sisaAnggaran: match.item.sisaAnggaran,
+            periodeIni: match.item.periodeIni,  // Column 24: Monthly realization (Periode Ini)
           };
         });
 
         console.log('[useImportMonthlyCSV] RPD update data prepared for bulan', parsedData.bulan, 'column', bulanColumn);
         console.log('[useImportMonthlyCSV] Sample RPD update:', {
           item_id: rpdUpdateData[0]?.item.id,
-          sisaAnggaran: rpdUpdateData[0]?.sisaAnggaran,
+          periodeIni: rpdUpdateData[0]?.periodeIni,
           bulanColumn: rpdUpdateData[0]?.bulanColumn,
         });
 
         // Prepare unmatched items untuk insert ke versioned sheet
         const unmatchedData = matchResult.not_matched_items.map((item) => {
           // Create a budget item structure untuk unmatched items
+          // Use sisaAnggaran (Column AE) as the base amount since these couldn't match to budget_items
           return {
             id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             program_pembebanan: item.item.program,
@@ -252,14 +253,14 @@ export const useImportMonthlyCSV = ({
             uraian: item.item.uraian,
             volume_semula: 1,
             satuan_semula: 'OK',
-            harga_satuan_semula: item.item.sisaAnggaran,
-            jumlah_semula: item.item.sisaAnggaran,
+            harga_satuan_semula: item.item.sisaAnggaran,  // Column AE: SISA ANGGARAN
+            jumlah_semula: item.item.sisaAnggaran,  // Column AE: SISA ANGGARAN
             volume_menjadi: 1,
             satuan_menjadi: 'OK',
-            harga_satuan_menjadi: item.item.sisaAnggaran,
-            jumlah_menjadi: item.item.sisaAnggaran,
+            harga_satuan_menjadi: item.item.sisaAnggaran,  // Column AE: SISA ANGGARAN
+            jumlah_menjadi: item.item.sisaAnggaran,  // Column AE: SISA ANGGARAN
             selisih: 0,
-            sisa_anggaran: item.item.sisaAnggaran,
+            sisa_anggaran: item.item.sisaAnggaran,  // Column AE: SISA ANGGARAN
             blokir: 0,
             status: 'new',
             approved_by: '',
