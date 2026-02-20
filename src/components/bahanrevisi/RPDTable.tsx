@@ -118,6 +118,59 @@ const RPDTable: React.FC<RPDTableProps> = ({
     }
   };
 
+  // Filtered items for summary calculation (WITHOUT hideZeroPagu)
+  const filteredItemsForSummary = useMemo(() => {
+    try {
+      if (!Array.isArray(safeItems)) {
+        console.warn('[RPDTable] safeItems is not an array:', typeof safeItems);
+        return [];
+      }
+      
+      return safeItems.filter(item => {
+        try {
+          // Defensive checks for item structure
+          if (!item || typeof item !== 'object') {
+            console.warn('[RPDTable] Filtering invalid item:', item);
+            return false;
+          }
+          
+          // Apply drill-down filters (NOT hideZeroPagu)
+          if (filters.program_pembebanan && String(item.program_pembebanan || '').trim() !== String(filters.program_pembebanan).trim()) {
+            return false;
+          }
+          if (filters.kegiatan && String(item.kegiatan || '').trim() !== String(filters.kegiatan).trim()) {
+            return false;
+          }
+          if (filters.komponen_output && String(item.komponen_output || '').trim() !== String(filters.komponen_output).trim()) {
+            return false;
+          }
+          if (filters.sub_komponen && String(item.sub_komponen || '').trim() !== String(filters.sub_komponen).trim()) {
+            return false;
+          }
+          if (filters.rincian_output && String(item.rincian_output || '').trim() !== String(filters.rincian_output).trim()) {
+            return false;
+          }
+          if (filters.akun && String(item.akun || '').trim() !== String(filters.akun).trim()) {
+            return false;
+          }
+          
+          const searchLower = searchTerm.toLowerCase();
+          const uraian = String(item.uraian || '');
+          const matchesSearch = !searchTerm || uraian.toLowerCase().includes(searchLower);
+          
+          // Filter search only (NOT hideZeroPagu)
+          return matchesSearch;
+        } catch (e) {
+          console.error('[RPDTable] Error filtering item for summary:', e, item);
+          return false;
+        }
+      });
+    } catch (e) {
+      console.error('[RPDTable] Error in filteredItemsForSummary:', e);
+      return [];
+    }
+  }, [safeItems, searchTerm, filters]);
+
   const filteredItems = useMemo(() => {
     try {
       if (!Array.isArray(safeItems)) {
@@ -512,7 +565,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       </div>
       
       <div className="text-xs text-gray-500">
-        Menampilkan {paginatedItems.length} dari {filteredItems.length} item
+        Menampilkan {paginatedItems.length} dari {filteredItemsForSummary.length} item
         {searchTerm && ` (filter: "${searchTerm}")`}
       </div>
       
