@@ -93,22 +93,6 @@ const RPDTable: React.FC<RPDTableProps> = ({
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const pagu = useMemo(() => {
-    try {
-      if (!Array.isArray(safeItems)) return 0;
-      return safeItems.reduce((sum, item) => {
-        try {
-          return sum + (Number(item?.total_pagu) || 0);
-        } catch {
-          return sum;
-        }
-      }, 0);
-    } catch (e) {
-      console.error('[RPDTable] Error calculating pagu:', e);
-      return 0;
-    }
-  }, [safeItems]);
-
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -117,59 +101,6 @@ const RPDTable: React.FC<RPDTableProps> = ({
       setSortDirection('asc');
     }
   };
-
-  // Filtered items for summary calculation (WITHOUT hideZeroPagu)
-  const filteredItemsForSummary = useMemo(() => {
-    try {
-      if (!Array.isArray(safeItems)) {
-        console.warn('[RPDTable] safeItems is not an array:', typeof safeItems);
-        return [];
-      }
-      
-      return safeItems.filter(item => {
-        try {
-          // Defensive checks for item structure
-          if (!item || typeof item !== 'object') {
-            console.warn('[RPDTable] Filtering invalid item:', item);
-            return false;
-          }
-          
-          // Apply drill-down filters (NOT hideZeroPagu)
-          if (filters.program_pembebanan && String(item.program_pembebanan || '').trim() !== String(filters.program_pembebanan).trim()) {
-            return false;
-          }
-          if (filters.kegiatan && String(item.kegiatan || '').trim() !== String(filters.kegiatan).trim()) {
-            return false;
-          }
-          if (filters.komponen_output && String(item.komponen_output || '').trim() !== String(filters.komponen_output).trim()) {
-            return false;
-          }
-          if (filters.sub_komponen && String(item.sub_komponen || '').trim() !== String(filters.sub_komponen).trim()) {
-            return false;
-          }
-          if (filters.rincian_output && String(item.rincian_output || '').trim() !== String(filters.rincian_output).trim()) {
-            return false;
-          }
-          if (filters.akun && String(item.akun || '').trim() !== String(filters.akun).trim()) {
-            return false;
-          }
-          
-          const searchLower = searchTerm.toLowerCase();
-          const uraian = String(item.uraian || '');
-          const matchesSearch = !searchTerm || uraian.toLowerCase().includes(searchLower);
-          
-          // Filter search only (NOT hideZeroPagu)
-          return matchesSearch;
-        } catch (e) {
-          console.error('[RPDTable] Error filtering item for summary:', e, item);
-          return false;
-        }
-      });
-    } catch (e) {
-      console.error('[RPDTable] Error in filteredItemsForSummary:', e);
-      return [];
-    }
-  }, [safeItems, searchTerm, filters]);
 
   const filteredItems = useMemo(() => {
     try {
@@ -225,6 +156,22 @@ const RPDTable: React.FC<RPDTableProps> = ({
       return [];
     }
   }, [safeItems, searchTerm, hideZeroPagu, filters]);
+
+  const pagu = useMemo(() => {
+    try {
+      if (!Array.isArray(filteredItems)) return 0;
+      return filteredItems.reduce((sum, item) => {
+        try {
+          return sum + (Number(item?.total_pagu) || 0);
+        } catch {
+          return sum;
+        }
+      }, 0);
+    } catch (e) {
+      console.error('[RPDTable] Error calculating pagu:', e);
+      return 0;
+    }
+  }, [filteredItems]);
 
   const sortedItems = useMemo(() => {
     try {
@@ -302,24 +249,24 @@ const RPDTable: React.FC<RPDTableProps> = ({
 
   const totalByMonth = useMemo(() => {
     try {
-      if (!Array.isArray(safeItems)) return {
+      if (!Array.isArray(filteredItems)) return {
         jan: 0, feb: 0, mar: 0, apr: 0, mei: 0, jun: 0,
         jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
       };
       
       return {
-        jan: safeItems.reduce((sum, item) => sum + (Number(item?.januari) || 0), 0),
-        feb: safeItems.reduce((sum, item) => sum + (Number(item?.februari) || 0), 0),
-        mar: safeItems.reduce((sum, item) => sum + (Number(item?.maret) || 0), 0),
-        apr: safeItems.reduce((sum, item) => sum + (Number(item?.april) || 0), 0),
-        mei: safeItems.reduce((sum, item) => sum + (Number(item?.mei) || 0), 0),
-        jun: safeItems.reduce((sum, item) => sum + (Number(item?.juni) || 0), 0),
-        jul: safeItems.reduce((sum, item) => sum + (Number(item?.juli) || 0), 0),
-        aug: safeItems.reduce((sum, item) => sum + (Number(item?.agustus) || 0), 0),
-        sep: safeItems.reduce((sum, item) => sum + (Number(item?.september) || 0), 0),
-        oct: safeItems.reduce((sum, item) => sum + (Number(item?.oktober) || 0), 0),
-        nov: safeItems.reduce((sum, item) => sum + (Number(item?.november) || 0), 0),
-        dec: safeItems.reduce((sum, item) => sum + (Number(item?.desember) || 0), 0)
+        jan: filteredItems.reduce((sum, item) => sum + (Number(item?.januari) || 0), 0),
+        feb: filteredItems.reduce((sum, item) => sum + (Number(item?.februari) || 0), 0),
+        mar: filteredItems.reduce((sum, item) => sum + (Number(item?.maret) || 0), 0),
+        apr: filteredItems.reduce((sum, item) => sum + (Number(item?.april) || 0), 0),
+        mei: filteredItems.reduce((sum, item) => sum + (Number(item?.mei) || 0), 0),
+        jun: filteredItems.reduce((sum, item) => sum + (Number(item?.juni) || 0), 0),
+        jul: filteredItems.reduce((sum, item) => sum + (Number(item?.juli) || 0), 0),
+        aug: filteredItems.reduce((sum, item) => sum + (Number(item?.agustus) || 0), 0),
+        sep: filteredItems.reduce((sum, item) => sum + (Number(item?.september) || 0), 0),
+        oct: filteredItems.reduce((sum, item) => sum + (Number(item?.oktober) || 0), 0),
+        nov: filteredItems.reduce((sum, item) => sum + (Number(item?.november) || 0), 0),
+        dec: filteredItems.reduce((sum, item) => sum + (Number(item?.desember) || 0), 0)
       };
     } catch (e) {
       console.error('[RPDTable] Error in totalByMonth:', e);
@@ -328,12 +275,12 @@ const RPDTable: React.FC<RPDTableProps> = ({
         jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0
       };
     }
-  }, [safeItems]);
+  }, [filteredItems]);
 
   const grandTotal = useMemo(() => {
     try {
-      if (!Array.isArray(safeItems)) return 0;
-      return safeItems.reduce((sum, item) => {
+      if (!Array.isArray(filteredItems)) return 0;
+      return filteredItems.reduce((sum, item) => {
         try {
           return sum + (Number(item?.total_rpd) || 0);
         } catch {
@@ -344,7 +291,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       console.error('[RPDTable] Error calculating grandTotal:', e);
       return 0;
     }
-  }, [safeItems]);
+  }, [filteredItems]);
 
   const sisaPagu = useMemo(() => {
     try {
@@ -565,7 +512,7 @@ const RPDTable: React.FC<RPDTableProps> = ({
       </div>
       
       <div className="text-xs text-gray-500">
-        Menampilkan {paginatedItems.length} dari {filteredItemsForSummary.length} item
+        Menampilkan {paginatedItems.length} dari {filteredItems.length} item
         {searchTerm && ` (filter: "${searchTerm}")`}
       </div>
       

@@ -133,22 +133,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   const [detailItem, setDetailItem] = useState<BudgetItem | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
-  // Filter items untuk perhitungan total (WITHOUT hideZeroPagu to ensure totals stay consistent)
-  const filteredForTotalCalculation = useMemo(() => {
-    let filtered = items;
-    
-    // Filter by search uraian only (NOT hideZeroPagu)
-    if (searchUraian.trim()) {
-      const searchLower = searchUraian.toLowerCase();
-      filtered = filtered.filter(item => 
-        item.uraian?.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    return filtered;
-  }, [items, searchUraian]);
-
-  // Filter items berdasarkan hideZeroPagu dan search uraian (for display)
+  // Filter items untuk display (WITH hideZeroPagu)
   // Special handling: items pending PPK approval always shown even if pagu = 0
   // EXCEPT: status unchanged dengan pagu = 0 harus tetap disembunyikan
   const filteredByZeroPagu = useMemo(() => {
@@ -192,25 +177,6 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   };
 
   const sortedItems = [...filteredByZeroPagu].sort((a, b) => {
-    if (!sortBy) return 0;
-    const aVal = a[sortBy];
-    const bVal = b[sortBy];
-
-    if (typeof aVal === 'number' && typeof bVal === 'number') {
-      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
-    }
-
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      return sortOrder === 'asc'
-        ? aVal.localeCompare(bVal)
-        : bVal.localeCompare(aVal);
-    }
-
-    return 0;
-  });
-
-  // Sorted items for summary calculation (for consistent counts)
-  const sortedForTotalCalculation = [...filteredForTotalCalculation].sort((a, b) => {
     if (!sortBy) return 0;
     const aVal = a[sortBy];
     const bVal = b[sortBy];
@@ -573,7 +539,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
       <div className="flex flex-col gap-3 mt-4 p-4 bg-slate-50 rounded border border-slate-200">
         <div className="flex items-center justify-between">
           <div className="text-xs text-slate-600">
-            Menampilkan {sortedForTotalCalculation.length > 0 ? startIdx + 1 : 0} dari {sortedForTotalCalculation.length} item
+            Menampilkan {sortedItems.length > 0 ? startIdx + 1 : 0} dari {sortedItems.length} item
             {hideZeroPagu && ' (menyembunyikan jumlah pagu 0)'}
           </div>
           <div className="flex items-center gap-2">
@@ -648,15 +614,15 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
           <div className="space-y-1 text-xs">
             <div>
               <span className="text-slate-600">Total Pagu Semula (Keseluruhan):</span>
-              <p className="font-semibold text-slate-900">{formatCurrency(filteredForTotalCalculation.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0))}</p>
+              <p className="font-semibold text-slate-900">{formatCurrency(filteredByZeroPagu.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0))}</p>
             </div>
             <div>
               <span className="text-slate-600">Total Pagu Menjadi (Keseluruhan):</span>
-              <p className="font-semibold text-slate-900">{formatCurrency(filteredForTotalCalculation.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0))}</p>
+              <p className="font-semibold text-slate-900">{formatCurrency(filteredByZeroPagu.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0))}</p>
             </div>
             <div>
               <span className="text-slate-600">Total Selisih Pagu (Keseluruhan):</span>
-              <p className="font-semibold text-red-600">{formatCurrency(filteredForTotalCalculation.reduce((sum, item) => sum + calculateSelisih(item), 0))}</p>
+              <p className="font-semibold text-red-600">{formatCurrency(filteredByZeroPagu.reduce((sum, item) => sum + calculateSelisih(item), 0))}</p>
             </div>
           </div>
         </div>
