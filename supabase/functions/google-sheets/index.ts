@@ -951,31 +951,73 @@ serve(async (req: Request) => {
             // Append to unmatched sheet (NOT to budget_items)
             if (unmatchedRows.length > 0) {
               console.log(`📤 Appending to ${unmatchedSheetName}...`);
+              console.log(`  Data: ${unmatchedRows.length} rows`);
+              if (unmatchedRows.length > 0) {
+                console.log(`  First row cols: ${unmatchedRows[0]?.length || 0}`);
+                console.log(`  First row sample:`, JSON.stringify(unmatchedRows[0]?.slice(0, 5)));
+              }
+              if (unmatchedRows.length > 1) {
+                console.log(`  Second row sample:`, JSON.stringify(unmatchedRows[1]?.slice(0, 5)));
+              }
               
-              const appendResponse = await fetch(
-                `${baseUrl}/values/${unmatchedSheetName}:append?valueInputOption=USER_ENTERED`,
-                {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    values: unmatchedRows,
-                  }),
+              // If sheet just created, use PUT to write headers + first batch
+              if (sheetJustCreated && unmatchedRows.length > 0) {
+                console.log(`✍️ Using PUT (insert) for fresh sheet with header + data`);
+                
+                const putResponse = await fetch(
+                  `${baseUrl}/values/${unmatchedSheetName}?valueInputOption=USER_ENTERED`,
+                  {
+                    method: 'PUT',
+                    headers: {
+                      Authorization: `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      values: unmatchedRows,
+                    }),
+                  }
+                );
+                
+                const putResult = await putResponse.json();
+                console.log(`  PUT response: ${putResponse.status}`, putResult.updatedCells !== undefined ? `✅ Updated ${putResult.updatedCells} cells` : `❌ ${putResult.error?.message}`);
+                
+                if (putResponse.ok) {
+                  appendCountUnmatched = unmatchedRows.length - 1; // All minus header
+                  console.log(`✅ DONE: PUT ${unmatchedRows.length} rows (header + data) to ${unmatchedSheetName}`);
+                } else {
+                  const errorMsg = putResult?.error?.message || 'Unknown error';
+                  console.error(`❌ PUT failed: ${errorMsg}`);
+                  appendErrors.push(`Unmatched items PUT: ${errorMsg}`);
                 }
-              );
-              
-              const appendResult = await appendResponse.json();
-              console.log(`  Append response: ${appendResponse.status}`, appendResult.updates ? `✅ Success` : `❌ ${appendResult.error?.message}`);
-              
-              if (appendResponse.ok) {
-                appendCountUnmatched = !sheetJustCreated ? unmatchedRows.length : unmatchedRows.length - 1; // Exclude header count if just created
-                console.log(`✅ DONE: Appended ${unmatchedRows.length} rows to ${unmatchedSheetName}`);
               } else {
-                const errorMsg = appendResult?.error?.message || 'Unknown error';
-                console.error(`❌ Append failed: ${errorMsg}`);
-                appendErrors.push(`Unmatched items: ${errorMsg}`);
+                // Sheet exists, use APPEND
+                console.log(`📌 Using APPEND (existing sheet)`);
+                
+                const appendResponse = await fetch(
+                  `${baseUrl}/values/${unmatchedSheetName}:append?valueInputOption=USER_ENTERED`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      Authorization: `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      values: unmatchedRows,
+                    }),
+                  }
+                );
+                
+                const appendResult = await appendResponse.json();
+                console.log(`  APPEND response: ${appendResponse.status}`, appendResult.updates ? `✅ Success` : `❌ ${appendResult.error?.message}`);
+                
+                if (appendResponse.ok) {
+                  appendCountUnmatched = unmatchedRows.length - (sheetJustCreated ? 1 : 0); // Exclude header if just created
+                  console.log(`✅ DONE: APPENDED ${unmatchedRows.length} rows to ${unmatchedSheetName}`);
+                } else {
+                  const errorMsg = appendResult?.error?.message || 'Unknown error';
+                  console.error(`❌ APPEND failed: ${errorMsg}`);
+                  appendErrors.push(`Unmatched items: ${errorMsg}`);
+                }
               }
             } else {
               console.log(`⚠️ No rows to append (unmatchedRows.length = 0)`);
