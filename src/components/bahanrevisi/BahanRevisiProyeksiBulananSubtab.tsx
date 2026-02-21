@@ -154,7 +154,10 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
           row.blokir += Number(item.blokir || 0) || 0;
           row.itemCount += 1;
         });
-        return Array.from(map.values());
+        return Array.from(map.values()).map(r => ({
+          ...r,
+          name: akuns.find(a => String(a.id || '').startsWith(r.key))?.account_group_name || `Kelompok ${r.key}`
+        }));
       }
       case 'account_group': {
         // group by 2-digit account group
@@ -186,7 +189,10 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
           row.blokir += Number(item.blokir || 0) || 0;
           row.itemCount += 1;
         });
-        return Array.from(map.values());
+        return Array.from(map.values()).map(r => ({
+          ...r,
+          name: akuns.find(a => (a.account_group || '').startsWith(r.key) || String(a.id || '').startsWith(r.key))?.account_group_name || `Kelompok Belanja ${r.key}`
+        }));
       }
       case 'proyeksi':
       default:
@@ -226,6 +232,34 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     a.download = `proyeksi-bulanan-${summaryView}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const renderChildrenForRow = (rowKey: string) => {
+    const children = items.filter(it => {
+      if (summaryView === 'program_pembebanan') return String(it.program_pembebanan || 'Unknown') === rowKey;
+      if (summaryView === 'kegiatan') return String(it.kegiatan || 'Unknown') === rowKey;
+      if (summaryView === 'rincian_output') return String(it.rincian_output || 'Unknown') === rowKey;
+      if (summaryView === 'komponen_output') return String(it.komponen_output || 'Unknown') === rowKey;
+      if (summaryView === 'sub_komponen') return String(it.sub_komponen || 'Unknown') === rowKey;
+      if (summaryView === 'akun') return String(it.akun || 'Unknown') === rowKey;
+      if (summaryView === 'akun_group') return (String(it.akun || '').slice(0,3) || 'Unknown') === rowKey;
+      if (summaryView === 'account_group') return (String(it.akun || '').slice(0,2) || 'Unknown') === rowKey;
+      return false;
+    });
+
+    return children.map((it, cidx) => (
+      <TableRow key={`${rowKey}-child-${it.id}`} className={cidx % 2 === 0 ? '' : 'bg-slate-50'}>
+        <TableCell className="py-2 px-3" />
+        <TableCell className="py-2 px-3 text-xs font-mono">{`${it.program_pembebanan || ''} ${it.kegiatan || ''} ${it.komponen_output || ''} ${it.akun || ''}`.trim()}</TableCell>
+        {viewMode === 'month' && months.map(m => (
+          <TableCell key={`${it.id}-${m}`} className="text-right py-2 px-3">{formatCurrency(Number((it as any)[m] || 0))}</TableCell>
+        ))}
+        <TableCell className="text-right py-2 px-3 font-medium">{formatCurrency(months.reduce((s, m) => s + (Number((it as any)[m] || 0)), 0))}</TableCell>
+        <TableCell className="text-right py-2 px-3">{formatCurrency(Number(it.total_pagu || 0))}</TableCell>
+        <TableCell className="text-right py-2 px-3">{formatCurrency(Number(it.sisa_anggaran || 0))}</TableCell>
+        <TableCell className="text-right py-2 px-3">{formatCurrency(Number(it.blokir || 0))}</TableCell>
+      </TableRow>
+    ));
   };
 
   return (
@@ -286,32 +320,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                         <TableCell className="text-right py-2 px-3">{formatCurrency(row.sisa_anggaran || 0)}</TableCell>
                         <TableCell className="text-right py-2 px-3">{formatCurrency(row.blokir || 0)}</TableCell>
                       </TableRow>
-                      {isExpanded && (
-                        // Render children: individual items that belong to this group
-                        items.filter(it => {
-                          if (summaryView === 'program_pembebanan') return String(it.program_pembebanan || 'Unknown') === row.key;
-                          if (summaryView === 'kegiatan') return String(it.kegiatan || 'Unknown') === row.key;
-                          if (summaryView === 'rincian_output') return String(it.rincian_output || 'Unknown') === row.key;
-                          if (summaryView === 'komponen_output') return String(it.komponen_output || 'Unknown') === row.key;
-                          if (summaryView === 'sub_komponen') return String(it.sub_komponen || 'Unknown') === row.key;
-                          if (summaryView === 'akun') return String(it.akun || 'Unknown') === row.key;
-                          if (summaryView === 'akun_group') return (String(it.akun || '').slice(0,3) || 'Unknown') === row.key;
-                          if (summaryView === 'account_group') return (String(it.akun || '').slice(0,2) || 'Unknown') === row.key;
-                          // for proyeksi view there are no children
-                          return false;
-                        }).map((it, cidx) => (
-                          <TableRow key={`${row.key}-child-${it.id}`} className={cidx % 2 === 0 ? '' : 'bg-slate-50'}>
-                            <TableCell className="py-2 px-3" />
-                            <TableCell className="py-2 px-3 text-xs font-mono">{`${it.program_pembebanan || ''} ${it.kegiatan || ''} ${it.komponen_output || ''} ${it.akun || ''}`.trim()}</TableCell>
-                            {viewMode === 'month' && months.map(m => (
-                              <TableCell key={`${it.id}-${m}`} className="text-right py-2 px-3">{formatCurrency(Number((it as any)[m] || 0))}</TableCell>
-                            ))}
-                            <TableCell className="text-right py-2 px-3 font-medium">{formatCurrency(months.reduce((s, m) => s + (Number((it as any)[m] || 0)), 0))}</TableCell>
-                            <TableCell className="text-right py-2 px-3">{formatCurrency(Number(it.total_pagu || 0))}</TableCell>
-                            <TableCell className="text-right py-2 px-3">{formatCurrency(Number(it.sisa_anggaran || 0))}</TableCell>
-                            <TableCell className="text-right py-2 px-3">{formatCurrency(Number(it.blokir || 0))}</TableCell>
-                          </TableRow>
-                        ))}
+                      {isExpanded && renderChildrenForRow(row.key)}
                     </React.Fragment>
                   );
                 })}
