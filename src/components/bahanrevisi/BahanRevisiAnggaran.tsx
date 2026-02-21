@@ -451,11 +451,11 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                   {rpdVisibleItems.length}
                 </span>
               </TabsTrigger>
-              <TabsTrigger value="proyeksi" className="text-sm">
-                Proyeksi Bulanan
-              </TabsTrigger>
               <TabsTrigger value="ringkasan" className="text-sm">
                 Ringkasan Revisi
+              </TabsTrigger>
+              <TabsTrigger value="proyeksi" className="text-sm">
+                Proyeksi Bulanan
               </TabsTrigger>
             </TabsList>
 
@@ -570,19 +570,6 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
             </TabsContent>
 
-              {/* Tab: Proyeksi Bulanan */}
-              <TabsContent value="proyeksi" className="space-y-4">
-                <BahanRevisiProyeksiBulananSubtab
-                  items={rpdVisibleItems}
-                  programs={programs}
-                  kegiatans={kegiatans}
-                  rincianOutputs={rincianOutputs}
-                  komponenOutputs={komponenOutputs}
-                  subKomponen={subKomponen}
-                  akuns={akuns}
-                />
-              </TabsContent>
-
             {/* Tab: Ringkasan */}
             <TabsContent value="ringkasan" className="space-y-4">
               {/* Ringkasan dengan subtab button untuk berbagai kategori */}
@@ -597,6 +584,19 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
               akuns={akuns} />
 
             }
+            </TabsContent>
+
+            {/* Tab: Proyeksi Bulanan */}
+            <TabsContent value="proyeksi" className="space-y-4">
+              <BahanRevisiProyeksiBulananSubtab
+                items={rpdVisibleItems}
+                programs={programs}
+                kegiatans={kegiatans}
+                rincianOutputs={rincianOutputs}
+                komponenOutputs={komponenOutputs}
+                subKomponen={subKomponen}
+                akuns={akuns}
+              />
             </TabsContent>
           </Tabs>
 
