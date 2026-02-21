@@ -4,10 +4,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { RPDItem, Program, Kegiatan, RincianOutput, KomponenOutput, SubKomponen, Akun, BudgetItem } from '@/types/bahanrevisi';
 import { FixedSizeList as List } from 'react-window';
-import { formatCurrency, formatCurrencyNoRp } from '@/utils/bahanrevisi-calculations';
+import { formatCurrency, formatCurrencyNoRp, calculateBudgetSummaryByKelompokAkun, calculateBudgetSummaryByKelompokBelanja } from '@/utils/bahanrevisi-calculations';
+import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
 const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
 const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -55,6 +57,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   subKomponen = [],
   akuns = []
 }) => {
+  const { user } = useAuth();
   const [summaryView, setSummaryView] = useState<SummaryViewType>('proyeksi');
   const [qaResult, setQaResult] = useState<{ budgetTotal: number; proyeksiTotal: number; diff: number } | null>(null);
 
@@ -71,7 +74,6 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     switch (type) {
       case 'program': return programNameMap[code] || code;
       case 'kegiatan': return kegiatanNameMap[code] || code;
-
       case 'komponen_output': return komponenNameMap[code] || code;
       case 'sub_komponen': return subKomponenNameMap[code] || code;
       case 'akun': return akunNameMap[code] || code;
@@ -136,15 +138,17 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       case 'sub_komponen': return aggregateBy('sub_komponen');
       case 'akun': return aggregateBy('akun');
       case 'akun_group': {
+        const summaryByKelompokAkun = calculateBudgetSummaryByKelompokAkun(budgetItems);
         const map = new Map<string, GroupedRow>();
         items.forEach(item => {
           const akun = String(item.akun || 'Unknown');
           const key = akun.slice(0,3) || 'Unknown';
           if (!map.has(key)) {
+            const summary = summaryByKelompokAkun.find(s => s.akun === key);
             map.set(key, {
               id: key,
               key,
-              name: key,
+              name: summary?.name || key,
               months: Object.fromEntries(months.map(m => [m, 0])) as Record<string, number>,
               total: 0,
               total_pagu: 0,
@@ -164,21 +168,20 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
           row.blokir += Number(item.blokir || 0) || 0;
           row.itemCount += 1;
         });
-        return Array.from(map.values()).map(r => ({
-          ...r,
-          name: akuns.find(a => String(a.id || '').startsWith(r.key))?.account_group_name || `Kelompok ${r.key}`
-        }));
+        return Array.from(map.values());
       }
       case 'account_group': {
+        const summaryByKelompokBelanja = calculateBudgetSummaryByKelompokBelanja(budgetItems);
         const map = new Map<string, GroupedRow>();
         items.forEach(item => {
           const akun = String(item.akun || 'Unknown');
           const key = akun.slice(0,2) || 'Unknown';
           if (!map.has(key)) {
+            const summary = summaryByKelompokBelanja.find(s => s.akun === key);
             map.set(key, {
               id: key,
               key,
-              name: key,
+              name: summary?.name || key,
               months: Object.fromEntries(months.map(m => [m, 0])) as Record<string, number>,
               total: 0,
               total_pagu: 0,
@@ -198,10 +201,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
           row.blokir += Number(item.blokir || 0) || 0;
           row.itemCount += 1;
         });
-        return Array.from(map.values()).map(r => ({
-          ...r,
-          name: akuns.find(a => (a.account_group || '').startsWith(r.key) || String(a.id || '').startsWith(r.key))?.account_group_name || `Kelompok Belanja ${r.key}`
-        }));
+        return Array.from(map.values());
       }
       case 'proyeksi':
       default:
@@ -220,6 +220,33 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   };
 
   const data = useMemo(() => getSummaryData(), [items, summaryView]);
+
+  // Prepare data for horizontal bar chart (top performers)
+  const chartData = useMemo(() => {
+    const sorted = [...data].sort((a, b) => (b.total || 0) - (a.total || 0));
+    return sorted.slice(0, 10).map(item => ({
+      name: item.name.length > 30 ? `${item.name.substring(0, 28)}...` : item.name,
+      fullName: item.name,
+      total: item.total,
+      total_pagu: item.total_pagu,
+      sisa: item.sisa_anggaran
+    }));
+  }, [data]);
+
+  // Prepare data for monthly trend chart
+  const monthlyChartData = useMemo(() => {
+    const monthlyData = months.map((m, idx) => ({
+      name: monthNames[idx],
+      month: m,
+      total: data.reduce((sum, row) => sum + (row.months[m] || 0), 0)
+    }));
+    
+    // Add cumulative data
+    return monthlyData.map((item, idx) => ({
+      ...item,
+      cumulative: monthlyData.slice(0, idx + 1).reduce((sum, d) => sum + d.total, 0)
+    }));
+  }, [data]);
 
   const tableRef = useRef<HTMLDivElement | null>(null);
 
@@ -401,24 +428,27 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     <div className="w-full space-y-4">
       <h2 className="text-xl font-semibold text-slate-800">Proyeksi Bulanan</h2>
 
-      <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-        <div className="flex flex-wrap gap-2">
-          <Button variant={summaryView === 'proyeksi' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('proyeksi')} className="text-xs">Ringkasan Proyeksi Bulanan</Button>
-          <Button variant={summaryView === 'program_pembebanan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('program_pembebanan')} className="text-xs">Program Pembebanan</Button>
-          <Button variant={summaryView === 'kegiatan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('kegiatan')} className="text-xs">Kegiatan</Button>
-          <Button variant={summaryView === 'komponen_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('komponen_output')} className="text-xs">Komponen Output</Button>
-          <Button variant={summaryView === 'sub_komponen' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('sub_komponen')} className="text-xs">Sub Komponen</Button>
-          <Button variant={summaryView === 'akun' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun')} className="text-xs">Akun</Button>
-          <Button variant={summaryView === 'akun_group' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun_group')} className="text-xs">Kelompok Akun</Button>
-          <Button variant={summaryView === 'account_group' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('account_group')} className="text-xs">Kelompok Belanja</Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => runQaCompare()} className="text-xs">QA Compare</Button>
-          <Button size="sm" onClick={() => downloadJPEG()} className="text-xs">Export JPEG</Button>
-          <Button size="sm" onClick={() => downloadPDF()} className="text-xs">Export PDF</Button>
-          <Button size="sm" onClick={() => downloadExcel()} className="text-xs">Export Excel</Button>
-        </div>
+      {/* Button Navigation */}
+      <div className="flex flex-wrap gap-2 bg-white p-3 rounded-lg border">
+        <Button variant={summaryView === 'proyeksi' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('proyeksi')} className="text-xs">Ringkasan Proyeksi Bulanan</Button>
+        <Button variant={summaryView === 'program_pembebanan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('program_pembebanan')} className="text-xs">Program Pembebanan</Button>
+        <Button variant={summaryView === 'kegiatan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('kegiatan')} className="text-xs">Kegiatan</Button>
+        <Button variant={summaryView === 'komponen_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('komponen_output')} className="text-xs">Komponen Output</Button>
+        <Button variant={summaryView === 'sub_komponen' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('sub_komponen')} className="text-xs">Sub Komponen</Button>
+        <Button variant={summaryView === 'akun' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun')} className="text-xs">Akun</Button>
+        <Button variant={summaryView === 'akun_group' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun_group')} className="text-xs">Kelompok Akun</Button>
+        <Button variant={summaryView === 'account_group' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('account_group')} className="text-xs">Kelompok Belanja</Button>
       </div>
+
+      {/* Export Buttons - Only for Pejabat Pembuat Komitmen Role */}
+      {user?.role && user.role.toLowerCase().includes('pejabat pembuat komitmen') && (
+        <div className="flex justify-end items-center gap-1 bg-transparent">
+          <Button size="sm" variant="ghost" onClick={() => runQaCompare()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">QA Compare</Button>
+          <Button size="sm" variant="ghost" onClick={() => downloadJPEG()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Export JPEG</Button>
+          <Button size="sm" variant="ghost" onClick={() => downloadPDF()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Export PDF</Button>
+          <Button size="sm" variant="ghost" onClick={() => downloadExcel()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Export Excel</Button>
+        </div>
+      )}
 
       {qaResult && (
         <Card className="border-yellow-200 bg-yellow-50">
@@ -441,8 +471,61 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       {summaryView === 'proyeksi' ? (
         renderProyeksiSummary()
       ) : (
-        <Card>
-          <CardContent>
+        <div className="space-y-4">
+          {/* Chart Section - Grafik di atas */}
+          <Card>
+            <CardContent className="pt-6">
+              <h3 className="text-sm font-semibold text-slate-800 mb-4">Visualisasi Proyeksi</h3>
+              {chartData.length === 0 ? (
+                <div className="flex items-center justify-center h-64 text-slate-500">
+                  <span>Data tidak tersedia untuk visualisasi</span>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Timeline Chart - Semua view */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-700 mb-2">Proyeksi Penarikan Dana per Bulan</h4>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <ComposedChart data={monthlyChartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip formatter={(value) => formatCurrencyNoRp(Number(value))} />
+                        <Legend />
+                        <Bar dataKey="total" fill="#3b82f6" name="Proyeksi Bulanan" radius={[8, 8, 0, 0]} />
+                        <Line type="monotone" dataKey="cumulative" stroke="#ef4444" name="Kumulatif" strokeWidth={2} dot={{ r: 4 }} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Top Items Horizontal Bar Chart */}
+                  {chartData.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-700 mb-2">Top 10 {summaryView.charAt(0).toUpperCase() + summaryView.slice(1).replace(/_/g, ' ')}</h4>
+                      <ResponsiveContainer width="100%" height={Math.max(250, chartData.length * 25)}>
+                        <BarChart
+                          data={chartData}
+                          layout="vertical"
+                          margin={{ top: 5, right: 30, left: 300, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis type="number" tick={{ fontSize: 11 }} />
+                          <YAxis dataKey="name" type="category" width={295} tick={{ fontSize: 10 }} />
+                          <Tooltip formatter={(value) => formatCurrencyNoRp(Number(value))} />
+                          <Legend />
+                          <Bar dataKey="total" fill="#10b981" name="Total RPD" radius={[0, 8, 8, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Table Section - Tabel di bawah */}
+          <Card>
+            <CardContent>
             <div ref={tableRef} className="overflow-x-auto border rounded-md">
               {data.length > 300 ? (
                 <div className="w-full text-xs">
@@ -528,6 +611,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
             </div>
           </CardContent>
         </Card>
+        </div>
       )}
     </div>
   );
