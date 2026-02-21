@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { BudgetItem } from '@/types/bahanrevisi';
 import {
   formatCurrency,
+  formatCurrencyNoRp,
   calculateRealisasi,
   calculatePersentaseRealisasi,
   formatPercentage,
@@ -207,10 +208,10 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const getDetailPerubahan = (item: BudgetItem): string => {
     const lines = [];
     if (item.volume_semula || item.satuan_semula || item.harga_satuan_semula) {
-      lines.push(`Semula: ${item.volume_semula} ${item.satuan_semula} @ ${formatCurrency(item.harga_satuan_semula || 0)}`);
+      lines.push(`Semula: ${item.volume_semula} ${item.satuan_semula} @ ${formatCurrencyNoRp(item.harga_satuan_semula || 0)}`);
     }
     if (item.volume_menjadi || item.satuan_menjadi || item.harga_satuan_menjadi) {
-      lines.push(`Menjadi: ${item.volume_menjadi} ${item.satuan_menjadi} @ ${formatCurrency(item.harga_satuan_menjadi || 0)}`);
+      lines.push(`Menjadi: ${item.volume_menjadi} ${item.satuan_menjadi} @ ${formatCurrencyNoRp(item.harga_satuan_menjadi || 0)}`);
     }
     return lines.join('\n');
   };
@@ -249,7 +250,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
           id: item.id,
           pembebanan: getCombinedPembebananCode(item),
           uraian: item.uraian || '',
-          detailPerubahan: `Baru: ${item.volume_menjadi} ${item.satuan_menjadi} @ ${formatCurrency(item.harga_satuan_menjadi || 0)}`,
+          detailPerubahan: `Baru: ${item.volume_menjadi} ${item.satuan_menjadi} @ ${formatCurrencyNoRp(item.harga_satuan_menjadi || 0)}`,
           jumlahSemula: 0,
           jumlahMenjadi,
           selisih: jumlahMenjadi,
@@ -272,7 +273,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
         id: item.id,
         pembebanan: getCombinedPembebananCode(item),
         uraian: item.uraian || '',
-        detailPerubahan: `Dihapus: ${item.volume_semula} ${item.satuan_semula} @ ${formatCurrency(item.harga_satuan_semula || 0)}`,
+        detailPerubahan: `Dihapus: ${item.volume_semula} ${item.satuan_semula} @ ${formatCurrencyNoRp(item.harga_satuan_semula || 0)}`,
         jumlahSemula,
         jumlahMenjadi,
         selisih,
@@ -449,8 +450,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
               <div className="space-y-3 text-sm text-blue-900">
                 <p>
                   Berdasarkan hasil analisis terhadap alokasi anggaran, total pagu anggaran
-                  semula sebesar <strong>{formatCurrency(totalSemula)}</strong> mengalami perubahan menjadi
-                  <strong> {formatCurrency(totalMenjadi)}</strong>, dengan selisih <strong>{formatCurrency(Math.abs(totalSelisih))}</strong> ({totalSelisih > 0 ? 'penambahan' : totalSelisih < 0 ? 'pengurangan' : 'atau tetap'}).
+                  semula sebesar <strong>{formatCurrencyNoRp(totalSemula)}</strong> mengalami perubahan menjadi
+                  <strong> {formatCurrencyNoRp(totalMenjadi)}</strong>, dengan selisih <strong>{formatCurrencyNoRp(Math.abs(totalSelisih))}</strong> ({totalSelisih > 0 ? 'penambahan' : totalSelisih < 0 ? 'pengurangan' : 'atau tetap'}).
                 </p>
                 <p>
                   Perubahan ini terdiri dari <strong>{changedItems.length} komponen anggaran</strong> yang
@@ -475,16 +476,16 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Semula:</span>
-                      <span className="font-medium">{formatCurrency(totalSemula)}</span>
+                      <span className="font-medium">{formatCurrencyNoRp(totalSemula)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Menjadi:</span>
-                      <span className="font-medium">{formatCurrency(totalMenjadi)}</span>
+                      <span className="font-medium">{formatCurrencyNoRp(totalMenjadi)}</span>
                     </div>
                     <div className="flex justify-between pt-1 border-t">
                       <span className="text-gray-600">Selisih:</span>
                       <span className={`font-medium ${totalSelisih === 0 ? 'text-green-600' : totalSelisih > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(totalSelisih)}
+                        {formatCurrencyNoRp(totalSelisih)}
                       </span>
                     </div>
                   </div>
@@ -573,10 +574,10 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                             {item.detailPerubahan}
                           </TableCell>
                           <TableCell className="text-right py-2 px-3">
-                            {formatCurrency(item.jumlahSemula)}
+                            {formatCurrencyNoRp(item.jumlahSemula)}
                           </TableCell>
                           <TableCell className="text-right py-2 px-3">
-                            {formatCurrency(item.jumlahMenjadi)}
+                            {formatCurrencyNoRp(item.jumlahMenjadi)}
                           </TableCell>
                           <TableCell
                             className={`text-right py-2 px-3 font-semibold ${
@@ -585,10 +586,10 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                                 : 'text-red-600'
                             }`}
                           >
-                            {formatCurrency(item.selisih)}
+                            {formatCurrencyNoRp(item.selisih)}
                           </TableCell>
                           <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                            {formatCurrency(item.realisasi || 0)}
+                            {formatCurrencyNoRp(item.realisasi || 0)}
                           </TableCell>
                           <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
                             {formatPercentage(item.persentaseRealisasi || 0)}
@@ -602,22 +603,22 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                           Total Pagu Anggaran Berubah
                         </TableCell>
                         <TableCell className="text-right py-2 px-3">
-                          {formatCurrency(
+                          {formatCurrencyNoRp(
                             getChangedBudgetItems().reduce((sum, item) => sum + item.jumlahSemula, 0)
                           )}
                         </TableCell>
                         <TableCell className="text-right py-2 px-3">
-                          {formatCurrency(
+                          {formatCurrencyNoRp(
                             getChangedBudgetItems().reduce((sum, item) => sum + item.jumlahMenjadi, 0)
                           )}
                         </TableCell>
                         <TableCell className="text-right py-2 px-3">
-                          {formatCurrency(
+                          {formatCurrencyNoRp(
                             getChangedBudgetItems().reduce((sum, item) => sum + item.selisih, 0)
                           )}
                         </TableCell>
                         <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                          {formatCurrency(
+                          {formatCurrencyNoRp(
                             getChangedBudgetItems().reduce((sum, item) => sum + (item.realisasi || 0), 0)
                           )}
                         </TableCell>
@@ -700,13 +701,13 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                               {newItem?.satuan_menjadi}
                             </TableCell>
                             <TableCell className="text-right py-2 px-3">
-                              {formatCurrency(newItem?.harga_satuan_menjadi || 0)}
+                              {formatCurrencyNoRp(newItem?.harga_satuan_menjadi || 0)}
                             </TableCell>
                             <TableCell className="text-right py-2 px-3 font-semibold text-green-600">
-                              {formatCurrency(item.jumlahMenjadi)}
+                              {formatCurrencyNoRp(item.jumlahMenjadi)}
                             </TableCell>
                             <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                              {formatCurrency(item.realisasi || 0)}
+                              {formatCurrencyNoRp(item.realisasi || 0)}
                             </TableCell>
                             <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
                               {formatPercentage(item.persentaseRealisasi || 0)}
@@ -721,12 +722,12 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                           Total Pagu Anggaran Baru
                         </TableCell>
                         <TableCell className="text-right py-2 px-3">
-                          {formatCurrency(
+                          {formatCurrencyNoRp(
                             getNewBudgetItems().reduce((sum, item) => sum + item.jumlahMenjadi, 0)
                           )}
                         </TableCell>
                         <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                          {formatCurrency(
+                          {formatCurrencyNoRp(
                             getNewBudgetItems().reduce((sum, item) => sum + (item.realisasi || 0), 0)
                           )}
                         </TableCell>
@@ -798,15 +799,15 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                             {item.detailPerubahan}
                           </TableCell>
                           <TableCell className="text-right py-2 px-3">
-                            {formatCurrency(item.jumlahSemula)}
+                            {formatCurrencyNoRp(item.jumlahSemula)}
                           </TableCell>
                           <TableCell className="text-right py-2 px-3">
-                            {formatCurrency(item.jumlahMenjadi)}
+                            {formatCurrencyNoRp(item.jumlahMenjadi)}
                           </TableCell>
                           <TableCell
                             className="text-right py-2 px-3 font-semibold text-red-600"
                           >
-                            {formatCurrency(item.selisih)}
+                            {formatCurrencyNoRp(item.selisih)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -817,17 +818,17 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                           Total Pagu Anggaran yang dihapus
                         </TableCell>
                         <TableCell className="text-right py-2 px-3">
-                          {formatCurrency(
+                          {formatCurrencyNoRp(
                             getDeletedBudgetItems().reduce((sum, item) => sum + item.jumlahSemula, 0)
                           )}
                         </TableCell>
                         <TableCell className="text-right py-2 px-3">
-                          {formatCurrency(
+                          {formatCurrencyNoRp(
                             getDeletedBudgetItems().reduce((sum, item) => sum + item.jumlahMenjadi, 0)
                           )}
                         </TableCell>
                         <TableCell className="text-right py-2 px-3">
-                          {formatCurrency(
+                          {formatCurrencyNoRp(
                             getDeletedBudgetItems().reduce((sum, item) => sum + item.selisih, 0)
                           )}
                         </TableCell>

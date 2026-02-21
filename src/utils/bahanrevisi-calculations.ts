@@ -35,6 +35,13 @@ export const formatNumber = (value: number, showDecimals = false): string => {
 };
 
 /**
+ * Format currency without Rp symbol (just thousands separator)
+ */
+export const formatCurrencyNoRp = (value: number, showDecimals = false): string => {
+  return formatNumber(value, showDecimals);
+};
+
+/**
  * Round to nearest thousands
  */
 export const roundToThousands = (value: number): number => {

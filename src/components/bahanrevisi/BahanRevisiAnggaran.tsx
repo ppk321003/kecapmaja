@@ -589,14 +589,15 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
             {/* Tab: Proyeksi Bulanan */}
             <TabsContent value="proyeksi" className="space-y-4">
               <BahanRevisiProyeksiBulananSubtab
-                items={rpdVisibleItems}
-                programs={programs}
-                kegiatans={kegiatans}
-                rincianOutputs={rincianOutputs}
-                komponenOutputs={komponenOutputs}
-                subKomponen={subKomponen}
-                akuns={akuns}
-              />
+                  items={rpdVisibleItems}
+                  budgetItems={itemsVisibleByHideZero}
+                  programs={programs}
+                  kegiatans={kegiatans}
+                  rincianOutputs={rincianOutputs}
+                  komponenOutputs={komponenOutputs}
+                  subKomponen={subKomponen}
+                  akuns={akuns}
+                />
             </TabsContent>
           </Tabs>
 

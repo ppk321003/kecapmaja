@@ -1,11 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
-import { RPDItem, Program, Kegiatan, RincianOutput, KomponenOutput, SubKomponen, Akun } from '@/types/bahanrevisi';
-import { formatCurrency, formatPercentage } from '@/utils/bahanrevisi-calculations';
+import { RPDItem, Program, Kegiatan, RincianOutput, KomponenOutput, SubKomponen, Akun, BudgetItem } from '@/types/bahanrevisi';
+import { FixedSizeList as List } from 'react-window';
+import { formatCurrency, formatCurrencyNoRp } from '@/utils/bahanrevisi-calculations';
+import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 type SummaryViewType =
   | 'proyeksi'
@@ -32,6 +37,7 @@ interface GroupedRow {
 
 interface Props {
   items: RPDItem[];
+  budgetItems?: BudgetItem[];
   programs?: Program[];
   kegiatans?: Kegiatan[];
   rincianOutputs?: RincianOutput[];
@@ -42,6 +48,7 @@ interface Props {
 
 const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   items = [],
+  budgetItems = [],
   programs = [],
   kegiatans = [],
   rincianOutputs = [],
@@ -50,8 +57,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   akuns = []
 }) => {
   const [summaryView, setSummaryView] = useState<SummaryViewType>('proyeksi');
-  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
-  const [viewMode, setViewMode] = useState<'month' | 'total'>('month');
+  const [qaResult, setQaResult] = useState<{ budgetTotal: number; proyeksiTotal: number; diff: number } | null>(null);
 
   // Name maps to match Ringkasan behavior
   const programNameMap = useMemo(() => Object.fromEntries(programs.map(p => [p.id, `${p.id} - ${p.name}`])), [programs]);
@@ -72,6 +78,14 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       case 'akun': return akunNameMap[code] || code;
       default: return code;
     }
+  };
+
+  const getCombinedPembebanan = (it: RPDItem) => {
+    return [it.program_pembebanan, it.komponen_output, it.sub_komponen, it.akun].filter(Boolean).join('.');
+  };
+
+  const getSisaColor = (value: number) => {
+    return value === 0 ? 'text-black' : 'text-red-600';
   };
 
   const aggregateBy = (field: keyof RPDItem) => {
@@ -125,7 +139,6 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       case 'sub_komponen': return aggregateBy('sub_komponen');
       case 'akun': return aggregateBy('akun');
       case 'akun_group': {
-        // group by 3-digit account group (first 3 chars of akun)
         const map = new Map<string, GroupedRow>();
         items.forEach(item => {
           const akun = String(item.akun || 'Unknown');
@@ -160,7 +173,6 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
         }));
       }
       case 'account_group': {
-        // group by 2-digit account group
         const map = new Map<string, GroupedRow>();
         items.forEach(item => {
           const akun = String(item.akun || 'Unknown');
@@ -196,11 +208,10 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       }
       case 'proyeksi':
       default:
-        // For proyeksi view, return items as individual rows converted to GroupedRow
         return items.map(it => ({
           id: it.id,
           key: it.id,
-          name: `${formatName(it.program_pembebanan || '', 'program')} / ${formatName(it.kegiatan || '', 'kegiatan')} / ${formatName(it.komponen_output || '', 'komponen_output')} / ${formatName(it.akun || '', 'akun')}`.replace(/\s+\/\s+Unknown/g, '').replace(/Unknown\s+\/\s+/g, '').trim() || it.id,
+          name: getCombinedPembebanan(it) || `${formatName(it.program_pembebanan || '', 'program')} / ${formatName(it.kegiatan || '', 'kegiatan')}` || it.id,
           months: Object.fromEntries(months.map(m => [m, Number((it as any)[m] || 0) || 0])) as Record<string, number>,
           total: months.reduce((s, m) => s + (Number((it as any)[m] || 0) || 0), 0),
           total_pagu: Number(it.total_pagu || 0) || 0,
@@ -213,54 +224,181 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
 
   const data = useMemo(() => getSummaryData(), [items, summaryView]);
 
-  const toggleExpand = (key: string) => {
-    setExpandedKeys(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  const tableRef = useRef<HTMLDivElement | null>(null);
 
-  const downloadCSV = () => {
-    const headers = ['Label', ...months.map(m => m.toUpperCase()), 'Total', 'Total Pagu', 'Sisa', 'Blokir'];
-    const rows: string[][] = [];
+  // Export helpers using SheetJS and html2canvas + jsPDF
+  const downloadExcel = () => {
+    const headers = ['Nama', 'Total Pagu', ...monthNames, 'Total RPD', 'Sisa'];
+    const wsData: any[][] = [headers];
     data.forEach(d => {
-      const row = [d.name, ...months.map(m => String(d.months[m] || 0)), String(d.total || 0), String(d.total_pagu || 0), String(d.sisa_anggaran || 0), String(d.blokir || 0)];
-      rows.push(row);
+      wsData.push([d.name, d.total_pagu || 0, ...months.map(m => d.months[m] || 0), d.total || 0, d.sisa_anggaran || 0]);
     });
-    const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Proyeksi');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `proyeksi-bulanan-${summaryView}.csv`;
+    a.download = `proyeksi-bulanan-${summaryView}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const renderChildrenForRow = (rowKey: string) => {
-    const children = items.filter(it => {
-      if (summaryView === 'program_pembebanan') return String(it.program_pembebanan || 'Unknown') === rowKey;
-      if (summaryView === 'kegiatan') return String(it.kegiatan || 'Unknown') === rowKey;
-      if (summaryView === 'rincian_output') return String(it.rincian_output || 'Unknown') === rowKey;
-      if (summaryView === 'komponen_output') return String(it.komponen_output || 'Unknown') === rowKey;
-      if (summaryView === 'sub_komponen') return String(it.sub_komponen || 'Unknown') === rowKey;
-      if (summaryView === 'akun') return String(it.akun || 'Unknown') === rowKey;
-      if (summaryView === 'akun_group') return (String(it.akun || '').slice(0,3) || 'Unknown') === rowKey;
-      if (summaryView === 'account_group') return (String(it.akun || '').slice(0,2) || 'Unknown') === rowKey;
-      return false;
-    });
-
-    return children.map((it, cidx) => (
-      <TableRow key={`${rowKey}-child-${it.id}`} className={cidx % 2 === 0 ? '' : 'bg-slate-50'}>
-        <TableCell className="py-2 px-3" />
-        <TableCell className="py-2 px-3 text-xs font-mono">{`${it.program_pembebanan || ''} ${it.kegiatan || ''} ${it.komponen_output || ''} ${it.akun || ''}`.trim()}</TableCell>
-        {viewMode === 'month' && months.map(m => (
-          <TableCell key={`${it.id}-${m}`} className="text-right py-2 px-3">{formatCurrency(Number((it as any)[m] || 0))}</TableCell>
-        ))}
-        <TableCell className="text-right py-2 px-3 font-medium">{formatCurrency(months.reduce((s, m) => s + (Number((it as any)[m] || 0)), 0))}</TableCell>
-        <TableCell className="text-right py-2 px-3">{formatCurrency(Number(it.total_pagu || 0))}</TableCell>
-        <TableCell className="text-right py-2 px-3">{formatCurrency(Number(it.sisa_anggaran || 0))}</TableCell>
-        <TableCell className="text-right py-2 px-3">{formatCurrency(Number(it.blokir || 0))}</TableCell>
-      </TableRow>
-    ));
+  const downloadPDF = async () => {
+    if (!tableRef.current) return;
+    const el = tableRef.current;
+    const canvas = await html2canvas(el, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('l', 'pt', 'a4');
+    const imgProps = (pdf as any).getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`proyeksi-bulanan-${summaryView}.pdf`);
   };
+
+  const downloadJPEG = async () => {
+    if (!tableRef.current) return;
+    const canvas = await html2canvas(tableRef.current, { scale: 2 });
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `proyeksi-bulanan-${summaryView}.jpg`;
+    a.click();
+  };
+
+  const renderProyeksiSummary = () => {
+    const totalBudget = budgetItems?.reduce((s, b) => s + (Number((b as any).jumlah_menjadi) || 0), 0) || 0;
+    const totalYear = data.reduce((s, r) => s + (r.total || 0), 0);
+    const sisaAnggaran = totalBudget - totalYear;
+    const persentaseSerapan = totalBudget > 0 ? Math.round((totalYear / totalBudget) * 10000) / 100 : 0;
+    
+    const monthTotals = months.map((m, idx) => ({ 
+      m, 
+      idx,
+      name: monthNames[idx],
+      total: data.reduce((s, r) => s + (r.months[m] || 0), 0) 
+    }));
+    
+    // Bulan dominan (top 3)
+    const dominantMonths = monthTotals.slice().sort((a, b) => b.total - a.total).slice(0, 3);
+    
+    // Hitung insight otomatis
+    const monthsWithZero = monthTotals.filter(m => m.total === 0).length;
+    const hasExtremePeak = monthTotals.some(m => m.total > totalYear * 0.3); // Lebih dari 30% dalam satu bulan
+    const absorbedPercentage = persentaseSerapan;
+    
+    // Alert conditions
+    const hasLowAbsorption = absorbedPercentage < 10;
+    const hasManyZeroMonths = monthsWithZero > 6;
+    const needsAttention = hasLowAbsorption || hasManyZeroMonths;
+
+    return (
+      <div className="w-full space-y-4">
+        {/* Ringkasan Umum */}
+        <Card className="bg-blue-50/50 border-blue-100">
+          <CardContent className="pt-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-blue-900 mb-4">Ringkasan Proyeksi Bulanan</h2>
+              <p className="text-sm text-blue-900 leading-relaxed">
+                Total pagu anggaran sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalBudget)}</strong>.
+              </p>
+              <p className="text-sm text-blue-900 leading-relaxed mt-2">
+                Sampai dengan periode proyeksi, total rencana penarikan dana (RPD) tercatat sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalYear)}</strong> atau <strong className="text-blue-700">{persentaseSerapan.toFixed(2)}%</strong> dari total pagu.
+              </p>
+              <p className="text-sm text-blue-900 leading-relaxed mt-2">
+                Sisa anggaran yang belum diproyeksikan sebesar <strong className="text-blue-700">{formatCurrencyNoRp(sisaAnggaran)}</strong>.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Kondisi Serapan */}
+        <Card className="bg-slate-50/50 border-slate-200">
+          <CardContent className="pt-6 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-800">Kondisi Serapan / Proyeksi</h3>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              Proyeksi penarikan dana masih tergolong{' '}
+              <strong className={absorbedPercentage > 20 ? 'text-green-600' : absorbedPercentage > 10 ? 'text-amber-600' : 'text-red-600'}>
+                {absorbedPercentage > 20 ? 'sehat' : absorbedPercentage > 10 ? 'cukup' : 'rendah'}
+              </strong>{' '}
+              dibandingkan total pagu. Penarikan terbesar direncanakan pada{' '}
+              <strong>{dominantMonths[0]?.name || 'bulan tidak tersedia'}</strong>
+              {monthsWithZero > 0 && (
+                <>, sementara <strong>{monthsWithZero} bulan</strong> lainnya masih menunjukkan nilai proyeksi Rp 0</>
+              )}.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Bulan Dominan */}
+        <Card className="bg-green-50/50 border-green-100">
+          <CardContent className="pt-6">
+            <h3 className="text-sm font-semibold text-green-900 mb-3">Bulan dengan Proyeksi Tertinggi</h3>
+            <div className="space-y-2 text-sm">
+              {dominantMonths.map((month, idx) => (
+                <div key={month.m} className="flex items-center justify-between p-2 bg-white rounded border border-green-100">
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold text-green-700">{idx + 1}.</span>
+                    <span className="text-slate-700">{month.name}</span>
+                  </div>
+                  <span className="font-semibold text-green-700">{formatCurrencyNoRp(month.total)}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Alert dan Insight */}
+        {needsAttention && (
+          <Card className="bg-amber-50/50 border-amber-200">
+            <CardContent className="pt-6">
+              <div className="flex gap-3">
+                <div className="text-2xl">⚠️</div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-amber-900 mb-2">Catatan Perhatian</h3>
+                  <ul className="text-sm text-amber-900 space-y-2 list-disc list-inside">
+                    {hasLowAbsorption && (
+                      <li>Serapan anggaran masih sangat rendah ({persentaseSerapan.toFixed(2)}%). Disarankan agar unit terkait segera meninjau rencana penarikan dana.</li>
+                    )}
+                    {hasManyZeroMonths && (
+                      <li>Sebagian besar alokasi anggaran belum memiliki rencana penarikan dana. Disarankan agar unit terkait segera menyusun RPD untuk menghindari penumpukan realisasi di akhir tahun.</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Risiko Proyeksi */}
+        <Card className="bg-red-50/50 border-red-100">
+          <CardContent className="pt-6">
+            <h3 className="text-sm font-semibold text-red-900 mb-3">Risiko Proyeksi yang Perlu Diperhatikan</h3>
+            <ul className="text-sm text-red-900 space-y-2 list-disc list-inside">
+              <li>Potensi keterlambatan realisasi anggaran jika proyeksi tidak sesuai dengan implementasi sebenarnya</li>
+              {(monthsWithZero > 6 || dominantMonths[0]?.total > totalYear * 0.4) && (
+                <li>Penumpukan penarikan pada bulan-bulan tertentu dapat menyebabkan ketidakseimbangan distribusi RPD</li>
+              )}
+              <li>Ketidakseimbangan distribusi RPD bulanan yang dapat mempengaruhi likuiditas operasional</li>
+              {sisaAnggaran > totalBudget * 0.5 && (
+                <li>Proporsi anggaran yang belum diproyeksikan cukup besar, memerlukan perencanaan lebih detail</li>
+              )}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+    const runQaCompare = () => {
+      const proyeksiTotal = data.reduce((s, r) => s + (r.total || 0), 0);
+      const budgetTotal = (budgetItems || []).reduce((s, b) => s + (Number((b as any).jumlah_menjadi) || 0), 0);
+      const diff = budgetTotal - proyeksiTotal;
+      setQaResult({ budgetTotal, proyeksiTotal, diff });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
   return (
     <div className="w-full space-y-4">
@@ -268,79 +406,133 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
 
       <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
         <div className="flex flex-wrap gap-2">
-        <Button variant={summaryView === 'proyeksi' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('proyeksi')} className="text-xs">Ringkasan Proyeksi Bulanan</Button>
-        <Button variant={summaryView === 'program_pembebanan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('program_pembebanan')} className="text-xs">Program Pembebanan</Button>
-        <Button variant={summaryView === 'kegiatan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('kegiatan')} className="text-xs">Kegiatan</Button>
-        <Button variant={summaryView === 'rincian_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('rincian_output')} className="text-xs">Rincian Output</Button>
-        <Button variant={summaryView === 'komponen_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('komponen_output')} className="text-xs">Komponen Output</Button>
-        <Button variant={summaryView === 'sub_komponen' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('sub_komponen')} className="text-xs">Sub Komponen</Button>
-        <Button variant={summaryView === 'akun' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun')} className="text-xs">Akun</Button>
-        <Button variant={summaryView === 'akun_group' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun_group')} className="text-xs">Kelompok Akun</Button>
-        <Button variant={summaryView === 'account_group' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('account_group')} className="text-xs">Kelompok Belanja</Button>
+          <Button variant={summaryView === 'proyeksi' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('proyeksi')} className="text-xs">Ringkasan Proyeksi Bulanan</Button>
+          <Button variant={summaryView === 'program_pembebanan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('program_pembebanan')} className="text-xs">Program Pembebanan</Button>
+          <Button variant={summaryView === 'kegiatan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('kegiatan')} className="text-xs">Kegiatan</Button>
+          <Button variant={summaryView === 'rincian_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('rincian_output')} className="text-xs">Rincian Output</Button>
+          <Button variant={summaryView === 'komponen_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('komponen_output')} className="text-xs">Komponen Output</Button>
+          <Button variant={summaryView === 'sub_komponen' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('sub_komponen')} className="text-xs">Sub Komponen</Button>
+          <Button variant={summaryView === 'akun' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun')} className="text-xs">Akun</Button>
+          <Button variant={summaryView === 'akun_group' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun_group')} className="text-xs">Kelompok Akun</Button>
+          <Button variant={summaryView === 'account_group' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('account_group')} className="text-xs">Kelompok Belanja</Button>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant={viewMode === 'month' ? 'default' : 'outline'} onClick={() => setViewMode('month')} className="text-xs">Per-Bulan</Button>
-          <Button size="sm" variant={viewMode === 'total' ? 'default' : 'outline'} onClick={() => setViewMode('total')} className="text-xs">Total Tahunan</Button>
-          <Button size="sm" onClick={downloadCSV} className="text-xs">Export CSV</Button>
+          <Button size="sm" onClick={() => runQaCompare()} className="text-xs">QA Compare</Button>
+          <Button size="sm" onClick={() => downloadJPEG()} className="text-xs">Export JPEG</Button>
+          <Button size="sm" onClick={() => downloadPDF()} className="text-xs">Export PDF</Button>
+          <Button size="sm" onClick={() => downloadExcel()} className="text-xs">Export Excel</Button>
         </div>
       </div>
 
-      <Card>
-        <CardContent>
-          <div className="overflow-x-auto border rounded-md">
-            <Table className="w-full text-xs">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-left py-2 px-3 font-semibold">No</TableHead>
-                  <TableHead className="text-left py-2 px-3 font-semibold">Label</TableHead>
-                  {viewMode === 'month' && months.map(m => (
-                    <TableHead key={m} className="text-right py-2 px-3 font-semibold">{m.toUpperCase()}</TableHead>
-                  ))}
-                  <TableHead className="text-right py-2 px-3 font-semibold">Total</TableHead>
-                  <TableHead className="text-right py-2 px-3 font-semibold">Total Pagu</TableHead>
-                  <TableHead className="text-right py-2 px-3 font-semibold">Sisa</TableHead>
-                  <TableHead className="text-right py-2 px-3 font-semibold">Blokir</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.map((row, idx) => {
-                  const isExpanded = !!expandedKeys[row.key];
-                  return (
-                    <React.Fragment key={row.id || row.key}>
-                      <TableRow className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
-                        <TableCell className="py-2 px-3">{idx + 1}</TableCell>
-                        <TableCell className="py-2 px-3 text-xs font-mono">
-                          <button onClick={() => toggleExpand(row.key)} className="underline text-slate-700">{isExpanded ? '▾' : '▸'} {row.name}</button>
-                        </TableCell>
-                        {viewMode === 'month' && months.map(m => (
-                          <TableCell key={`${row.id}-${m}`} className="text-right py-2 px-3">{formatCurrency(row.months[m] || 0)}</TableCell>
+      {qaResult && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">Hasil QA Perbandingan</div>
+                <div className="text-xs text-slate-700">Total Budget (jumlah_menjadi): {formatCurrencyNoRp(qaResult.budgetTotal)}</div>
+                <div className="text-xs text-slate-700">Total Proyeksi (RPD): {formatCurrencyNoRp(qaResult.proyeksiTotal)}</div>
+                <div className={`text-xs font-semibold ${qaResult.diff === 0 ? 'text-green-600' : 'text-red-600'}`}>Selisih: {formatCurrencyNoRp(qaResult.diff)}</div>
+              </div>
+              <div>
+                <Button size="sm" variant="outline" onClick={() => setQaResult(null)}>Tutup</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {summaryView === 'proyeksi' ? (
+        renderProyeksiSummary()
+      ) : (
+        <Card>
+          <CardContent>
+            <div ref={tableRef} className="overflow-x-auto border rounded-md">
+              {data.length > 300 ? (
+                <div className="w-full text-xs">
+                  <div className="grid grid-cols-[2fr,120px_repeat(12,120px),120px,120px] gap-0 bg-slate-100/50">
+                    <div className="py-2 px-3 font-semibold">Nama</div>
+                    <div className="py-2 px-3 text-right font-semibold">Total Pagu</div>
+                    {monthNames.map((mn) => (
+                      <div key={mn} className="py-2 px-3 text-right font-semibold">{mn}</div>
+                    ))}
+                    <div className="py-2 px-3 text-right font-semibold">Total RPD</div>
+                    <div className="py-2 px-3 text-right font-semibold">Sisa</div>
+                  </div>
+                    <div style={{ height: 400 }}>
+                    <List
+                      height={400}
+                      itemCount={data.length}
+                      itemSize={40}
+                      width={'100%'}
+                    >{({ index, style }) => {
+                      const row = data[index];
+                      return (
+                        <div style={style} className={`${index % 2 === 0 ? '' : 'bg-slate-50'} grid grid-cols-[2fr,120px_repeat(12,120px),120px,120px] items-center`}>
+                              <div className="text-left py-2 px-3 font-medium">{row.name}</div>
+                              <div className="py-2 px-3 text-right text-blue-600">{formatCurrencyNoRp(row.total_pagu || 0)}</div>
+                          {months.map(m => (
+                            <div key={`${row.id}-${m}`} className="py-2 px-3 text-right">{formatCurrencyNoRp(row.months[m] || 0)}</div>
+                          ))}
+                              <div className="py-2 px-3 text-right font-semibold text-blue-600">{formatCurrencyNoRp(row.total)}</div>
+                              <div className={`py-2 px-3 text-right ${getSisaColor(row.sisa_anggaran || 0)}`}>{formatCurrencyNoRp(row.sisa_anggaran || 0)}</div>
+                        </div>
+                      );
+                    }}</List>
+                  </div>
+                  <div className="grid grid-cols-[2fr,120px_repeat(12,120px),120px,120px] font-bold">
+                    <div className="py-2 px-3">Total</div>
+                    <div className="py-2 px-3 text-right text-blue-600">{formatCurrencyNoRp(data.reduce((s, r) => s + (r.total_pagu || 0), 0))}</div>
+                    {months.map((m) => (
+                      <div key={`total-${m}`} className="py-2 px-3 text-right">{formatCurrencyNoRp(data.reduce((s, r) => s + (r.months[m] || 0), 0))}</div>
+                    ))}
+                    <div className="py-2 px-3 text-right text-blue-600">{formatCurrencyNoRp(data.reduce((s, r) => s + (r.total || 0), 0))}</div>
+                    <div className={`py-2 px-3 text-right ${getSisaColor(data.reduce((s, r) => s + (r.sisa_anggaran || 0), 0))}`}>{formatCurrencyNoRp(data.reduce((s, r) => s + (r.sisa_anggaran || 0), 0))}</div>
+                  </div>
+                </div>
+              ) : (
+                <Table className="w-full text-xs">
+                  <TableHeader className="bg-slate-100/50">
+                    <TableRow>
+                      <TableHead className="text-left py-2 px-3 font-semibold">Nama</TableHead>
+                      <TableHead className="text-right py-2 px-3 font-semibold">Total Pagu</TableHead>
+                      {months.map((m, i) => (
+                        <TableHead key={m} className="text-right py-2 px-3 font-semibold">{monthNames[i]}</TableHead>
+                      ))}
+                      <TableHead className="text-right py-2 px-3 font-semibold">Total RPD</TableHead>
+                      <TableHead className="text-right py-2 px-3 font-semibold">Sisa</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.map((row, idx) => (
+                      <TableRow key={row.id || row.key} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
+                        <TableCell className="text-left py-2 px-3 font-medium">{row.name}</TableCell>
+                        <TableCell className="text-right py-2 px-3 text-blue-600">{formatCurrencyNoRp(row.total_pagu || 0)}</TableCell>
+                        {months.map(m => (
+                          <TableCell key={`${row.id}-${m}`} className="text-right py-2 px-3">{formatCurrencyNoRp(row.months[m] || 0)}</TableCell>
                         ))}
-                        <TableCell className="text-right py-2 px-3 font-semibold">{formatCurrency(row.total)}</TableCell>
-                        <TableCell className="text-right py-2 px-3">{formatCurrency(row.total_pagu || 0)}</TableCell>
-                        <TableCell className="text-right py-2 px-3">{formatCurrency(row.sisa_anggaran || 0)}</TableCell>
-                        <TableCell className="text-right py-2 px-3">{formatCurrency(row.blokir || 0)}</TableCell>
+                        <TableCell className="text-right py-2 px-3 font-semibold text-blue-600">{formatCurrencyNoRp(row.total)}</TableCell>
+                        <TableCell className={`text-right py-2 px-3 ${getSisaColor(row.sisa_anggaran || 0)}`}>{formatCurrencyNoRp(row.sisa_anggaran || 0)}</TableCell>
                       </TableRow>
-                      {isExpanded && renderChildrenForRow(row.key)}
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-              <TableFooter>
-                <TableRow className="font-bold">
-                  <TableCell colSpan={2} className="py-2 px-3">Total</TableCell>
-                  {months.map((m) => (
-                    <TableCell key={`total-${m}`} className="text-right py-2 px-3">{formatCurrency(data.reduce((s, r) => s + (r.months[m] || 0), 0))}</TableCell>
-                  ))}
-                  <TableCell className="text-right py-2 px-3">{formatCurrency(data.reduce((s, r) => s + (r.total || 0), 0))}</TableCell>
-                  <TableCell className="text-right py-2 px-3">{formatCurrency(data.reduce((s, r) => s + (r.total_pagu || 0), 0))}</TableCell>
-                  <TableCell className="text-right py-2 px-3">{formatCurrency(data.reduce((s, r) => s + (r.sisa_anggaran || 0), 0))}</TableCell>
-                  <TableCell className="text-right py-2 px-3">{formatCurrency(data.reduce((s, r) => s + (r.blokir || 0), 0))}</TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                    ))}
+                  </TableBody>
+                  <TableFooter>
+                      <TableRow className="font-bold">
+                      <TableCell className="py-2 px-3">Total</TableCell>
+                      <TableCell className="text-right py-2 px-3 text-blue-600">{formatCurrencyNoRp(data.reduce((s, r) => s + (r.total_pagu || 0), 0))}</TableCell>
+                      {months.map((m) => (
+                        <TableCell key={`total-${m}`} className="text-right py-2 px-3">{formatCurrencyNoRp(data.reduce((s, r) => s + (r.months[m] || 0), 0))}</TableCell>
+                      ))}
+                      <TableCell className="text-right py-2 px-3 text-blue-600">{formatCurrencyNoRp(data.reduce((s, r) => s + (r.total || 0), 0))}</TableCell>
+                      <TableCell className={`text-right py-2 px-3 ${getSisaColor(data.reduce((s, r) => s + (r.sisa_anggaran || 0), 0))}`}>{formatCurrencyNoRp(data.reduce((s, r) => s + (r.sisa_anggaran || 0), 0))}</TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
