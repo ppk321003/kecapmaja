@@ -73,6 +73,28 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     enabled: !!sheetId
   });
 
+  // Derive items as they should appear when `hideZeroPagu` is active.
+  // This mirrors the special handling used in `BahanRevisiBudgetTable`:
+  // - when hiding zero pagu, keep pending (not approved) items except unchanged items with jumlah_menjadi === 0
+  const itemsVisibleByHideZero = (() => {
+    if (!hideZeroPagu) return filteredBudgetItems || [];
+    try {
+      return (filteredBudgetItems || []).filter(item => {
+        const isApprovedByPPK = !!item.approved_by;
+        if (!isApprovedByPPK) {
+          if (item.status === 'unchanged' && (item.jumlah_menjadi || 0) === 0) {
+            return false;
+          }
+          return true;
+        }
+        return (item.jumlah_menjadi || 0) !== 0;
+      });
+    } catch (e) {
+      console.error('[BahanRevisiAnggaran] Error filtering items by hideZeroPagu:', e);
+      return filteredBudgetItems || [];
+    }
+  })();
+
   // Mutations untuk submit data
   const {
     addItem,
@@ -380,15 +402,15 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
             }
           }}
           budgetItems={budgetItems}
-          komponenOutput={filters?.komponenOutput}
-          subKomponen={filters?.subKomponen}
+          komponenOutput={filters?.komponen_output}
+          subKomponen={filters?.sub_komponen}
           akun={filters?.akun} />
 
         }
 
           {/* Summary Cards Bar */}
           {filteredBudgetItems.length > 0 &&
-        <SummaryCardsBar items={filteredBudgetItems} />
+        <SummaryCardsBar items={itemsVisibleByHideZero} />
         }
 
           {/* Tabs */}
@@ -397,7 +419,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
               <TabsTrigger value="anggaran" className="text-sm">
                 Anggaran
                 <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
-                  {filteredBudgetItems.length}
+                  {itemsVisibleByHideZero.length}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="rpd" className="text-sm">
@@ -527,7 +549,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
               {/* Ringkasan dengan subtab button untuk berbagai kategori */}
               {Array.isArray(filteredBudgetItems) &&
             <BahanRevisiRingkasanSubtab
-              items={filteredBudgetItems}
+              items={itemsVisibleByHideZero}
               programs={programs}
               kegiatans={kegiatans}
               rincianOutputs={rincianOutputs}
