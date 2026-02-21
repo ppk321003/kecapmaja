@@ -18,6 +18,7 @@ type SummaryViewType =
   | 'proyeksi'
   | 'program_pembebanan'
   | 'kegiatan'
+  | 'rincian_output'
   | 'komponen_output'
   | 'sub_komponen'
   | 'akun'
@@ -74,6 +75,10 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     switch (type) {
       case 'program': return programNameMap[code] || code;
       case 'kegiatan': return kegiatanNameMap[code] || code;
+      case 'rincian_output': {
+        const rincian = rincianOutputs.find(r => r.id === code);
+        return rincian ? `${rincian.code} - ${rincian.name}` : code;
+      }
       case 'komponen_output': return komponenNameMap[code] || code;
       case 'sub_komponen': return subKomponenNameMap[code] || code;
       case 'akun': return akunNameMap[code] || code;
@@ -134,6 +139,41 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     switch (summaryView) {
       case 'program_pembebanan': return aggregateBy('program_pembebanan');
       case 'kegiatan': return aggregateBy('kegiatan');
+      case 'rincian_output': {
+        // Map komponen_output -> rincian_output_id via komponenOutputs
+        const map = new Map<string, GroupedRow>();
+        items.forEach(item => {
+          const komponenOutputId = String(item.komponen_output || 'Unknown');
+          const komponenOutput = komponenOutputs.find(k => k.id === komponenOutputId);
+          const rincianId = komponenOutput?.rincian_output_id || 'Unknown';
+          
+          if (!map.has(rincianId)) {
+            const rincian = rincianOutputs.find(r => r.id === rincianId);
+            map.set(rincianId, {
+              id: rincianId,
+              key: rincianId,
+              name: rincian ? `${rincian.code} - ${rincian.name}` : rincianId,
+              months: Object.fromEntries(months.map(m => [m, 0])) as Record<string, number>,
+              total: 0,
+              total_pagu: 0,
+              sisa_anggaran: 0,
+              blokir: 0,
+              itemCount: 0
+            });
+          }
+          const row = map.get(rincianId)!;
+          months.forEach(m => {
+            const v = Number((item as any)[m] || 0) || 0;
+            row.months[m] += v;
+            row.total += v;
+          });
+          row.total_pagu += Number(item.total_pagu || 0) || 0;
+          row.sisa_anggaran += Number(item.sisa_anggaran || 0) || 0;
+          row.blokir += Number(item.blokir || 0) || 0;
+          row.itemCount += 1;
+        });
+        return Array.from(map.values());
+      }
       case 'komponen_output': return aggregateBy('komponen_output');
       case 'sub_komponen': return aggregateBy('sub_komponen');
       case 'akun': return aggregateBy('akun');
@@ -433,6 +473,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
         <Button variant={summaryView === 'proyeksi' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('proyeksi')} className="text-xs">Ringkasan Proyeksi Bulanan</Button>
         <Button variant={summaryView === 'program_pembebanan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('program_pembebanan')} className="text-xs">Program Pembebanan</Button>
         <Button variant={summaryView === 'kegiatan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('kegiatan')} className="text-xs">Kegiatan</Button>
+        <Button variant={summaryView === 'rincian_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('rincian_output')} className="text-xs">Rincian Output</Button>
         <Button variant={summaryView === 'komponen_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('komponen_output')} className="text-xs">Komponen Output</Button>
         <Button variant={summaryView === 'sub_komponen' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('sub_komponen')} className="text-xs">Sub Komponen</Button>
         <Button variant={summaryView === 'akun' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun')} className="text-xs">Akun</Button>
