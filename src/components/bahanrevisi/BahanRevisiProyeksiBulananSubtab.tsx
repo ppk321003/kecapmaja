@@ -76,7 +76,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       case 'program': return programNameMap[code] || code;
       case 'kegiatan': return kegiatanNameMap[code] || code;
       case 'rincian_output': {
-        const rincian = rincianOutputs.find(r => r.id === code);
+        const rincian = rincianOutputs.find(r => r.code === code);
         return rincian ? `${rincian.code} - ${rincian.name}` : code;
       }
       case 'komponen_output': return komponenNameMap[code] || code;
@@ -140,19 +140,19 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       case 'program_pembebanan': return aggregateBy('program_pembebanan');
       case 'kegiatan': return aggregateBy('kegiatan');
       case 'rincian_output': {
-        // Map komponen_output -> rincian_output_id via komponenOutputs
+        // Extract rincian_output code from komponen_output code (XXXX.XXX.NNN -> XXXX.XXX)
         const map = new Map<string, GroupedRow>();
         items.forEach(item => {
-          const komponenOutputId = String(item.komponen_output || 'Unknown');
-          const komponenOutput = komponenOutputs.find(k => k.id === komponenOutputId);
-          const rincianId = komponenOutput?.rincian_output_id || 'Unknown';
+          const komponenCode = String(item.komponen_output || 'Unknown');
+          // Extract first 2 parts (XXXX.XXX) from komponen code (XXXX.XXX.NNN)
+          const rincianCode = komponenCode.split('.').slice(0, 2).join('.') || 'Unknown';
           
-          if (!map.has(rincianId)) {
-            const rincian = rincianOutputs.find(r => r.id === rincianId);
-            map.set(rincianId, {
-              id: rincianId,
-              key: rincianId,
-              name: rincian ? `${rincian.code} - ${rincian.name}` : rincianId,
+          if (!map.has(rincianCode)) {
+            const rincian = rincianOutputs.find(r => r.code === rincianCode);
+            map.set(rincianCode, {
+              id: rincianCode,
+              key: rincianCode,
+              name: rincian ? `${rincian.code} - ${rincian.name}` : rincianCode,
               months: Object.fromEntries(months.map(m => [m, 0])) as Record<string, number>,
               total: 0,
               total_pagu: 0,
@@ -161,7 +161,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
               itemCount: 0
             });
           }
-          const row = map.get(rincianId)!;
+          const row = map.get(rincianCode)!;
           months.forEach(m => {
             const v = Number((item as any)[m] || 0) || 0;
             row.months[m] += v;
