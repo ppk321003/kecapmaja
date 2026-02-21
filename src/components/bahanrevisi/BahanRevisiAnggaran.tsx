@@ -95,6 +95,28 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
     }
   })();
 
+  // Derive visible RPD items according to current filters and hideZeroPagu
+  const rpdVisibleItems = (() => {
+    try {
+      if (!Array.isArray(rpdItems)) return [];
+      return rpdItems.filter((item) => {
+        if (filters.program_pembebanan && String(item.program_pembebanan || '').trim() !== String(filters.program_pembebanan).trim()) return false;
+        if (filters.kegiatan && String(item.kegiatan || '').trim() !== String(filters.kegiatan).trim()) return false;
+        if (filters.komponen_output && String(item.komponen_output || '').trim() !== String(filters.komponen_output).trim()) return false;
+        if (filters.sub_komponen && String(item.sub_komponen || '').trim() !== String(filters.sub_komponen).trim()) return false;
+        if (filters.rincian_output && String(item.rincian_output || '').trim() !== String(filters.rincian_output).trim()) return false;
+        if (filters.akun && String(item.akun || '').trim() !== String(filters.akun).trim()) return false;
+        if (hideZeroPagu) {
+          return (Number(item.total_pagu) || 0) !== 0;
+        }
+        return true;
+      });
+    } catch (e) {
+      console.error('[BahanRevisiAnggaran] Error filtering rpdItems by hideZeroPagu:', e);
+      return rpdItems || [];
+    }
+  })();
+
   // Mutations untuk submit data
   const {
     addItem,
@@ -425,7 +447,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
               <TabsTrigger value="rpd" className="text-sm">
                 Rencana Penarikan Dana
                 <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
-                  {rpdItems.length}
+                  {rpdVisibleItems.length}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="ringkasan" className="text-sm">
