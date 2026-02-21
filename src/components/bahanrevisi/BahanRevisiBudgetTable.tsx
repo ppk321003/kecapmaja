@@ -656,7 +656,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
               className="gap-2"
             >
               <Plus className="h-4 w-4" />
-              Tambah Item
+              Tambah Detil
             </Button>
           </div>
 

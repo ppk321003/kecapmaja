@@ -587,7 +587,7 @@ const AddBudgetItemDialog: React.FC<AddBudgetItemDialogProps> = ({
             className="gap-2"
           >
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Tambah Item
+            Tambah Detil
           </Button>
         </DialogFooter>
       </DialogContent>
