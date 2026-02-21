@@ -18,6 +18,7 @@ import { formatCurrency, formatDateIndonesia, determineStatusFromChanges, calcul
 import BahanRevisiFilter from './BahanRevisiFilter';
 import BahanRevisiBudgetTable from './BahanRevisiBudgetTable';
 import BahanRevisiRingkasanSubtab from './BahanRevisiRingkasanSubtab';
+import BahanRevisiProyeksiBulananSubtab from './BahanRevisiProyeksiBulananSubtab';
 import RPDTable from './RPDTable';
 import BudgetChangesConclusion from './BudgetChangesConclusion';
 import BudgetChangesSummary from './BudgetChangesSummary';
@@ -437,7 +438,7 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
           {/* Tabs */}
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3 bg-slate-200">
+            <TabsList className="grid w-full grid-cols-4 bg-slate-200">
               <TabsTrigger value="anggaran" className="text-sm">
                 Anggaran
                 <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
@@ -449,6 +450,9 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                 <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
                   {rpdVisibleItems.length}
                 </span>
+              </TabsTrigger>
+              <TabsTrigger value="proyeksi" className="text-sm">
+                Proyeksi Bulanan
               </TabsTrigger>
               <TabsTrigger value="ringkasan" className="text-sm">
                 Ringkasan Revisi
@@ -565,6 +569,19 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
               }} />
 
             </TabsContent>
+
+              {/* Tab: Proyeksi Bulanan */}
+              <TabsContent value="proyeksi" className="space-y-4">
+                <BahanRevisiProyeksiBulananSubtab
+                  items={rpdVisibleItems}
+                  programs={programs}
+                  kegiatans={kegiatans}
+                  rincianOutputs={rincianOutputs}
+                  komponenOutputs={komponenOutputs}
+                  subKomponen={subKomponen}
+                  akuns={akuns}
+                />
+              </TabsContent>
 
             {/* Tab: Ringkasan */}
             <TabsContent value="ringkasan" className="space-y-4">
