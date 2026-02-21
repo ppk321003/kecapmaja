@@ -16,7 +16,6 @@ type SummaryViewType =
   | 'proyeksi'
   | 'program_pembebanan'
   | 'kegiatan'
-  | 'rincian_output'
   | 'komponen_output'
   | 'sub_komponen'
   | 'akun'
@@ -72,7 +71,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     switch (type) {
       case 'program': return programNameMap[code] || code;
       case 'kegiatan': return kegiatanNameMap[code] || code;
-      case 'rincian_output': return rincianNameMap[code] || code;
+
       case 'komponen_output': return komponenNameMap[code] || code;
       case 'sub_komponen': return subKomponenNameMap[code] || code;
       case 'akun': return akunNameMap[code] || code;
@@ -122,7 +121,6 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       name:
         field === 'program_pembebanan' ? formatName(r.key, 'program') :
         field === 'kegiatan' ? formatName(r.key, 'kegiatan') :
-        field === 'rincian_output' ? formatName(r.key, 'rincian_output') :
         field === 'komponen_output' ? formatName(r.key, 'komponen_output') :
         field === 'sub_komponen' ? formatName(r.key, 'sub_komponen') :
         field === 'akun' ? formatName(r.key, 'akun') :
@@ -134,7 +132,6 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     switch (summaryView) {
       case 'program_pembebanan': return aggregateBy('program_pembebanan');
       case 'kegiatan': return aggregateBy('kegiatan');
-      case 'rincian_output': return aggregateBy('rincian_output');
       case 'komponen_output': return aggregateBy('komponen_output');
       case 'sub_komponen': return aggregateBy('sub_komponen');
       case 'akun': return aggregateBy('akun');
@@ -409,7 +406,6 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
           <Button variant={summaryView === 'proyeksi' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('proyeksi')} className="text-xs">Ringkasan Proyeksi Bulanan</Button>
           <Button variant={summaryView === 'program_pembebanan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('program_pembebanan')} className="text-xs">Program Pembebanan</Button>
           <Button variant={summaryView === 'kegiatan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('kegiatan')} className="text-xs">Kegiatan</Button>
-          <Button variant={summaryView === 'rincian_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('rincian_output')} className="text-xs">Rincian Output</Button>
           <Button variant={summaryView === 'komponen_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('komponen_output')} className="text-xs">Komponen Output</Button>
           <Button variant={summaryView === 'sub_komponen' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('sub_komponen')} className="text-xs">Sub Komponen</Button>
           <Button variant={summaryView === 'akun' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('akun')} className="text-xs">Akun</Button>
