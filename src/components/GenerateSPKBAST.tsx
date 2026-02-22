@@ -41,7 +41,7 @@ export default function GenerateSPKBAST() {
 
     setIsLoading(true);
     try {
-      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbyNzPtKOL3COYIF5lQAg01RSa-D0rkn9ExQhQVLge1GD7j132cezS5e9G5nWNwXJ7U/exec?spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
+      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec?spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
       
       // Gunakan Image approach untuk bypass CORS
       const img = new Image();
