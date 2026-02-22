@@ -14,11 +14,13 @@ export default function ResetAndDeleteSPKBAST() {
   const { toast } = useToast();
   const satkerConfig = useSatkerConfigContext();
   const [showDialog, setShowDialog] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedPeriode, setSelectedPeriode] = useState<string>('');
   const [periodeList, setPeriodeList] = useState<string[]>([]);
   const [customPeriode, setCustomPeriode] = useState<string>('');
   const [spreadsheetId, setSpreadsheetId] = useState<string>('');
+  const [pendingPeriode, setPendingPeriode] = useState<string>('');
 
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
   if (!isPPK) {
@@ -67,7 +69,7 @@ export default function ResetAndDeleteSPKBAST() {
     setCustomPeriode('');
   };
 
-  const handleResetAndDelete = async () => {
+  const handleResetAndDelete = () => {
     // Use either selected period or custom period
     const periodeToProcess = selectedPeriode || customPeriode;
     
@@ -89,20 +91,26 @@ export default function ResetAndDeleteSPKBAST() {
       return;
     }
 
-    if (!confirm(`⚠️ Anda akan melakukan operasi berikut untuk periode ${periodeToProcess}:\n\n1. Reset status (kosongkan Kolom U & V)\n2. Hapus folder ${periodeToProcess} dan semua dokumennya dari Google Drive\n\nTindakan ini TIDAK DAPAT DIBATALKAN. Lanjutkan?`)) {
-      return;
-    }
+    // Show confirmation dialog instead of browser confirm
+    setPendingPeriode(periodeToProcess);
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmReset = async () => {
+    if (!pendingPeriode) return;
 
     setLoading(true);
+    setShowConfirmation(false);
+    
     try {
       toast({
         title: "⏳ Step 1/2: Reset Status",
-        description: `Mengosongkan Kolom U & V untuk periode ${periodeToProcess}...`,
+        description: `Mengosongkan Kolom U & V untuk periode ${pendingPeriode}...`,
         variant: "default"
       });
 
       // Step 1: Trigger Reset and wait
-      await triggerReset(periodeToProcess);
+      await triggerReset(pendingPeriode);
       
       // Wait 2 seconds for the reset to process on the server
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -110,11 +118,18 @@ export default function ResetAndDeleteSPKBAST() {
       // Step 2: Trigger Delete after reset is done
       toast({
         title: "⏳ Step 2/2: Delete Folder",
-        description: `Menghapus folder ${periodeToProcess} dari Google Drive...`,
+        description: `Menghapus folder ${pendingPeriode} dari Google Drive...`,
         variant: "default"
       });
       
-      await triggerDelete(periodeToProcess);
+      await triggerDelete(pendingPeriode);
+
+      // Success notification
+      toast({
+        title: "✅ Berhasil",
+        description: `Periode ${pendingPeriode}:\n✓ Status di-reset\n✓ Folder dihapus dari Google Drive`,
+        variant: "default"
+      });
 
     } catch (error) {
       console.error('Error:', error);
@@ -125,7 +140,14 @@ export default function ResetAndDeleteSPKBAST() {
       });
     } finally {
       setLoading(false);
+      completeProcess(pendingPeriode);
+      setPendingPeriode('');
     }
+  };
+
+  const handleCancelConfirm = () => {
+    setShowConfirmation(false);
+    setPendingPeriode('');
   };
 
   const triggerReset = (periode: string): Promise<void> => {
@@ -173,15 +195,9 @@ export default function ResetAndDeleteSPKBAST() {
   };
 
   const completeProcess = (periode: string) => {
-    toast({
-      title: "✅ Berhasil",
-      description: `Periode ${periode}:\n✓ Status di-reset\n✓ Folder dihapus dari Google Drive`,
-      variant: "default"
-    });
     setShowDialog(false);
     setSelectedPeriode('');
     setCustomPeriode('');
-    setLoading(false);
   };
 
   return (
@@ -274,6 +290,65 @@ export default function ResetAndDeleteSPKBAST() {
               disabled={loading || (!selectedPeriode && !customPeriode)}
             >
               {loading ? "Processing..." : "Reset & Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Konfirmasi Operasi Berbahaya
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <Alert className="bg-red-50 border-red-200">
+              <AlertDescription className="text-red-800 font-semibold">
+                ⚠️ Tindakan ini TIDAK DAPAT DIBATALKAN!
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm font-medium">Pada periode <strong>{pendingPeriode}</strong>, operasi ini akan:</p>
+              <ul className="space-y-2 ml-4">
+                <li className="text-sm flex items-start gap-2">
+                  <span className="text-red-600 font-bold">✗</span>
+                  <span>Menghapus Status (Kolom U) dan Link (Kolom V)</span>
+                </li>
+                <li className="text-sm flex items-start gap-2">
+                  <span className="text-red-600 font-bold">✗</span>
+                  <span>Menghapus seluruh folder dan semua dokumen dari Google Drive</span>
+                </li>
+                <li className="text-sm flex items-start gap-2">
+                  <span className="text-green-600 font-bold">✓</span>
+                  <span className="text-gray-600">Keterangan (Kolom T) tetap tersimpan</span>
+                </li>
+              </ul>
+            </div>
+
+            <p className="text-sm text-gray-600">
+              Apakah Anda yakin ingin melanjutkan?
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelConfirm}
+              disabled={loading}
+            >
+              Batalkan
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmReset}
+              disabled={loading}
+            >
+              {loading ? "Memproses..." : "Ya, Lanjutkan Reset & Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

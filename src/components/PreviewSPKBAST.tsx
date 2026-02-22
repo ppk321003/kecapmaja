@@ -87,7 +87,7 @@ export default function PreviewSPKBAST() {
       const periodeIdx = headers.indexOf('Periode (Bulan) SPK');
       const roleIdx = headers.indexOf('Role');
       const jenisPekerjaanIdx = headers.indexOf('Jenis Pekerjaan');
-      const pemberaanIdx = headers.indexOf('Pembebanan');
+      const pemberaanIdx = headers.indexOf('Beban Anggaran');
       const kegiatanIdx = headers.indexOf('Nama Kegiatan');
       const statusIdx = headers.indexOf('Status');
       const keteranganIdx = headers.indexOf('Keterangan');
@@ -177,7 +177,7 @@ export default function PreviewSPKBAST() {
                       <th className="px-4 py-2 text-left font-semibold">Periode</th>
                       <th className="px-4 py-2 text-left font-semibold">Role</th>
                       <th className="px-4 py-2 text-left font-semibold">Jenis Pekerjaan</th>
-                      <th className="px-4 py-2 text-left font-semibold">Pembebanan</th>
+                      <th className="px-4 py-2 text-left font-semibold">Beban Anggaran</th>
                       <th className="px-4 py-2 text-left font-semibold">Nama Kegiatan</th>
                     </tr>
                   </thead>
@@ -211,7 +211,7 @@ export default function PreviewSPKBAST() {
               <Alert className="bg-amber-50 border-amber-200">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-800 text-sm">
-                  ⚠️ Kolom berwarna merah = ada yang kosong. Pastikan Role, Jenis Pekerjaan, dan Pembebanan terisi sebelum lanjut generate.
+                  ⚠️ Kolom berwarna merah = ada yang kosong. Pastikan Role, Jenis Pekerjaan, dan Beban Anggaran terisi sebelum lanjut generate.
                 </AlertDescription>
               </Alert>
             </div>
