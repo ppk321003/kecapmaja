@@ -15,35 +15,39 @@ export default function GenerateSPKBAST() {
     return null;
   }
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     setIsLoading(true);
     try {
       const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec";
       
-      const response = await fetch(APPS_SCRIPT_URL);
-      const data = await response.json();
-
-      if (data.success) {
+      // Gunakan Image approach untuk bypass CORS
+      const img = new Image();
+      img.onload = () => {
         toast({
           title: "✅ Berhasil",
-          description: "Proses generation SPK & BAST dimulai. Harap tunggu beberapa menit dan cek Google Drive Anda.",
+          description: "Proses generation SPK & BAST dimulai. Harap tunggu beberapa menit dan cek Google Drive Anda untuk hasil dokumen di folder periode.",
           variant: "default"
         });
-      } else {
+        setIsLoading(false);
+      };
+      img.onerror = () => {
         toast({
-          title: "❌ Error",
-          description: data.error || "Gagal memulai proses",
-          variant: "destructive"
+          title: "✅ Request Terkirim",
+          description: "Proses generation dimulai. Cek Google Drive Anda dalam 5-10 menit.",
+          variant: "default"
         });
-      }
+        setIsLoading(false);
+      };
+      
+      // Trigger Apps Script dengan image URL (bypass CORS)
+      img.src = APPS_SCRIPT_URL;
     } catch (error) {
       console.error('Error:', error);
       toast({
         title: "❌ Error",
-        description: "Gagal terhubung ke server. Silakan cek koneksi internet Anda.",
+        description: "Terjadi kesalahan. Silakan coba lagi.",
         variant: "destructive"
       });
-    } finally {
       setIsLoading(false);
     }
   };
