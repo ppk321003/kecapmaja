@@ -23,7 +23,7 @@ export default function ResetStatusSPKBAST() {
   const handleOpenReset = async () => {
     setLoading(true);
     try {
-      const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxpEIe6scG_oOpvwgrxId06NmxjYYpmRRB04vawXS4/exec?action=getPeriodeList";
+      const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec?action=getPeriodeList";
       
       const response = await fetch(APPS_SCRIPT_URL);
       const data = await response.json();
@@ -87,7 +87,7 @@ export default function ResetStatusSPKBAST() {
         setSelectedPeriode('');
       };
 
-      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbxpEIe6scG_oOpvwgrxId06NmxjYYpmRRB04vawXS4/exec?action=resetStatus&periode=${encodeURIComponent(selectedPeriode)}`;
+      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec?action=resetStatus&periode=${encodeURIComponent(selectedPeriode)}`;
       img.src = APPS_SCRIPT_URL;
     } catch (error) {
       console.error('Error:', error);

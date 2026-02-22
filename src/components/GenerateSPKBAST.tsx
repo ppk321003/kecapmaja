@@ -18,7 +18,7 @@ export default function GenerateSPKBAST() {
   const handleGenerate = () => {
     setIsLoading(true);
     try {
-      const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxpEIe6scG_oOpvwgrxId06NmxjYYpmRRB04vawXS4/exec";
+      const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec";
       
       // Gunakan Image approach untuk bypass CORS
       const img = new Image();

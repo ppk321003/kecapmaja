@@ -1,8 +1,8 @@
 // ============================================
 // APPS SCRIPT FINAL - SPK & BAST GENERATION
 // ============================================
-// Deployment ID: AKfycbxpEIe6scG_oOpvwgrxId06NmxjYYpmRRB04vawXS4
-// URL: https://script.google.com/macros/s/AKfycbxpEIe6scG_oOpvwgrxId06NmxjYYpmRRB04vawXS4/exec
+// Deployment ID: AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb
+// URL: https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec
 // 
 // FITUR:
 // 1. Generate SPK & BAST documents (dengan batch processing)
