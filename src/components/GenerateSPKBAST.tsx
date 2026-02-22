@@ -53,14 +53,15 @@ export default function GenerateSPKBAST() {
   };
 
   return (
-    <Button
-      onClick={handleGenerate}
-      disabled={isLoading}
-      variant="default"
-      className="bg-green-600 hover:bg-green-700 text-white inline-flex items-center gap-2"
-    >
-      <Zap className="h-4 w-4" />
-      {isLoading ? "🔄 Generating..." : "⚡ Generate SPK & BAST"}
-    </Button>
+      <Button
+        onClick={handleGenerate}
+        disabled={isLoading}
+        variant="default"
+        size="sm"
+        className="bg-green-600 hover:bg-green-700 text-white inline-flex items-center gap-2 h-8 text-xs"
+      >
+        <Zap className="h-3 w-3" />
+        {isLoading ? "Generating..." : "Generate"}
+      </Button>
   );
 }

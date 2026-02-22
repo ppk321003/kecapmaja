@@ -13,7 +13,6 @@ interface PreviewData {
   nik: string;
   kegiatan: string;
   status: string;
-  keterangan: string;
 }
 
 export default function PreviewSPKBAST() {
@@ -85,8 +84,7 @@ export default function PreviewSPKBAST() {
           nama: row[namaIdx]?.toString().trim() || '-',
           nik: row[nikIdx]?.toString().trim() || '-',
           kegiatan: row[kegiatanIdx]?.toString().trim() || '-',
-          status: status || '-',
-          keterangan: keterangan || '-'
+          status: status || '-'
         });
       }
 
@@ -118,10 +116,11 @@ export default function PreviewSPKBAST() {
         onClick={handlePreview}
         disabled={loading}
         variant="outline"
-        className="inline-flex items-center gap-2"
+        size="sm"
+        className="inline-flex items-center gap-2 h-8 text-xs"
       >
-        <Eye className="h-4 w-4" />
-        {loading ? "Loading..." : "👁️ Preview Data"}
+        <Eye className="h-3 w-3" />
+        {loading ? "Loading..." : "Preview"}
       </Button>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

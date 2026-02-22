@@ -107,10 +107,11 @@ export default function ResetStatusSPKBAST() {
         onClick={handleOpenReset}
         disabled={loading}
         variant="outline"
-        className="inline-flex items-center gap-2"
+        size="sm"
+        className="inline-flex items-center gap-2 h-8 text-xs"
       >
-        <RotateCcw className="h-4 w-4" />
-        {loading ? "Loading..." : "🔄 Reset Status"}
+        <RotateCcw className="h-3 w-3" />
+        {loading ? "Loading..." : "Reset"}
       </Button>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
