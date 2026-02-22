@@ -97,7 +97,7 @@ export default function DeleteFolderSPKBAST() {
         setCustomPeriode('');
       };
 
-      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec?action=deleteFolder&periode=${encodeURIComponent(periodeToDelete)}`;
+      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbyNzPtKOL3COYIF5lQAg01RSa-D0rkn9ExQhQVLge1GD7j132cezS5e9G5nWNwXJ7U/exec?action=deleteFolder&periode=${encodeURIComponent(periodeToDelete)}`;
       console.log(`🗑️ Triggering delete for: ${periodeToDelete}`);
       console.log(`   URL: ${APPS_SCRIPT_URL}`);
       img.src = APPS_SCRIPT_URL;
