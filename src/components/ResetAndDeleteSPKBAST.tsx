@@ -52,7 +52,8 @@ export default function ResetAndDeleteSPKBAST() {
       periods.push(`${month} ${year}`);
     }
     
-    return periods;
+    // Reverse untuk menampilkan periode terakhir dahulu
+    return periods.reverse();
   };
 
   useEffect(() => {

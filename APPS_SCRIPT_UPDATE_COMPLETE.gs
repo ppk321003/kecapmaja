@@ -1222,14 +1222,38 @@ function MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK(e) {
 
           spk.uraianTugas.forEach((u, index) => {
             const row = mainTable.appendTableRow();
-            row.appendTableCell(String(index + 1)); // No
-            row.appendTableCell(String(u.namaKegiatan || "")); // Uraian Tugas
-            row.appendTableCell(u.beban || ""); // Beban Anggaran
-            row.appendTableCell(u.jangkaWaktu || ""); // Jangka Waktu
-            row.appendTableCell(String(u.target || "")); // Target
-            row.appendTableCell(u.satuan || ""); // Satuan
-            row.appendTableCell(u.hargaSatuan ? "Rp. " + u.hargaSatuan.toLocaleString("id-ID") : "-"); // Harga Satuan
-            row.appendTableCell("Rp. " + (u.nilai || 0).toLocaleString("id-ID")); // Nilai Perjanjian
+            
+            // No
+            let cell = row.appendTableCell(String(index + 1));
+            cell.editAsText().setFontSize(10);
+            
+            // Uraian Tugas
+            cell = row.appendTableCell(String(u.namaKegiatan || ""));
+            cell.editAsText().setFontSize(10);
+            
+            // Beban Anggaran
+            cell = row.appendTableCell(u.beban || "");
+            cell.editAsText().setFontSize(10);
+            
+            // Jangka Waktu
+            cell = row.appendTableCell(u.jangkaWaktu || "");
+            cell.editAsText().setFontSize(10);
+            
+            // Target
+            cell = row.appendTableCell(String(u.target || ""));
+            cell.editAsText().setFontSize(10);
+            
+            // Satuan
+            cell = row.appendTableCell(u.satuan || "");
+            cell.editAsText().setFontSize(10);
+            
+            // Harga Satuan
+            cell = row.appendTableCell(u.hargaSatuan ? "Rp. " + u.hargaSatuan.toLocaleString("id-ID") : "-");
+            cell.editAsText().setFontSize(10);
+            
+            // Nilai Perjanjian
+            cell = row.appendTableCell("Rp. " + (u.nilai || 0).toLocaleString("id-ID"));
+            cell.editAsText().setFontSize(10);
           });
         }
       } catch(e) { 
