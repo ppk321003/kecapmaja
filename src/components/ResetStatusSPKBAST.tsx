@@ -25,24 +25,36 @@ export default function ResetStatusSPKBAST() {
     try {
       const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec?action=getPeriodeList";
       
+      console.log("🔍 Fetching periode list from:", APPS_SCRIPT_URL);
       const response = await fetch(APPS_SCRIPT_URL);
       const data = await response.json();
 
-      if (data.success && data.periodeList) {
+      console.log("📋 Response from getPeriodeList:", data);
+      console.log("   - success:", data.success);
+      console.log("   - periodeList:", data.periodeList);
+      console.log("   - periodeList length:", data.periodeList?.length);
+
+      if (data.success && data.periodeList && data.periodeList.length > 0) {
+        console.log("✅ Setting periode list:", data.periodeList);
         setPeriodeList(data.periodeList);
         setShowDialog(true);
       } else {
+        console.warn("⚠️ No periodo list returned");
+        console.log("   Data object:", JSON.stringify(data));
         toast({
           title: "❌ Error",
-          description: "Gagal mengambil daftar periode",
+          description: data.periodeList?.length === 0 
+            ? "Tidak ada periode dengan status 'Generated'. Silakan generate dokumen terlebih dahulu."
+            : "Gagal mengambil daftar periode",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Error fetching periode list:', error);
+      console.error('   Error details:', error);
       toast({
         title: "❌ Error",
-        description: "Terjadi kesalahan",
+        description: `Terjadi kesalahan: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive"
       });
     } finally {

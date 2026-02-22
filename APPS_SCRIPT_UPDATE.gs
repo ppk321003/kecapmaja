@@ -24,27 +24,38 @@ function doGet(e) {
   const action = e.parameter.action;
   const periode = e.parameter.periode;
 
+  Logger.log(`📥 doGet called - Action: "${action}", Periode: "${periode}"`);
+
   try {
     if (action === 'getPeriodeList') {
+      Logger.log("✅ Calling getPeriodeListFromSheet()");
+      const periodeList = getPeriodeListFromSheet();
+      Logger.log("📋 Periode List: " + JSON.stringify(periodeList));
       return HtmlService.createHtmlOutput(JSON.stringify({
         success: true,
-        periodeList: getPeriodeListFromSheet()
+        periodeList: periodeList
       }));
     } else if (action === 'resetStatus') {
+      Logger.log(`🔄 STARTING RESET for periode: "${periode}"`);
       resetStatusForPeriode(periode);
+      Logger.log(`✅ RESET COMPLETED for periode: "${periode}"`);
       return HtmlService.createHtmlOutput(JSON.stringify({
         success: true,
         message: `Status untuk periode ${periode} telah di-reset`
       }));
     } else if (action === 'deleteFolder') {
+      Logger.log(`🗑️ STARTING DELETE for periode: "${periode}"`);
       deleteFolderByPeriode(periode);
+      Logger.log(`✅ DELETE COMPLETED for periode: "${periode}"`);
       return HtmlService.createHtmlOutput(JSON.stringify({
         success: true,
         message: `Folder ${periode} telah dihapus`
       }));
     } else {
       // Default: Generate SPK & BAST
+      Logger.log("🚀 STARTING GENERATION (default action)");
       MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK();
+      Logger.log("✅ GENERATION COMPLETED");
       return HtmlService.createHtmlOutput(JSON.stringify({
         success: true,
         message: "✅ Proses generation dimulai. Cek Google Drive Anda dalam beberapa menit.",
@@ -52,6 +63,8 @@ function doGet(e) {
       }));
     }
   } catch(err) {
+    Logger.log(`❌ ERROR in doGet: ${err.message}`);
+    Logger.log(`Stack: ${err.stack}`);
     return HtmlService.createHtmlOutput(JSON.stringify({
       success: false,
       error: err.message
@@ -64,16 +77,35 @@ function doGet(e) {
 // ============================================
 function getPeriodeListFromSheet() {
   try {
+    Logger.log("📋 Fetching periode list from sheet...");
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName("Sheet1");
     const dataRange = sheet.getDataRange();
     const allData = dataRange.getValues();
     
-    if (allData.length <= 1) return [];
+    Logger.log(`   Total rows: ${allData.length}`);
+    
+    if (allData.length <= 1) {
+      Logger.log("⚠️ No data rows found");
+      return [];
+    }
 
     const headers = allData[0];
+    Logger.log(`   Headers: ${JSON.stringify(headers.slice(0, 25))}`); // Log first 25 columns
+    
     const periodeIdx = findColumnIndex(headers, ["Periode (Bulan) SPK"]);
     const statusIdx = findColumnIndex(headers, ["Status"]);
+    
+    Logger.log(`   Column Indices - Periode: ${periodeIdx}, Status: ${statusIdx}`);
+    
+    if (periodeIdx === -1) {
+      Logger.log("❌ Kolom 'Periode (Bulan) SPK' tidak ditemukan");
+      return [];
+    }
+    if (statusIdx === -1) {
+      Logger.log("❌ Kolom 'Status' tidak ditemukan");
+      return [];
+    }
     
     const periodeSet = new Set();
     
@@ -84,14 +116,17 @@ function getPeriodeListFromSheet() {
       if (status === 'Generated') {
         const periode = row[periodeIdx]?.toString().trim();
         if (periode) {
+          Logger.log(`   Row ${i}: periode="${periode}" (status="${status}")`);
           periodeSet.add(periode);
         }
       }
     }
     
-    return Array.from(periodeSet).sort();
+    const result = Array.from(periodeSet).sort();
+    Logger.log(`✅ Found ${result.length} periods: ${JSON.stringify(result)}`);
+    return result;
   } catch(err) {
-    Logger.log("Error in getPeriodeListFromSheet: " + err);
+    Logger.log("❌ Error in getPeriodeListFromSheet: " + err);
     return [];
   }
 }
@@ -101,20 +136,38 @@ function getPeriodeListFromSheet() {
 // ============================================
 function resetStatusForPeriode(targetPeriode) {
   try {
+    if (!targetPeriode) {
+      Logger.log("⚠️ targetPeriode is empty!");
+      throw new Error("Periode tidak boleh kosong");
+    }
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName("Sheet1");
     const dataRange = sheet.getDataRange();
     const allData = dataRange.getValues();
     
-    if (allData.length <= 1) return;
+    if (allData.length <= 1) {
+      Logger.log("⚠️ No data in sheet");
+      return;
+    }
 
     const headers = allData[0];
     const periodeIdx = findColumnIndex(headers, ["Periode (Bulan) SPK"]);
     const statusIdx = findColumnIndex(headers, ["Status"]);
     const linkIdx = findColumnIndex(headers, ["Link"]);
     
-    Logger.log(`🔄 Reset Status untuk periode: ${targetPeriode}`);
-    Logger.log(`Kolom Status: ${statusIdx}, Link: ${linkIdx}`);
+    Logger.log(`🔍 Column Indices - Periode: ${periodeIdx}, Status: ${statusIdx}, Link: ${linkIdx}`);
+    
+    if (periodeIdx === -1) {
+      Logger.log("❌ Kolom 'Periode (Bulan) SPK' tidak ditemukan");
+      throw new Error("Kolom Periode tidak ditemukan");
+    }
+    if (statusIdx === -1) {
+      Logger.log("❌ Kolom 'Status' tidak ditemukan");
+      throw new Error("Kolom Status tidak ditemukan");
+    }
+    
+    Logger.log(`🔄 Reset Status untuk periode: "${targetPeriode}"`);
     
     let resetCount = 0;
     
@@ -123,7 +176,10 @@ function resetStatusForPeriode(targetPeriode) {
       const periode = row[periodeIdx]?.toString().trim() || '';
       const status = row[statusIdx]?.toString().trim() || '';
       
+      Logger.log(`   Row ${i}: periode="${periode}", status="${status}"`);
+      
       if (periode === targetPeriode && status === 'Generated') {
+        Logger.log(`   ✅ Match found! Clearing Status and Link columns`);
         // HANYA clear kolom Status (U) & Link (V)
         // JANGAN clear kolom Keterangan (T)
         if (statusIdx !== -1) {
@@ -136,9 +192,13 @@ function resetStatusForPeriode(targetPeriode) {
       }
     }
     
-    Logger.log(`✅ Reset selesai: ${resetCount} baris di-reset untuk periode ${targetPeriode}. Kolom T (Keterangan) PRESERVED`);
+    Logger.log(`✅ Reset selesai: ${resetCount} baris di-reset untuk periode "${targetPeriode}". Kolom T (Keterangan) PRESERVED`);
+    
+    if (resetCount === 0) {
+      Logger.log(`⚠️ PERHATIAN: Tidak ada baris yang di-reset. Cek apakah periode atau status sesuai`);
+    }
   } catch(err) {
-    Logger.log("Error in resetStatusForPeriode: " + err);
+    Logger.log("❌ Error in resetStatusForPeriode: " + err);
     throw new Error("Gagal reset status: " + err.message);
   }
 }
@@ -148,32 +208,53 @@ function resetStatusForPeriode(targetPeriode) {
 // ============================================
 function deleteFolderByPeriode(targetPeriode) {
   try {
+    if (!targetPeriode) {
+      Logger.log("⚠️ targetPeriode is empty!");
+      throw new Error("Periode tidak boleh kosong");
+    }
+
+    Logger.log(`🗑️ Mencari folder dengan nama: "${targetPeriode}"`);
     const outputFolder = DriveApp.getFolderById(OUTPUT_FOLDER_ID_OK_SD);
     
-    Logger.log(`🗑️ Mencari folder: ${targetPeriode}`);
+    if (!outputFolder) {
+      Logger.log("❌ Output folder tidak ditemukan");
+      throw new Error("Output folder tidak ditemukan");
+    }
+    
+    Logger.log(`📁 Output Folder ID: ${OUTPUT_FOLDER_ID_OK_SD}`);
+    Logger.log(`🔍 Mengecheck subfolder...`);
     
     const folders = outputFolder.getFoldersByName(targetPeriode);
     let deleteCount = 0;
     
     const foldersToDelete = [];
     while (folders.hasNext()) {
-      foldersToDelete.push(folders.next());
+      const folder = folders.next();
+      Logger.log(`   Found: ${folder.getName()} (ID: ${folder.getId()})`);
+      foldersToDelete.push(folder);
+    }
+    
+    Logger.log(`📊 Total folder ditemukan: ${foldersToDelete.length}`);
+    
+    if (foldersToDelete.length === 0) {
+      Logger.log(`⚠️ PERHATIAN: Tidak ada folder dengan nama "${targetPeriode}" ditemukan`);
     }
     
     for (let i = 0; i < foldersToDelete.length; i++) {
       const folder = foldersToDelete[i];
-      Logger.log(`🗑️ Deleting folder: ${folder.getName()}`);
+      Logger.log(`🗑️ Menghapus folder: ${folder.getName()} (${i + 1}/${foldersToDelete.length})`);
       try {
         DriveApp.removeFolder(folder);
+        Logger.log(`   ✅ Folder berhasil dihapus`);
         deleteCount++;
       } catch(deleteErr) {
-        Logger.log(`⚠️ Gagal delete folder: ${deleteErr}`);
+        Logger.log(`   ❌ Gagal delete folder: ${deleteErr}`);
       }
     }
     
     Logger.log(`✅ Delete selesai: ${deleteCount} folder dihapus`);
   } catch(err) {
-    Logger.log("Error in deleteFolderByPeriode: " + err);
+    Logger.log("❌ Error in deleteFolderByPeriode: " + err);
     throw new Error("Gagal delete folder: " + err.message);
   }
 }
