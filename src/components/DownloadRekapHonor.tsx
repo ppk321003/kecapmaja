@@ -47,9 +47,9 @@ export default function DownloadRekapHonor() {
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
   
   // Check if user has valid satker configuration
-  const hasValidSatkerConfig = satkerConfig?.configs.some(
+  const hasValidSatkerConfig = satkerConfig?.configs?.some(
     c => c.satker_id === user?.satker && c.entrikegiatan_sheet_id
-  );
+  ) ?? false;
 
   const isVisible = isPPK && hasValidSatkerConfig;
 
