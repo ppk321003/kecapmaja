@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Trash2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,65 +15,58 @@ export default function DeleteFolderSPKBAST() {
   const [loading, setLoading] = useState(false);
   const [selectedPeriode, setSelectedPeriode] = useState<string>('');
   const [periodeList, setPeriodeList] = useState<string[]>([]);
+  const [customPeriode, setCustomPeriode] = useState<string>('');
 
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
   if (!isPPK) {
     return null;
   }
 
-  const handleOpenDelete = async () => {
-    setLoading(true);
-    try {
-      const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec?action=getPeriodeList";
-      
-      console.log("🔍 Fetching periode list from:", APPS_SCRIPT_URL);
-      const response = await fetch(APPS_SCRIPT_URL);
-      const data = await response.json();
-
-      console.log("📋 Response from getPeriodeList:", data);
-      console.log("   - success:", data.success);
-      console.log("   - periodeList:", data.periodeList);
-      console.log("   - periodeList length:", data.periodeList?.length);
-
-      if (data.success && data.periodeList && data.periodeList.length > 0) {
-        console.log("✅ Setting periode list:", data.periodeList);
-        setPeriodeList(data.periodeList);
-        setShowDialog(true);
-      } else {
-        console.warn("⚠️ No periodo list returned");
-        console.log("   Data object:", JSON.stringify(data));
-        toast({
-          title: "❌ Error",
-          description: data.periodeList?.length === 0 
-            ? "Tidak ada periode dengan status 'Generated'. Silakan generate dokumen terlebih dahulu."
-            : "Gagal mengambil daftar periode",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error fetching periode list:', error);
-      console.error('   Error details:', error);
-      toast({
-        title: "❌ Error",
-        description: `Terjadi kesalahan: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+  // Generate list of last 12 months in format "Bulan YYYY"
+  const generatePeriodeList = () => {
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const periods: string[] = [];
+    const today = new Date();
+    
+    // Generate last 12 months
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      periods.push(`${month} ${year}`);
     }
+    
+    return periods;
+  };
+
+  useEffect(() => {
+    // Generate periods on component mount
+    const periods = generatePeriodeList();
+    setPeriodeList(periods);
+    console.log('📋 Generated periode list:', periods);
+  }, []);
+
+  const handleOpenDelete = () => {
+    console.log('🗑️ Opening Delete dialog...');
+    setShowDialog(true);
+    setSelectedPeriode('');
+    setCustomPeriode('');
   };
 
   const handleDelete = async () => {
-    if (!selectedPeriode) {
+    // Use either selected period or custom period
+    const periodeToDelete = selectedPeriode || customPeriode;
+
+    if (!periodeToDelete) {
       toast({
         title: "⚠️ Warning",
-        description: "Pilih periode terlebih dahulu",
+        description: "Pilih periode atau masukkan periode custom terlebih dahulu",
         variant: "destructive"
       });
       return;
     }
 
-    if (!confirm(`⚠️ Anda akan menghapus SEMUA dokumen SPK & BAST di folder "${selectedPeriode}". Tindakan ini TIDAK DAPAT DIBATALKAN. Lanjutkan?`)) {
+    if (!confirm(`⚠️ Anda akan menghapus SEMUA dokumen SPK & BAST di folder "${periodeToDelete}". Tindakan ini TIDAK DAPAT DIBATALKAN. Lanjutkan?`)) {
       return;
     }
 
@@ -81,25 +75,31 @@ export default function DeleteFolderSPKBAST() {
       // Trigger delete via image approach (bypass CORS)
       const img = new Image();
       img.onload = () => {
+        console.log(`✅ Delete completed for ${periodeToDelete}`);
         toast({
           title: "✅ Berhasil",
-          description: `Folder ${selectedPeriode} dan semua dokumennya telah dihapus dari Google Drive.`,
+          description: `Folder ${periodeToDelete} dan semua dokumennya telah dihapus dari Google Drive.`,
           variant: "default"
         });
         setShowDialog(false);
         setSelectedPeriode('');
+        setCustomPeriode('');
       };
       img.onerror = () => {
+        console.log(`✅ Delete dimulai untuk ${periodeToDelete}`);
         toast({
           title: "✅ Delete Dimulai",
-          description: `Proses penghapusan folder ${selectedPeriode} sedang berjalan. Harap tunggu beberapa detik.`,
+          description: `Proses penghapusan folder ${periodeToDelete} sedang berjalan. Harap tunggu beberapa detik.`,
           variant: "default"
         });
         setShowDialog(false);
         setSelectedPeriode('');
+        setCustomPeriode('');
       };
 
-      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec?action=deleteFolder&periode=${encodeURIComponent(selectedPeriode)}`;
+      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec?action=deleteFolder&periode=${encodeURIComponent(periodeToDelete)}`;
+      console.log(`🗑️ Triggering delete for: ${periodeToDelete}`);
+      console.log(`   URL: ${APPS_SCRIPT_URL}`);
       img.src = APPS_SCRIPT_URL;
     } catch (error) {
       console.error('Error:', error);
@@ -144,8 +144,11 @@ export default function DeleteFolderSPKBAST() {
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Pilih Periode</label>
-              <Select value={selectedPeriode} onValueChange={setSelectedPeriode}>
+              <label className="text-sm font-medium mb-2 block">Pilih Periode Dari List</label>
+              <Select value={selectedPeriode} onValueChange={(value) => {
+                setSelectedPeriode(value);
+                setCustomPeriode('');
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih periode..." />
                 </SelectTrigger>
@@ -158,6 +161,28 @@ export default function DeleteFolderSPKBAST() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">atau</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Atau Masukkan Periode Custom</label>
+              <Input
+                placeholder="Contoh: Januari 2024"
+                value={customPeriode}
+                onChange={(e) => {
+                  setCustomPeriode(e.target.value);
+                  setSelectedPeriode('');
+                }}
+              />
+              <p className="text-xs text-gray-500 mt-1">Gunakan format: "Bulan Tahun" (contoh: "Februari 2024")</p>
+            </div>
           </div>
 
           <DialogFooter className="gap-2">
@@ -166,10 +191,10 @@ export default function DeleteFolderSPKBAST() {
             </Button>
             <Button 
               onClick={handleDelete} 
-              disabled={!selectedPeriode || loading}
+              disabled={(!selectedPeriode && !customPeriode) || loading}
               variant="destructive"
             >
-              {loading ? "Processing..." : "🗑️ Hapus Sekarang"}
+              {loading ? "Processing..." : "🗑️ Delete Sekarang"}
             </Button>
           </DialogFooter>
         </DialogContent>
