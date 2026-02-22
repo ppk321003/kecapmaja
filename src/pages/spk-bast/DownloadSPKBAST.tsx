@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DownloadRekapHonor from "@/components/DownloadRekapHonor";
+import GenerateSPKBAST from "@/components/GenerateSPKBAST";
 import { useAuth } from "@/contexts/AuthContext";
 interface SPKData {
   no: number;
@@ -442,7 +443,7 @@ export default function DownloadSPKBAST() {
         </p>
       </div>
 
-      {/* Section for Download Rekap Honor - visible only for PPK */}
+      {/* Section for Download Rekap Honor & Generate SPK/BAST - visible only for PPK */}
       {user?.role === 'Pejabat Pembuat Komitmen' && (
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
           <CardContent className="pt-6">
@@ -450,10 +451,13 @@ export default function DownloadSPKBAST() {
               <div>
                 <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-1">Fitur Tambahan</h3>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Unduh rekap honor output kegiatan per tahun
+                  Kelola dokumen SPK & BAST dan rekap honor output kegiatan per tahun
                 </p>
               </div>
-              <DownloadRekapHonor />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <GenerateSPKBAST />
+                <DownloadRekapHonor />
+              </div>
             </div>
           </CardContent>
         </Card>
