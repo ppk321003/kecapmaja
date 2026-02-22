@@ -6,6 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DownloadRekapHonor from "@/components/DownloadRekapHonor";
 import GenerateSPKBAST from "@/components/GenerateSPKBAST";
+import PreviewSPKBAST from "@/components/PreviewSPKBAST";
+import ResetStatusSPKBAST from "@/components/ResetStatusSPKBAST";
+import DeleteFolderSPKBAST from "@/components/DeleteFolderSPKBAST";
 import { useAuth } from "@/contexts/AuthContext";
 interface SPKData {
   no: number;
@@ -447,15 +450,19 @@ export default function DownloadSPKBAST() {
       {user?.role === 'Pejabat Pembuat Komitmen' && (
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-1">Fitur Tambahan</h3>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
                   Kelola dokumen SPK & BAST dan rekap honor output kegiatan per tahun
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
+              
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                <PreviewSPKBAST />
                 <GenerateSPKBAST />
+                <ResetStatusSPKBAST />
+                <DeleteFolderSPKBAST />
                 <DownloadRekapHonor />
               </div>
             </div>
