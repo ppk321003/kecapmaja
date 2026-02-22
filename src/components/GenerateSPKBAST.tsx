@@ -80,10 +80,9 @@ export default function GenerateSPKBAST() {
         onClick={handleGenerate}
         disabled={isLoading}
         variant="default"
-        size="sm"
-        className="bg-green-600 hover:bg-green-700 text-white inline-flex items-center gap-2 h-8 text-xs"
+        className="bg-green-600 hover:bg-green-700 text-white inline-flex items-center gap-2 px-4 py-2 text-sm font-medium"
       >
-        <Zap className="h-3 w-3" />
+        <Zap className="h-4 w-4" />
         {isLoading ? "Generating..." : "Generate"}
       </Button>
   );

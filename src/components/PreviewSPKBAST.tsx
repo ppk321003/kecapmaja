@@ -13,6 +13,7 @@ interface PreviewData {
   periode: string;
   role: string;
   jenisPekerjaan: string;
+  pembebanan: string;
   namaKegiatan: string;
 }
 
@@ -59,7 +60,7 @@ export default function PreviewSPKBAST() {
         body: {
           spreadsheetId: spreadsheetId,
           operation: "read",
-          range: "Sheet1!A:U"
+          range: "Sheet1!A:Z"
         }
       });
 
@@ -85,7 +86,8 @@ export default function PreviewSPKBAST() {
       const headers = rows[0];
       const periodeIdx = headers.indexOf('Periode (Bulan) SPK');
       const roleIdx = headers.indexOf('Role');
-      const bebanIdx = headers.indexOf('Beban Anggaran');
+      const jenisPekerjaanIdx = headers.indexOf('Jenis Pekerjaan');
+      const pemberaanIdx = headers.indexOf('Pembebanan');
       const kegiatanIdx = headers.indexOf('Nama Kegiatan');
       const statusIdx = headers.indexOf('Status');
       const keteranganIdx = headers.indexOf('Keterangan');
@@ -107,7 +109,8 @@ export default function PreviewSPKBAST() {
           no: rowCounter,
           periode: row[periodeIdx]?.toString().trim() || '-',
           role: row[roleIdx]?.toString().trim() || '-',
-          jenisPekerjaan: row[bebanIdx]?.toString().trim() || '-',
+          jenisPekerjaan: row[jenisPekerjaanIdx]?.toString().trim() || '-',
+          pembebanan: row[pemberaanIdx]?.toString().trim() || '-',
           namaKegiatan: row[kegiatanIdx]?.toString().trim() || '-'
         });
       }
@@ -140,10 +143,9 @@ export default function PreviewSPKBAST() {
         onClick={handlePreview}
         disabled={loading}
         variant="outline"
-        size="sm"
-        className="inline-flex items-center gap-2 h-8 text-xs"
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium"
       >
-        <Eye className="h-3 w-3" />
+        <Eye className="h-4 w-4" />
         {loading ? "Loading..." : "Preview"}
       </Button>
 
@@ -175,6 +177,7 @@ export default function PreviewSPKBAST() {
                       <th className="px-4 py-2 text-left font-semibold">Periode</th>
                       <th className="px-4 py-2 text-left font-semibold">Role</th>
                       <th className="px-4 py-2 text-left font-semibold">Jenis Pekerjaan</th>
+                      <th className="px-4 py-2 text-left font-semibold">Pembebanan</th>
                       <th className="px-4 py-2 text-left font-semibold">Nama Kegiatan</th>
                     </tr>
                   </thead>
@@ -193,6 +196,11 @@ export default function PreviewSPKBAST() {
                             {item.jenisPekerjaan}
                           </span>
                         </td>
+                        <td className="px-4 py-2">
+                          <span className={item.pembebanan === '-' ? 'text-red-600 font-semibold' : ''}>
+                            {item.pembebanan}
+                          </span>
+                        </td>
                         <td className="px-4 py-2 text-xs">{item.namaKegiatan}</td>
                       </tr>
                     ))}
@@ -203,7 +211,7 @@ export default function PreviewSPKBAST() {
               <Alert className="bg-amber-50 border-amber-200">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-800 text-sm">
-                  ⚠️ Kolom berwarna merah = ada yang kosong. Pastikan Role dan Jenis Pekerjaan terisi sebelum lanjut generate.
+                  ⚠️ Kolom berwarna merah = ada yang kosong. Pastikan Role, Jenis Pekerjaan, dan Pembebanan terisi sebelum lanjut generate.
                 </AlertDescription>
               </Alert>
             </div>
