@@ -26,6 +26,7 @@ import { PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
 import { AkunSelect } from "@/components/AkunSelect";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 // Types
 interface FormValues {
@@ -880,15 +881,10 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Komponen harus dipilih" }}
                     render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <KomponenSelect
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                      <KomponenSelect
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      />
                     )} 
                   />
                   {errors.komponen && <p className="text-sm text-destructive">{errors.komponen.message}</p>}
@@ -899,15 +895,10 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Akun harus dipilih" }}
                     render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <AkunSelect
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                      <AkunSelect
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      />
                     )} 
                   />
                   {errors.akun && <p className="text-sm text-destructive">{errors.akun.message}</p>}
