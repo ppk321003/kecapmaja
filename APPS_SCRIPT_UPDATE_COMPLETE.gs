@@ -1,9 +1,10 @@
 // ============================================
 // APPS SCRIPT COMPLETE - SPK & BAST GENERATION
 // ============================================
-// Deployment ID: AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb
-// URL: https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec
-// 
+// Deployment ID: AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl
+// URL: https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec
+// Version: 7 (Feb 22 2026, 16:45)
+//
 // FITUR LENGKAP:
 // 1. Generate SPK & BAST documents (dengan batch processing)
 // 2. Preview data sebelum generate
@@ -214,6 +215,43 @@ function getPeriodeListFromSheet() {
 }
 
 // ============================================
+// HELPER: Normalize periode for comparison
+// ============================================
+function normalizePeriode(periodeValue) {
+  if (!periodeValue) return "";
+  
+  // If it's a Date object, convert to "Bulan Tahun" format
+  if (periodeValue instanceof Date) {
+    const bulanList = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+    const month = bulanList[periodeValue.getMonth()];
+    const year = periodeValue.getFullYear().toString();
+    return `${month} ${year}`;
+  }
+  
+  // If it's a string, trim it
+  const strValue = periodeValue.toString().trim();
+  
+  // Handle cases like "Tue Jan 02 2024 00:00:00 GMT+0700 (Waktu Indonesia Barat)"
+  // Try to parse month and year from string representation
+  const dateParseRegex = /\(([A-Za-z]+)\s+(\d{4})\)/;
+  const match = strValue.match(dateParseRegex);
+  if (match && match[2]) {
+    const monthText = match[1];
+    const year = match[2];
+    const bulanMap = {
+      "January":"Januari", "February":"Februari", "March":"Maret", "April":"April",
+      "May":"Mei", "June":"Juni", "July":"Juli", "August":"Agustus",
+      "September":"September", "October":"Oktober", "November":"November", "December":"Desember"
+    };
+    const bulanIndo = bulanMap[monthText] || monthText;
+    return `${bulanIndo} ${year}`;
+  }
+  
+  // Return as-is if already in "Bulan Tahun" format
+  return strValue;
+}
+
+// ============================================
 // HELPER: RESET STATUS (Preserve Keterangan)
 // ============================================
 function resetStatusForPeriode(targetPeriode) {
@@ -227,7 +265,10 @@ function resetStatusForPeriode(targetPeriode) {
     Logger.log(`   Target periode: "${targetPeriode}"`);
     Logger.log(`   Length: ${targetPeriode.length}, Type: ${typeof targetPeriode}`);
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const spreadsheetId = getConfigSpreadsheetId();
+    Logger.log(`   Using spreadsheet ID: ${spreadsheetId.substring(0, 20)}...`);
+    
+    const ss = SpreadsheetApp.openById(spreadsheetId);
     const sheet = ss.getSheetByName("Sheet1");
     const dataRange = sheet.getDataRange();
     const allData = dataRange.getValues();
@@ -267,42 +308,48 @@ function resetStatusForPeriode(targetPeriode) {
       throw new Error("Kolom Status tidak ditemukan");
     }
     
-    Logger.log(`\n📝 Searching for rows matching periode: "${targetPeriode}"`);
+    const normalizedTarget = normalizePeriode(targetPeriode);
+    Logger.log(`\n📝 Normalized target periode: "${normalizedTarget}"`);
+    Logger.log(`   Searching for rows matching...`);
     
     let resetCount = 0;
     const matchedRows = [];
     const allPeriodes = [];
     const allStatuses = [];
+    const periodeMismatchExamples = [];
     
     for (let i = 1; i < allData.length; i++) {
       const row = allData[i];
-      const periode = (row[periodeIdx] || "").toString().trim();
+      const periodeRaw = row[periodeIdx];
       const status = (row[statusIdx] || "").toString().trim();
       const keterangan = keteranganIdx >= 0 ? ((row[keteranganIdx] || "").toString().trim()) : "";
       
-      // Collect all unique values for debugging
-      if (periode && !allPeriodes.includes(periode)) {
-        allPeriodes.push(periode);
+      const normalizedCell = normalizePeriode(periodeRaw);
+      
+      // Collect all unique normalized values for debugging
+      if (normalizedCell && !allPeriodes.includes(normalizedCell)) {
+        allPeriodes.push(normalizedCell);
       }
       if (status && !allStatuses.includes(status)) {
         allStatuses.push(status);
       }
       
       // Log first 10 rows and any matching rows
-      if (i <= 10 || periode === targetPeriode) {
+      if (i <= 10) {
         Logger.log(`\n   Row ${i}:`);
-        Logger.log(`      periode = "${periode}" (match: ${periode === targetPeriode})`);
+        Logger.log(`      raw periode = "${periodeRaw}"`);
+        Logger.log(`      normalized = "${normalizedCell}" (match: ${normalizedCell === normalizedTarget})`);
         Logger.log(`      status = "${status}"`);
         Logger.log(`      keterangan = "${keterangan}"`);
       }
       
-      // Check if this row matches
-      if (periode === targetPeriode) {
-        Logger.log(`   ✅ PERIODE MATCH at row ${i}!`);
+      // Check if this row matches (using normalized comparison)
+      if (normalizedCell === normalizedTarget) {
+        Logger.log(`   ✅ PERIODE MATCH at row ${i + 1}!`);
         
         if (status === 'Generated') {
           Logger.log(`      ✅ STATUS IS "Generated" - WILL RESET`);
-          matchedRows.push(i);
+          matchedRows.push(i + 1);
           
           // Clear Status & Link using spreadsheet object
           try {
@@ -323,6 +370,10 @@ function resetStatusForPeriode(targetPeriode) {
         } else {
           Logger.log(`      ⚠️ Status is "${status}" (not "Generated") - SKIPPED`);
         }
+      } else if (i <= 10) {
+        if (normalizedCell !== normalizedTarget) {
+          periodeMismatchExamples.push(`"${normalizedCell}" != "${normalizedTarget}"`);
+        }
       }
     }
     
@@ -330,17 +381,21 @@ function resetStatusForPeriode(targetPeriode) {
     Logger.log(`   Rows reset: ${resetCount}`);
     Logger.log(`   Matched rows: ${JSON.stringify(matchedRows)}`);
     Logger.log(`\n📈 Data Analysis:`);
-    Logger.log(`   Unique periodes in sheet: ${allPeriodes.length}`);
-    Logger.log(`   ${allPeriodes.map(p => `"${p}"`).join(", ")}`);
+    Logger.log(`   Unique periodes (normalized): ${allPeriodes.length}`);
+    Logger.log(`   ${allPeriodes.slice(0, 20).map(p => `"${p}"`).join(", ")}`);
+    if (allPeriodes.length > 20) Logger.log(`   ... and ${allPeriodes.length - 20} more`);
     Logger.log(`   Unique statuses in sheet: ${allStatuses.length}`);
     Logger.log(`   ${allStatuses.map(s => `"${s}"`).join(", ")}`);
     
     if (resetCount === 0) {
       Logger.log(`\n⚠️ WARNING: No rows were reset!`);
       Logger.log(`   Possible issues:`);
-      Logger.log(`   1. Periode "${targetPeriode}" not found in data`);
+      Logger.log(`   1. Periode "${normalizedTarget}" not found in data`);
       Logger.log(`   2. Found periode but status != "Generated"`);
-      Logger.log(`   3. Column indices are wrong`);
+      Logger.log(`   3. Period doesn't have any generated rows yet`);
+      if (periodeMismatchExamples.length > 0) {
+        Logger.log(`   Example mismatches: ${periodeMismatchExamples.slice(0, 3).join(" | ")}`);
+      }
     } else {
       Logger.log(`\n✅ SUCCESS: Reset completed!`);
     }
@@ -368,6 +423,9 @@ function deleteFolderByPeriode(targetPeriode) {
     Logger.log(`\n🗑️ ===== DELETE FOLDER START =====`);
     Logger.log(`   Target periode: "${targetPeriode}" (length: ${targetPeriode.length})`);
     
+    const normalizedTarget = normalizePeriode(targetPeriode);
+    Logger.log(`   Normalized target: "${normalizedTarget}"`);
+    
     const outputFolderId = getConfigFolderId();
     Logger.log(`   OUTPUT_FOLDER_ID: ${outputFolderId}`);
     
@@ -379,37 +437,41 @@ function deleteFolderByPeriode(targetPeriode) {
     }
     
     Logger.log(`📁 Output Folder found: ${outputFolder.getName()}`);
-    Logger.log(`🔍 Searching for subfolder with exact name: "${targetPeriode}"`);
+    Logger.log(`🔍 Searching for subfolder matching: "${normalizedTarget}"`);
     
-    const folders = outputFolder.getFoldersByName(targetPeriode);
+    const folders = outputFolder.getFolders();
     let deleteCount = 0;
     
     const foldersToDelete = [];
     let folderCount = 0;
+    const allFolderNames = [];
+    
     while (folders.hasNext()) {
       const folder = folders.next();
-      folderCount++;
-      Logger.log(`   Found Folder ${folderCount}: "${folder.getName()}" (ID: ${folder.getId()})`);
-      foldersToDelete.push(folder);
+      const folderName = folder.getName();
+      allFolderNames.push(folderName);
+      
+      const normalizedFolder = normalizePeriode(folderName);
+      Logger.log(`   Found folder: "${folderName}" -> normalized: "${normalizedFolder}"`);
+      
+      if (normalizedFolder === normalizedTarget) {
+        folderCount++;
+        Logger.log(`      ✅ MATCH! Adding to delete list (${folderCount})`);
+        foldersToDelete.push(folder);
+      }
     }
     
-    Logger.log(`\n📊 Total folder dengan nama "${targetPeriode}": ${foldersToDelete.length}`);
+    Logger.log(`\n📊 Total matching folders: ${foldersToDelete.length}`);
     
     if (foldersToDelete.length === 0) {
-      Logger.log(`⚠️ NO FOLDER FOUND with name "${targetPeriode}"`);
-      Logger.log(`   Listing all subfolders in output folder (max 20):`);
-      
-      const allFolders = outputFolder.getFolders();
-      let allFolderCount = 0;
-      const existingFolders = [];
-      while (allFolders.hasNext() && allFolderCount < 20) {
-        const f = allFolders.next();
-        existingFolders.push(f.getName());
-        Logger.log(`      - "${f.getName()}"`);
-        allFolderCount++;
+      Logger.log(`⚠️ NO MATCHING FOLDER FOUND for "${normalizedTarget}"`);
+      Logger.log(`   All folders in output folder (first 30):`);
+      for (let i = 0; i < Math.min(30, allFolderNames.length); i++) {
+        Logger.log(`      - "${allFolderNames[i]}"`);
       }
-      Logger.log(`   Total folders listed: ${allFolderCount}`);
-      Logger.log(`   All existing folders: ${JSON.stringify(existingFolders)}`);
+      if (allFolderNames.length > 30) {
+        Logger.log(`   ... and ${allFolderNames.length - 30} more`);
+      }
     }
     
     for (let i = 0; i < foldersToDelete.length; i++) {
@@ -425,8 +487,9 @@ function deleteFolderByPeriode(targetPeriode) {
         }
         Logger.log(`   Contains ${fileCount} files`);
         
-        DriveApp.removeFolder(folder);
-        Logger.log(`   ✅ Folder successfully deleted`);
+        // Properly trash the folder (move to trash, not just remove from storage)
+        folder.setTrashed(true);
+        Logger.log(`   ✅ Folder successfully moved to trash`);
         deleteCount++;
       } catch(deleteErr) {
         Logger.log(`   ❌ Failed to delete folder: ${deleteErr}`);
@@ -608,7 +671,10 @@ function MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK(e) {
   const executionId = Utilities.getUuid().substring(0, 8);
   Logger.log(`⏰ [${executionId}] Memulai eksekusi dengan REALISASI dari spreadsheet utama...`);
   
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheetId = getConfigSpreadsheetId();
+  Logger.log(`   Using spreadsheet ID: ${spreadsheetId.substring(0, 20)}...`);
+  
+  const ss = SpreadsheetApp.openById(spreadsheetId);
   const sheet = ss.getSheetByName("Sheet1");
   if (!sheet) {
     Logger.log(`❌ [${executionId}] Sheet1 tidak ditemukan.`);

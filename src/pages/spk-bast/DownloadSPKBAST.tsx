@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import DownloadRekapHonor from "@/components/DownloadRekapHonor";
 import GenerateSPKBAST from "@/components/GenerateSPKBAST";
 import PreviewSPKBAST from "@/components/PreviewSPKBAST";
-import ResetStatusSPKBAST from "@/components/ResetStatusSPKBAST";
-import DeleteFolderSPKBAST from "@/components/DeleteFolderSPKBAST";
+import ResetAndDeleteSPKBAST from "@/components/ResetAndDeleteSPKBAST";
 import { useAuth } from "@/contexts/AuthContext";
 interface SPKData {
   no: number;
@@ -461,8 +460,7 @@ export default function DownloadSPKBAST() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                 <PreviewSPKBAST />
                 <GenerateSPKBAST />
-                <ResetStatusSPKBAST />
-                <DeleteFolderSPKBAST />
+                <ResetAndDeleteSPKBAST />
                 <DownloadRekapHonor />
               </div>
             </div>

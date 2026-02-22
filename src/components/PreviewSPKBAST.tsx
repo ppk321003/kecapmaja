@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Eye, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -18,24 +19,45 @@ interface PreviewData {
 export default function PreviewSPKBAST() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const satkerConfig = useSatkerConfigContext();
   const [showDialog, setShowDialog] = useState(false);
   const [loading, setLoading] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData[]>([]);
+  const [spreadsheetId, setSpreadsheetId] = useState<string>('');
 
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
   if (!isPPK) {
     return null;
   }
 
+  useEffect(() => {
+    // Get spreadsheet ID dari satker config
+    if (satkerConfig) {
+      const id = satkerConfig.getUserSatkerSheetId('entrikegiatan');
+      if (id) {
+        setSpreadsheetId(id);
+        console.log('📊 Preview - Spreadsheet ID dari config:', id.substring(0, 20) + '...');
+      }
+    }
+  }, [satkerConfig]);
+
   const handlePreview = async () => {
+    if (!spreadsheetId) {
+      toast({
+        title: "❌ Error",
+        description: "Spreadsheet ID tidak ditemukan. Pastikan config satker sudah benar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const SPK_SPREADSHEET_ID = "1fmSGAb0lE_iszZPH4I9ols1SAUfDeNU-AOBpG5-Tygc";
       
-      // Gunakan Supabase function untuk read sheet
+      // Gunakan Supabase function untuk read sheet dengan dynamic spreadsheet ID
       const { data: sheetResponse, error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: SPK_SPREADSHEET_ID,
+          spreadsheetId: spreadsheetId,
           operation: "read",
           range: "Sheet1!A:U"
         }
