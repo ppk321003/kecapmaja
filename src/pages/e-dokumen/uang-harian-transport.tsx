@@ -535,9 +535,7 @@ const UangHarianTransport = () => {
                   field
                 }) => <FormItem>
                       <FormLabel>Komponen</FormLabel>
-                      <FormControl>
-                        <KomponenSelect value={field.value} onValueChange={field.onChange} />
-                      </FormControl>
+                      <KomponenSelect value={field.value} onValueChange={field.onChange} />
                       <FormMessage />
                     </FormItem>} />
 
