@@ -6,21 +6,35 @@ import { Input } from '@/components/ui/input';
 import { Trash2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function DeleteFolderSPKBAST() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const satkerConfig = useSatkerConfigContext();
   const [showDialog, setShowDialog] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedPeriode, setSelectedPeriode] = useState<string>('');
   const [periodeList, setPeriodeList] = useState<string[]>([]);
   const [customPeriode, setCustomPeriode] = useState<string>('');
+  const [spreadsheetId, setSpreadsheetId] = useState<string>('');
 
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
   if (!isPPK) {
     return null;
   }
+
+  useEffect(() => {
+    // Get spreadsheet ID dari satker config
+    if (satkerConfig) {
+      const id = satkerConfig.getUserSatkerSheetId('entrikegiatan');
+      if (id) {
+        setSpreadsheetId(id);
+        console.log('📊 Spreadsheet ID dari config:', id.substring(0, 20) + '...');
+      }
+    }
+  }, [satkerConfig]);
 
   // Generate list of last 12 months in format "Bulan YYYY"
   const generatePeriodeList = () => {
@@ -66,6 +80,15 @@ export default function DeleteFolderSPKBAST() {
       return;
     }
 
+    if (!spreadsheetId) {
+      toast({
+        title: "❌ Error",
+        description: "Spreadsheet ID tidak ditemukan. Pastikan config satker sudah benar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!confirm(`⚠️ Anda akan menghapus SEMUA dokumen SPK & BAST di folder "${periodeToDelete}". Tindakan ini TIDAK DAPAT DIBATALKAN. Lanjutkan?`)) {
       return;
     }
@@ -97,7 +120,7 @@ export default function DeleteFolderSPKBAST() {
         setCustomPeriode('');
       };
 
-      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbyNzPtKOL3COYIF5lQAg01RSa-D0rkn9ExQhQVLge1GD7j132cezS5e9G5nWNwXJ7U/exec?action=deleteFolder&periode=${encodeURIComponent(periodeToDelete)}`;
+      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbyNzPtKOL3COYIF5lQAg01RSa-D0rkn9ExQhQVLge1GD7j132cezS5e9G5nWNwXJ7U/exec?action=deleteFolder&periode=${encodeURIComponent(periodeToDelete)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
       console.log(`🗑️ Triggering delete for: ${periodeToDelete}`);
       console.log(`   URL: ${APPS_SCRIPT_URL}`);
       img.src = APPS_SCRIPT_URL;

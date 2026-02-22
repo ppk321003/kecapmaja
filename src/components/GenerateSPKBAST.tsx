@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 
 export default function GenerateSPKBAST() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const satkerConfig = useSatkerConfigContext();
   const [isLoading, setIsLoading] = useState(false);
+  const [spreadsheetId, setSpreadsheetId] = useState<string>('');
 
   // Only show for Pejabat Pembuat Komitmen
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
@@ -15,10 +18,30 @@ export default function GenerateSPKBAST() {
     return null;
   }
 
+  useEffect(() => {
+    // Get spreadsheet ID dari satker config
+    if (satkerConfig) {
+      const id = satkerConfig.getUserSatkerSheetId('entrikegiatan');
+      if (id) {
+        setSpreadsheetId(id);
+        console.log('📊 Spreadsheet ID dari config:', id.substring(0, 20) + '...');
+      }
+    }
+  }, [satkerConfig]);
+
   const handleGenerate = () => {
+    if (!spreadsheetId) {
+      toast({
+        title: "❌ Error",
+        description: "Spreadsheet ID tidak ditemukan. Pastikan config satker sudah benar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbytFwj0PO3-rmIqX9l_pBRlL_XzLWmyJ29dtd9ATmoOx3220aqWfEF89FiWupxMu8Qb/exec";
+      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbyNzPtKOL3COYIF5lQAg01RSa-D0rkn9ExQhQVLge1GD7j132cezS5e9G5nWNwXJ7U/exec?spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
       
       // Gunakan Image approach untuk bypass CORS
       const img = new Image();
