@@ -132,207 +132,6 @@ const useSheetData = () => {
 };
 
 // Komponen AkunSelect dengan Search dalam 1 baris
-interface AkunSelectProps {
-  value: string;
-  onValueChange: (value: string) => void;
-}
-
-const AkunSelect: React.FC<AkunSelectProps> = ({ value, onValueChange }) => {
-  const [akunOptions, setAkunOptions] = useState<{ id: string; name: string; kode: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    fetchAkunOptions();
-  }, []);
-
-  // Focus ke input search saat dropdown terbuka
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-    }
-  }, [isOpen]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const fetchAkunOptions = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: "1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8",
-          operation: "read",
-          range: "akun"
-        }
-      });
-
-      if (error || !data?.values) {
-        console.error("Error fetching akun:", error);
-        return;
-      }
-
-      const rows = data.values.slice(1);
-      const options = rows
-        .map((row: any[]) => ({
-          id: row[1] || '',
-          kode: row[1] || '',
-          name: `${row[1]} - ${row[2]}` || ''
-        }))
-        .filter((item: any) => item.id && item.name);
-
-      setAkunOptions(options);
-    } catch (error) {
-      console.error("Error in fetchAkunOptions:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal memuat data akun",
-        description: "Terjadi kesalahan saat memuat data akun"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredOptions = useMemo(() => {
-    if (!searchTerm) return akunOptions;
-    return akunOptions.filter(option =>
-      option.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      option.kode.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [akunOptions, searchTerm]);
-
-  const selectedAkun = akunOptions.find(option => option.id === value);
-
-  return (
-    <div className="relative w-full" ref={dropdownRef}>
-      {/* Trigger Button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-          "hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-          "min-h-[40px] text-left"
-        )}
-      >
-        <div className="flex items-center gap-2 overflow-hidden">
-          {selectedAkun ? (
-            <span className="truncate">{selectedAkun.name}</span>
-          ) : (
-            <span className="text-muted-foreground">Pilih akun...</span>
-          )}
-        </div>
-        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
-      </button>
-
-      {/* Dropdown Content */}
-      {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-0 shadow-md animate-in fade-in-80">
-          {/* Search Input */}
-          <div className="border-b p-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                placeholder="Cari kode atau nama akun..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
-            </div>
-          </div>
-
-          {/* Options List dengan Scroll */}
-          <div className="max-h-64 overflow-y-auto">
-            <div className="p-1">
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : filteredOptions.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  Tidak ada data akun ditemukan
-                </div>
-              ) : (
-                filteredOptions.map((option) => {
-                  const isSelected = value === option.id;
-                  const [kode, nama] = option.name.split(' - ');
-                  
-                  return (
-                    <div
-                      key={option.id}
-                      onClick={() => {
-                        onValueChange(option.id);
-                        setIsOpen(false);
-                      }}
-                      className={cn(
-                        "flex items-start gap-3 p-3 rounded-md cursor-pointer transition-colors",
-                        "hover:bg-accent hover:text-accent-foreground",
-                        isSelected && "bg-blue-50 border border-blue-200"
-                      )}
-                    >
-                      <div className={cn(
-                        "flex h-5 w-5 items-center justify-center rounded-sm border mt-0.5",
-                        isSelected 
-                          ? "bg-blue-600 border-blue-600 text-white" 
-                          : "border-gray-300"
-                      )}>
-                        {isSelected && (
-                          <div className="h-2 w-2 rounded-full bg-white" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={cn(
-                            "font-medium truncate",
-                            isSelected && "text-blue-700"
-                          )}>
-                            {kode}
-                          </p>
-                          {isSelected && (
-                            <Badge variant="outline" className="text-xs">
-                              Terpilih
-                            </Badge>
-                          )}
-                        </div>
-                        {nama && (
-                          <p className="text-sm text-muted-foreground mt-1 truncate">
-                            {nama}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 // Improved MultiSelect Component
 interface MultiSelectProps {
   value: string[];
@@ -1081,26 +880,34 @@ const DaftarHadir = () => {
                     control={control} 
                     rules={{ required: "Komponen harus dipilih" }}
                     render={({ field }) => (
-                      <KomponenSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
+                      <FormItem>
+                        <FormControl>
+                          <KomponenSelect
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )} 
                   />
                   {errors.komponen && <p className="text-sm text-destructive">{errors.komponen.message}</p>}
-                </div>
-
-                <div className="space-y-2">
+                </div>\n\n                <div className="space-y-2">
                   <Label>Akun <span className="text-red-500">*</span></Label>
                   <Controller 
                     name="akun" 
                     control={control} 
                     rules={{ required: "Akun harus dipilih" }}
                     render={({ field }) => (
-                      <AkunSelect
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
+                      <FormItem>
+                        <FormControl>
+                          <AkunSelect
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )} 
                   />
                   {errors.akun && <p className="text-sm text-destructive">{errors.akun.message}</p>}

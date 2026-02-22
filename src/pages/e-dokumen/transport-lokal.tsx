@@ -596,7 +596,9 @@ const TransportLokal = () => {
                   field
                 }) => <FormItem>
                       <FormLabel>Komponen</FormLabel>
-                      <KomponenSelect value={field.value} onValueChange={field.onChange} />
+                      <FormControl>
+                        <KomponenSelect value={field.value} onValueChange={field.onChange} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>} />
 

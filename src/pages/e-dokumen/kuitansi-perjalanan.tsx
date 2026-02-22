@@ -734,10 +734,12 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Komponen</FormLabel>
-                        <KomponenSelect 
-                          value={field.value} 
-                          onValueChange={field.onChange} 
-                        />
+                        <FormControl>
+                          <KomponenSelect 
+                            value={field.value} 
+                            onValueChange={field.onChange} 
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} 
@@ -750,10 +752,12 @@ const akunMap = Object.fromEntries((akunList || []).map(item => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Akun</FormLabel>
-                        <AkunSelect 
-                          value={field.value} 
-                          onValueChange={field.onChange} 
-                        />
+                        <FormControl>
+                          <AkunSelect 
+                            value={field.value} 
+                            onValueChange={field.onChange} 
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} 
