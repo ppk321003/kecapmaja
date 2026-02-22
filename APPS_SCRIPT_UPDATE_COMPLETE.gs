@@ -1220,15 +1220,16 @@ function MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK(e) {
             mainTable.removeRow(mainTable.getNumRows() - 1);
           }
 
-          spk.uraianTugas.forEach((u) => {
+          spk.uraianTugas.forEach((u, index) => {
             const row = mainTable.appendTableRow();
-            row.appendTableCell(String(u.namaKegiatan || ""));
-            row.appendTableCell(u.beban || "");
-            row.appendTableCell(u.jangkaWaktu || "");
-            row.appendTableCell(String(u.target || ""));
-            row.appendTableCell(u.satuan || "");
-            row.appendTableCell(u.hargaSatuan ? "Rp. " + u.hargaSatuan.toLocaleString("id-ID") : "-");
-            row.appendTableCell("Rp. " + (u.nilai || 0).toLocaleString("id-ID"));
+            row.appendTableCell(String(index + 1)); // No
+            row.appendTableCell(String(u.namaKegiatan || "")); // Uraian Tugas
+            row.appendTableCell(u.beban || ""); // Beban Anggaran
+            row.appendTableCell(u.jangkaWaktu || ""); // Jangka Waktu
+            row.appendTableCell(String(u.target || "")); // Target
+            row.appendTableCell(u.satuan || ""); // Satuan
+            row.appendTableCell(u.hargaSatuan ? "Rp. " + u.hargaSatuan.toLocaleString("id-ID") : "-"); // Harga Satuan
+            row.appendTableCell("Rp. " + (u.nilai || 0).toLocaleString("id-ID")); // Nilai Perjanjian
           });
         }
       } catch(e) { 

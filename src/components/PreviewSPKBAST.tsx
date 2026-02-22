@@ -9,11 +9,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PreviewData {
+  no: number;
   periode: string;
-  nama: string;
-  nik: string;
-  kegiatan: string;
-  status: string;
+  role: string;
+  jenisPekerjaan: string;
+  namaKegiatan: string;
 }
 
 export default function PreviewSPKBAST() {
@@ -84,13 +84,14 @@ export default function PreviewSPKBAST() {
 
       const headers = rows[0];
       const periodeIdx = headers.indexOf('Periode (Bulan) SPK');
-      const namaIdx = headers.indexOf('Nama Petugas');
-      const nikIdx = headers.indexOf('NIK');
+      const roleIdx = headers.indexOf('Role');
+      const bebanIdx = headers.indexOf('Beban Anggaran');
       const kegiatanIdx = headers.indexOf('Nama Kegiatan');
       const statusIdx = headers.indexOf('Status');
       const keteranganIdx = headers.indexOf('Keterangan');
 
       const dataToProcess: PreviewData[] = [];
+      let rowCounter = 0;
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
@@ -101,12 +102,13 @@ export default function PreviewSPKBAST() {
           continue;
         }
 
+        rowCounter++;
         dataToProcess.push({
+          no: rowCounter,
           periode: row[periodeIdx]?.toString().trim() || '-',
-          nama: row[namaIdx]?.toString().trim() || '-',
-          nik: row[nikIdx]?.toString().trim() || '-',
-          kegiatan: row[kegiatanIdx]?.toString().trim() || '-',
-          status: status || '-'
+          role: row[roleIdx]?.toString().trim() || '-',
+          jenisPekerjaan: row[bebanIdx]?.toString().trim() || '-',
+          namaKegiatan: row[kegiatanIdx]?.toString().trim() || '-'
         });
       }
 
@@ -169,35 +171,29 @@ export default function PreviewSPKBAST() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-100 sticky top-0">
                     <tr>
-                      <th className="px-4 py-2 text-left font-semibold">No</th>
+                      <th className="px-4 py-2 text-center font-semibold">No</th>
                       <th className="px-4 py-2 text-left font-semibold">Periode</th>
-                      <th className="px-4 py-2 text-left font-semibold">Nama Petugas</th>
-                      <th className="px-4 py-2 text-left font-semibold">NIK</th>
-                      <th className="px-4 py-2 text-left font-semibold">Kegiatan</th>
-                      <th className="px-4 py-2 text-left font-semibold">Status</th>
+                      <th className="px-4 py-2 text-left font-semibold">Role</th>
+                      <th className="px-4 py-2 text-left font-semibold">Jenis Pekerjaan</th>
+                      <th className="px-4 py-2 text-left font-semibold">Nama Kegiatan</th>
                     </tr>
                   </thead>
                   <tbody>
                     {previewData.map((item, idx) => (
                       <tr key={idx} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-2 text-center">{idx + 1}</td>
+                        <td className="px-4 py-2 text-center font-medium">{item.no}</td>
                         <td className="px-4 py-2">{item.periode}</td>
                         <td className="px-4 py-2">
-                          <span className={!item.nama || item.nama === '-' ? 'text-red-600 font-semibold' : ''}>
-                            {item.nama}
+                          <span className={item.role === '-' ? 'text-red-600 font-semibold' : ''}>
+                            {item.role}
                           </span>
                         </td>
                         <td className="px-4 py-2">
-                          <span className={!item.nik || item.nik === '-' ? 'text-red-600 font-semibold' : ''}>
-                            {item.nik || '⚠️ Kosong'}
+                          <span className={item.jenisPekerjaan === '-' ? 'text-red-600 font-semibold' : ''}>
+                            {item.jenisPekerjaan}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-xs">{item.kegiatan}</td>
-                        <td className="px-4 py-2">
-                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
-                            {item.status}
-                          </span>
-                        </td>
+                        <td className="px-4 py-2 text-xs">{item.namaKegiatan}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -207,7 +203,7 @@ export default function PreviewSPKBAST() {
               <Alert className="bg-amber-50 border-amber-200">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-800 text-sm">
-                  ⚠️ Data berwarna merah = ada yang kosong atau tidak lengkap. Pastikan semuanya terisi sebelum lanjut generate.
+                  ⚠️ Kolom berwarna merah = ada yang kosong. Pastikan Role dan Jenis Pekerjaan terisi sebelum lanjut generate.
                 </AlertDescription>
               </Alert>
             </div>

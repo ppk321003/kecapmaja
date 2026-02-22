@@ -89,37 +89,32 @@ export default function ResetAndDeleteSPKBAST() {
       return;
     }
 
-    if (!confirm(`⚠️ Anda akan melakukan operasi berikut untuk periode ${periodeToProcess}:\n\n1. Reset status (kosongkan Status & Link)\n2. Hapus folder ${periodeToProcess} dan semua dokumennya dari Google Drive\n\nTindakan ini TIDAK DAPAT DIBATALKAN. Lanjutkan?`)) {
+    if (!confirm(`⚠️ Anda akan melakukan operasi berikut untuk periode ${periodeToProcess}:\n\n1. Reset status (kosongkan Kolom U & V)\n2. Hapus folder ${periodeToProcess} dan semua dokumennya dari Google Drive\n\nTindakan ini TIDAK DAPAT DIBATALKAN. Lanjutkan?`)) {
       return;
     }
 
     setLoading(true);
     try {
       toast({
-        title: "⏳ Proses Dimulai",
-        description: `Melakukan reset dan delete untuk periode ${periodeToProcess}...`,
+        title: "⏳ Step 1/2: Reset Status",
+        description: `Mengosongkan Kolom U & V untuk periode ${periodeToProcess}...`,
         variant: "default"
       });
 
-      // Step 1: Reset Status
-      console.log(`🔄 Step 1: Resetting status for ${periodeToProcess}`);
-      const resetImg = new Image();
+      // Step 1: Trigger Reset and wait
+      await triggerReset(periodeToProcess);
       
-      resetImg.onload = () => {
-        console.log(`✅ Reset completed`);
-        // Step 2: Delete Folder (after reset completes)
-        handleDeleteFolder(periodeToProcess);
-      };
+      // Wait 2 seconds for the reset to process on the server
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      resetImg.onerror = () => {
-        console.log(`✅ Reset initiated`);
-        // Even if img.onerror, the server process is running. Continue with delete.
-        handleDeleteFolder(periodeToProcess);
-      };
-
-      const RESET_URL = `https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec?action=resetStatus&periode=${encodeURIComponent(periodeToProcess)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
-      console.log(`🔄 Triggering reset for: ${periodeToProcess}`);
-      resetImg.src = RESET_URL;
+      // Step 2: Trigger Delete after reset is done
+      toast({
+        title: "⏳ Step 2/2: Delete Folder",
+        description: `Menghapus folder ${periodeToProcess} dari Google Drive...`,
+        variant: "default"
+      });
+      
+      await triggerDelete(periodeToProcess);
 
     } catch (error) {
       console.error('Error:', error);
@@ -128,28 +123,53 @@ export default function ResetAndDeleteSPKBAST() {
         description: "Terjadi kesalahan saat memproses",
         variant: "destructive"
       });
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteFolder = (periode: string) => {
-    // Step 2: Delete Folder
-    console.log(`🗑️ Step 2: Deleting folder for ${periode}`);
-    const deleteImg = new Image();
-    
-    deleteImg.onload = () => {
-      console.log(`✅ Delete completed`);
-      completeProcess(periode);
-    };
-    
-    deleteImg.onerror = () => {
-      console.log(`✅ Delete initiated`);
-      completeProcess(periode);
-    };
+  const triggerReset = (periode: string): Promise<void> => {
+    return new Promise((resolve) => {
+      console.log(`🔄 Triggering reset for: ${periode}`);
+      const resetImg = new Image();
+      
+      resetImg.onload = () => {
+        console.log(`✅ Reset API called successfully`);
+        resolve();
+      };
+      
+      resetImg.onerror = () => {
+        console.log(`✅ Reset API called (onerror)`);
+        resolve(); // Even on error, the server process may have succeeded
+      };
 
-    const DELETE_URL = `https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec?action=deleteFolder&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
-    console.log(`🗑️ Triggering delete for: ${periode}`);
-    deleteImg.src = DELETE_URL;
+      const RESET_URL = `https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec?action=resetStatus&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
+      console.log(`   Reset URL called`);
+      resetImg.src = RESET_URL;
+    });
+  };
+
+  const triggerDelete = (periode: string): Promise<void> => {
+    return new Promise((resolve) => {
+      console.log(`🗑️ Triggering delete for: ${periode}`);
+      const deleteImg = new Image();
+      
+      deleteImg.onload = () => {
+        console.log(`✅ Delete API called successfully`);
+        completeProcess(periode);
+        resolve();
+      };
+      
+      deleteImg.onerror = () => {
+        console.log(`✅ Delete API called (onerror)`);
+        completeProcess(periode);
+        resolve();
+      };
+
+      const DELETE_URL = `https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec?action=deleteFolder&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
+      console.log(`   Delete URL called`);
+      deleteImg.src = DELETE_URL;
+    });
   };
 
   const completeProcess = (periode: string) => {
