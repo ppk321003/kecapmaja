@@ -443,7 +443,7 @@ export const updateRPDFromBudgetChange = (
   rpdItem: Partial<RPDItem>,
   newJumlahMenjadi: number
 ): Partial<RPDItem> => {
-  const monthFields = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
+  const monthFields = ['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 
   const currentTotal = monthFields.reduce((sum, field) => sum + (rpdItem[field] || 0), 0);
 

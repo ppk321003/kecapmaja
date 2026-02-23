@@ -12,7 +12,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
-const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+const months = ['jan','feb','mar','apr','mei','jun','jul','aug','sep','oct','nov','dec'];
 const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 type SummaryViewType =

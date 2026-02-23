@@ -1105,7 +1105,7 @@ serve(async (req: Request) => {
             // Insert header row first
             const headerRow = [
               'id', 'program_pembebanan', 'kegiatan', 'komponen_output', 'sub_komponen', 'akun', 'uraian',
-              'total_pagu', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+              'total_pagu', 'jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
               'total_rpd', 'sisa_anggaran', 'status', 'modified_by', 'modified_date'
             ];
             
