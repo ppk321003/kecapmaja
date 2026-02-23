@@ -406,9 +406,9 @@ export function AppSidebar() {
               <SidebarMenu className="space-y-1">
                 {mainMenuItems
                   .filter((item) => {
-                    // Show Bahan Revisi Anggaran for PPK OR Fungsi role
+                    // Show Bahan Revisi Anggaran for ALL roles (previously limited to PPK/Fungsi)
                     if (item.title === "Bahan Revisi Anggaran") {
-                      return showBahanRevisiAnggaran;
+                      return true;
                     }
                     return true;
                   })
