@@ -65,6 +65,8 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedDetailGroup, setSelectedDetailGroup] = useState<GroupedRow | null>(null);
   const [selectedDetailItems, setSelectedDetailItems] = useState<RPDItem[]>([]);
+  const [detailsModalCurrentPage, setDetailsModalCurrentPage] = useState(0);
+  const itemsPerPage = 20;
 
   // Name maps to match Ringkasan behavior
   const programNameMap = useMemo(() => Object.fromEntries(programs.map(p => [p.id, `${p.id} - ${p.name}`])), [programs]);
@@ -318,6 +320,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     const detailItems = getDetailItems(group);
     setSelectedDetailGroup(group);
     setSelectedDetailItems(detailItems);
+    setDetailsModalCurrentPage(0);
     setIsDetailsModalOpen(true);
   };
 
@@ -725,62 +728,92 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
 
       {/* Detail Items Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
-        <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Detail Uraian - {selectedDetailGroup?.name}</DialogTitle>
           </DialogHeader>
           
           {selectedDetailItems && selectedDetailItems.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table className="w-full text-xs">
-                <TableHeader className="bg-slate-100/50">
-                  <TableRow>
-                    <TableHead className="text-left py-2 px-3 font-semibold">Uraian</TableHead>
-                    <TableHead className="text-right py-2 px-3 font-semibold">Total Pagu</TableHead>
-                    {months.map((m, i) => (
-                      <TableHead key={m} className="text-right py-2 px-3 font-semibold">{monthNames[i]}</TableHead>
-                    ))}
-                    <TableHead className="text-right py-2 px-3 font-semibold">Total RPD</TableHead>
-                    <TableHead className="text-right py-2 px-3 font-semibold">Sisa</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedDetailItems.map((item, idx) => (
-                    <TableRow key={item.id || idx} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
-                      <TableCell className="text-left py-2 px-3 font-medium">
-                        {getCombinedPembebanan(item) || `${formatName(item.program_pembebanan || '', 'program')} / ${formatName(item.kegiatan || '', 'kegiatan')}`}
-                      </TableCell>
-                      <TableCell className="text-right py-2 px-3 text-blue-600">{formatCurrencyNoRp(item.total_pagu || 0)}</TableCell>
-                      {months.map(m => (
-                        <TableCell key={`${item.id}-${m}`} className="text-right py-2 px-3">{formatCurrencyNoRp(Number((item as any)[m] || 0) || 0)}</TableCell>
+            <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+              <div className="overflow-x-auto flex-1 overflow-y-auto">
+                <Table className="w-full text-xs">
+                  <TableHeader className="bg-slate-100/50 sticky top-0">
+                    <TableRow>
+                      <TableHead className="text-left py-2 px-3 font-semibold">Uraian</TableHead>
+                      <TableHead className="text-right py-2 px-3 font-semibold">Total Pagu</TableHead>
+                      {months.map((m, i) => (
+                        <TableHead key={m} className="text-right py-2 px-3 font-semibold">{monthNames[i]}</TableHead>
                       ))}
-                      <TableCell className="text-right py-2 px-3 font-semibold text-blue-600">
-                        {formatCurrencyNoRp(months.reduce((s, m) => s + (Number((item as any)[m] || 0) || 0), 0))}
-                      </TableCell>
-                      <TableCell className={`text-right py-2 px-3 ${getSisaColor(item.sisa_anggaran || 0)}`}>{formatCurrencyNoRp(item.sisa_anggaran || 0)}</TableCell>
+                      <TableHead className="text-right py-2 px-3 font-semibold">Total RPD</TableHead>
+                      <TableHead className="text-right py-2 px-3 font-semibold">Sisa</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-                <TableFooter>
-                  <TableRow className="font-bold">
-                    <TableCell className="py-2 px-3">Total</TableCell>
-                    <TableCell className="text-right py-2 px-3 text-blue-600">
-                      {formatCurrencyNoRp(selectedDetailItems.reduce((s, item) => s + (Number(item.total_pagu || 0) || 0), 0))}
-                    </TableCell>
-                    {months.map((m) => (
-                      <TableCell key={`total-${m}`} className="text-right py-2 px-3">
-                        {formatCurrencyNoRp(selectedDetailItems.reduce((s, item) => s + (Number((item as any)[m] || 0) || 0), 0))}
-                      </TableCell>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).map((item, idx) => (
+                      <TableRow key={item.id || idx} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
+                        <TableCell className="text-left py-2 px-3 font-medium">
+                          {item.uraian || 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-right py-2 px-3 text-blue-600">{formatCurrencyNoRp(item.total_pagu || 0)}</TableCell>
+                        {months.map(m => (
+                          <TableCell key={`${item.id}-${m}`} className="text-right py-2 px-3">{formatCurrencyNoRp(Number((item as any)[m] || 0) || 0)}</TableCell>
+                        ))}
+                        <TableCell className="text-right py-2 px-3 font-semibold text-blue-600">
+                          {formatCurrencyNoRp(months.reduce((s, m) => s + (Number((item as any)[m] || 0) || 0), 0))}
+                        </TableCell>
+                        <TableCell className={`text-right py-2 px-3 ${getSisaColor(item.sisa_anggaran || 0)}`}>{formatCurrencyNoRp(item.sisa_anggaran || 0)}</TableCell>
+                      </TableRow>
                     ))}
-                    <TableCell className="text-right py-2 px-3 text-blue-600">
-                      {formatCurrencyNoRp(selectedDetailItems.reduce((s, item) => s + months.reduce((sm, m) => sm + (Number((item as any)[m] || 0) || 0), 0), 0))}
-                    </TableCell>
-                    <TableCell className={`text-right py-2 px-3 ${getSisaColor(selectedDetailItems.reduce((s, item) => s + (Number(item.sisa_anggaran || 0) || 0), 0))}`}>
-                      {formatCurrencyNoRp(selectedDetailItems.reduce((s, item) => s + (Number(item.sisa_anggaran || 0) || 0), 0))}
-                    </TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow className="font-bold">
+                      <TableCell className="py-2 px-3">Total (halaman)</TableCell>
+                      <TableCell className="text-right py-2 px-3 text-blue-600">
+                        {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (Number(item.total_pagu || 0) || 0), 0))}
+                      </TableCell>
+                      {months.map((m) => (
+                        <TableCell key={`total-${m}`} className="text-right py-2 px-3">
+                          {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (Number((item as any)[m] || 0) || 0), 0))}
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-right py-2 px-3 text-blue-600">
+                        {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + months.reduce((sm, m) => sm + (Number((item as any)[m] || 0) || 0), 0), 0))}
+                      </TableCell>
+                      <TableCell className={`text-right py-2 px-3 ${getSisaColor(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (Number(item.sisa_anggaran || 0) || 0), 0))}`}>
+                        {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (Number(item.sisa_anggaran || 0) || 0), 0))}
+                      </TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="border-t pt-4 flex items-center justify-between">
+                <div className="text-xs text-slate-600">
+                  Menampilkan {Math.min((detailsModalCurrentPage + 1) * itemsPerPage, selectedDetailItems.length)} dari {selectedDetailItems.length} item
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setDetailsModalCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={detailsModalCurrentPage === 0}
+                  >
+                    ← Sebelumnya
+                  </Button>
+                  <div className="text-xs text-slate-600 px-2">
+                    Halaman {detailsModalCurrentPage + 1} dari {Math.ceil(selectedDetailItems.length / itemsPerPage)}
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setDetailsModalCurrentPage(p => Math.min(Math.ceil(selectedDetailItems.length / itemsPerPage) - 1, p + 1))}
+                    disabled={detailsModalCurrentPage >= Math.ceil(selectedDetailItems.length / itemsPerPage) - 1}
+                  >
+                    Selanjutnya →
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-center py-8 text-slate-500">
