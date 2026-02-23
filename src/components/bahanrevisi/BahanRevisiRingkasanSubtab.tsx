@@ -489,29 +489,31 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
       const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
       const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
       
-      // Get the appropriate name/code field based on summary type and format as "code - name"
-      const itemCode = item.program_pembebanan || item.kegiatan || item.rincian_output || 
-                       item.komponen_output || item.sub_komponen || item.akun || 'Unknown';
+      // Get the appropriate code field based on summary type - must match filter logic!
+      let itemCode: string = 'Unknown';
+      let itemName: string = 'Unknown';
       
-      // Determine type and format name accordingly
-      let itemName: string;
       if (summaryView === 'program_pembebanan') {
+        itemCode = item.program_pembebanan || 'Uncategorized';
         itemName = getFormattedName(item.program_pembebanan, 'program');
       } else if (summaryView === 'kegiatan') {
+        itemCode = item.kegiatan || 'Uncategorized';
         itemName = getFormattedName(item.kegiatan, 'kegiatan');
       } else if (summaryView === 'rincian_output') {
+        itemCode = item.rincian_output || 'Uncategorized';
         itemName = getFormattedName(item.rincian_output, 'rincian_output');
       } else if (summaryView === 'komponen_output') {
+        itemCode = item.komponen_output || 'Uncategorized';
         itemName = getFormattedName(item.komponen_output, 'komponen_output');
       } else if (summaryView === 'sub_komponen') {
+        itemCode = item.sub_komponen || 'Uncategorized';
         itemName = getFormattedName(item.sub_komponen, 'sub_komponen');
       } else if (summaryView === 'akun') {
+        itemCode = item.akun || 'Uncategorized';
         itemName = getFormattedName(item.akun, 'akun');
       } else if (summaryView === 'akun_group' || summaryView === 'account_group') {
-        // For Kelompok Akun and Kelompok Belanja, use the name field directly (already has descriptions)
-        itemName = item.name || itemCode;
-      } else {
-        itemName = itemCode;
+        itemCode = item.name || 'Unknown';
+        itemName = item.name || 'Unknown';
       }
       
       return {
