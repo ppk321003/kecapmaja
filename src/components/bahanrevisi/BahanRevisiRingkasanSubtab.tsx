@@ -201,15 +201,16 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     [items]
   );
 
-  // Helper function to get combined pembebanan code
+  // Helper function to get combined pembebanan code - always 6 parts for consistency
   const getCombinedPembebananCode = (item: BudgetItem): string => {
-    const parts = [];
-    if (item.program_pembebanan) parts.push(item.program_pembebanan);
-    if (item.kegiatan) parts.push(item.kegiatan);
-    if (item.rincian_output) parts.push(item.rincian_output);
-    if (item.komponen_output) parts.push(item.komponen_output);
-    if (item.sub_komponen) parts.push(item.sub_komponen);
-    if (item.akun) parts.push(item.akun);
+    const parts = [
+      item.program_pembebanan || 'Uncategorized',
+      item.kegiatan || 'Uncategorized',
+      item.rincian_output || 'Uncategorized',
+      item.komponen_output || 'Uncategorized',
+      item.sub_komponen || 'Uncategorized',
+      item.akun || 'Uncategorized'
+    ];
     return parts.join('.');
   };
 
