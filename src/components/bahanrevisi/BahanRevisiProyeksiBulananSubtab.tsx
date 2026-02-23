@@ -728,63 +728,85 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
 
       {/* Detail Items Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
-        <DialogContent className="max-w-5xl max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-6xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Detail Uraian - {selectedDetailGroup?.name}</DialogTitle>
           </DialogHeader>
           
           {selectedDetailItems && selectedDetailItems.length > 0 ? (
             <div className="flex flex-col gap-4 flex-1 overflow-hidden">
-              <div className="overflow-x-auto flex-1 overflow-y-auto">
-                <Table className="w-full text-xs">
-                  <TableHeader className="bg-slate-100/50 sticky top-0">
-                    <TableRow>
-                      <TableHead className="text-left py-2 px-3 font-semibold">Uraian</TableHead>
-                      <TableHead className="text-right py-2 px-3 font-semibold">Total Pagu</TableHead>
+              {/* Scrollable table container with sticky header and column */}
+              <div className="flex-1 overflow-auto relative bg-white">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100/50">
+                      {/* Sticky header - Uraian column */}
+                      <th className="sticky left-0 top-0 z-20 text-left py-2 px-3 font-semibold min-w-[350px] bg-slate-100/50 border-b border-slate-200">
+                        Uraian
+                      </th>
+                      {/* Sticky header - other columns */}
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100/50 border-b border-slate-200 whitespace-nowrap">
+                        Total Pagu
+                      </th>
                       {months.map((m, i) => (
-                        <TableHead key={m} className="text-right py-2 px-3 font-semibold">{monthNames[i]}</TableHead>
+                        <th key={m} className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100/50 border-b border-slate-200 whitespace-nowrap">
+                          {monthNames[i]}
+                        </th>
                       ))}
-                      <TableHead className="text-right py-2 px-3 font-semibold">Total RPD</TableHead>
-                      <TableHead className="text-right py-2 px-3 font-semibold">Sisa</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100/50 border-b border-slate-200 whitespace-nowrap">
+                        Total RPD
+                      </th>
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100/50 border-b border-slate-200 whitespace-nowrap">
+                        Sisa
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).map((item, idx) => (
-                      <TableRow key={item.id || idx} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
-                        <TableCell className="text-left py-2 px-3 font-medium">
+                      <tr key={item.id || idx} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
+                        {/* Sticky first column */}
+                        <td className="sticky left-0 z-5 text-left py-2 px-3 font-medium min-w-[350px] bg-inherit border-b border-slate-200">
                           {item.uraian || 'N/A'}
-                        </TableCell>
-                        <TableCell className="text-right py-2 px-3 text-blue-600">{formatCurrencyNoRp(item.total_pagu || 0)}</TableCell>
+                        </td>
+                        <td className="text-right py-2 px-3 text-blue-600 border-b border-slate-200 whitespace-nowrap">
+                          {formatCurrencyNoRp(item.total_pagu || 0)}
+                        </td>
                         {months.map(m => (
-                          <TableCell key={`${item.id}-${m}`} className="text-right py-2 px-3">{formatCurrencyNoRp(Number((item as any)[m] || 0) || 0)}</TableCell>
+                          <td key={`${item.id}-${m}`} className="text-right py-2 px-3 border-b border-slate-200 whitespace-nowrap">
+                            {formatCurrencyNoRp(Number((item as any)[m] || 0) || 0)}
+                          </td>
                         ))}
-                        <TableCell className="text-right py-2 px-3 font-semibold text-blue-600">
+                        <td className="text-right py-2 px-3 font-semibold text-blue-600 border-b border-slate-200 whitespace-nowrap">
                           {formatCurrencyNoRp(months.reduce((s, m) => s + (Number((item as any)[m] || 0) || 0), 0))}
-                        </TableCell>
-                        <TableCell className={`text-right py-2 px-3 ${getSisaColor(item.sisa_anggaran || 0)}`}>{formatCurrencyNoRp(item.sisa_anggaran || 0)}</TableCell>
-                      </TableRow>
+                        </td>
+                        <td className={`text-right py-2 px-3 border-b border-slate-200 whitespace-nowrap ${getSisaColor(item.sisa_anggaran || 0)}`}>
+                          {formatCurrencyNoRp(item.sisa_anggaran || 0)}
+                        </td>
+                      </tr>
                     ))}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow className="font-bold">
-                      <TableCell className="py-2 px-3">Total (halaman)</TableCell>
-                      <TableCell className="text-right py-2 px-3 text-blue-600">
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-bold bg-slate-50 border-t border-slate-300">
+                      <td className="sticky left-0 z-5 py-2 px-3 min-w-[350px] bg-slate-50">
+                        Total (halaman)
+                      </td>
+                      <td className="text-right py-2 px-3 text-blue-600 whitespace-nowrap">
                         {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (Number(item.total_pagu || 0) || 0), 0))}
-                      </TableCell>
+                      </td>
                       {months.map((m) => (
-                        <TableCell key={`total-${m}`} className="text-right py-2 px-3">
+                        <td key={`total-${m}`} className="text-right py-2 px-3 whitespace-nowrap">
                           {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (Number((item as any)[m] || 0) || 0), 0))}
-                        </TableCell>
+                        </td>
                       ))}
-                      <TableCell className="text-right py-2 px-3 text-blue-600">
+                      <td className="text-right py-2 px-3 text-blue-600 whitespace-nowrap">
                         {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + months.reduce((sm, m) => sm + (Number((item as any)[m] || 0) || 0), 0), 0))}
-                      </TableCell>
-                      <TableCell className={`text-right py-2 px-3 ${getSisaColor(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (Number(item.sisa_anggaran || 0) || 0), 0))}`}>
+                      </td>
+                      <td className={`text-right py-2 px-3 whitespace-nowrap ${getSisaColor(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (Number(item.sisa_anggaran || 0) || 0), 0))}`}>
                         {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (Number(item.sisa_anggaran || 0) || 0), 0))}
-                      </TableCell>
-                    </TableRow>
-                  </TableFooter>
-                </Table>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
 
               {/* Pagination Controls */}
