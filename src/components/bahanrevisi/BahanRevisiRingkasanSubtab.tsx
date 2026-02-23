@@ -386,63 +386,80 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
 
   // Handle row click to show detail items in modal
   const handleRowClick = (group: SummaryRow) => {
-    // Get all budget items (changed + new + deleted)
+    // Get all budget items (changed + new + deleted + unchanged)
     const allBudgetItems = getAllBudgetItems();
     
-    // Filter based on summaryView
+    console.log('=== DEBUG handleRowClick ===');
+    console.log('summaryView:', summaryView);
+    console.log('group.id:', group.id);
+    console.log('group.name:', group.name);
+    console.log('allBudgetItems count:', allBudgetItems.length);
+    console.log('Sample items:', allBudgetItems.slice(0, 3).map(item => ({
+      pembebanan: item.pembebanan,
+      parts: item.pembebanan.split('.')
+    })));
+    
+    // Filter based on summaryView - use direct field matching instead of parsing
     let detailItems: BudgetChangeItem[] = [];
     switch (summaryView) {
       case 'program_pembebanan':
         detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[0] === group.id;
+          return (parts[0] === group.id) || (parts[0] === group.name);
         });
         break;
       case 'kegiatan':
         detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[1] === group.id;
+          return (parts[1] === group.id) || (parts[1] === group.name);
         });
         break;
       case 'rincian_output':
         detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[2] === group.id;
+          return (parts[2] === group.id) || (parts[2] === group.name);
         });
         break;
       case 'komponen_output':
         detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[3] === group.id;
+          return (parts[3] === group.id) || (parts[3] === group.name);
         });
         break;
       case 'sub_komponen':
         detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[4] === group.id;
+          return (parts[4] === group.id) || (parts[4] === group.name);
         });
         break;
       case 'akun':
         detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[5] === group.id;
+          return (parts[5] === group.id) || (parts[5] === group.name);
         });
         break;
       case 'akun_group':
         detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[5]?.slice(0, 3) === group.id;
+          const akunCode = parts[5] || '';
+          const akunGroup3Digit = akunCode.slice(0, 3);
+          return (akunGroup3Digit === group.id) || (akunGroup3Digit === group.name);
         });
         break;
       case 'account_group':
         detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[5]?.slice(0, 2) === group.id;
+          const akunCode = parts[5] || '';
+          const akunGroup2Digit = akunCode.slice(0, 2);
+          return (akunGroup2Digit === group.id) || (akunGroup2Digit === group.name);
         });
         break;
       default:
         break;
     }
+    
+    console.log('Matched detailItems count:', detailItems.length);
+    console.log('Matched items:', detailItems.slice(0, 3));
     
     setSelectedDetailGroup(group);
     setSelectedDetailItems(detailItems);
