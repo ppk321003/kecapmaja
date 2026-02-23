@@ -26,6 +26,10 @@ import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNum
 const DEFAULT_TARGET_ID = "1K0tEfeN45iwyq8yOqaCyZc1p3CLnAotQ6Iuu5NFilkI"; // Fallback for satker 3210
 const MASTER_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
+// Constants untuk TransportLokal sheet
+const TRANSPORT_LOKAL_SHEET_NAME = "TransportLokal";
+const DEFAULT_TRANSPORT_LOKAL_SPREADSHEET_ID = "1n6b-fTij3TPpCIQRRbcqRO-CpgvpCIavvDM7Xn3Q5vc";
+
 const getConstantsWithDynamicTarget = (targetId: string) => ({
   SPREADSHEET: {
     TARGET_ID: targetId,
@@ -37,6 +41,83 @@ const getConstantsWithDynamicTarget = (targetId: string) => ({
     MITRA: "MASTER.MITRA"
   }
 } as const);
+
+// Helper function untuk generate ID Transport Lokal (trl-yymmxxx)
+const generateTransportLokalId = async (spreadsheetId: string): Promise<string> => {
+  try {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `trl-${year}${month}`;
+
+    // Ambil semua data untuk mencari nomor terakhir di bulan ini
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: spreadsheetId,
+        operation: "read",
+        range: `${TRANSPORT_LOKAL_SHEET_NAME}!B:B`
+      }
+    });
+
+    if (error) throw error;
+
+    const values = data?.values || [];
+    const currentMonthIds = values
+      .slice(1)
+      .map((row: any[]) => row[0])
+      .filter((id: string) => id && id.startsWith(prefix))
+      .map((id: string) => {
+        const match = id.match(/trl-(\d{2})(\d{2})(\d{3})/);
+        if (match) {
+          const sequence = parseInt(match[3]);
+          return isNaN(sequence) ? 0 : sequence;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    const nextSequence = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
+    return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error("Error generating transport lokal ID:", error);
+    throw error;
+  }
+};
+
+// Helper function untuk get next sequence number untuk TransportLokal
+const getNextTransportLokalSequenceNumber = async (spreadsheetId: string): Promise<number> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: spreadsheetId,
+        operation: "read",
+        range: `${TRANSPORT_LOKAL_SHEET_NAME}!A:A`
+      }
+    });
+
+    if (error) throw error;
+
+    const values = data?.values || [];
+    if (values.length <= 1) return 1;
+
+    const sequenceNumbers = values
+      .slice(1)
+      .map((row: any[]) => {
+        const value = row[0];
+        if (typeof value === 'string' && value.trim() !== '') {
+          const num = parseInt(value);
+          return isNaN(num) ? 0 : num;
+        }
+        return 0;
+      })
+      .filter(num => num > 0);
+
+    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
+  } catch (error) {
+    console.error("Error getting next sequence number:", error);
+    throw error;
+  }
+};
 
 // Komponen Select dengan Search - VERSI DIPERBAIKI
 interface SearchableSelectProps {
@@ -498,6 +579,37 @@ const PersonTransportGroup: React.FC<{
   );
 };
 
+// Custom Hook untuk submit ke TransportLokal sheet
+const useSubmitTransportLokalToSheets = (targetSheetId: string = DEFAULT_TRANSPORT_LOKAL_SPREADSHEET_ID) => {
+  const submitData = async (data: any[]): Promise<any> => {
+    try {
+      console.log('📤 Submitting to TransportLokal sheet:', data);
+      
+      const { data: result, error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: targetSheetId,
+          operation: "append",
+          range: `${TRANSPORT_LOKAL_SHEET_NAME}!A:M`,
+          values: [data]
+        }
+      });
+
+      if (error) {
+        console.error('❌ Error submitting to TransportLokal:', error);
+        throw error;
+      }
+
+      console.log('✅ TransportLokal submission successful:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Submission error:', error);
+      throw error;
+    }
+  };
+
+  return { submitData };
+};
+
 // Custom Hooks
 const useSheetData = () => {
   const fetchSheetData = useCallback(async (spreadsheetId: string, range: string) => {
@@ -534,11 +646,66 @@ const extractDisplayName = (fullText: string) => {
   return parts.length > 1 ? parts[1] : fullText;
 };
 
+// Helper function untuk convert data Kuitansi ke format TransportLokal
+const convertKuitansiToTransportLokal = async (
+  kuitansiData: any,
+  flattenedTransportDetails: any[],
+  spreadsheetId: string
+): Promise<any[]> => {
+  try {
+    const [sequenceNumber, transportLokalId] = await Promise.all([
+      getNextTransportLokalSequenceNumber(spreadsheetId),
+      generateTransportLokalId(spreadsheetId)
+    ]);
+
+    // Pisahkan organik dan mitra
+    const organikDetails = flattenedTransportDetails.filter(d => d.type === "organik");
+    const mitraDetails = flattenedTransportDetails.filter(d => d.type === "mitra");
+
+    // Gabung nama organik dan mitra
+    const organikNames = organikDetails.map(d => d.nama).filter(Boolean).join(" | ");
+    const mitraNames = mitraDetails.map(d => d.nama).filter(Boolean).join(" | ");
+
+    // Format rincian keseluruhan
+    const rincianKeseluruhan = flattenedTransportDetails
+      .map(detail => {
+        const rate = parseInt(detail.rate) || 0;
+        return `${detail.nama} - ${detail.kecamatanTujuan} - ${formatTanggalIndonesia(detail.tanggalPelaksanaan)} - Rp ${rate.toLocaleString('id-ID')}`;
+      })
+      .join(" | ");
+
+    const grandTotal = flattenedTransportDetails.reduce((sum, item) => sum + (parseInt(item.rate) || 0), 0);
+
+    // Format array sesuai struktur TransportLokal (A:M = 13 kolom)
+    return [
+      sequenceNumber,                    // Kolom A: No
+      transportLokalId,                  // Kolom B: ID (trl-yymmxxx)
+      kuitansiData.tujuanPelaksanaan,    // Kolom C: Nama Kegiatan
+      kuitansiData.tujuanPelaksanaan,    // Kolom D: Detil
+      kuitansiData.program,              // Kolom E: Program
+      kuitansiData.kegiatan,             // Kolom F: Kegiatan
+      kuitansiData.kro,                  // Kolom G: KRO
+      kuitansiData.ro,                   // Kolom H: RO
+      kuitansiData.komponen,             // Kolom I: Komponen
+      kuitansiData.akun,                 // Kolom J: Akun
+      kuitansiData.tanggalSpj,           // Kolom K: Tanggal SPJ
+      kuitansiData.pembuatDaftar,        // Kolom L: Pembuat Daftar
+      organikNames,                      // Kolom M: Organik
+      mitraNames,                        // Kolom N: Mitra
+      rincianKeseluruhan                 // Kolom O: Rincian Keseluruhan
+    ];
+  } catch (error) {
+    console.error('Error converting Kuitansi to TransportLokal:', error);
+    throw error;
+  }
+};
+
 // Main Component
 const KuitansiTransportLokal = () => {
   const navigate = useNavigate();
   const satkerContext = useSatkerConfigContext();
   const targetSheetId = satkerContext?.getUserSatkerSheetId('kuitranport') || DEFAULT_TARGET_ID;
+  const targetTransportLokalSheetId = satkerContext?.getUserSatkerSheetId('spjtranslok') || DEFAULT_TRANSPORT_LOKAL_SPREADSHEET_ID;
   const CONSTANTS = getConstantsWithDynamicTarget(targetSheetId);
   const [organikGroups, setOrganikGroups] = useState<PersonGroup[]>([]);
   const [mitraGroups, setMitraGroups] = useState<PersonGroup[]>([]);
@@ -547,6 +714,7 @@ const KuitansiTransportLokal = () => {
 
   // Define hooks with access to CONSTANTS
   const { fetchSheetData } = useSheetData();
+  const { submitData: submitTransportLokal } = useSubmitTransportLokalToSheets(targetTransportLokalSheetId);
 
   const getNextSequenceNumber = useCallback(async (): Promise<number> => {
     const values = await fetchSheetData(
@@ -930,13 +1098,48 @@ const KuitansiTransportLokal = () => {
         transportDetails: transportDetailsWithNames
       };
 
+      // 1️⃣ Submit ke KuitansiTransportLokal
       const rowData = await formatDataForSpreadsheet(formDataWithNames);
-      
-      await submitData(rowData);
+      const kuitansiResult = await submitData(rowData);
+      const kuitansiId = rowData[1];
+
+      console.log('✅ Kuitansi submission successful, ID:', kuitansiId);
+
+      // 2️⃣ Convert dan submit ke TransportLokal (Opsi 1: Double-Submit)
+      const extractedProgram = extractDisplayName(programs.find(p => p.id === data.program)?.name || "");
+      const extractedKegiatan = extractDisplayName(kegiatanList.find(k => k.id === data.kegiatan)?.name || "");
+      const extractedKRO = extractDisplayName(kroList.find(k => k.id === data.kro)?.name || "");
+      const extractedRO = extractDisplayName(roList.find(r => r.id === data.ro)?.name || "");
+      const extractedKomponen = extractDisplayName(komponenList.find(k => k.id === data.komponen)?.name || "");
+      const extractedAkun = extractDisplayName(akunList.find(a => a.id === data.akun)?.name || "");
+      const extractedPembuatDaftar = organikList.find(p => p.id === data.pembuatDaftar)?.name || "";
+
+      const transportLokalData = {
+        tujuanPelaksanaan: data.tujuanPelaksanaan,
+        program: extractedProgram,
+        kegiatan: extractedKegiatan,
+        kro: extractedKRO,
+        ro: extractedRO,
+        komponen: extractedKomponen,
+        akun: extractedAkun,
+        tanggalSpj: formatTanggalIndonesia(data.tanggalSpj),
+        pembuatDaftar: extractedPembuatDaftar
+      };
+
+      const transportLokalRowData = await convertKuitansiToTransportLokal(
+        transportLokalData,
+        transportDetailsWithNames,
+        targetTransportLokalSheetId
+      );
+
+      const transportLokalResult = await submitTransportLokal(transportLokalRowData);
+      const transportLokalId = transportLokalRowData[1];
+
+      console.log('✅ Transport Lokal submission successful, ID:', transportLokalId);
 
       toast({ 
         title: "Berhasil!", 
-        description: `Data kuitansi transport lokal berhasil disimpan (ID: ${rowData[1]})` 
+        description: `Data berhasil disimpan - Kuitansi ID: ${kuitansiId}, Transport Lokal ID: ${transportLokalId}` 
       });
       
       navigate("/e-dokumen/buat");
