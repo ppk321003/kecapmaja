@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RPDItem, Program, Kegiatan, RincianOutput, KomponenOutput, SubKomponen, Akun, BudgetItem } from '@/types/bahanrevisi';
 import { FixedSizeList as List } from 'react-window';
 import { formatCurrency, formatCurrencyNoRp, calculateBudgetSummaryByKelompokAkun, calculateBudgetSummaryByKelompokBelanja } from '@/utils/bahanrevisi-calculations';
@@ -61,6 +62,9 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   const { user } = useAuth();
   const [summaryView, setSummaryView] = useState<SummaryViewType>('proyeksi');
   const [qaResult, setQaResult] = useState<{ budgetTotal: number; proyeksiTotal: number; diff: number } | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedDetailGroup, setSelectedDetailGroup] = useState<GroupedRow | null>(null);
+  const [selectedDetailItems, setSelectedDetailItems] = useState<RPDItem[]>([]);
 
   // Name maps to match Ringkasan behavior
   const programNameMap = useMemo(() => Object.fromEntries(programs.map(p => [p.id, `${p.id} - ${p.name}`])), [programs]);
@@ -260,6 +264,62 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   };
 
   const data = useMemo(() => getSummaryData(), [items, summaryView]);
+
+  // Function to get detail items for a selected group
+  const getDetailItems = (group: GroupedRow) => {
+    let filtered: RPDItem[] = [];
+    
+    switch (summaryView) {
+      case 'program_pembebanan':
+        filtered = items.filter(item => String(item.program_pembebanan || '') === group.key);
+        break;
+      case 'kegiatan':
+        filtered = items.filter(item => String(item.kegiatan || '') === group.key);
+        break;
+      case 'rincian_output':
+        // Extract rincian code from komponen code
+        filtered = items.filter(item => {
+          const komponenCode = String(item.komponen_output || '');
+          const rincianCode = komponenCode.split('.').slice(0, 2).join('.') || '';
+          return rincianCode === group.key;
+        });
+        break;
+      case 'komponen_output':
+        filtered = items.filter(item => String(item.komponen_output || '') === group.key);
+        break;
+      case 'sub_komponen':
+        filtered = items.filter(item => String(item.sub_komponen || '') === group.key);
+        break;
+      case 'akun':
+        filtered = items.filter(item => String(item.akun || '') === group.key);
+        break;
+      case 'akun_group':
+        // Filter by first 3 chars of akun code
+        filtered = items.filter(item => {
+          const akun = String(item.akun || '');
+          return akun.slice(0, 3) === group.key;
+        });
+        break;
+      case 'account_group':
+        // Filter by first 2 chars of akun code
+        filtered = items.filter(item => {
+          const akun = String(item.akun || '');
+          return akun.slice(0, 2) === group.key;
+        });
+        break;
+      default:
+        filtered = items;
+    }
+    
+    return filtered;
+  };
+
+  const handleRowClick = (group: GroupedRow) => {
+    const detailItems = getDetailItems(group);
+    setSelectedDetailGroup(group);
+    setSelectedDetailItems(detailItems);
+    setIsDetailsModalOpen(true);
+  };
 
   // Prepare data for horizontal bar chart (top performers)
   const chartData = useMemo(() => {
@@ -588,7 +648,11 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                     >{({ index, style }) => {
                       const row = data[index];
                       return (
-                        <div style={style} className={`${index % 2 === 0 ? '' : 'bg-slate-50'} grid grid-cols-[2fr,120px_repeat(12,120px),120px,120px] items-center`}>
+                        <div 
+                          style={style} 
+                          className={`${index % 2 === 0 ? '' : 'bg-slate-50'} grid grid-cols-[2fr,120px_repeat(12,120px),120px,120px] items-center cursor-pointer hover:bg-blue-50`}
+                          onClick={() => handleRowClick(row)}
+                        >
                               <div className="text-left py-2 px-3 font-medium">{row.name}</div>
                               <div className="py-2 px-3 text-right text-blue-600">{formatCurrencyNoRp(row.total_pagu || 0)}</div>
                           {months.map(m => (
@@ -625,7 +689,11 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                   </TableHeader>
                   <TableBody>
                     {data.map((row, idx) => (
-                      <TableRow key={row.id || row.key} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
+                      <TableRow 
+                        key={row.id || row.key} 
+                        className={`${idx % 2 === 0 ? '' : 'bg-slate-50'} cursor-pointer hover:bg-blue-50 hover:shadow-sm transition-colors`}
+                        onClick={() => handleRowClick(row)}
+                      >
                         <TableCell className="text-left py-2 px-3 font-medium">{row.name}</TableCell>
                         <TableCell className="text-right py-2 px-3 text-blue-600">{formatCurrencyNoRp(row.total_pagu || 0)}</TableCell>
                         {months.map(m => (
@@ -654,6 +722,73 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
         </Card>
         </div>
       )}
+
+      {/* Detail Items Modal */}
+      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+        <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detail Uraian - {selectedDetailGroup?.name}</DialogTitle>
+          </DialogHeader>
+          
+          {selectedDetailItems && selectedDetailItems.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table className="w-full text-xs">
+                <TableHeader className="bg-slate-100/50">
+                  <TableRow>
+                    <TableHead className="text-left py-2 px-3 font-semibold">Uraian</TableHead>
+                    <TableHead className="text-right py-2 px-3 font-semibold">Total Pagu</TableHead>
+                    {months.map((m, i) => (
+                      <TableHead key={m} className="text-right py-2 px-3 font-semibold">{monthNames[i]}</TableHead>
+                    ))}
+                    <TableHead className="text-right py-2 px-3 font-semibold">Total RPD</TableHead>
+                    <TableHead className="text-right py-2 px-3 font-semibold">Sisa</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedDetailItems.map((item, idx) => (
+                    <TableRow key={item.id || idx} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
+                      <TableCell className="text-left py-2 px-3 font-medium">
+                        {getCombinedPembebanan(item) || `${formatName(item.program_pembebanan || '', 'program')} / ${formatName(item.kegiatan || '', 'kegiatan')}`}
+                      </TableCell>
+                      <TableCell className="text-right py-2 px-3 text-blue-600">{formatCurrencyNoRp(item.total_pagu || 0)}</TableCell>
+                      {months.map(m => (
+                        <TableCell key={`${item.id}-${m}`} className="text-right py-2 px-3">{formatCurrencyNoRp(Number((item as any)[m] || 0) || 0)}</TableCell>
+                      ))}
+                      <TableCell className="text-right py-2 px-3 font-semibold text-blue-600">
+                        {formatCurrencyNoRp(months.reduce((s, m) => s + (Number((item as any)[m] || 0) || 0), 0))}
+                      </TableCell>
+                      <TableCell className={`text-right py-2 px-3 ${getSisaColor(item.sisa_anggaran || 0)}`}>{formatCurrencyNoRp(item.sisa_anggaran || 0)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow className="font-bold">
+                    <TableCell className="py-2 px-3">Total</TableCell>
+                    <TableCell className="text-right py-2 px-3 text-blue-600">
+                      {formatCurrencyNoRp(selectedDetailItems.reduce((s, item) => s + (Number(item.total_pagu || 0) || 0), 0))}
+                    </TableCell>
+                    {months.map((m) => (
+                      <TableCell key={`total-${m}`} className="text-right py-2 px-3">
+                        {formatCurrencyNoRp(selectedDetailItems.reduce((s, item) => s + (Number((item as any)[m] || 0) || 0), 0))}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right py-2 px-3 text-blue-600">
+                      {formatCurrencyNoRp(selectedDetailItems.reduce((s, item) => s + months.reduce((sm, m) => sm + (Number((item as any)[m] || 0) || 0), 0), 0))}
+                    </TableCell>
+                    <TableCell className={`text-right py-2 px-3 ${getSisaColor(selectedDetailItems.reduce((s, item) => s + (Number(item.sisa_anggaran || 0) || 0), 0))}`}>
+                      {formatCurrencyNoRp(selectedDetailItems.reduce((s, item) => s + (Number(item.sisa_anggaran || 0) || 0), 0))}
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8 text-slate-500">
+              <span>Tidak ada data detail untuk ditampilkan</span>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
