@@ -460,20 +460,57 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
           </CardContent>
         </Card>
 
-        {/* Bulan Dominan */}
+        {/* Bulan dengan Proyeksi Tertinggi - Semua 12 Bulan */}
         <Card className="bg-green-50/50 border-green-100">
           <CardContent className="pt-6">
-            <h3 className="text-sm font-semibold text-green-900 mb-3">Bulan dengan Proyeksi Tertinggi</h3>
-            <div className="space-y-2 text-sm">
-              {dominantMonths.map((month, idx) => (
-                <div key={month.m} className="flex items-center justify-between p-2 bg-white rounded border border-green-100">
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold text-green-700">{idx + 1}.</span>
-                    <span className="text-slate-700">{month.name}</span>
+            <h3 className="text-sm font-semibold text-green-900 mb-4">Bulan dengan Proyeksi Tertinggi (Semua 12 Bulan)</h3>
+            
+            <div className="space-y-3">
+              {(() => {
+                // Sort semua 12 bulan dari tertinggi ke terendah
+                const allMonthsSorted = monthTotals.slice().sort((a, b) => b.total - a.total);
+                
+                // Group into 3 baris × 4 kolom
+                const rows = [];
+                for (let i = 0; i < allMonthsSorted.length; i += 4) {
+                  rows.push(allMonthsSorted.slice(i, i + 4));
+                }
+
+                // Format currency dengan titik pemisah ribuan Indonesia
+                const formatCurrencyIndonesia = (value: number) => {
+                  return 'Rp ' + Math.round(value).toLocaleString('id-ID').replace(/,/g, '.');
+                };
+
+                return rows.map((row, rowIdx) => (
+                  <div key={rowIdx} className="grid grid-cols-2 gap-4">
+                    {row.map((month, idx) => {
+                      const globalIndex = rowIdx * 4 + idx;
+                      const percentage = totalYear > 0 
+                        ? ((month.total / totalYear) * 100).toFixed(1) 
+                        : '0';
+                      
+                      return (
+                        <div 
+                          key={month.m} 
+                          className="flex items-center justify-between p-3 bg-white rounded border border-green-200 hover:border-green-400 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <div className="text-sm font-bold text-green-700">
+                              {globalIndex + 1}. {month.name}
+                            </div>
+                            <div className="text-xs text-gray-700 mt-1 font-semibold">
+                              {formatCurrencyIndonesia(month.total)}
+                            </div>
+                          </div>
+                          <div className="text-sm font-bold text-green-900 ml-2 whitespace-nowrap">
+                            ({percentage}%)
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span className="font-semibold text-green-700">{formatCurrencyNoRp(month.total)}</span>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           </CardContent>
         </Card>
