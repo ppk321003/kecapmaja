@@ -251,6 +251,19 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const getAllBudgetItems = (): BudgetChangeItem[] => {
     const allItems: BudgetChangeItem[] = [];
     
+    // Debug: log sample source items
+    if (changedItems.length > 0) {
+      console.log('DEBUG SAMPLE CHANGED ITEM:', {
+        id: changedItems[0].id,
+        program_pembebanan: changedItems[0].program_pembebanan,
+        kegiatan: changedItems[0].kegiatan,
+        rincian_output: changedItems[0].rincian_output,
+        komponen_output: changedItems[0].komponen_output,
+        sub_komponen: changedItems[0].sub_komponen,
+        akun: changedItems[0].akun,
+      });
+    }
+    
     // Add changed items
     changedItems.forEach((item) => {
       const jumlahMenjadi = Number(item.jumlah_menjadi) || 0;
