@@ -245,6 +245,77 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     });
   };
 
+  // Get all budget items (changed + new + deleted) for modal filtering
+  const getAllBudgetItems = (): BudgetChangeItem[] => {
+    const allItems: BudgetChangeItem[] = [];
+    
+    // Add changed items
+    changedItems.forEach((item) => {
+      const jumlahMenjadi = Number(item.jumlah_menjadi) || 0;
+      const sisaAnggaran = Number(item.sisa_anggaran) || 0;
+      const blokir = Number(item.blokir) || 0;
+      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
+      const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
+      allItems.push({
+        id: item.id,
+        pembebanan: getCombinedPembebananCode(item),
+        uraian: item.uraian || '',
+        detailPerubahan: getDetailPerubahan(item),
+        jumlahSemula: Number(item.jumlah_semula) || 0,
+        jumlahMenjadi,
+        selisih: item.selisih || 0,
+        realisasi,
+        persentaseRealisasi,
+      });
+    });
+
+    // Add new items
+    newItems.forEach((item) => {
+      if ((Number(item.jumlah_menjadi) || 0) > 0) {
+        const jumlahMenjadi = Number(item.jumlah_menjadi) || 0;
+        const sisaAnggaran = Number(item.sisa_anggaran) || 0;
+        const blokir = Number(item.blokir) || 0;
+        const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
+        const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
+        allItems.push({
+          id: item.id,
+          pembebanan: getCombinedPembebananCode(item),
+          uraian: item.uraian || '',
+          detailPerubahan: `Baru: ${item.volume_menjadi} ${item.satuan_menjadi} @ ${formatCurrencyNoRp(item.harga_satuan_menjadi || 0)}`,
+          jumlahSemula: 0,
+          jumlahMenjadi,
+          selisih: jumlahMenjadi,
+          realisasi,
+          persentaseRealisasi,
+        });
+      }
+    });
+
+    // Add deleted items
+    deletedItems.forEach((item) => {
+      const jumlahSemula = Number(item.jumlah_semula) || 0;
+      const jumlahMenjadi = 0;
+      const selisih = jumlahMenjadi - jumlahSemula;
+      const sisaAnggaran = Number(item.sisa_anggaran) || 0;
+      const blokir = Number(item.blokir) || 0;
+      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
+      const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
+      allItems.push({
+        id: item.id,
+        pembebanan: getCombinedPembebananCode(item),
+        uraian: item.uraian || '',
+        detailPerubahan: `Dihapus: ${item.volume_semula} ${item.satuan_semula} @ ${formatCurrencyNoRp(item.harga_satuan_semula || 0)}`,
+        jumlahSemula,
+        jumlahMenjadi,
+        selisih,
+        realisasi,
+        persentaseRealisasi,
+      });
+    });
+
+    return allItems;
+  };
+
   const getNewBudgetItems = (): BudgetChangeItem[] => {
     return newItems
       .filter((item) => (Number(item.jumlah_menjadi) || 0) > 0) // Hide new items with 0 amount
@@ -293,56 +364,56 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
 
   // Handle row click to show detail items in modal
   const handleRowClick = (group: SummaryRow) => {
-    // Get all changed items
-    const allChangedItems = getChangedBudgetItems();
+    // Get all budget items (changed + new + deleted)
+    const allBudgetItems = getAllBudgetItems();
     
     // Filter based on summaryView
     let detailItems: BudgetChangeItem[] = [];
     switch (summaryView) {
       case 'program_pembebanan':
-        detailItems = allChangedItems.filter(item => {
+        detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
           return parts[0] === group.id;
         });
         break;
       case 'kegiatan':
-        detailItems = allChangedItems.filter(item => {
+        detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
           return parts[1] === group.id;
         });
         break;
       case 'rincian_output':
-        detailItems = allChangedItems.filter(item => {
+        detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
           return parts[2] === group.id;
         });
         break;
       case 'komponen_output':
-        detailItems = allChangedItems.filter(item => {
+        detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
           return parts[3] === group.id;
         });
         break;
       case 'sub_komponen':
-        detailItems = allChangedItems.filter(item => {
+        detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
           return parts[4] === group.id;
         });
         break;
       case 'akun':
-        detailItems = allChangedItems.filter(item => {
+        detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
           return parts[5] === group.id;
         });
         break;
       case 'akun_group':
-        detailItems = allChangedItems.filter(item => {
+        detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
           return parts[5]?.slice(0, 3) === group.id;
         });
         break;
       case 'account_group':
-        detailItems = allChangedItems.filter(item => {
+        detailItems = allBudgetItems.filter(item => {
           const parts = item.pembebanan.split('.');
           return parts[5]?.slice(0, 2) === group.id;
         });
