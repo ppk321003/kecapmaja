@@ -185,7 +185,7 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
         feb: parseFloat(row[9]) || 0,
         mar: parseFloat(row[10]) || 0,
         apr: parseFloat(row[11]) || 0,
-        may: parseFloat(row[12]) || 0,
+        mei: parseFloat(row[12]) || 0,
         jun: parseFloat(row[13]) || 0,
         jul: parseFloat(row[14]) || 0,
         aug: parseFloat(row[15]) || 0,

@@ -232,6 +232,22 @@ export const useImportMonthlyCSV = ({
         };
         const bulanColumn = bulanColumnMap[parsedData.bulan];
         
+        // VALIDASI: Pastikan bulan valid (1-12) dan bulanColumn ditemukan
+        if (!parsedData.bulan || parsedData.bulan < 1 || parsedData.bulan > 12 || !bulanColumn) {
+          errors.push({
+            type: 'validation',
+            message: `❌ Bulan tidak valid dalam CSV: "${parsedData.bulan}"`,
+            details: [
+              `Bulan harus antara 1-12. Diterima: ${parsedData.bulan}`,
+              `Kolom bulan yang dikembalikan: ${bulanColumn}`,
+              `Pastikan format periode CSV sesuai: "Periode Mei 2025" atau "Periode Januari 2025"`
+            ],
+          });
+          setImportErrors(errors);
+          setIsImporting(false);
+          return;
+        }
+        
         const rpdUpdateData = matchResult.matched_items.map((match) => {
           return {
             item: match.budgetItem,

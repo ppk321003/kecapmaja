@@ -115,7 +115,7 @@ const fetchRPDItemsFromSheet = async (sheetId: string): Promise<RPDItem[]> => {
           feb: roundToThousands(februari),
           mar: roundToThousands(maret),
           apr: roundToThousands(april),
-          may: roundToThousands(mei),
+          mei: roundToThousands(mei),
           jun: roundToThousands(juni),
           jul: roundToThousands(juli),
           aug: roundToThousands(agustus),
@@ -258,7 +258,7 @@ export const useRPDData = ({ sheetId, enabled = true }: UseRPDDataProps): RPDDat
                 case 'februar': updatedItem.feb = roundedValue; break;
                 case 'maret': updatedItem.mar = roundedValue; break;
                 case 'april': updatedItem.apr = roundedValue; break;
-                case 'mei': updatedItem.may = roundedValue; break;
+                case 'mei': updatedItem.mei = roundedValue; break;
                 case 'juni': updatedItem.jun = roundedValue; break;
                 case 'juli': updatedItem.jul = roundedValue; break;
                 case 'agustus': updatedItem.aug = roundedValue; break;
@@ -272,7 +272,7 @@ export const useRPDData = ({ sheetId, enabled = true }: UseRPDDataProps): RPDDat
             // Recalculate totals
             const totalRpd = roundToThousands(
               updatedItem.jan + updatedItem.feb + updatedItem.mar + updatedItem.apr +
-              updatedItem.may + updatedItem.jun + updatedItem.jul + updatedItem.aug +
+              updatedItem.mei + updatedItem.jun + updatedItem.jul + updatedItem.aug +
               updatedItem.sep + updatedItem.oct + updatedItem.nov + updatedItem.dec
             );
 
@@ -286,7 +286,7 @@ export const useRPDData = ({ sheetId, enabled = true }: UseRPDDataProps): RPDDat
               updatedItem.status = 'belum_isi';
             } else if (
               updatedItem.jan > 0 && updatedItem.feb > 0 && updatedItem.mar > 0 &&
-              updatedItem.apr > 0 && updatedItem.may > 0 && updatedItem.jun > 0 &&
+              updatedItem.apr > 0 && updatedItem.mei > 0 && updatedItem.jun > 0 &&
               updatedItem.jul > 0 && updatedItem.aug > 0 && updatedItem.sep > 0 &&
               updatedItem.oct > 0 && updatedItem.nov > 0 && updatedItem.dec > 0 &&
               totalRpd !== updatedItem.total_pagu

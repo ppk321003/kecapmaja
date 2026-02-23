@@ -457,7 +457,7 @@ export const processBahanRevisiRows = (
           feb: monthValues.februari || 0,
           mar: monthValues.maret || 0,
           apr: monthValues.april || 0,
-          may: monthValues.mei || 0,
+          mei: monthValues.mei || 0,
           jun: monthValues.juni || 0,
           jul: monthValues.juli || 0,
           aug: monthValues.agustus || 0,

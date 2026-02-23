@@ -1144,6 +1144,14 @@ serve(async (req: Request) => {
             const bulanNum = rpdUpdate.bulan; // 1-12
             const budgetItem = rpdUpdate.item;
             
+            // VALIDASI: Pastikan bulanColumnLetter valid - kalau tidak valid, skip item ini
+            if (!bulanColumnLetter || typeof bulanColumnLetter !== 'string' || !['I','J','K','L','M','N','O','P','Q','R','S','T'].includes(bulanColumnLetter)) {
+              const errorMsg = `⚠️ Invalid bulanColumn for item ${itemId}: "${bulanColumnLetter}" (bulan: ${bulanNum}). Item SKIPPED!`;
+              console.error(`  ❌ ${errorMsg}`);
+              rpdUpdateErrors.push(errorMsg);
+              continue; // Skip item dengan column yang invalid
+            }
+            
             console.log(`  🔄 Processing: ${itemId}, bulan ${bulanNum}, periodeIni value ${periodeIni}`);
             
             if (existingRpdIds.has(itemId)) {
