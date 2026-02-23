@@ -204,6 +204,8 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const getCombinedPembebananCode = (item: BudgetItem): string => {
     const parts = [];
     if (item.program_pembebanan) parts.push(item.program_pembebanan);
+    if (item.kegiatan) parts.push(item.kegiatan);
+    if (item.rincian_output) parts.push(item.rincian_output);
     if (item.komponen_output) parts.push(item.komponen_output);
     if (item.sub_komponen) parts.push(item.sub_komponen);
     if (item.akun) parts.push(item.akun);
@@ -312,37 +314,37 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
       case 'rincian_output':
         detailItems = allChangedItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return (parts[0] + '.' + parts[1]) === group.id;
+          return parts[2] === group.id;
         });
         break;
       case 'komponen_output':
         detailItems = allChangedItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return (parts[0] + '.' + parts[1] + '.' + parts[2]) === group.id;
+          return parts[3] === group.id;
         });
         break;
       case 'sub_komponen':
         detailItems = allChangedItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[3] === group.id;
+          return parts[4] === group.id;
         });
         break;
       case 'akun':
         detailItems = allChangedItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[4] === group.id;
+          return parts[5] === group.id;
         });
         break;
       case 'akun_group':
         detailItems = allChangedItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[4]?.slice(0, 3) === group.id;
+          return parts[5]?.slice(0, 3) === group.id;
         });
         break;
       case 'account_group':
         detailItems = allChangedItems.filter(item => {
           const parts = item.pembebanan.split('.');
-          return parts[4]?.slice(0, 2) === group.id;
+          return parts[5]?.slice(0, 2) === group.id;
         });
         break;
       default:
