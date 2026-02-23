@@ -165,6 +165,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const changedItems = useMemo(() => items.filter(item => item.status === 'changed'), [items]);
   const newItems = useMemo(() => items.filter(item => item.status === 'new'), [items]);
   const deletedItems = useMemo(() => items.filter(item => item.status === 'deleted'), [items]);
+  const unchangedItems = useMemo(() => items.filter(item => item.status === 'unchanged'), [items]);
 
   // Calculate summaries by different groupings
   const summaryByProgram = useMemo(() =>
@@ -245,7 +246,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     });
   };
 
-  // Get all budget items (changed + new + deleted) for modal filtering
+  // Get all budget items (changed + new + deleted + unchanged) for modal filtering
   const getAllBudgetItems = (): BudgetChangeItem[] => {
     const allItems: BudgetChangeItem[] = [];
     
@@ -308,6 +309,26 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
         jumlahSemula,
         jumlahMenjadi,
         selisih,
+        realisasi,
+        persentaseRealisasi,
+      });
+    });
+
+    // Add unchanged items
+    unchangedItems.forEach((item) => {
+      const jumlahMenjadi = Number(item.jumlah_menjadi) || 0;
+      const sisaAnggaran = Number(item.sisa_anggaran) || 0;
+      const blokir = Number(item.blokir) || 0;
+      const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
+      const persentaseRealisasi = calculatePersentaseRealisasi(realisasi, jumlahMenjadi);
+      allItems.push({
+        id: item.id,
+        pembebanan: getCombinedPembebananCode(item),
+        uraian: item.uraian || '',
+        detailPerubahan: getDetailPerubahan(item),
+        jumlahSemula: Number(item.jumlah_semula) || 0,
+        jumlahMenjadi,
+        selisih: item.selisih || 0,
         realisasi,
         persentaseRealisasi,
       });
