@@ -44,6 +44,7 @@ interface DetailedSummaryViewProps {
   totalBaru?: number;
   totalBerubah?: number;
   totalAllItems?: number;
+  onRowClick?: (row: SummaryRow) => void;
 }
 
 const DetailedSummaryView: React.FC<DetailedSummaryViewProps> = ({
@@ -59,6 +60,7 @@ const DetailedSummaryView: React.FC<DetailedSummaryViewProps> = ({
   totalBaru = 0,
   totalBerubah = 0,
   totalAllItems = 0,
+  onRowClick,
 }) => {
   const chartAndTableRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -269,7 +271,8 @@ const DetailedSummaryView: React.FC<DetailedSummaryViewProps> = ({
                   {data.map((item, idx) => (
                     <TableRow
                       key={item.id}
-                      className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}
+                      className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} ${onRowClick ? 'cursor-pointer hover:bg-blue-50' : ''}`}
+                      onClick={() => onRowClick?.(item)}
                     >
                       <TableCell className="text-left py-2 px-3 font-medium">
                         {item.name}

@@ -7,6 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { BudgetItem } from '@/types/bahanrevisi';
 import {
@@ -154,6 +155,11 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   };
 
   const [summaryView, setSummaryView] = useState<SummaryViewType>('changes');
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedDetailGroup, setSelectedDetailGroup] = useState<SummaryRow | null>(null);
+  const [selectedDetailItems, setSelectedDetailItems] = useState<BudgetChangeItem[]>([]);
+  const [detailsModalCurrentPage, setDetailsModalCurrentPage] = useState(0);
+  const itemsPerPage = 20;
 
   // Separate changed, new, and deleted items
   const changedItems = useMemo(() => items.filter(item => item.status === 'changed'), [items]);
@@ -281,6 +287,72 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
         persentaseRealisasi,
       };
     });
+  };
+
+  // Handle row click to show detail items in modal
+  const handleRowClick = (group: SummaryRow) => {
+    // Get all changed items
+    const allChangedItems = getChangedBudgetItems();
+    
+    // Filter based on summaryView
+    let detailItems: BudgetChangeItem[] = [];
+    switch (summaryView) {
+      case 'program_pembebanan':
+        detailItems = allChangedItems.filter(item => {
+          const parts = item.pembebanan.split('.');
+          return parts[0] === group.id;
+        });
+        break;
+      case 'kegiatan':
+        detailItems = allChangedItems.filter(item => {
+          const parts = item.pembebanan.split('.');
+          return parts[1] === group.id;
+        });
+        break;
+      case 'rincian_output':
+        detailItems = allChangedItems.filter(item => {
+          const parts = item.pembebanan.split('.');
+          return (parts[0] + '.' + parts[1]) === group.id;
+        });
+        break;
+      case 'komponen_output':
+        detailItems = allChangedItems.filter(item => {
+          const parts = item.pembebanan.split('.');
+          return (parts[0] + '.' + parts[1] + '.' + parts[2]) === group.id;
+        });
+        break;
+      case 'sub_komponen':
+        detailItems = allChangedItems.filter(item => {
+          const parts = item.pembebanan.split('.');
+          return parts[3] === group.id;
+        });
+        break;
+      case 'akun':
+        detailItems = allChangedItems.filter(item => {
+          const parts = item.pembebanan.split('.');
+          return parts[4] === group.id;
+        });
+        break;
+      case 'akun_group':
+        detailItems = allChangedItems.filter(item => {
+          const parts = item.pembebanan.split('.');
+          return parts[4]?.slice(0, 3) === group.id;
+        });
+        break;
+      case 'account_group':
+        detailItems = allChangedItems.filter(item => {
+          const parts = item.pembebanan.split('.');
+          return parts[4]?.slice(0, 2) === group.id;
+        });
+        break;
+      default:
+        break;
+    }
+    
+    setSelectedDetailGroup(group);
+    setSelectedDetailItems(detailItems);
+    setDetailsModalCurrentPage(0);
+    setIsDetailsModalOpen(true);
   };
 
   const getFilteredSummaryData = (): SummaryRow[] => {
@@ -861,6 +933,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
         totalBaru={values.baru}
         totalBerubah={values.berubah}
         totalAllItems={values.totalItems}
+        onRowClick={handleRowClick}
       />
     );
   };
@@ -948,6 +1021,138 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
 
       {/* Content */}
       {renderContent()}
+
+      {/* Detail Items Modal */}
+      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+        <DialogContent className="max-w-6xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Detail Uraian - {selectedDetailGroup?.name}</DialogTitle>
+          </DialogHeader>
+          
+          {selectedDetailItems && selectedDetailItems.length > 0 ? (
+            <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+              {/* Scrollable table container with sticky header and column */}
+              <div className="flex-1 overflow-auto relative bg-white">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100">
+                      {/* Sticky header - Uraian column */}
+                      <th className="sticky left-0 top-0 z-20 text-left py-2 px-3 font-semibold min-w-[350px] bg-slate-100 border-b border-slate-200">
+                        Uraian
+                      </th>
+                      {/* Sticky header - other columns */}
+                      <th className="sticky top-0 z-10 text-left py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
+                        Detail Perubahan
+                      </th>
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
+                        Jumlah Semula
+                      </th>
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
+                        Jumlah Menjadi
+                      </th>
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
+                        Selisih
+                      </th>
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
+                        Realisasi
+                      </th>
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
+                        Persentase Realisasi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).map((item, idx) => (
+                      <tr key={item.id || idx} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
+                        {/* Sticky first column */}
+                        <td className={`sticky left-0 z-5 text-left py-2 px-3 font-medium min-w-[350px] border-b border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                          {item.uraian || 'N/A'}
+                        </td>
+                        <td className="text-left py-2 px-3 whitespace-pre-wrap text-xs border-b border-slate-200">
+                          {item.detailPerubahan}
+                        </td>
+                        <td className="text-right py-2 px-3 border-b border-slate-200 whitespace-nowrap">
+                          {formatCurrencyNoRp(item.jumlahSemula)}
+                        </td>
+                        <td className="text-right py-2 px-3 border-b border-slate-200 whitespace-nowrap">
+                          {formatCurrencyNoRp(item.jumlahMenjadi)}
+                        </td>
+                        <td className={`text-right py-2 px-3 border-b border-slate-200 whitespace-nowrap font-semibold ${item.selisih === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrencyNoRp(item.selisih)}
+                        </td>
+                        <td className="text-right py-2 px-3 border-b border-slate-200 whitespace-nowrap text-purple-600 font-medium">
+                          {formatCurrencyNoRp(item.realisasi || 0)}
+                        </td>
+                        <td className="text-right py-2 px-3 border-b border-slate-200 whitespace-nowrap text-purple-600 font-medium">
+                          {formatPercentage(item.persentaseRealisasi || 0)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-bold bg-slate-50 border-t border-slate-300">
+                      <td className="sticky left-0 z-5 py-2 px-3 min-w-[350px] bg-slate-50 border-b border-slate-200">
+                        Total (halaman)
+                      </td>
+                      <td className="text-left py-2 px-3 border-b border-slate-200"></td>
+                      <td className="text-right py-2 px-3 whitespace-nowrap border-b border-slate-200">
+                        {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + item.jumlahSemula, 0))}
+                      </td>
+                      <td className="text-right py-2 px-3 whitespace-nowrap border-b border-slate-200">
+                        {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + item.jumlahMenjadi, 0))}
+                      </td>
+                      <td className="text-right py-2 px-3 whitespace-nowrap border-b border-slate-200">
+                        {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + item.selisih, 0))}
+                      </td>
+                      <td className="text-right py-2 px-3 whitespace-nowrap border-b border-slate-200 text-purple-600">
+                        {formatCurrencyNoRp(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (item.realisasi || 0), 0))}
+                      </td>
+                      <td className="text-right py-2 px-3 whitespace-nowrap border-b border-slate-200 text-purple-600">
+                        {formatPercentage(selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).length > 0
+                          ? selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + (item.realisasi || 0), 0) / selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).reduce((s, item) => s + item.jumlahMenjadi, 0) * 100
+                          : 0
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="border-t pt-4 flex items-center justify-between">
+                <div className="text-xs text-slate-600">
+                  Menampilkan {Math.min((detailsModalCurrentPage + 1) * itemsPerPage, selectedDetailItems.length)} dari {selectedDetailItems.length} item
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setDetailsModalCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={detailsModalCurrentPage === 0}
+                  >
+                    ← Sebelumnya
+                  </Button>
+                  <div className="text-xs text-slate-600 px-2">
+                    Halaman {detailsModalCurrentPage + 1} dari {Math.ceil(selectedDetailItems.length / itemsPerPage)}
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setDetailsModalCurrentPage(p => Math.min(Math.ceil(selectedDetailItems.length / itemsPerPage) - 1, p + 1))}
+                    disabled={detailsModalCurrentPage >= Math.ceil(selectedDetailItems.length / itemsPerPage) - 1}
+                  >
+                    Selanjutnya →
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8 text-slate-500">
+              <span>Tidak ada data detail untuk ditampilkan</span>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
