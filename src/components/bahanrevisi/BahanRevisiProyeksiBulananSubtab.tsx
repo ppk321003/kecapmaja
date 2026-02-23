@@ -739,24 +739,24 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
               <div className="flex-1 overflow-auto relative bg-white">
                 <table className="w-full text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-100/50">
+                    <tr className="bg-slate-100">
                       {/* Sticky header - Uraian column */}
-                      <th className="sticky left-0 top-0 z-20 text-left py-2 px-3 font-semibold min-w-[350px] bg-slate-100/50 border-b border-slate-200">
+                      <th className="sticky left-0 top-0 z-20 text-left py-2 px-3 font-semibold min-w-[350px] bg-slate-100 border-b border-slate-200">
                         Uraian
                       </th>
                       {/* Sticky header - other columns */}
-                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100/50 border-b border-slate-200 whitespace-nowrap">
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
                         Total Pagu
                       </th>
                       {months.map((m, i) => (
-                        <th key={m} className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100/50 border-b border-slate-200 whitespace-nowrap">
+                        <th key={m} className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
                           {monthNames[i]}
                         </th>
                       ))}
-                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100/50 border-b border-slate-200 whitespace-nowrap">
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
                         Total RPD
                       </th>
-                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100/50 border-b border-slate-200 whitespace-nowrap">
+                      <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
                         Sisa
                       </th>
                     </tr>
@@ -765,7 +765,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                     {selectedDetailItems.slice(detailsModalCurrentPage * itemsPerPage, (detailsModalCurrentPage + 1) * itemsPerPage).map((item, idx) => (
                       <tr key={item.id || idx} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
                         {/* Sticky first column */}
-                        <td className="sticky left-0 z-5 text-left py-2 px-3 font-medium min-w-[350px] bg-inherit border-b border-slate-200">
+                        <td className={`sticky left-0 z-5 text-left py-2 px-3 font-medium min-w-[350px] border-b border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
                           {item.uraian || 'N/A'}
                         </td>
                         <td className="text-right py-2 px-3 text-blue-600 border-b border-slate-200 whitespace-nowrap">
