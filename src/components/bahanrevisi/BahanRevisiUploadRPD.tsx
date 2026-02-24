@@ -269,7 +269,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       const codeInCol1 = String(row[1] || '').trim();
       
       // Detect what's in column 1
-      const isProgram = /^[0-9]{3}(\.[0-9]{2})?[A-Z]{2}/.test(codeInCol1); // 054.01.GG
+      const isProgram = /^[0-9]{3}\.[0-9]{2}\.[A-Z]{2}$/.test(codeInCol1); // 054.01.GG
       const isKegiatan = /^[0-9]{4}$/.test(codeInCol1); // 2896
       const isKomponen = /^[0-9]{4}\.[A-Z]{3}/.test(codeInCol1); // 2896.BMA
       const isSubKomponen = /^[A-Z]{3}$/.test(codeInCol1) && codeInCol1 !== 'NON' && codeInCol1 !== 'JAN' && codeInCol1 !== 'KD'; 
@@ -306,12 +306,13 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       // Ambil uraian dari column[2]
       const detailUraian = String(row[2] || '').trim();
       
-      // Parse monthly values
+      // Parse monthly values dengan proper number handling
+      // Nilai di CSV sudah dalam ribuan, kalikan 1000 untuk nilai sebenarnya
       const monthValues: { [key: string]: number } = {};
       let totalRPD = 0;
       
       for (const [month, colIdx] of monthColumnMap.entries()) {
-        const value = parseNumber(row[colIdx]);
+        const value = parseNumber(row[colIdx]) * 1000;
         monthValues[month] = value;
         totalRPD += value;
       }
@@ -326,7 +327,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
           sub_komponen: currentSubKomponen,
           akun: lastAkun,
           uraian: detailUraian,
-          total_pagu: totalRPD, // Sum of january to december
+          total_pagu: totalRPD, // Sum of january to december (in actual values)
           total_rpd: totalRPD,
           sisa_anggaran: 0, // No sisa since total_pagu = total_rpd
           status: 'active',
