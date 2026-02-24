@@ -243,6 +243,10 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       return isNaN(num) ? 0 : Math.max(0, num);
     };
 
+    // Find first month column index untuk menentukan uraian column
+    const monthColIndices = Array.from(monthColumnMap.values());
+    const firstMonthColIdx = monthColIndices.length > 0 ? Math.min(...monthColIndices) : 100;
+
     // Parse POK/hierarchical data dengan context tracking
     let currentProgram = '';
     let currentKegiatan = '';
@@ -263,22 +267,27 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
 
       // Get first non-empty cell untuk code
       let code = '';
-      let name = '';
       
-      for (let j = 0; j < Math.min(4, row.length); j++) {
+      for (let j = 0; j < Math.min(6, row.length); j++) {
         const cellStr = String(row[j] || '').trim();
-        if (cellStr && cellStr !== '-') {
-          if (!code && /^[a-zA-Z0-9.]+$/.test(cellStr) && cellStr.length <= 20) {
-            code = cellStr;
-          } else if (!name && cellStr.length > 2 && cellStr.length < 150) {
-            name = cellStr;
-            break;
-          }
+        if (cellStr && cellStr !== '-' && /^[a-zA-Z0-9.]+$/.test(cellStr) && cellStr.length <= 20) {
+          code = cellStr;
+          break;
+        }
+      }
+
+      // Get uraian dari kolom terakhir SEBELUM first month column
+      let uraian = '';
+      for (let j = firstMonthColIdx - 1; j >= 0; j--) {
+        const cellStr = String(row[j] || '').trim();
+        if (cellStr && cellStr !== '-' && cellStr.length > 2 && cellStr.length < 200) {
+          uraian = cellStr;
+          break;
         }
       }
 
       // Skip jika benar-benar kosong
-      if (!code && !name) continue;
+      if (!code && !uraian) continue;
 
       // Detect hierarchy level
       const isProgram = /^[0-9]{3}(\.[0-9]{2})?[A-Z]{2}/.test(code); // 054.01.GG
@@ -287,7 +296,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       const isSubKomponen = /^[A-Z]{3}$/.test(code) && code !== 'NON' && code !== 'JAN' && code !== 'KD'; // A
       const isAkun = /^[0-9]{5,6}$/.test(code); // 521213
 
-      // Update hierarchy context
+      // Update hierarchy context (MAINTAIN program unless explicit program row)
       if (isProgram) {
         currentProgram = code;
         currentKegiatan = '';
@@ -296,11 +305,13 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
         lastAkun = '';
       } else if (isKegiatan) {
         currentKegiatan = code;
+        // Keep currentProgram intact!
         currentKomponen = '';
         currentSubKomponen = '';
         lastAkun = '';
       } else if (isKomponen) {
         currentKomponen = code;
+        // Keep currentProgram and currentKegiatan intact!
         currentSubKomponen = '';
         lastAkun = '';
       } else if (isSubKomponen) {
@@ -329,7 +340,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
           komponen_output: currentKomponen,
           sub_komponen: currentSubKomponen,
           akun: code,
-          uraian: name,
+          uraian: uraian, // Dari kolom terakhir sebelum bulan
           total_pagu: 0,
           total_rpd: totalRPD,
           sisa_anggaran: -totalRPD, // Asumsi no pagu, so sisa = -rpd
@@ -654,37 +665,32 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Preview Item Baru</CardTitle>
+                  <CardTitle className="text-lg">Preview Item Baru ({uploadState.matchResult.unmatched.length} items)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto border rounded max-h-96 overflow-y-auto">
                     <table className="w-full text-sm border-collapse">
-                      <thead>
-                        <tr className="bg-slate-100 border-b">
-                          <th className="text-left p-2 border-r">Program</th>
-                          <th className="text-left p-2 border-r">Kegiatan</th>
-                          <th className="text-left p-2 border-r">Akun</th>
-                          <th className="text-left p-2 border-r">Uraian</th>
-                          <th className="text-right p-2">Total Pagu</th>
+                      <thead className="sticky top-0 bg-slate-100 z-10">
+                        <tr className="border-b">
+                          <th className="text-left p-2 border-r font-semibold">Program</th>
+                          <th className="text-left p-2 border-r font-semibold">Kegiatan</th>
+                          <th className="text-left p-2 border-r font-semibold">Akun</th>
+                          <th className="text-left p-2 border-r font-semibold">Uraian</th>
+                          <th className="text-right p-2 font-semibold">Total Pagu</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {uploadState.matchResult.unmatched.slice(0, 5).map((item, idx) => (
+                        {uploadState.matchResult.unmatched.map((item, idx) => (
                           <tr key={idx} className="border-b hover:bg-slate-50">
-                            <td className="p-2 border-r text-xs">{item.program_pembebanan}</td>
-                            <td className="p-2 border-r text-xs">{item.kegiatan}</td>
-                            <td className="p-2 border-r text-xs">{item.akun}</td>
-                            <td className="p-2 border-r text-xs">{item.uraian}</td>
-                            <td className="p-2 text-right text-xs">{formatCurrency(item.total_pagu || 0)}</td>
+                            <td className="p-2 border-r text-xs whitespace-nowrap">{item.program_pembebanan || '-'}</td>
+                            <td className="p-2 border-r text-xs whitespace-nowrap">{item.kegiatan || '-'}</td>
+                            <td className="p-2 border-r text-xs whitespace-nowrap">{item.akun || '-'}</td>
+                            <td className="p-2 border-r text-xs">{item.uraian || '-'}</td>
+                            <td className="p-2 text-right text-xs whitespace-nowrap">{formatCurrency(item.total_pagu || 0)}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                    {uploadState.matchResult.unmatched.length > 5 && (
-                      <div className="mt-2 text-xs text-slate-600">
-                        ... dan {uploadState.matchResult.unmatched.length - 5} item lainnya
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
