@@ -341,9 +341,9 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
           sub_komponen: currentSubKomponen,
           akun: code,
           uraian: uraian, // Dari kolom terakhir sebelum bulan
-          total_pagu: 0,
+          total_pagu: totalRPD, // Sum of january to december
           total_rpd: totalRPD,
-          sisa_anggaran: -totalRPD, // Asumsi no pagu, so sisa = -rpd
+          sisa_anggaran: 0, // No sisa since total_pagu = total_rpd
           status: 'active',
           ...monthValues,
         };
