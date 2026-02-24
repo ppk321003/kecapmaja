@@ -597,6 +597,14 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
                   komponenOutputs={komponenOutputs}
                   subKomponen={subKomponen}
                   akuns={akuns}
+                  sheetId={sheetId}
+                  onUploadRPD={() => {
+                    // Trigger refresh by re-fetching data
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 1000);
+                    return Promise.resolve();
+                  }}
                 />
             </TabsContent>
           </Tabs>

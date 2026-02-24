@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
+import BahanRevisiUploadRPD from './BahanRevisiUploadRPD';
 
 const months = ['jan','feb','mar','apr','mei','jun','jul','aug','sep','oct','nov','dec'];
 const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -47,6 +48,8 @@ interface Props {
   komponenOutputs?: KomponenOutput[];
   subKomponen?: SubKomponen[];
   akuns?: Akun[];
+  sheetId?: string | null;
+  onUploadRPD?: () => Promise<void>;
 }
 
 const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
@@ -57,7 +60,9 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   rincianOutputs = [],
   komponenOutputs = [],
   subKomponen = [],
-  akuns = []
+  akuns = [],
+  sheetId,
+  onUploadRPD,
 }) => {
   const { user } = useAuth();
   const [summaryView, setSummaryView] = useState<SummaryViewType>('proyeksi');
@@ -584,6 +589,18 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       {/* Export Buttons - Only for Pejabat Pembuat Komitmen Role */}
       {user?.role && user.role.toLowerCase().includes('pejabat pembuat komitmen') && (
         <div className="flex justify-end items-center gap-1 bg-transparent">
+          {sheetId && (
+            <BahanRevisiUploadRPD
+              existingRPDItems={items}
+              onUploadSuccess={async (newItems, updatedItems) => {
+                // Call parent's refresh callback if available
+                if (onUploadRPD) {
+                  await onUploadRPD();
+                }
+              }}
+              sheetId={sheetId}
+            />
+          )}
           <Button size="sm" variant="ghost" onClick={() => runQaCompare()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">QA Compare</Button>
           <Button size="sm" variant="ghost" onClick={() => downloadJPEG()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Export JPEG</Button>
           <Button size="sm" variant="ghost" onClick={() => downloadPDF()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Export PDF</Button>
