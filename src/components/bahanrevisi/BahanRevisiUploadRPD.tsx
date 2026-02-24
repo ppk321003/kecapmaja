@@ -253,7 +253,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
     let currentKomponen = '';
     let currentSubKomponen = '';
     let lastAkun = '';
-
+    
     for (let i = dataStartIdx; i < data.length; i++) {
       const row = data[i];
       
@@ -265,63 +265,48 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
         continue;
       }
 
-      // Get first non-empty cell untuk code
-      let code = '';
+      // Get code dari kolom 1 (bukan kolom 0)
+      const codeInCol1 = String(row[1] || '').trim();
       
-      for (let j = 0; j < Math.min(6, row.length); j++) {
-        const cellStr = String(row[j] || '').trim();
-        if (cellStr && cellStr !== '-' && /^[a-zA-Z0-9.]+$/.test(cellStr) && cellStr.length <= 20) {
-          code = cellStr;
-          break;
+      // Detect what's in column 1
+      const isProgram = /^[0-9]{3}(\.[0-9]{2})?[A-Z]{2}/.test(codeInCol1); // 054.01.GG
+      const isKegiatan = /^[0-9]{4}$/.test(codeInCol1); // 2896
+      const isKomponen = /^[0-9]{4}\.[A-Z]{3}/.test(codeInCol1); // 2896.BMA
+      const isSubKomponen = /^[A-Z]{3}$/.test(codeInCol1) && codeInCol1 !== 'NON' && codeInCol1 !== 'JAN' && codeInCol1 !== 'KD'; 
+      const isAkun = /^[0-9]{5,6}$/.test(codeInCol1); // 521213
+
+      // Update hierarchy context
+      if (codeInCol1) {
+        if (isProgram) {
+          currentProgram = codeInCol1;
+          currentKegiatan = '';
+          currentKomponen = '';
+          currentSubKomponen = '';
+          lastAkun = '';
+        } else if (isKegiatan) {
+          currentKegiatan = codeInCol1;
+          currentKomponen = '';
+          currentSubKomponen = '';
+          lastAkun = '';
+        } else if (isKomponen) {
+          currentKomponen = codeInCol1;
+          currentSubKomponen = '';
+          lastAkun = '';
+        } else if (isSubKomponen) {
+          currentSubKomponen = codeInCol1;
+          lastAkun = '';
+        } else if (isAkun) {
+          lastAkun = codeInCol1;
         }
+        // Don't create items for hierarchy headers, just update context
+        continue;
       }
 
-      // Get uraian dari kolom terakhir SEBELUM first month column
-      let uraian = '';
-      for (let j = firstMonthColIdx - 1; j >= 0; j--) {
-        const cellStr = String(row[j] || '').trim();
-        if (cellStr && cellStr !== '-' && cellStr.length > 2 && cellStr.length < 200) {
-          uraian = cellStr;
-          break;
-        }
-      }
-
-      // Skip jika benar-benar kosong
-      if (!code && !uraian) continue;
-
-      // Detect hierarchy level
-      const isProgram = /^[0-9]{3}(\.[0-9]{2})?[A-Z]{2}/.test(code); // 054.01.GG
-      const isKegiatan = /^[0-9]{4}$/.test(code); // 2896
-      const isKomponen = /^[0-9]{4}\.[A-Z]{3}/.test(code); // 2896.BMA
-      const isSubKomponen = /^[A-Z]{3}$/.test(code) && code !== 'NON' && code !== 'JAN' && code !== 'KD'; // A
-      const isAkun = /^[0-9]{5,6}$/.test(code); // 521213
-
-      // Update hierarchy context (MAINTAIN program unless explicit program row)
-      if (isProgram) {
-        currentProgram = code;
-        currentKegiatan = '';
-        currentKomponen = '';
-        currentSubKomponen = '';
-        lastAkun = '';
-      } else if (isKegiatan) {
-        currentKegiatan = code;
-        // Keep currentProgram intact!
-        currentKomponen = '';
-        currentSubKomponen = '';
-        lastAkun = '';
-      } else if (isKomponen) {
-        currentKomponen = code;
-        // Keep currentProgram and currentKegiatan intact!
-        currentSubKomponen = '';
-        lastAkun = '';
-      } else if (isSubKomponen) {
-        currentSubKomponen = code;
-        lastAkun = '';
-      } else if (isAkun) {
-        lastAkun = code;
-      }
-
-      // Parse monthly values dengan proper number handling
+      // Jika column[1] kosong, ini adalah detail item row
+      // Ambil uraian dari column[2]
+      const detailUraian = String(row[2] || '').trim();
+      
+      // Parse monthly values
       const monthValues: { [key: string]: number } = {};
       let totalRPD = 0;
       
@@ -331,16 +316,16 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
         totalRPD += value;
       }
 
-      // Untuk POK, hanya add item yang memiliki akun dan nilai > 0
-      if (isAkun && totalRPD > 0) {
+      // Create item jika: ada akun, ada uraian, dan nilai > 0
+      if (lastAkun && detailUraian && totalRPD > 0) {
         const item: Partial<RPDItem> = {
           id: `rpd_${Date.now()}_${i}_${Math.random()}`,
           program_pembebanan: currentProgram,
           kegiatan: currentKegiatan,
           komponen_output: currentKomponen,
           sub_komponen: currentSubKomponen,
-          akun: code,
-          uraian: uraian, // Dari kolom terakhir sebelum bulan
+          akun: lastAkun,
+          uraian: detailUraian,
           total_pagu: totalRPD, // Sum of january to december
           total_rpd: totalRPD,
           sisa_anggaran: 0, // No sisa since total_pagu = total_rpd
