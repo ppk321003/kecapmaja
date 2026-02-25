@@ -250,7 +250,7 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
       { type: 'surat_tugas', name: 'Surat Tugas', isRequired: true, isChecked: false },
       { type: 'daftar_hadir', name: 'Daftar Hadir', isRequired: true, isChecked: false },
       { type: 'notulen', name: 'Notulen/Laporan dan Dokumentasi Rapat', isRequired: true, isChecked: false },
-      { type: 'super_fasilitas', name: 'Super Fasilitas Kantor Tidak Memadai', isRequired: true, isChecked: false },
+      { type: 'super_fasilitas', name: 'Super Fasilitas Kantor Tidak Memadai', isRequired: false, isChecked: false, note: 'dilengkapi oleh Subject Meter' },
       { type: 'kontrak', name: 'Komitmen/Kontrak *)', isRequired: true, isChecked: false },
       { type: 'bukti_prestasi', name: 'Bukti Prestasi (BAPP/BAST/BAP)', isRequired: true, isChecked: false },
       { type: 'room_list', name: 'Room List', isRequired: false, isChecked: false, note: 'Wajib ada jika Fullboard' },
