@@ -63,6 +63,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Computed
   const filteredEmployees = useMemo(() => {
@@ -117,10 +118,13 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
       return;
     }
 
-    if (!window.confirm(`Kirim notifikasi WA ke ${recipients.length} orang?\n\nAksi ini tidak dapat dibatalkan.`)) {
-      return;
-    }
+    // Show confirmation modal instead of window.confirm
+    setShowConfirm(true);
+  };
 
+  // Handle confirmed send
+  const handleConfirmSend = async () => {
+    setShowConfirm(false);
     setIsLoading(true);
 
     try {
@@ -459,6 +463,74 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           </p>
         </CardContent>
       </Card>
+
+      {/* Custom Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <AlertCircle className="w-5 h-5 text-yellow-600" />
+                Konfirmasi Pengiriman
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <p className="font-medium">Anda akan mengirim notifikasi WA ke:</p>
+                <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                  <p className="text-sm font-semibold text-blue-900">{recipients.length} orang</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="font-medium text-sm">Template & Pesan:</p>
+                <div className="bg-gray-50 p-3 rounded border max-h-32 overflow-y-auto text-xs whitespace-pre-wrap">
+                  {previewMessage}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="font-medium text-sm">PPK Pengirim:</p>
+                <p className="text-sm text-gray-600">{ppkName}</p>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
+                <p className="text-xs text-yellow-800">
+                  ⚠️ <strong>Perhatian:</strong> Aksi ini tidak dapat dibatalkan. Notifikasi akan segera dikirim.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowConfirm(false)}
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleConfirmSend}
+                  disabled={isLoading}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="animate-spin mr-2">⏳</span>
+                      Mengirim...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Lanjutkan Kirim
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
