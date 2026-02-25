@@ -131,6 +131,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
       const { data, error } = await supabase.functions.invoke('send-manual-wa-notifications', {
         body: {
           nips: recipients.map((r) => r.nip),
+          employees: recipients, // Pass employee data so function doesn't need to fetch
           templateId: selectedTemplate,
           customDetail,
           customMessage,

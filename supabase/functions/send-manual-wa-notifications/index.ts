@@ -268,7 +268,12 @@ serve(async (req: Request) => {
     
     initializeDeviceTokens();
 
-    const { nips, templateId, customDetail, customMessage, ppkName } = await req.json() as BroadcastRequest;
+    interface RequestBody extends BroadcastRequest {
+      employees?: Karyawan[];
+    }
+
+    const requestBody = await req.json() as RequestBody;
+    const { nips, templateId, customDetail, customMessage, ppkName, employees } = requestBody;
 
     if (!nips || nips.length === 0) {
       return new Response(
@@ -277,37 +282,20 @@ serve(async (req: Request) => {
       );
     }
 
-    // Fetch employee data
-    console.log('[Manual Broadcast] Fetching employee data for', nips.length, 'NIPs');
-    const { data, error } = await supabase.functions.invoke('google-sheets', {
-      body: {
-        action: 'fetch',
-        sheet: 'MASTER.ORGANIK'
-      }
-    });
-
-    if (error) {
-      console.error('[Manual Broadcast] Sheet fetch error:', error);
+    // Use provided employee list from frontend (no database fetch needed)
+    if (!employees || employees.length === 0) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to fetch employee data' }),
-        { status: 500, headers: corsHeaders }
+        JSON.stringify({ success: false, error: 'No employee data provided' }),
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    const allEmployees = (data || []).map((row: any) => ({
-      nip: row.NIP || '',
-      nama: row.NAMA || '',
-      no_hp: row['NO_HP'] || row['TELEPON'] || '',
-      jabatan: row.JABATAN || '',
-      golongan: row.GOLONGAN || ''
-    }));
-
     // Filter to selected NIPs
-    const employees = nips
-      .map(nip => allEmployees.find((e: Karyawan) => e.nip === nip))
+    const selectedEmployees = nips
+      .map(nip => employees.find((e: Karyawan) => e.nip === nip))
       .filter(Boolean) as Karyawan[];
 
-    if (employees.length === 0) {
+    if (selectedEmployees.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: 'No matching employees found' }),
         { status: 404, headers: corsHeaders }
@@ -318,7 +306,7 @@ serve(async (req: Request) => {
     const results: any[] = [];
     let sentCount = 0;
 
-    for (const emp of employees) {
+    for (const emp of selectedEmployees) {
       if (!emp.no_hp || emp.no_hp.trim() === '') {
         console.log(`[Skip] ${emp.nama}: No phone`);
         results.push({ nip: emp.nip, nama: emp.nama, sent: false, reason: 'no_phone' });
@@ -342,38 +330,18 @@ serve(async (req: Request) => {
         template: templateId
       });
 
+      // Small delay between sends
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    // Log to NOTIF_LOG
-    try {
-      await supabase.functions.invoke('google-sheets', {
-        body: {
-          action: 'append',
-          sheet: 'NOTIF_LOG',
-          data: results.map((r: any) => ({
-            TIMESTAMP: new Date().toISOString(),
-            TIPE_NOTIF: 'MANUAL',
-            NIP: r.nip,
-            NAMA: r.nama,
-            STATUS: r.sent ? 'SUCCESS' : 'FAILED',
-            DEVICE: r.device || 'N/A',
-            PESAN: `${r.template} - Manual broadcast by ${ppkName}`
-          }))
-        }
-      });
-    } catch (logError) {
-      console.warn('[Manual Broadcast] Log error:', logError);
-    }
-
-    console.log(`[Manual Broadcast] Complete. Sent: ${sentCount}/${employees.length}`);
+    console.log(`[Manual Broadcast] Complete. Sent: ${sentCount}/${selectedEmployees.length}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        total: employees.length,
+        total: selectedEmployees.length,
         sent: sentCount,
-        failed: employees.length - sentCount,
+        failed: selectedEmployees.length - sentCount,
         results
       }),
       { headers: corsHeaders }
