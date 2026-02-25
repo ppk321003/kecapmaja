@@ -2167,7 +2167,7 @@ const KarierKu: React.FC = () => {
           return `${masaKerjaYears} tahun ${masaKerjaMonths} bulan`;
         };
 
-        const tmtPns = nipData.tahunMasuk ? `${new Date(nipData.tahunMasuk).toLocaleString('id-ID', { month: 'long' })} ${new Date(nipData.tahunMasuk).getFullYear()}` : '';
+        const tmtPns = nipData.tahunMasuk ? `1 ${new Date(nipData.tahunMasuk).toLocaleString('id-ID', { month: 'long' })} ${new Date(nipData.tahunMasuk).getFullYear()}` : '';
         const masaKerja = nipData.tahunMasuk ? calculateMasaKerja(nipData.tahunMasuk) : '';
 
         return {
