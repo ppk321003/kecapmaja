@@ -1,0 +1,379 @@
+/**
+ * Supabase Edge Function: Manual WA Broadcast Notifications
+ * Triggered by PPK (Pejabat Pembuat Komitmen) for custom WA messages
+ * 
+ * Usage:
+ * - Only accessible by user with 'Pejabat Pembuat Komitmen' role
+ * - Sends custom messages to selected karyawan
+ * - Uses same Fonnte device rotation as auto-notifications
+ * - Logs to NOTIF_LOG with type="MANUAL"
+ */
+
+// @ts-ignore - Deno runtime
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore - Deno runtime
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
+
+// @ts-ignore - Deno global
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+// @ts-ignore - Deno global
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+// @ts-ignore - Deno global
+const fontneDeviceTokens = Deno.env.get("FONNTE_DEVICE_TOKENS") || "[]";
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// ==================== TYPES ====================
+interface Karyawan {
+  nip: string;
+  nama: string;
+  no_hp: string;
+  jabatan: string;
+  golongan: string;
+}
+
+interface DeviceToken {
+  name: string;
+  token: string;
+  active: boolean;
+}
+
+interface BroadcastRequest {
+  nips: string[];
+  templateId: string;
+  customDetail?: string;
+  customMessage?: string;
+  ppkName: string;
+}
+
+// ==================== DEVICE MANAGEMENT ====================
+let deviceTokens: DeviceToken[] = [];
+let deviceStats = new Map<string, { usageCount: number; lastUsed: Date; onCooldown: boolean }>();
+const RATE_LIMIT = { perHour: 15, perDay: 40, cooldownSeconds: 15 };
+
+function initializeDeviceTokens() {
+  try {
+    const tokens = JSON.parse(fontneDeviceTokens);
+    deviceTokens = Array.isArray(tokens) ? tokens : [];
+    for (const token of deviceTokens) {
+      if (token.active) {
+        deviceStats.set(token.name, {
+          usageCount: token.usageCount || 0,
+          lastUsed: token.lastUsed ? new Date(token.lastUsed) : new Date(0),
+          onCooldown: false,
+        });
+      }
+    }
+    console.log(`[Manual Broadcast] Initialized ${deviceTokens.filter(t => t.active).length} active devices`);
+  } catch (error) {
+    console.error('[Manual Broadcast] Failed to parse device tokens:', error);
+    deviceTokens = [];
+  }
+}
+
+function selectBestDevice(): DeviceToken | null {
+  const availableDevices = deviceTokens.filter(t => t.active);
+  if (availableDevices.length === 0) return null;
+
+  const candidates = availableDevices.filter(device => {
+    const stats = deviceStats.get(device.name);
+    if (!stats) return true;
+    if (stats.onCooldown) {
+      const timeSinceLastUse = Date.now() - stats.lastUsed.getTime();
+      if (timeSinceLastUse < RATE_LIMIT.cooldownSeconds * 1000) {
+        return false;
+      }
+      stats.onCooldown = false;
+    }
+    return true;
+  });
+
+  if (candidates.length === 0) return null;
+
+  let selected = candidates[0];
+  let minUsage = deviceStats.get(candidates[0].name)?.usageCount || 0;
+
+  for (const device of candidates) {
+    const usage = deviceStats.get(device.name)?.usageCount || 0;
+    if (usage < minUsage) {
+      minUsage = usage;
+      selected = device;
+    }
+  }
+
+  return selected;
+}
+
+// ==================== FONNTE SEND ====================
+async function sendWAViaFonnte(phoneNumber: string, message: string, retryCount: number = 0): Promise<{ success: boolean; device: string | null }> {
+  const maxRetries = 2;
+
+  try {
+    const device = selectBestDevice();
+    if (!device) {
+      console.error('[Manual Broadcast] No available devices');
+      return { success: false, device: null };
+    }
+
+    const stats = deviceStats.get(device.name);
+    if (!stats) {
+      return { success: false, device: null };
+    }
+
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    if (stats.lastUsed > hourAgo && stats.usageCount >= RATE_LIMIT.perHour) {
+      console.warn(`[Manual Broadcast] Device ${device.name} rate-limited (hourly)`);
+      if (retryCount < maxRetries) {
+        const delay = retryCount === 0 ? 10000 : 20000 + Math.random() * 70000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return sendWAViaFonnte(phoneNumber, message, retryCount + 1);
+      }
+      return { success: false, device: device.name };
+    }
+
+    const response = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': device.token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        target: phoneNumber,
+        message: message,
+        countryCode: '62'
+      })
+    });
+
+    const data = await response.json();
+    
+    stats.usageCount++;
+    stats.lastUsed = new Date();
+    stats.onCooldown = true;
+
+    if (data.status === 'success' || response.ok) {
+      console.log(`[Manual Broadcast] ✅ Sent via ${device.name} to ${phoneNumber}`);
+      return { success: true, device: device.name };
+    } else if (response.status === 429) {
+      if (retryCount < maxRetries) {
+        const delay = 20000 + Math.random() * 70000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return sendWAViaFonnte(phoneNumber, message, retryCount + 1);
+      }
+      return { success: false, device: device.name };
+    } else {
+      console.error(`[Manual Broadcast] Failed: ${data.status || response.statusText}`);
+      return { success: false, device: device.name };
+    }
+  } catch (error) {
+    console.error(`[Manual Broadcast] Error:`, error);
+    if (retryCount < maxRetries) {
+      const delay = retryCount === 0 ? 10000 : 20000 + Math.random() * 70000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return sendWAViaFonnte(phoneNumber, message, retryCount + 1);
+    }
+    return { success: false, device: null };
+  }
+}
+
+// ==================== HELPERS ====================
+function normalizePhoneNumber(noHp: string): string {
+  let normalized = noHp.replace(/\D/g, '');
+  if (normalized.startsWith('0')) {
+    normalized = '62' + normalized.substring(1);
+  }
+  if (!normalized.startsWith('62')) {
+    normalized = '62' + normalized;
+  }
+  return normalized;
+}
+
+function renderTemplate(templateId: string, detail: string, customMessage: string, nama: string, ppkName: string): string {
+  const templates: Record<string, string> = {
+    'informasi-penting': `Halo ${nama},
+
+Terdapat informasi penting yang perlu Anda ketahui:
+
+${detail}
+
+Mohon untuk membaca dengan seksama dan segera mengambil tindakan jika diperlukan.
+
+Salam,
+${ppkName}`,
+
+    'training-sosialisasi': `Halo ${nama},
+
+Dengan hormat, kami mengundang Anda untuk mengikuti training/sosialisasi:
+
+${detail}
+
+Silakan segera melakukan pendaftaran.
+
+Salam,
+${ppkName}`,
+
+    'pengumuman-kebijakan': `Halo ${nama},
+
+Perhatian: Kebijakan baru berlaku mulai sekarang:
+
+${detail}
+
+Mohon keselarasan dalam pelaksanaannya.
+
+Salam,
+${ppkName}`,
+
+    'reminder-pengajuan': `Halo ${nama},
+
+Reminder: Jangan lupa mengajukan PAK sebelum deadline:
+
+${detail}
+
+Salam,
+${ppkName}`,
+
+    'pengajuan-dana': `Halo ${nama},
+
+Status pengajuan dana Anda:
+
+${detail}
+
+Hubungi bagian keuangan jika ada pertanyaan.
+
+Salam,
+${ppkName}`,
+
+    'custom': customMessage.replace(/{nama}/g, nama).replace(/{ppkName}/g, ppkName)
+  };
+
+  return templates[templateId] || '';
+}
+
+// ==================== MAIN ====================
+serve(async (req: Request) => {
+  try {
+    console.log('[Manual Broadcast] Request received');
+    
+    initializeDeviceTokens();
+
+    const { nips, templateId, customDetail, customMessage, ppkName } = await req.json() as BroadcastRequest;
+
+    if (!nips || nips.length === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No recipients specified' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Fetch employee data
+    console.log('[Manual Broadcast] Fetching employee data for', nips.length, 'NIPs');
+    const { data, error } = await supabase.functions.invoke('google-sheets', {
+      body: {
+        action: 'fetch',
+        sheet: 'MASTER.ORGANIK'
+      }
+    });
+
+    if (error) {
+      console.error('[Manual Broadcast] Sheet fetch error:', error);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to fetch employee data' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const allEmployees = (data || []).map((row: any) => ({
+      nip: row.NIP || '',
+      nama: row.NAMA || '',
+      no_hp: row['NO_HP'] || row['TELEPON'] || '',
+      jabatan: row.JABATAN || '',
+      golongan: row.GOLONGAN || ''
+    }));
+
+    // Filter to selected NIPs
+    const employees = nips
+      .map(nip => allEmployees.find((e: Karyawan) => e.nip === nip))
+      .filter(Boolean) as Karyawan[];
+
+    if (employees.length === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No matching employees found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Send notifications
+    const results: any[] = [];
+    let sentCount = 0;
+
+    for (const emp of employees) {
+      if (!emp.no_hp || emp.no_hp.trim() === '') {
+        console.log(`[Skip] ${emp.nama}: No phone`);
+        results.push({ nip: emp.nip, nama: emp.nama, sent: false, reason: 'no_phone' });
+        continue;
+      }
+
+      const message = renderTemplate(templateId, customDetail || '', customMessage, emp.nama, ppkName);
+      const phoneNormalized = normalizePhoneNumber(emp.no_hp);
+      const sendResult = await sendWAViaFonnte(phoneNormalized, message);
+
+      if (sendResult.success) {
+        sentCount++;
+      }
+
+      results.push({
+        nip: emp.nip,
+        nama: emp.nama,
+        no_hp: phoneNormalized,
+        sent: sendResult.success,
+        device: sendResult.device,
+        template: templateId
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    // Log to NOTIF_LOG
+    try {
+      await supabase.functions.invoke('google-sheets', {
+        body: {
+          action: 'append',
+          sheet: 'NOTIF_LOG',
+          data: results.map((r: any) => ({
+            TIMESTAMP: new Date().toISOString(),
+            TIPE_NOTIF: 'MANUAL',
+            NIP: r.nip,
+            NAMA: r.nama,
+            STATUS: r.sent ? 'SUCCESS' : 'FAILED',
+            DEVICE: r.device || 'N/A',
+            PESAN: `${r.template} - Manual broadcast by ${ppkName}`
+          }))
+        }
+      });
+    } catch (logError) {
+      console.warn('[Manual Broadcast] Log error:', logError);
+    }
+
+    console.log(`[Manual Broadcast] Complete. Sent: ${sentCount}/${employees.length}`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        total: employees.length,
+        sent: sentCount,
+        failed: employees.length - sentCount,
+        results
+      }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('[Manual Broadcast Error]', error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+});

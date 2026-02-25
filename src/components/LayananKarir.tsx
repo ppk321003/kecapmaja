@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { FileText, Download, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, Download, HelpCircle, MessageSquare } from 'lucide-react';
 import KonversiPredikat from '@/components/KonversiPredikat';
 import DownloadPAK from '@/components/DownloadPAK';
+import ManualWABroadcast from '@/components/ManualWABroadcast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Karyawan } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LayananKarirProps {
   karyawan: Karyawan;
@@ -13,10 +15,49 @@ interface LayananKarirProps {
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const { user } = useAuth();
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
+  const userRole = user?.role ? [user.role] : [];
 
-  const [activeTab, setActiveTab] = useState<'generate' | 'download'>(
+  const [activeTab, setActiveTab] = useState<'generate' | 'download' | 'broadcast'>(
     isPPK ? 'generate' : 'download'
   );
+
+  const [allEmployees, setAllEmployees] = useState<Karyawan[]>([]);
+  const [ppkName, setPpkName] = useState<string>(user?.username || 'PPK');
+
+  // Fetch all employees for broadcast feature
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          action: 'fetch',
+          sheet: 'MASTER.ORGANIK'
+        }
+      });
+
+      if (!error && data) {
+        const employees = data.map((row: any) => ({
+          nip: row.NIP || '',
+          nama: row.NAMA || '',
+          pangkat: row.PANGKAT || '',
+          golongan: row.GOLONGAN || '',
+          jabatan: row.JABATAN || '',
+          kategori: row.KATEGORI || 'Reguler',
+          telepon: row.TELEPON || row['NO_HP'] || '',
+          unitKerja: row.KECAMATAN || row.SATKER || '',
+          akKumulatif: parseFloat(row.AK_KUMULATIF) || 0,
+        }));
+        setAllEmployees(employees);
+      }
+    };
+
+    if (isPPK) {
+      fetchEmployees();
+    }
+  }, [isPPK]);
+
+  useEffect(() => {
+    setPpkName(user?.username || 'PPK');
+  }, [user?.username]);
 
   return (
     <TooltipProvider>
@@ -65,6 +106,30 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
                   <p>Unduh dokumen PAK yang telah di-generate sebelumnya</p>
                 </TooltipContent>
               </Tooltip>
+
+              {/* Broadcast WA Tab — Hanya untuk PPK */}
+              {isPPK && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setActiveTab('broadcast')}
+                      className={`flex items-center gap-2.5 px-7 py-2.5 transition-all relative overflow-hidden ${
+                        activeTab === 'broadcast' ? 'text-white' : 'text-foreground/70 hover:text-foreground'
+                      }`}
+                    >
+                      {activeTab === 'broadcast' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80" />
+                      )}
+                      <MessageSquare className="w-4 h-4 relative z-10" />
+                      <span className="relative z-10">Broadcast WA</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    <p>Kirim notifikasi WhatsApp manual ke karyawan yang dipilih atau grup tertentu</p>
+                    <p className="text-xs mt-1 opacity-75">Hanya Pejabat Pembuat Komitmen (PPK) yang dapat mengakses</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
         </div>
@@ -97,6 +162,16 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
         {activeTab === 'download' && (
           <div className="w-full">
             <DownloadPAK karyawan={karyawan} />
+          </div>
+        )}
+
+        {activeTab === 'broadcast' && isPPK && (
+          <div className="w-full">
+            <ManualWABroadcast 
+              allEmployees={allEmployees}
+              userRole={userRole}
+              ppkName={ppkName}
+            />
           </div>
         )}
       </div>
