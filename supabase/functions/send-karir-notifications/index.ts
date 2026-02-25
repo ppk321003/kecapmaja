@@ -3,6 +3,7 @@
  * Trigger: Cron job setiap tanggal 1 pukul 08:00-09:00
  * 
  * UPDATED: Support CPNS II/c exception (40 AK instead of 60 AK)
+ * WITH: Device rotation strategy, rate limiting, retry mechanism dari Fonnte
  */
 
 // @ts-ignore - Deno runtime
@@ -15,7 +16,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 // @ts-ignore - Deno global
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 // @ts-ignore - Deno global
-const fontneApiKey = Deno.env.get("FONNTE_API_KEY") || "";
+const fontneDeviceTokens = Deno.env.get("FONNTE_DEVICE_TOKENS") || "[]";
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -32,6 +33,15 @@ interface Karyawan {
   akKumulatif: number;
   tmtPns?: string;
   tmtPangkat?: string;
+}
+
+interface DeviceToken {
+  name: string;
+  token: string;
+  active: boolean;
+  usageCount?: number;
+  lastUsed?: string;
+  isOnCooldown?: boolean;
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -139,12 +149,108 @@ function normalizePhoneNumber(noHp: string): string {
   return normalized;
 }
 
-async function sendWAViaFonnte(phoneNumber: string, message: string): Promise<boolean> {
+// ==================== FONNTE DEVICE MANAGEMENT ====================
+
+let deviceTokens: DeviceToken[] = [];
+let deviceStats = new Map<string, { usageCount: number; lastUsed: Date; onCooldown: boolean }>();
+const RATE_LIMIT = { perHour: 15, perDay: 40, cooldownSeconds: 15 };
+
+function initializeDeviceTokens() {
   try {
+    const tokens = JSON.parse(fontneDeviceTokens);
+    deviceTokens = Array.isArray(tokens) ? tokens : [];
+    
+    // Initialize stats for each device
+    for (const token of deviceTokens) {
+      if (token.active) {
+        deviceStats.set(token.name, {
+          usageCount: token.usageCount || 0,
+          lastUsed: token.lastUsed ? new Date(token.lastUsed) : new Date(0),
+          onCooldown: false
+        });
+      }
+    }
+    console.log(`[Fonnte] Initialized ${deviceTokens.filter(t => t.active).length} active devices`);
+  } catch (error) {
+    console.error('[Fonnte] Failed to parse device tokens:', error);
+    deviceTokens = [];
+  }
+}
+
+function selectBestDevice(): DeviceToken | null {
+  const availableDevices = deviceTokens.filter(t => t.active);
+  if (availableDevices.length === 0) return null;
+
+  // Select device with weighted distribution (prefer less-used devices)
+  const candidates = availableDevices.filter(device => {
+    const stats = deviceStats.get(device.name);
+    if (!stats) return true;
+    
+    // Check cooldown (15 seconds between uses)
+    if (stats.onCooldown) {
+      const timeSinceLastUse = Date.now() - stats.lastUsed.getTime();
+      if (timeSinceLastUse < RATE_LIMIT.cooldownSeconds * 1000) {
+        return false;
+      }
+      stats.onCooldown = false;
+    }
+    
+    return true;
+  });
+
+  if (candidates.length === 0) return null;
+
+  // Simple weighted random: device with fewer usages has higher probability
+  let selected = candidates[0];
+  let minUsage = deviceStats.get(candidates[0].name)?.usageCount || 0;
+
+  for (const device of candidates) {
+    const usage = deviceStats.get(device.name)?.usageCount || 0;
+    if (usage < minUsage) {
+      minUsage = usage;
+      selected = device;
+    }
+  }
+
+  return selected;
+}
+
+async function sendWAViaFonnte(
+  phoneNumber: string,
+  message: string,
+  retryCount: number = 0
+): Promise<{ success: boolean; device: string | null }> {
+  const maxRetries = 2;
+
+  try {
+    const device = selectBestDevice();
+    if (!device) {
+      console.error('[Fonnte] No available devices');
+      return { success: false, device: null };
+    }
+
+    const stats = deviceStats.get(device.name);
+    if (!stats) {
+      return { success: false, device: null };
+    }
+
+    // Check rate limits
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    if (stats.lastUsed > hourAgo && stats.usageCount >= RATE_LIMIT.perHour) {
+      console.warn(`[Fonnte] Device ${device.name} rate-limited (hourly)`);
+      if (retryCount < maxRetries) {
+        const delay = retryCount === 0 ? 10000 : 20000 + Math.random() * 70000; // 10s or 20-90s
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return sendWAViaFonnte(phoneNumber, message, retryCount + 1);
+      }
+      return { success: false, device: device.name };
+    }
+
+    // Send via Fonnte
     const response = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
       headers: {
-        'Authorization': fontneApiKey,
+        'Authorization': device.token,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -155,12 +261,36 @@ async function sendWAViaFonnte(phoneNumber: string, message: string): Promise<bo
     });
 
     const data = await response.json();
-    console.log(`[WA Sent] To: ${phoneNumber}, Status: ${data.status}`);
     
-    return data.status === 'success' || response.ok;
+    // Update stats
+    stats.usageCount++;
+    stats.lastUsed = new Date();
+    stats.onCooldown = true;
+
+    if (data.status === 'success' || response.ok) {
+      console.log(`[Fonnte] ✅ Sent via ${device.name} to ${phoneNumber}`);
+      return { success: true, device: device.name };
+    } else if (response.status === 429) {
+      // Rate limit hit - mark device and retry
+      console.warn(`[Fonnte] Rate limit on ${device.name}, retrying...`);
+      if (retryCount < maxRetries) {
+        const delay = 20000 + Math.random() * 70000; // 20-90s
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return sendWAViaFonnte(phoneNumber, message, retryCount + 1);
+      }
+      return { success: false, device: device.name };
+    } else {
+      console.error(`[Fonnte] Failed: ${data.status || response.statusText}`);
+      return { success: false, device: device.name };
+    }
   } catch (error) {
-    console.error(`[WA Error] Failed to send to ${phoneNumber}:`, error);
-    return false;
+    console.error(`[Fonnte] Error:`, error);
+    if (retryCount < maxRetries) {
+      const delay = retryCount === 0 ? 10000 : 20000 + Math.random() * 70000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return sendWAViaFonnte(phoneNumber, message, retryCount + 1);
+    }
+    return { success: false, device: null };
   }
 }
 
@@ -206,20 +336,56 @@ function buildMessage(karyawan: Karyawan, estimasi: any): string {
 serve(async (req: Request) => {
   try {
     console.log('[Karir Notifications] Starting execution...');
+    
+    // Initialize Fonnte device tokens
+    initializeDeviceTokens();
 
     const results: any[] = [];
     const now = new Date();
 
-    // 1. FETCH DATA (placeholder - sesuaikan dengan logic Anda)
-    console.log('[Karir Notifications] Fetching data...');
+    // 1. FETCH DATA dari Google Sheets via invoke function
+    console.log('[Karir Notifications] Fetching MASTER.ORGANIK data...');
     
-    const karyawanList: Karyawan[] = [];
-    // TODO: Fetch dari Google Sheets atau Database
+    let karyawanList: Karyawan[] = [];
+    try {
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          action: 'fetch',
+          sheet: 'MASTER.ORGANIK'
+        }
+      });
+      
+      if (error) {
+        console.error('[Sheets] Fetch error:', error);
+      } else {
+        // Transform Google Sheets data to Karyawan interface
+        karyawanList = (data || []).map((row: any) => ({
+          nip: row.NIP || '',
+          nama: row.NAMA || '',
+          no_hp: row['NO_HP'] || row['TELEPON'] || '', // Kolom I: Telepon
+          pangkat: row.PANGKAT || '',
+          golongan: row.GOLONGAN || '',
+          jabatan: row.JABATAN || '',
+          kategori: row.KATEGORI || 'Reguler',
+          tglPenghitunganAkTerakhir: row.TGL_PENGHITUNGAN_AK_TERAKHIR || new Date().toISOString().split('T')[0],
+          akKumulatif: parseFloat(row.AK_KUMULATIF) || 0,
+          tmtPns: row.TMT_PNS || '',
+          tmtPangkat: row.TMT_PANGKAT || ''
+        }));
+        
+        console.log(`[Sheets] Fetched ${karyawanList.length} employees`);
+      }
+    } catch (fetchError) {
+      console.error('[Sheets] Invoke error:', fetchError);
+      // Continue dengan data kosong - akan return empty results
+    }
 
     // 2. FILTER & PROCESS
+    console.log('[Karir Notifications] Processing candidates...');
+    
     for (const karyawan of karyawanList) {
       if (!karyawan.no_hp || karyawan.no_hp.trim() === '') {
-        console.log(`[Skip] ${karyawan.nama}: No HP not found`);
+        console.log(`[Skip] ${karyawan.nama} (${karyawan.nip}): No HP not found`);
         continue;
       }
 
@@ -228,7 +394,7 @@ serve(async (req: Request) => {
       if (estimasi.bisaUsul) {
         const noHpNormalized = normalizePhoneNumber(karyawan.no_hp);
         const message = buildMessage(karyawan, estimasi);
-        const sent = await sendWAViaFonnte(noHpNormalized, message);
+        const sendResult = await sendWAViaFonnte(noHpNormalized, message);
 
         results.push({
           nip: karyawan.nip,
@@ -236,21 +402,55 @@ serve(async (req: Request) => {
           no_hp: noHpNormalized,
           type: 'jabatan',
           estimasi_bulan: estimasi.bulanDibutuhkan,
-          sent: sent,
-          kebutuhan_ak: estimasi.kebutuhanJabatan
+          sent: sendResult.success,
+          device: sendResult.device,
+          kebutuhan_ak: estimasi.kebutuhanJabatan,
+          ak_sekarang: estimasi.akRealSaatIni,
+          timestamp: new Date().toISOString()
         });
 
+        // Cooldown between sends to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
-    console.log(`[Karir Notifications] Complete. Sent: ${results.filter((r: any) => r.sent).length}/${results.length}`);
+    // 3. LOG RESULTS (optional: write to NOTIF_LOG sheet)
+    const sentCount = results.filter((r: any) => r.sent).length;
+    console.log(`[Karir Notifications] Complete. Sent: ${sentCount}/${results.length} dari ${karyawanList.length} candidates`);
+
+    // Log to NOTIF_LOG if available
+    if (results.length > 0) {
+      try {
+        await supabase.functions.invoke('google-sheets', {
+          body: {
+            action: 'append',
+            sheet: 'NOTIF_LOG',
+            data: results.map((r: any) => ({
+              TIMESTAMP: r.timestamp,
+              TIPE_NOTIF: 'KARIR',
+              NIP: r.nip,
+              NAMA: r.nama,
+              NO_HP: r.no_hp,
+              STATUS: r.sent ? 'SUCCESS' : 'FAILED',
+              DEVICE: r.device || 'N/A',
+              PESAN: `${r.type} - ${r.estimasi_bulan} bulan`
+            }))
+          }
+        });
+        console.log('[Log] Results logged to NOTIF_LOG');
+      } catch (logError) {
+        console.warn('[Log] Failed to log results:', logError);
+        // Don't fail the entire function if logging fails
+      }
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        total: results.length,
-        sent: results.filter((r: any) => r.sent).length,
+        timestamp: now.toISOString(),
+        totalEmployees: karyawanList.length,
+        totalCandidates: results.length,
+        totalSent: sentCount,
         results: results
       }),
       { headers: { 'Content-Type': 'application/json' } }
@@ -259,7 +459,11 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error('[Karir Notifications Error]', error);
     return new Response(
-      JSON.stringify({ success: false, error: String(error) }),
+      JSON.stringify({ 
+        success: false, 
+        error: String(error),
+        timestamp: new Date().toISOString()
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
