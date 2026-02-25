@@ -249,7 +249,20 @@ ${ppkName}`,
 }
 
 // ==================== MAIN ====================
+// CORS headers helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json',
+};
+
 serve(async (req: Request) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     console.log('[Manual Broadcast] Request received');
     
@@ -260,7 +273,7 @@ serve(async (req: Request) => {
     if (!nips || nips.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: 'No recipients specified' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -277,7 +290,7 @@ serve(async (req: Request) => {
       console.error('[Manual Broadcast] Sheet fetch error:', error);
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to fetch employee data' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -297,7 +310,7 @@ serve(async (req: Request) => {
     if (employees.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: 'No matching employees found' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+        { status: 404, headers: corsHeaders }
       );
     }
 
@@ -363,7 +376,7 @@ serve(async (req: Request) => {
         failed: employees.length - sentCount,
         results
       }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: corsHeaders }
     );
 
   } catch (error) {
@@ -373,7 +386,7 @@ serve(async (req: Request) => {
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error'
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: corsHeaders }
     );
   }
 });
