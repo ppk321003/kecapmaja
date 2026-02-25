@@ -208,14 +208,14 @@ class KonversiCalculator {
       );
       
       if (isKenaikanJenjang) {
-        kebutuhan = this.getKebutuhanJabatan(jabatanSekarang, kategori);
+        kebutuhan = this.getKebutuhanJabatan(jabatanSekarang, kategori, golonganSekarang);
       }
     }
     
     return kebutuhan;
   }
 
-  static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
+  static getKebutuhanJabatan(jabatanSekarang: string, kategori: string, golonganSekarang?: string, tmtPns?: string, tmtPangkat?: string): number {
     if (kategori === 'Reguler') return 0;
 
     const kebutuhanKeahlian: { [key: string]: number } = {
@@ -231,6 +231,16 @@ class KonversiCalculator {
         if (jabatanSekarang.includes(key)) return value;
       }
     } else {
+      // EXCEPTION: CPNS II/c (start dari II/c dengan tmtPns === tmtPangkat) hanya butuh 40 AK untuk naik ke Mahir
+      if (
+        jabatanSekarang.includes('Terampil') && 
+        golonganSekarang === 'II/c' && 
+        tmtPns && 
+        tmtPangkat && 
+        tmtPns === tmtPangkat
+      ) {
+        return 40; // Exception khusus CPNS dari II/c
+      }
       for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
         if (jabatanSekarang.includes(key)) return value;
       }
@@ -989,7 +999,7 @@ const EditKonversiModal: React.FC<{
     );
 
     const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori, karyawan.jabatan);
-    const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+    const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori, karyawan.golongan, karyawan.tmtPns, karyawan.tmtPangkat);
     const totalKumulatif = akSebelumnya + akKonversi;
     const selisihPangkat = kebutuhanPangkat - totalKumulatif;
     const selisihJabatan = kebutuhanJabatan - totalKumulatif;
@@ -1473,7 +1483,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       );
 
       const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori, karyawan.jabatan);
-      const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+      const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori, karyawan.golongan, karyawan.tmtPns, karyawan.tmtPangkat);
       const totalKumulatif = akSebelumnya + akKonversi;
       const selisihPangkat = kebutuhanPangkat - totalKumulatif;
       const selisihJabatan = kebutuhanJabatan - totalKumulatif;
@@ -1592,7 +1602,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
       );
 
       const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori, karyawan.jabatan);
-      const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+      const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori, karyawan.golongan, karyawan.tmtPns, karyawan.tmtPangkat);
       const totalKumulatif = akSebelumnya + akKonversi;
       const selisihPangkat = kebutuhanPangkat - totalKumulatif;
       const selisihJabatan = kebutuhanJabatan - totalKumulatif;
@@ -1715,7 +1725,7 @@ const KonversiPredikat: React.FC<KonversiPredikatProps> = ({ karyawan }) => {
           currentAK = totalKumulatif;
 
           const kebutuhanPangkat = KonversiCalculator.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori, karyawan.jabatan);
-          const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+          const kebutuhanJabatan = KonversiCalculator.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori, karyawan.golongan, karyawan.tmtPns, karyawan.tmtPangkat);
           const selisihPangkat = kebutuhanPangkat - totalKumulatif;
           const selisihJabatan = kebutuhanJabatan - totalKumulatif;
           const kurlebPangkat = Math.max(0, selisihPangkat);

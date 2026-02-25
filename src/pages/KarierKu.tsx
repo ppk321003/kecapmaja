@@ -259,7 +259,7 @@ class AngkaKreditCalculator {
     const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
     return kebutuhan[golonganSekarang] || 0;
   }
-  static getKebutuhanJabatan(jabatanSekarang: string, kategori: string): number {
+  static getKebutuhanJabatan(jabatanSekarang: string, kategori: string, golonganSekarang?: string, tmtPns?: string, tmtPangkat?: string): number {
     if (kategori === 'Reguler') return 0; // Untuk Reguler, tidak ada kebutuhan AK untuk jabatan
 
     const kebutuhanKeahlian: {
@@ -282,6 +282,16 @@ class AngkaKreditCalculator {
         if (jabatanSekarang.includes(key)) return value;
       }
     } else {
+      // EXCEPTION: CPNS II/c (start dari II/c dengan tmtPns === tmtPangkat) hanya butuh 40 AK untuk naik ke Mahir
+      if (
+        jabatanSekarang.includes('Terampil') && 
+        golonganSekarang === 'II/c' && 
+        tmtPns && 
+        tmtPangkat && 
+        tmtPns === tmtPangkat
+      ) {
+        return 40; // Exception khusus CPNS dari II/c
+      }
       for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
         if (jabatanSekarang.includes(key)) return value;
       }
@@ -384,7 +394,7 @@ class AngkaKreditCalculator {
     const jabatanBerikutnya = this.getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
     const isKenaikanJenjang = this.isKenaikanJenjang(karyawan.jabatan, jabatanBerikutnya, karyawan.golongan, golonganBerikutnya);
     let kebutuhanPangkat = this.getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
-    const kebutuhanJabatan = this.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori);
+    const kebutuhanJabatan = this.getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori, karyawan.golongan, karyawan.tmtPns, karyawan.tmtPangkat);
     if (isKenaikanJenjang) {
       kebutuhanPangkat = kebutuhanJabatan;
     }
