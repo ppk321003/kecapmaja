@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Download, HelpCircle, MessageSquare } from 'lucide-react';
 import KonversiPredikat from '@/components/KonversiPredikat';
 import DownloadPAK from '@/components/DownloadPAK';
-import ManualWABroadcast from '@/components/ManualWABroadcast';
+import { ManualWABroadcast } from '@/components/ManualWABroadcast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Karyawan } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
