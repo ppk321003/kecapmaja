@@ -72,23 +72,29 @@ export const formatDateIndonesia = (dateString: string | null | undefined): stri
 
 /**
  * Calculate jumlah_semula (volume_semula * harga_satuan_semula)
+ * Rounded to nearest thousands
  */
 export const calculateJumlahSemula = (volumeSemula: number, hargaSatuanSemula: number): number => {
-  return (volumeSemula || 0) * (hargaSatuanSemula || 0);
+  const result = (volumeSemula || 0) * (hargaSatuanSemula || 0);
+  return roundToThousands(result);
 };
 
 /**
  * Calculate jumlah_menjadi (volume_menjadi * harga_satuan_menjadi)
+ * Rounded to nearest thousands
  */
 export const calculateJumlahMenjadi = (volumeMenjadi: number, hargaSatuanMenjadi: number): number => {
-  return (volumeMenjadi || 0) * (hargaSatuanMenjadi || 0);
+  const result = (volumeMenjadi || 0) * (hargaSatuanMenjadi || 0);
+  return roundToThousands(result);
 };
 
 /**
  * Calculate selisih (jumlah_menjadi - jumlah_semula)
+ * Rounded to nearest thousands
  */
 export const calculateSelisih = (jumlahMenjadi: number, jumlahSemula: number): number => {
-  return (jumlahMenjadi || 0) - (jumlahSemula || 0);
+  const result = (jumlahMenjadi || 0) - (jumlahSemula || 0);
+  return roundToThousands(result);
 };
 
 /**

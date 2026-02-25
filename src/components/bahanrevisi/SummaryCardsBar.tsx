@@ -5,7 +5,7 @@
 
 import React, { useMemo } from 'react';
 import { BudgetItem } from '@/types/bahanrevisi';
-import { formatCurrency } from '@/utils/bahanrevisi-calculations';
+import { formatCurrency, roundToThousands } from '@/utils/bahanrevisi-calculations';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface SummaryCardsBarProps {
@@ -16,7 +16,7 @@ const SummaryCardsBar: React.FC<SummaryCardsBarProps> = ({ items }) => {
   const summary = useMemo(() => {
     const totalSemula = items.reduce((sum, item) => sum + (item.jumlah_semula || 0), 0);
     const totalMenjadi = items.reduce((sum, item) => sum + (item.jumlah_menjadi || 0), 0);
-    const selisih = totalMenjadi - totalSemula;
+    const selisih = roundToThousands(totalMenjadi - totalSemula);
 
     return {
       totalSemula,

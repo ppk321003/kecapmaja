@@ -13,6 +13,7 @@ import { BudgetItem } from '@/types/bahanrevisi';
 import {
   formatCurrency,
   formatCurrencyNoRp,
+  roundToThousands,
   calculateRealisasi,
   calculatePersentaseRealisasi,
   formatPercentage,
@@ -318,7 +319,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     deletedItems.forEach((item) => {
       const jumlahSemula = Number(item.jumlah_semula) || 0;
       const jumlahMenjadi = 0;
-      const selisih = jumlahMenjadi - jumlahSemula;
+      const selisih = roundToThousands(jumlahMenjadi - jumlahSemula);
       const sisaAnggaran = Number(item.sisa_anggaran) || 0;
       const blokir = Number(item.blokir) || 0;
       const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
@@ -400,7 +401,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     return deletedItems.map((item) => {
       const jumlahSemula = Number(item.jumlah_semula) || 0;
       const jumlahMenjadi = 0;
-      const selisih = jumlahMenjadi - jumlahSemula;
+      const selisih = roundToThousands(jumlahMenjadi - jumlahSemula);
       const sisaAnggaran = Number(item.sisa_anggaran) || 0;
       const blokir = Number(item.blokir) || 0;
       const realisasi = calculateRealisasi(jumlahMenjadi, sisaAnggaran, blokir);
@@ -624,7 +625,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     if (summaryView === 'changes') {
       const totalSemula = items.reduce((sum, item) => sum + (Number(item.jumlah_semula) || 0), 0);
       const totalMenjadi = items.reduce((sum, item) => sum + (Number(item.jumlah_menjadi) || 0), 0);
-      const totalSelisih = totalMenjadi - totalSemula;
+      const totalSelisih = roundToThousands(totalMenjadi - totalSemula);
       const allDeletedItems = items.filter(item => item.status === 'deleted');
       const allUnchangedItems = items.filter(item => item.status === 'unchanged');
 

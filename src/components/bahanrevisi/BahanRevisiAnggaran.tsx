@@ -241,8 +241,8 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
       );
     }
 
-    // Recalculate selisih
-    updatedItem.selisih = (updatedItem.jumlah_menjadi || 0) - (updatedItem.jumlah_semula || 0);
+    // Recalculate selisih (with rounding to thousands)
+    updatedItem.selisih = calculateSelisih(updatedItem.jumlah_menjadi || 0, updatedItem.jumlah_semula || 0);
 
     // **IMPORTANT**: Jika ada perubahan data, RESET SEMUA APPROVAL STATUS
     // - Status yang approved/rejected berubah menjadi changed (revisi dianggap pengajuan ulang)
