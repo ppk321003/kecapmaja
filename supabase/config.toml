@@ -1,4 +1,4 @@
-project_id = "yudlciokearepqzvgzxx"
+project_id = "jbmgujpkyyqqphlzflfj"
 
 [functions.google-sheets]
 verify_jwt = false
@@ -7,4 +7,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.pencairan-update]
+verify_jwt = false
+
+[functions.send-manual-wa-notifications]
+verify_jwt = false
+
+[functions.send-karir-notifications]
 verify_jwt = false
