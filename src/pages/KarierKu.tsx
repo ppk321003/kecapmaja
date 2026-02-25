@@ -484,6 +484,10 @@ class AngkaKreditCalculator {
       const progressionReguler: {
         [key: string]: string;
       } = {
+        'II/a': 'II/b',
+        'II/b': 'II/c',
+        'II/c': 'II/d',
+        'II/d': 'III/a',
         'III/a': 'III/b',
         'III/b': 'III/c',
         'III/c': 'III/d',

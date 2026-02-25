@@ -27,26 +27,39 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   // Fetch all employees for broadcast feature
   useEffect(() => {
     const fetchEmployees = async () => {
-      const { data, error } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          action: 'fetch',
-          sheet: 'MASTER.ORGANIK'
-        }
-      });
+      try {
+        const { data, error } = await supabase.functions.invoke('google-sheets', {
+          body: {
+            action: 'fetch',
+            sheet: 'MASTER.ORGANIK'
+          }
+        });
 
-      if (!error && data) {
-        const employees = data.map((row: any) => ({
-          nip: row.NIP || '',
-          nama: row.NAMA || '',
-          pangkat: row.PANGKAT || '',
-          golongan: row.GOLONGAN || '',
-          jabatan: row.JABATAN || '',
-          kategori: row.KATEGORI || 'Reguler',
-          telepon: row.TELEPON || row['NO_HP'] || '',
-          unitKerja: row.KECAMATAN || row.SATKER || '',
-          akKumulatif: parseFloat(row.AK_KUMULATIF) || 0,
-        }));
-        setAllEmployees(employees);
+        if (!error && data && Array.isArray(data)) {
+          const employees = data.map((row: any) => ({
+            nip: row.NIP || row.nip || '',
+            nama: row.NAMA || row.nama || '',
+            pangkat: row.PANGKAT || row.pangkat || '',
+            golongan: row.GOLONGAN || row.golongan || row.GOL_AKHIR || '',
+            jabatan: row.JABATAN || row.jabatan || '',
+            kategori: (row.KATEGORI || row.kategori || 'Reguler') as 'Keahlian' | 'Keterampilan' | 'Reguler',
+            tglPenghitunganAkTerakhir: row.TGL_PENGHITUNGAN_AK_TERAKHIR || row.tglPenghitunganAkTerakhir || '',
+            akKumulatif: parseFloat((row.AK_KUMULATIF || row.ak_kumulatif || '0').toString().replace(',', '.')) || 0,
+            unitKerja: row.KECAMATAN || row.kecamatan || row.SATKER || row.satker || '',
+            tmtJabatan: row.TMT_JABATAN || row.tmtJabatan || '',
+            tmtPangkat: row.TMT_PANGKAT || row.tmtPangkat || '',
+            pendidikan: row.PENDIDIKAN || row.pendidikan || '',
+            tempatLahir: row.TEMPAT_LAHIR || row.tempatLahir || '',
+            tanggalLahir: row.TGL_LAHIR || row.tanggalLahir || '',
+            jenisKelamin: (row.JENIS_KELAMIN || row.jenisKelamin || 'L') as 'L' | 'P',
+          })) as Karyawan[];
+          console.log('[LayananKarir] Fetched employees for broadcast:', {count: employees.length, sample: employees[0]});
+          setAllEmployees(employees);
+        } else {
+          console.warn('[LayananKarir] Error or empty data from google-sheets:', error);
+        }
+      } catch (err) {
+        console.error('[LayananKarir] Error fetching employees:', err);
       }
     };
 

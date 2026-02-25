@@ -165,6 +165,15 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
   return (
     <div className="space-y-6">
+      {allEmployees.length === 0 && (
+        <div className="flex items-center justify-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <AlertCircle className="w-5 h-5 text-yellow-600 mr-2" />
+          <span className="text-yellow-700 text-sm">
+            ⏳ Memuat daftar karyawan... Jika tetap kosong, silakan refresh halaman
+          </span>
+        </div>
+      )}
+      
       {/* Section 1: Recipient Selection */}
       <Card>
         <CardHeader>
