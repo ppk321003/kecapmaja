@@ -58,8 +58,8 @@ function initializeDeviceTokens() {
     for (const token of deviceTokens) {
       if (token.active) {
         deviceStats.set(token.name, {
-          usageCount: token.usageCount || 0,
-          lastUsed: token.lastUsed ? new Date(token.lastUsed) : new Date(0),
+          usageCount: 0,
+          lastUsed: new Date(0),
           onCooldown: false,
         });
       }
@@ -242,7 +242,7 @@ Hubungi bagian keuangan jika ada pertanyaan.
 Salam,
 ${ppkName}`,
 
-    'custom': customMessage.replace(/{nama}/g, nama).replace(/{ppkName}/g, ppkName)
+    'custom': (customMessage || '').replace(/{nama}/g, nama).replace(/{ppkName}/g, ppkName)
   };
 
   return templates[templateId] || '';
@@ -312,7 +312,7 @@ serve(async (req: Request) => {
         continue;
       }
 
-      const message = renderTemplate(templateId, customDetail || '', customMessage, emp.nama, ppkName);
+      const message = renderTemplate(templateId, customDetail || '', customMessage || '', emp.nama, ppkName);
       const phoneNormalized = normalizePhoneNumber(emp.no_hp);
       const sendResult = await sendWAViaFonnte(phoneNormalized, message);
 
