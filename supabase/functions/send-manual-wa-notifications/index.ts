@@ -283,10 +283,11 @@ serve(async (req: Request) => {
 
     interface RequestBody extends BroadcastRequest {
       employees?: Karyawan[];
+      previewMessage?: string;
     }
 
     const requestBody = await req.json() as RequestBody;
-    const { nips, templateId, customDetail, customMessage, ppkName, employees } = requestBody;
+    const { nips, templateId, customDetail, customMessage, ppkName, employees, previewMessage } = requestBody;
 
     if (!nips || nips.length === 0) {
       return new Response(
@@ -326,7 +327,12 @@ serve(async (req: Request) => {
         continue;
       }
 
-      const message = renderTemplate(templateId, customDetail || '', customMessage || '', emp.nama, ppkName);
+      // Use previewMessage from frontend (already rendered) or fall back to renderTemplate
+      let message = previewMessage || renderTemplate(templateId, customDetail || '', customMessage || '', emp.nama, ppkName);
+      
+      // Personalize: replace generic "Nama Karyawan" with actual employee name
+      message = message.replace(/Nama Karyawan/g, emp.nama);
+      
       const phoneNormalized = normalizePhoneNumber(emp.no_hp);
       const sendResult = await sendWAViaFonnte(phoneNormalized, message);
 
