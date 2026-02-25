@@ -54,6 +54,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   const [selectedTemplate, setSelectedTemplate] = useState('informasi-penting');
   const [customDetail, setCustomDetail] = useState('');
   const [customMessage, setCustomMessage] = useState('');
+  const [kegiatan, setKegiatan] = useState('');
+  const [tanggal, setTanggal] = useState('');
+  const [editablePreview, setEditablePreview] = useState('');
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -79,14 +82,19 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
   // Template rendering
   const template = broadcastTemplates[selectedTemplate];
-  const previewMessage = template
+  const basePreviewMessage = template
     ? renderMessage(template, {
         nama: 'Nama Karyawan',
         detail: customDetail || '[Ubah detail template]',
         custom: customMessage,
+        kegiatan: kegiatan || '[Ubah kegiatan]',
+        tanggal: tanggal || '[Ubah tanggal]',
         ppkName: ppkName,
       })
     : '';
+  
+  // Use editable preview if user is editing, otherwise use base message
+  const previewMessage = editablePreview || basePreviewMessage;
 
   // Handle send
   const handleSend = async () => {
@@ -116,6 +124,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           templateId: selectedTemplate,
           customDetail,
           customMessage,
+          kegiatan,
+          tanggal,
+          previewMessage: editablePreview || basePreviewMessage,
           ppkName,
         },
       });
@@ -136,6 +147,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
         setSelectedNips(new Set());
         setCustomDetail('');
         setCustomMessage('');
+        setKegiatan('');
+        setTanggal('');
+        setEditablePreview('');
         setSearchQuery('');
       }
     } catch (err) {
@@ -234,6 +248,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
                     setSelectedTemplate(tmpl.id);
                     setCustomDetail('');
                     setCustomMessage('');
+                    setKegiatan('');
+                    setTanggal('');
+                    setEditablePreview('');
                   }}
                   className={`p-3 rounded border-2 text-center text-sm font-medium transition ${
                     selectedTemplate === tmpl.id
@@ -246,6 +263,28 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Kegiatan + Tanggal Input (for Informasi Presensi template) */}
+          {selectedTemplate === 'informasi-presensi' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Kegiatan:</label>
+                <Input
+                  placeholder="Nama kegiatan (misal: Pelatihan Excel)"
+                  value={kegiatan}
+                  onChange={(e) => setKegiatan(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Tanggal:</label>
+                <Input
+                  placeholder="Tanggal kegiatan (misal: 28 Februari 2026)"
+                  value={tanggal}
+                  onChange={(e) => setTanggal(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Custom Detail Input (for all templates except custom) */}
           {selectedTemplate !== 'custom' && template?.placeholders.includes('detail') && (
@@ -279,18 +318,29 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           <div className="border-t pt-4">
             <Button
               variant="outline"
-              onClick={() => setShowPreview(!showPreview)}
+              onClick={() => {
+                setShowPreview(!showPreview);
+                if (!showPreview && !editablePreview) {
+                  setEditablePreview(basePreviewMessage);
+                }
+              }}
               className="w-full"
             >
-              {showPreview ? '✓ Hide Preview' : '👁️ Show Preview'}
+              {showPreview ? '✓ Tutup Preview' : '👁️ Lihat & Edit Preview'}
             </Button>
 
             {showPreview && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-64 overflow-y-auto">
-                <p className="text-xs text-gray-600 mb-2 font-medium">Preview Pesan:</p>
-                <div className="bg-white p-3 rounded text-sm whitespace-pre-wrap font-mono text-gray-700">
-                  {previewMessage || '[Preview akan ditampilkan di sini]'}
-                </div>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-gray-600 font-medium">Preview Pesan (Bisa diedit langsung):</p>
+                <Textarea
+                  value={editablePreview || basePreviewMessage}
+                  onChange={(e) => setEditablePreview(e.target.value)}
+                  className="min-h-64 font-mono text-sm"
+                  placeholder="Preview akan ditampilkan di sini..."
+                />
+                <p className="text-xs text-blue-600">
+                  ℹ️ Anda dapat mengedit pesan di atas. Nama karyawan akan tetap &quot;Nama Karyawan&quot; di preview, tapi akan diganti dengan nama individual untuk setiap penerima saat dikirim.
+                </p>
               </div>
             )}
           </div>
@@ -331,6 +381,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
                 setSelectedNips(new Set());
                 setCustomDetail('');
                 setCustomMessage('');
+                setKegiatan('');
+                setTanggal('');
+                setEditablePreview('');
                 setRecipientMode('manual');
               }}
               className="flex-1"
