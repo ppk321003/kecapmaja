@@ -150,10 +150,15 @@ async function sendWAViaFonnte(phoneNumber: string, message: string, retryCount:
     stats.lastUsed = new Date();
     stats.onCooldown = true;
 
-    if (data.status === 'success' || response.ok) {
+    // DEBUG: Log full Fonnte response
+    console.log(`[Manual Broadcast] Fonnte Response - HTTP ${response.status}, Status: ${data.status}, Message: ${data.message}, Data:`, JSON.stringify(data));
+
+    // Fonnte returns { status: true/false, message: "...", data: {...} }
+    if (data.status === true && response.ok) {
       console.log(`[Manual Broadcast] ✅ Sent via ${device.name} to ${phoneNumber}`);
       return { success: true, device: device.name };
     } else if (response.status === 429) {
+      console.warn(`[Manual Broadcast] Device ${device.name} rate-limited (429)`);
       if (retryCount < maxRetries) {
         const delay = 20000 + Math.random() * 70000;
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -161,7 +166,8 @@ async function sendWAViaFonnte(phoneNumber: string, message: string, retryCount:
       }
       return { success: false, device: device.name };
     } else {
-      console.error(`[Manual Broadcast] Failed: ${data.status || response.statusText}`);
+      const errorMsg = data.message || response.statusText || 'Unknown error';
+      console.error(`[Manual Broadcast] ❌ Failed to ${phoneNumber} via ${device.name}: ${errorMsg}`);
       return { success: false, device: device.name };
     }
   } catch (error) {

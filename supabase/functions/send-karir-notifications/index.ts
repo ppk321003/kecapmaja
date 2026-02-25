@@ -312,7 +312,10 @@ async function sendWAViaFonnte(
     stats.lastUsed = new Date();
     stats.onCooldown = true;
 
-    if (data.status === 'success' || response.ok) {
+    // DEBUG: Log Fonnte response (status is BOOLEAN, not string)
+    console.log(`[Fonnte] Response for ${phoneNumber}: status=${data.status}, message=${data.message}`);
+
+    if (data.status === true && response.ok) {
       console.log(`[Fonnte] ✅ Sent via ${device.name} to ${phoneNumber}`);
       return { success: true, device: device.name };
     } else if (response.status === 429) {
