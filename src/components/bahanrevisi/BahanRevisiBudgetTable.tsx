@@ -57,6 +57,7 @@ import {
 } from '@/types/bahanrevisi';
 import {
   formatCurrency,
+  roundToThousands,
   needsApproval,
   isApproved,
   isRejected,
@@ -290,8 +291,8 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
   const handleEditSave = () => {
     if (!editingItem) return;
     
-    // Calculate new jumlah_menjadi
-    const newJumlahMenjadi = Math.round(
+    // Calculate new jumlah_menjadi (rounded to thousands)
+    const newJumlahMenjadi = roundToThousands(
       (editFormData.volume_menjadi || 0) * (editFormData.harga_satuan_menjadi || 0)
     );
 
@@ -300,7 +301,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
       satuan_menjadi: editFormData.satuan_menjadi || 'Paket',
       harga_satuan_menjadi: editFormData.harga_satuan_menjadi || 0,
       jumlah_menjadi: newJumlahMenjadi,
-      selisih: newJumlahMenjadi - (editingItem.jumlah_semula || 0),
+      selisih: roundToThousands(newJumlahMenjadi - (editingItem.jumlah_semula || 0)),
     });
     
     handleEditClose();
@@ -750,7 +751,7 @@ const BahanRevisiBudgetTable: React.FC<BahanRevisiBudgetTableProps> = ({
               <div className="bg-blue-50 p-2 rounded text-xs border border-blue-100">
                 <p className="text-blue-900 font-medium">
                   Jumlah: {formatCurrency(
-                    Math.round((editFormData.volume_menjadi || 0) * (editFormData.harga_satuan_menjadi || 0))
+                    roundToThousands((editFormData.volume_menjadi || 0) * (editFormData.harga_satuan_menjadi || 0))
                   )}
                 </p>
               </div>
