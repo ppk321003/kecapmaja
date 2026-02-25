@@ -1222,6 +1222,7 @@ const BiodataCard: React.FC<{
                   alt={karyawan.nama}
                   className="h-28 w-28 rounded-full object-cover border-2 border-primary/20"
                   onError={(e) => {
+                    console.warn('[BiodataCard] Foto failed to load:', karyawan.foto);
                     e.currentTarget.style.display = 'none';
                   }}
                 />
@@ -2158,7 +2159,19 @@ const KarierKu: React.FC = () => {
         };
         
         const nipData = parseNIP(row[2]?.toString() || '');
-        const foto = row[21]?.toString() || ''; // Column V (Foto)
+        let fotoUrl = '';
+        const fotoRaw = row[21]?.toString() || ''; // Column V (Foto)
+        
+        if (fotoRaw) {
+          if (fotoRaw.includes('drive.google.com/file/d/')) {
+            const fileIdMatch = fotoRaw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+            fotoUrl = fileIdMatch 
+              ? `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`
+              : fotoRaw;
+          } else if (fotoRaw.includes('http')) {
+            fotoUrl = fotoRaw;
+          }
+        }
         
         const calculateMasaKerja = (tmtPns: string): string => {
           const tmtDate = new Date(tmtPns);
@@ -2197,9 +2210,7 @@ const KarierKu: React.FC = () => {
           email: '',
           telepon: row[8]?.toString() || '',
           alamat: '',
-          foto: foto.includes('drive.google.com/file/d/')
-            ? `https://lh3.googleusercontent.com/d/${foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1]}`
-            : foto,
+          foto: fotoUrl,
           tmtPns,
           masaKerja,
         };
@@ -2209,7 +2220,8 @@ const KarierKu: React.FC = () => {
         totalRows: rows.length,
         filteredRows: rows.slice(1).filter((row: any[]) => row.length > 0 && row[0]).length,
         mappedData: karyawanData.length,
-        satker: user?.satker
+        satker: user?.satker,
+        sampleFoto: karyawanData[0]?.foto
       });
       
       setKaryawanList(karyawanData);
