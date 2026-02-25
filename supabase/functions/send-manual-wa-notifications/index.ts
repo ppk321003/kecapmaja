@@ -144,7 +144,8 @@ async function sendWAViaFonnte(phoneNumber: string, message: string, retryCount:
       body: JSON.stringify({
         target: phoneNumber,
         message: message,
-        countryCode: '62'
+        retry: true,
+        typing: false,
       })
     });
 
