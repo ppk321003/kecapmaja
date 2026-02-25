@@ -13,31 +13,33 @@ export interface BroadcastTemplate {
   allowCustom?: boolean;
 }
 
+const FOOTER = `Salam *Kecap Maja.*
+_Kerja Efisien, Cepat, Akurat, Profesional_
+_Maju Aman Jeung Amanah_`;
+
 export const broadcastTemplates: Record<string, BroadcastTemplate> = {
-  'informasi-penting': {
-    id: 'informasi-penting',
-    title: '⚠️ Informasi Penting',
+  'informasi-presensi': {
+    id: 'informasi-presensi',
+    title: '⚠️ Informasi Presensi Pelatihan',
     icon: '⚠️',
-    subject: 'Informasi Penting',
+    subject: 'Informasi Presensi Pelatihan',
     body: `Halo {nama},
 
-Terdapat informasi penting yang perlu Anda ketahui:
+Izin menginformasikan, sehubungan dengan pelaksanaan kegiatan {kegiatan} pada tanggal {tanggal}, bersama ini kami sampaikan bahwa:
 
-{detail}
+Dalam kegiatan tersebut anda tidak perlu melakukan presensi di kantor pada hari yang bersangkutan.
 
-Mohon untuk membaca dengan seksama dan segera mengambil tindakan jika diperlukan.
+Demikian informasi ini disampaikan.
 
-Terima kasih atas perhatian Anda.
+Atas perhatian dan kerja samanya, kami ucapkan terima kasih
 
-Salam,
-{ppkName}
-Pejabat Pembuat Komitmen`,
-    placeholders: ['detail']
+${FOOTER}`,
+    placeholders: ['kegiatan', 'tanggal']
   },
 
   'training-sosialisasi': {
     id: 'training-sosialisasi',
-    title: '📚 Training/Sosialisasi',
+    title: '📚 Undangan Training/Sosialisasi',
     icon: '📚',
     subject: 'Undangan Training/Sosialisasi',
     body: `Halo {nama},
@@ -50,9 +52,7 @@ Silakan segera melakukan pendaftaran dan pastikan Anda dapat hadir.
 
 Atas perhatian Anda, terima kasih.
 
-Salam,
-{ppkName}
-Pejabat Pembuat Komitmen`,
+${FOOTER}`,
     placeholders: ['detail']
   },
 
@@ -60,37 +60,31 @@ Pejabat Pembuat Komitmen`,
     id: 'pengumuman-kebijakan',
     title: '📢 Pengumuman Kebijakan',
     icon: '📢',
-    subject: 'Pengumuman Kebijakan Baru',
+    subject: 'Pengumuman Kebijakan',
     body: `Halo {nama},
 
-Perhatian: Terdapat kebijakan baru yang akan berlaku mulai sekarang:
+Pengumuman Kebijakan tanggal {tanggal}:
 
 {detail}
 
-Mohon kesadaran dan keselarasan dalam pelaksanaannya. Jika ada pertanyaan, silakan konsultasi dengan manajemen.
+Pastikan untuk mematuhi kebijakan ini.
 
-Salam,
-{ppkName}
-Pejabat Pembuat Komitmen`,
-    placeholders: ['detail']
+${FOOTER}`,
+    placeholders: ['tanggal', 'detail']
   },
 
   'reminder-pengajuan': {
     id: 'reminder-pengajuan',
     title: '🔔 Reminder Pengajuan',
     icon: '🔔',
-    subject: 'Reminder Pengajuan PAK',
+    subject: 'Reminder Pengajuan',
     body: `Halo {nama},
 
-Reminder: Jangan lupa untuk mengajukan PAK/berkas promosi Anda sebelum deadline:
+Reminder: {detail}
 
-{detail}
+Untuk informasi lebih lanjut, silakan hubungi PPK atau kunjungi aplikasi KecakMaja.
 
-Untuk informasi lebih lanjut, silakan hubungi PPK kami atau kunjungi aplikasi KecakMaja.
-
-Salam,
-{ppkName}
-Pejabat Pembuat Komitmen`,
+${FOOTER}`,
     placeholders: ['detail']
   },
 
@@ -98,10 +92,8 @@ Pejabat Pembuat Komitmen`,
     id: 'pengajuan-dana',
     title: '💰 Pengajuan Dana/Reimbursement',
     icon: '💰',
-    subject: 'Informasi Pengajuan Dana',
+    subject: 'Informasi Pengajuan Dana/Reimbursement',
     body: `Halo {nama},
-
-Status pengajuan dana/reimbursement Anda:
 
 {detail}
 
@@ -109,9 +101,7 @@ Jika ada pertanyaan atau butuh bantuan, segera hubungi bagian keuangan.
 
 Terima kasih.
 
-Salam,
-{ppkName}
-Pejabat Pembuat Komitmen`,
+${FOOTER}`,
     placeholders: ['detail']
   },
 
@@ -119,8 +109,10 @@ Pejabat Pembuat Komitmen`,
     id: 'custom',
     title: '✍️ Pesan Custom',
     icon: '✍️',
-    subject: 'Pesan dari {ppkName}',
-    body: '{custom}',
+    subject: 'Pesan dari Kecap Maja',
+    body: `{custom}
+
+${FOOTER}`,
     placeholders: ['custom'],
     allowCustom: true
   }

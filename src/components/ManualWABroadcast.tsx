@@ -22,7 +22,7 @@ interface ManualWABroadcastProps {
   allEmployees: Karyawan[];
 }
 
-type RecipientMode = 'manual' | 'filter';
+type RecipientMode = 'manual';
 
 export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   userRole,
@@ -50,11 +50,6 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   const [selectedNips, setSelectedNips] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter state
-  const [filterGolongan, setFilterGolongan] = useState('all');
-  const [filterKategori, setFilterKategori] = useState('all');
-  const [filterSatker, setFilterSatker] = useState('all');
-
   // Message state
   const [selectedTemplate, setSelectedTemplate] = useState('informasi-penting');
   const [customDetail, setCustomDetail] = useState('');
@@ -76,25 +71,11 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
       ) {
         return false;
       }
-
-      // Filter by criteria
-      if (filterGolongan !== 'all' && emp.golongan !== filterGolongan) return false;
-      if (filterKategori !== 'all' && emp.kategori !== filterKategori) return false;
-      if (filterSatker !== 'all' && emp.unitKerja !== filterSatker) return false;
-
       return true;
     });
-  }, [searchQuery, filterGolongan, filterKategori, filterSatker, allEmployees]);
+  }, [searchQuery, allEmployees]);
 
-  const recipients =
-    recipientMode === 'manual'
-      ? Array.from(selectedNips).map((nip) => allEmployees.find((e) => e.nip === nip)).filter(Boolean) as Karyawan[]
-      : filteredEmployees;
-
-  // Get unique values for filters
-  const uniqueGolongans = [...new Set(allEmployees.map((e) => e.golongan))].sort();
-  const uniqueKategoris = [...new Set(allEmployees.map((e) => e.kategori))];
-  const uniqueSatkers = [...new Set(allEmployees.map((e) => e.unitKerja))].sort();
+  const recipients = Array.from(selectedNips).map((nip) => allEmployees.find((e) => e.nip === nip)).filter(Boolean) as Karyawan[];
 
   // Template rendering
   const template = broadcastTemplates[selectedTemplate];
@@ -188,131 +169,49 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           <CardDescription>Pilih manual atau gunakan filter untuk bulk selection</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Mode Toggle */}
-          <div className="flex gap-2 border-b pb-4">
-            <button
-              onClick={() => {
-                setRecipientMode('manual');
-                setSelectedNips(new Set());
-              }}
-              className={`px-4 py-2 rounded ${
-                recipientMode === 'manual'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              ☐ Manual Selection
-            </button>
-            <button
-              onClick={() => setRecipientMode('filter')}
-              className={`px-4 py-2 rounded ${
-                recipientMode === 'filter'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🔍 Filter Group
-            </button>
-          </div>
-
           {/* Manual Selection */}
-          {recipientMode === 'manual' && (
-            <div className="space-y-3">
-              <Input
-                placeholder="Cari nama atau NIP..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full"
-              />
+          <div className="space-y-3">
+            <Input
+              placeholder="Cari nama atau NIP..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full"
+            />
 
-              <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-2">
-                {filteredEmployees.length === 0 ? (
-                  <p className="text-gray-500 text-sm">Tidak ada karyawan ditemukan</p>
-                ) : (
-                  filteredEmployees.map((emp) => (
-                    <label key={emp.nip} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedNips.has(emp.nip)}
-                        onChange={(e) => {
-                          const newSet = new Set(selectedNips);
-                          if (e.target.checked) {
-                            newSet.add(emp.nip);
-                          } else {
-                            newSet.delete(emp.nip);
-                          }
-                          setSelectedNips(newSet);
-                        }}
-                        className="w-4 h-4"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{emp.nama}</div>
-                        <div className="text-xs text-gray-500">{emp.nip}</div>
-                      </div>
-                      <div className="text-xs text-gray-600">{emp.golongan}</div>
-                    </label>
-                  ))
-                )}
-              </div>
-
-              <div className="text-sm text-blue-600 font-medium">
-                ✓ {selectedNips.size} orang dipilih
-              </div>
+            <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-2">
+              {filteredEmployees.length === 0 ? (
+                <p className="text-gray-500 text-sm">Tidak ada karyawan ditemukan</p>
+              ) : (
+                filteredEmployees.map((emp) => (
+                  <label key={emp.nip} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedNips.has(emp.nip)}
+                      onChange={(e) => {
+                        const newSet = new Set(selectedNips);
+                        if (e.target.checked) {
+                          newSet.add(emp.nip);
+                        } else {
+                          newSet.delete(emp.nip);
+                        }
+                        setSelectedNips(newSet);
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{emp.nama}</div>
+                      <div className="text-xs text-gray-500">{emp.nip}</div>
+                    </div>
+                    <div className="text-xs text-gray-600">{emp.golongan}</div>
+                  </label>
+                ))
+              )}
             </div>
-          )}
 
-          {/* Filter Selection */}
-          {recipientMode === 'filter' && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
-                <Select value={filterGolongan} onValueChange={setFilterGolongan}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Golongan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Golongan</SelectItem>
-                    {uniqueGolongans.map((g) => (
-                      <SelectItem key={g} value={g}>
-                        {g}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={filterKategori} onValueChange={setFilterKategori}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Kategori</SelectItem>
-                    {uniqueKategoris.map((k) => (
-                      <SelectItem key={k} value={k}>
-                        {k}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={filterSatker} onValueChange={setFilterSatker}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Satker" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Satker</SelectItem>
-                    {uniqueSatkers.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="text-sm text-blue-600 font-medium">
-                📊 {filteredEmployees.length} orang sesuai filter
-              </div>
+            <div className="text-sm text-blue-600 font-medium">
+              ✓ {selectedNips.size} orang dipilih
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
@@ -536,4 +435,4 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   );
 };
 
-export default ManualWABroadcast;
+
