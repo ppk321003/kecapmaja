@@ -293,6 +293,21 @@ serve(async (req: Request) => {
       });
     }
     
+    // Validate required fields for non-health operations
+    if (!operation) {
+      return new Response(JSON.stringify({ error: 'Missing required field: operation' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (!spreadsheetId) {
+      return new Response(JSON.stringify({ error: 'Missing required field: spreadsheetId' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     // Check for required environment variables before processing any real operations
     const googlePrivateKeyEnv = Deno.env.get('GOOGLE_PRIVATE_KEY');
     const googleServiceAccountEmailEnv = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');

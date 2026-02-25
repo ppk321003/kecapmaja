@@ -2048,7 +2048,7 @@ const KarierKu: React.FC = () => {
   const { user } = useAuth();
   const satkerConfig = useSatkerConfigContext();
   
-  const spreadsheetId = satkerConfig?.getUserSatkerConfig()?.masterorganik_sheet_id;
+  const spreadsheetId = satkerConfig?.getUserSatkerSheetId('masterorganik');
   
   const fetchKaryawanData = async () => {
     // Debug logging untuk multi-satker

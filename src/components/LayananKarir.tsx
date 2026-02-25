@@ -30,19 +30,35 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const spreadsheetId = satkerConfig?.getUserSatkerConfig()?.masterorganik_sheet_id;
+        const spreadsheetId = satkerConfig?.getUserSatkerSheetId('masterorganik');
+        
+        console.log('[LayananKarir] Attempting fetch with:', {
+          spreadsheetId,
+          isPPK,
+          satkerConfigLoading: satkerConfig?.isLoading
+        });
         
         if (!spreadsheetId) {
-          console.warn('[LayananKarir] No spreadsheetId configured');
+          console.warn('[LayananKarir] No spreadsheetId configured for masterorganik');
           return;
         }
 
+        const requestBody = {
+          spreadsheetId: spreadsheetId,
+          operation: 'read',
+          range: 'MASTER.ORGANIK!A:V'
+        };
+
+        console.log('[LayananKarir] Invoking google-sheets with body:', requestBody);
+
         const { data, error } = await supabase.functions.invoke('google-sheets', {
-          body: {
-            spreadsheetId: spreadsheetId,
-            operation: 'read',
-            range: 'MASTER.ORGANIK!A:V'
-          }
+          body: requestBody
+        });
+
+        console.log('[LayananKarir] Google Sheets Response:', { 
+          hasError: !!error, 
+          dataLength: data?.values?.length,
+          error: error?.message || error 
         });
 
         if (!error && data?.values && Array.isArray(data.values)) {
@@ -65,16 +81,20 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
             jenisKelamin: 'L' as 'L' | 'P',
           })) as Karyawan[];
           
-          console.log('[LayananKarir] Fetched employees for broadcast:', {
+          console.log('[LayananKarir] ✅ Fetched employees for broadcast:', {
             count: employees.length, 
             sample: employees[0]
           });
           setAllEmployees(employees);
         } else {
-          console.warn('[LayananKarir] Error or empty data from google-sheets:', error);
+          console.error('[LayananKarir] ❌ Error or empty data from google-sheets:', {
+            error,
+            hasValues: !!data?.values,
+            isArray: Array.isArray(data?.values)
+          });
         }
       } catch (err) {
-        console.error('[LayananKarir] Error fetching employees:', err);
+        console.error('[LayananKarir] ❌ Exception fetching employees:', err);
       }
     };
 
