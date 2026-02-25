@@ -79,6 +79,8 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
             tempatLahir: row[14]?.toString() || '',
             tanggalLahir: '',
             jenisKelamin: 'L' as 'L' | 'P',
+            telepon: row[8]?.toString() || '', // Column I: No. HP
+            no_hp: row[8]?.toString() || '', // Column I: No. HP (for broadcast function)
           })) as Karyawan[];
           
           console.log('[LayananKarir] ✅ Fetched employees for broadcast:', {
