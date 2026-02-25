@@ -1,9 +1,13 @@
 /**
  * Supabase Edge Function: Send WA Notifications untuk Kenaikan Karir
- * Trigger: Cron job setiap tanggal 1 pukul 08:00-09:00
+ * Trigger: Cron job setiap tanggal 1 pukul 08:00 WIB (0 8 1 * * UTC)
  * 
- * UPDATED: Support CPNS II/c exception (40 AK instead of 60 AK)
- * WITH: Device rotation strategy, rate limiting, retry mechanism dari Fonnte
+ * FITUR:
+ * - Identifikasi karyawan yang bisa naik jabatan/golongan sekarang atau dalam 3 bulan
+ * - Support CPNS II/c exception (40 AK instead of 60 AK) 
+ * - Device rotation strategy dengan rate limiting
+ * - Retry mechanism untuk handling Fonnte rate limit  
+ * - Detailed logging untuk semua sends (success/failed)
  */
 
 // @ts-ignore - Deno runtime

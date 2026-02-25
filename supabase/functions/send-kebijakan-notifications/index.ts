@@ -1,12 +1,14 @@
 /**
  * Supabase Edge Function: Send Kebijakan (Policy) Notifications
- * Trigger: Cron job setiap tanggal 16 pukul 08:00 (dengan cek hari libur untuk tanggal 17)
+ * Trigger: Cron job setiap tanggal 16 pukul 13:00 WIB (0 13 16 * * UTC)
  * 
  * FITUR: 
  * - Dikirim ke SEMUA karyawan aktif (bukan hanya yang naik pangkat)
  * - Cek hari libur: pastikan tanggal 17 bukan hari libur
  * - Device rotation dari Fonnte (sama dengan karir-notifications)
  * - Rate limiting dan retry mechanism
+ * - Birthday detection dan greeting otomatis (fase 1)
+ * - Kebijakan broadcast ke semua (fase 2)
  */
 
 // @ts-ignore - Deno runtime
