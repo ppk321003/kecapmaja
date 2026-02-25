@@ -64,7 +64,11 @@ function initializeDeviceTokens() {
         });
       }
     }
-    console.log(`[Manual Broadcast] Initialized ${deviceTokens.filter(t => t.active).length} active devices`);
+    const activeCount = deviceTokens.filter(t => t.active).length;
+    console.log(`[Manual Broadcast] Initialized ${activeCount} active devices: ${deviceTokens.filter(t => t.active).map(t => t.name).join(', ')}`);
+    if (activeCount === 0) {
+      console.error(`[Manual Broadcast] ⚠️ WARNING: No active Fonnte devices found in FONNTE_DEVICE_TOKENS`);
+    }
   } catch (error) {
     console.error('[Manual Broadcast] Failed to parse device tokens:', error);
     deviceTokens = [];
@@ -151,7 +155,9 @@ async function sendWAViaFonnte(phoneNumber: string, message: string, retryCount:
     stats.onCooldown = true;
 
     // DEBUG: Log full Fonnte response
-    console.log(`[Manual Broadcast] Fonnte Response - HTTP ${response.status}, Status: ${data.status}, Message: ${data.message}, Data:`, JSON.stringify(data));
+    console.log(`[Manual Broadcast] Fonnte Request sent to: ${phoneNumber}`);
+    console.log(`[Manual Broadcast] Device: ${device.name}, Token prefix: ${device.token.substring(0, 20)}...`);
+    console.log(`[Manual Broadcast] Fonnte Response - HTTP ${response.status}, Status: ${data.status}, Message: ${data.message || '(undefined)'}, Data:`, JSON.stringify(data));
 
     // Fonnte returns { status: true/false, message: "...", data: {...} }
     if (data.status === true && response.ok) {
