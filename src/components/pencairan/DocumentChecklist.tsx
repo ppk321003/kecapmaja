@@ -37,8 +37,8 @@ export function DocumentChecklist({ documents, onToggle, readOnly = false }: Doc
             {doc.isRequired && (
               <span className="text-destructive ml-1">*</span>
             )}
-            {!doc.isRequired && (
-              <span className="text-muted-foreground text-xs ml-2">(dilengkapi Bendahara)</span>
+            {!doc.isRequired && doc.note && (
+              <span className="text-muted-foreground text-xs ml-2">({doc.note})</span>
             )}
           </div>
         </div>
