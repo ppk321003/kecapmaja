@@ -259,6 +259,49 @@ class AngkaKreditCalculator {
     const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
     return kebutuhan[golonganSekarang] || 0;
   }
+  // Normalize tanggal ke ISO format (YYYY-MM-DD) untuk perbandingan yang akurat
+  private static normalizeTanggal(tanggal: string): string {
+    if (!tanggal) return '';
+    
+    // Try to parse various date formats and return YYYY-MM-DD
+    const cleaned = tanggal.trim();
+    
+    // Already in ISO format (YYYY-MM-DD)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
+    
+    // American format (MM/DD/YYYY) - convert to ISO
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) {
+      const [month, day, year] = cleaned.split('/');
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    // European format (DD/MM/YYYY) or (DD.MM.YYYY)
+    if (/^\d{1,2}[\/\.]\d{1,2}[\/\.]\d{4}$/.test(cleaned)) {
+      const parts = cleaned.split(/[\/\.]/);
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+    }
+    
+    // Indonesian format (1 Maret 2022 or 01 Maret 2022)
+    const bulanMap: Record<string, string> = {
+      'januari': '01', 'februari': '02', 'maret': '03', 'april': '04',
+      'mei': '05', 'juni': '06', 'juli': '07', 'agustus': '08',
+      'september': '09', 'oktober': '10', 'november': '11', 'desember': '12'
+    };
+    const match = cleaned.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/i);
+    if (match) {
+      const [, day, month, year] = match;
+      const monthNum = bulanMap[month.toLowerCase()];
+      if (monthNum) {
+        return `${year}-${monthNum}-${day.padStart(2, '0')}`;
+      }
+    }
+    
+    return cleaned;
+  }
+
   static getKebutuhanJabatan(jabatanSekarang: string, kategori: string, golonganSekarang?: string, tmtPns?: string, tmtPangkat?: string): number {
     if (kategori === 'Reguler') return 0; // Untuk Reguler, tidak ada kebutuhan AK untuk jabatan
 
@@ -283,12 +326,13 @@ class AngkaKreditCalculator {
       }
     } else {
       // EXCEPTION: CPNS II/c (start dari II/c dengan tmtPns === tmtPangkat) hanya butuh 40 AK untuk naik ke Mahir
+      // Normalize tangal untuk perbandingan yang akurat (handle berbagai format, e.g. "1 Maret 2022" vs "01 Maret 2022")
       if (
         jabatanSekarang.includes('Terampil') && 
         golonganSekarang === 'II/c' && 
         tmtPns && 
         tmtPangkat && 
-        tmtPns === tmtPangkat
+        this.normalizeTanggal(tmtPns) === this.normalizeTanggal(tmtPangkat)
       ) {
         return 40; // Exception khusus CPNS dari II/c
       }

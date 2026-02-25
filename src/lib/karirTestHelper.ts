@@ -144,6 +144,48 @@ function parseTanggalIndonesia(tanggal: string): Date {
   return new Date();
 }
 
+// Normalize tanggal ke ISO format (YYYY-MM-DD) untuk perbandingan yang akurat
+function normalizeTanggal(tanggal: string): string {
+  if (!tanggal) return '';
+  
+  const cleaned = tanggal.trim();
+  
+  // Already in ISO format (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
+  
+  // American format (MM/DD/YYYY) - convert to ISO
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) {
+    const [month, day, year] = cleaned.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // European format (DD/MM/YYYY) or (DD.MM.YYYY)
+  if (/^\d{1,2}[\/\.]\d{1,2}[\/\.]\d{4}$/.test(cleaned)) {
+    const parts = cleaned.split(/[\/\.]/);
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+  }
+  
+  // Indonesian format (1 Maret 2022 or 01 Maret 2022)
+  const bulanMap: Record<string, string> = {
+    'januari': '01', 'februari': '02', 'maret': '03', 'april': '04',
+    'mei': '05', 'juni': '06', 'juli': '07', 'agustus': '08',
+    'september': '09', 'oktober': '10', 'november': '11', 'desember': '12'
+  };
+  const match = cleaned.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/i);
+  if (match) {
+    const [, day, month, year] = match;
+    const monthNum = bulanMap[month.toLowerCase()];
+    if (monthNum) {
+      return `${year}-${monthNum}-${day.padStart(2, '0')}`;
+    }
+  }
+  
+  return cleaned;
+}
+
 function hitungSelisihBulan(tanggalAwal: Date, tanggalAkhir: Date): number {
   const tahunAwal = tanggalAwal.getFullYear();
   const bulanAwal = tanggalAwal.getMonth();
@@ -154,11 +196,12 @@ function hitungSelisihBulan(tanggalAwal: Date, tanggalAkhir: Date): number {
 
 function getKebutuhanJabatanTerampil(golongan: string, tmtPns?: string, tmtPangkat?: string): number {
   // Exception: CPNS II/c (start dari II/c dengan tmtPns === tmtPangkat)
+  // Normalize tanggal untuk handle berbagai format (e.g. "1 Maret 2022" vs "01 Maret 2022")
   if (
     golongan === 'II/c' &&
     tmtPns &&
     tmtPangkat &&
-    tmtPns === tmtPangkat
+    normalizeTanggal(tmtPns) === normalizeTanggal(tmtPangkat)
   ) {
     return 40; // CPNS dari II/c hanya butuh 40 AK
   }
