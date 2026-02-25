@@ -314,13 +314,9 @@ export default function UsulanPencairan() {
               </div>
             ) : (
               <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Menampilkan {paginatedSubmissions.length} dari {filteredSubmissions.length} pengajuan
-                </p>
-                
                 <div className="w-full overflow-x-auto rounded-lg border bg-white dark:bg-slate-950">
                   <SubmissionTable 
-                  submissions={paginatedSubmissions} 
+                  submissions={filteredSubmissions} 
                   onView={setSelectedSubmission} 
                   onEdit={(sub) => { 
                     setEditingSubmission(sub); 
@@ -329,50 +325,6 @@ export default function UsulanPencairan() {
                   userRole={userRole} 
                 />
                 </div>
-
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handlePageChange(1)} 
-                      disabled={currentPage === 1}
-                      className="rounded-lg"
-                    >
-                      Awal
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handlePageChange(currentPage - 1)} 
-                      disabled={currentPage === 1}
-                      className="rounded-lg"
-                    >
-                      Sebelumnya
-                    </Button>
-                    <span className="text-sm text-muted-foreground px-4">
-                      Halaman {currentPage} dari {totalPages}
-                    </span>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handlePageChange(currentPage + 1)} 
-                      disabled={currentPage === totalPages}
-                      className="rounded-lg"
-                    >
-                      Selanjutnya
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handlePageChange(totalPages)} 
-                      disabled={currentPage === totalPages}
-                      className="rounded-lg"
-                    >
-                      Akhir
-                    </Button>
-                  </div>
-                )}
               </>
             )}
           </CardContent>
