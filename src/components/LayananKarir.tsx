@@ -6,6 +6,7 @@ import ManualWABroadcast from '@/components/ManualWABroadcast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Karyawan } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LayananKarirProps {
@@ -14,6 +15,7 @@ interface LayananKarirProps {
 
 const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   const { user } = useAuth();
+  const satkerConfig = useSatkerConfigContext();
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
   const userRole = user?.role ? [user.role] : [];
 
@@ -28,32 +30,45 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
+        const spreadsheetId = satkerConfig?.getUserSatkerConfig()?.masterorganik_sheet_id;
+        
+        if (!spreadsheetId) {
+          console.warn('[LayananKarir] No spreadsheetId configured');
+          return;
+        }
+
         const { data, error } = await supabase.functions.invoke('google-sheets', {
           body: {
-            action: 'fetch',
-            sheet: 'MASTER.ORGANIK'
+            spreadsheetId: spreadsheetId,
+            operation: 'read',
+            range: 'MASTER.ORGANIK!A:V'
           }
         });
 
-        if (!error && data && Array.isArray(data)) {
-          const employees = data.map((row: any) => ({
-            nip: row.NIP || row.nip || '',
-            nama: row.NAMA || row.nama || '',
-            pangkat: row.PANGKAT || row.pangkat || '',
-            golongan: row.GOLONGAN || row.golongan || row.GOL_AKHIR || '',
-            jabatan: row.JABATAN || row.jabatan || '',
-            kategori: (row.KATEGORI || row.kategori || 'Reguler') as 'Keahlian' | 'Keterampilan' | 'Reguler',
-            tglPenghitunganAkTerakhir: row.TGL_PENGHITUNGAN_AK_TERAKHIR || row.tglPenghitunganAkTerakhir || '',
-            akKumulatif: parseFloat((row.AK_KUMULATIF || row.ak_kumulatif || '0').toString().replace(',', '.')) || 0,
-            unitKerja: row.KECAMATAN || row.kecamatan || row.SATKER || row.satker || '',
-            tmtJabatan: row.TMT_JABATAN || row.tmtJabatan || '',
-            tmtPangkat: row.TMT_PANGKAT || row.tmtPangkat || '',
-            pendidikan: row.PENDIDIKAN || row.pendidikan || '',
-            tempatLahir: row.TEMPAT_LAHIR || row.tempatLahir || '',
-            tanggalLahir: row.TGL_LAHIR || row.tanggalLahir || '',
-            jenisKelamin: (row.JENIS_KELAMIN || row.jenisKelamin || 'L') as 'L' | 'P',
+        if (!error && data?.values && Array.isArray(data.values)) {
+          const rows = data.values;
+          const employees = rows.slice(1).map((row: any[]) => ({
+            nip: row[2]?.toString() || '',
+            nama: row[3]?.toString() || '',
+            pangkat: row[7]?.toString() || '',
+            golongan: row[6]?.toString() || '',
+            jabatan: row[4]?.toString() || '',
+            kategori: (row[11]?.toString() || 'Reguler') as 'Keahlian' | 'Keterampilan' | 'Reguler',
+            tglPenghitunganAkTerakhir: row[12]?.toString() || '',
+            akKumulatif: parseFloat((row[13]?.toString() || '0').replace(',', '.')) || 0,
+            unitKerja: row[5]?.toString() || '',
+            tmtJabatan: row[16]?.toString() || '',
+            tmtPangkat: row[17]?.toString() || '',
+            pendidikan: row[18]?.toString() || '',
+            tempatLahir: row[14]?.toString() || '',
+            tanggalLahir: '',
+            jenisKelamin: 'L' as 'L' | 'P',
           })) as Karyawan[];
-          console.log('[LayananKarir] Fetched employees for broadcast:', {count: employees.length, sample: employees[0]});
+          
+          console.log('[LayananKarir] Fetched employees for broadcast:', {
+            count: employees.length, 
+            sample: employees[0]
+          });
           setAllEmployees(employees);
         } else {
           console.warn('[LayananKarir] Error or empty data from google-sheets:', error);
@@ -63,10 +78,10 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
       }
     };
 
-    if (isPPK) {
+    if (isPPK && !satkerConfig?.isLoading) {
       fetchEmployees();
     }
-  }, [isPPK]);
+  }, [isPPK, satkerConfig]);
 
   useEffect(() => {
     setPpkName(user?.username || 'PPK');
