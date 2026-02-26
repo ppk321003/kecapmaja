@@ -221,16 +221,16 @@ const LayananKarirABK: React.FC = () => {
                       
                       if (existing === formasi && formasi > 0) {
                         keterangan = `✓ Terpenuhi (${existing}/${formasi})`;
-                        keteranganColor = 'text-green-700 bg-green-50';
+                        keteranganColor = 'text-green-700';
                       } else if (existing < formasi && formasi > 0) {
                         keterangan = `✗ Belum terpenuhi, tersedia ${existing} pegawai (${existing}/${formasi})`;
-                        keteranganColor = 'text-orange-700 bg-orange-50';
+                        keteranganColor = 'text-orange-700';
                       } else if (existing > formasi) {
                         keterangan = `✗ Melebihi formasi (${existing}/${formasi})`;
-                        keteranganColor = 'text-red-700 bg-red-50';
+                        keteranganColor = 'text-red-700';
                       } else {
                         keterangan = `- Tidak ada formasi`;
-                        keteranganColor = 'text-gray-700 bg-gray-50';
+                        keteranganColor = 'text-gray-700';
                       }
                       
                       return (
@@ -250,7 +250,7 @@ const LayananKarirABK: React.FC = () => {
                               totalFormasi={item.formasi}
                             />
                           </td>
-                          <td className={`py-3 px-4 text-xs font-medium rounded ${keteranganColor}`}>
+                          <td className={`py-3 px-4 text-xs font-medium ${keteranganColor}`}>
                             {keterangan}
                           </td>
                         </tr>
@@ -298,6 +298,9 @@ const LayananKarirABK: React.FC = () => {
               <p className="text-sm text-muted-foreground">Total Pegawai Terisi</p>
               <p className="text-3xl font-bold text-primary mt-2">
                 {abkData.reduce((sum, item) => sum + item.employees.length, 0)}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {((abkData.reduce((sum, item) => sum + item.employees.length, 0) / abkData.reduce((sum, item) => sum + item.formasi, 0)) * 100).toFixed(1)}% dari total formasi
               </p>
             </div>
           </CardContent>
