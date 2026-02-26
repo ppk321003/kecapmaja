@@ -185,15 +185,16 @@ export default function UsulanPencairan() {
   const totalPages = Math.ceil(filteredSubmissions.length / pageSize);
 
   const counts = useMemo(() => {
-    // Inisialisasi dengan semua status yang mungkin
+    // 🆕 Hitung berdasarkan filteredSubmissions (setelah role filtering), bukan submissions
     const result: Record<string, number> = {
-      all: submissions.length,
+      all: 0,
       draft: 0,
       pending_bendahara: 0,
       pending_ppk: 0,
       pending_ppspm: 0,
       sent_kppn: 0,
       complete_arsip: 0,
+      rejected: 0, // Untuk tab "Ditolak"
       incomplete_sm: 0,
       incomplete_bendahara: 0,
       incomplete_ppk: 0,
@@ -201,14 +202,21 @@ export default function UsulanPencairan() {
       incomplete_kppn: 0,
     };
     
-    // Hitung setiap status
-    submissions.forEach(sub => {
+    // Hitung setiap status dari filtered data
+    filteredSubmissions.forEach(sub => {
+      result.all++;
+      
+      // Count ke kategori rejected jika status incomplete_*
+      if (sub.status.startsWith('incomplete_')) {
+        result.rejected++;
+      }
+      
       if (sub.status in result) {
         result[sub.status]++;
       }
     });
     return result;
-  }, [submissions]);
+  }, [filteredSubmissions]);
 
   const handleUpdateSubmission = (id: string, updates: Partial<Submission>) => {
     setSubmissions(prev => prev.map(sub => sub.id === id ? { ...sub, ...updates } : sub));
@@ -273,14 +281,8 @@ export default function UsulanPencairan() {
           <TabsList className="flex flex-wrap w-full max-w-5xl bg-muted/60 p-1 rounded-xl shadow-inner justify-center gap-1 h-auto">
             {filterConfig.map((filter) => {
               const Icon = filter.icon;
-              const countValue = filter.value === 'all' ? counts.all
-                : filter.value === 'draft' ? counts.draft
-                : filter.value === 'rejected' ? counts.incomplete_sm + counts.incomplete_bendahara + counts.incomplete_ppk + counts.incomplete_ppspm + counts.incomplete_kppn
-                : filter.value === 'pending_bendahara' ? counts.pending_bendahara
-                : filter.value === 'pending_ppk' ? counts.pending_ppk
-                : filter.value === 'pending_ppspm' ? counts.pending_ppspm
-                : filter.value === 'sent_kppn' ? counts.sent_kppn
-                : counts.complete_arsip;
+              // 🆕 Gunakan counts yang sudah di-filter berdasarkan role
+              const countValue = counts[filter.value] || 0;
 
               return (
                 <TabsTrigger

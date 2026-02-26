@@ -64,15 +64,10 @@ export function shouldShowSubmission(submission: Submission, userRole: UserRole,
   
   // Untuk submitter (Fungsi*), hanya tampilkan:
   // 1. Data yang mereka buat sendiri (kolom R: user)
-  // 2. Data yang sedang dalam review mereka (status = incomplete_sm)
+  // 2. Data yang sedang dalam review mereka (status = incomplete_sm HANYA jika mereka creator-nya)
   if (SUBMITTER_ROLES.includes(userRole)) {
     // Jika buat pengajuan sendiri
     if (submission.user && submission.user === userRole) {
-      return true;
-    }
-    
-    // Jika ada data untuk dikerjakan (incomplete/rejected ke mereka)
-    if (submission.status === 'incomplete_sm') {
       return true;
     }
     
