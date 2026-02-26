@@ -343,6 +343,9 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                   <SortIcon field="title" />
                 </button>
               </TableHead>
+              <TableHead className="text-xs">
+                User
+              </TableHead>
               <TableHead>
                 <button 
                   onClick={() => handleSort('submitterName')}
@@ -396,6 +399,11 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                       <div className="font-medium text-sm max-w-[250px] whitespace-normal break-words">
                         {submission.title}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <span className="inline-block px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-semibold whitespace-nowrap">
+                        {submission.user || '-'}
+                      </span>
                     </TableCell>
                     <TableCell className="text-sm">
                       {submission.submitterName}
