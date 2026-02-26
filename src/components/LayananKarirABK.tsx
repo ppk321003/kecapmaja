@@ -199,29 +199,52 @@ const LayananKarirABK: React.FC = () => {
                   <th className="text-left py-3 px-4 font-semibold text-foreground bg-muted/50">No</th>
                   <th className="text-left py-3 px-4 font-semibold text-foreground bg-muted/50">Nama Jabatan</th>
                   <th className="text-center py-3 px-4 font-semibold text-foreground bg-muted/50">Formasi Jabatan</th>
+                  <th className="text-center py-3 px-4 font-semibold text-foreground bg-muted/50">Existing</th>
                 </tr>
               </thead>
               <tbody>
                 {abkData.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={4} className="text-center py-8 text-muted-foreground">
                       Tidak ada data jabatan
                     </td>
                   </tr>
                 ) : (
-                  abkData.map((item, index) => (
-                    <tr key={index} className="border-b hover:bg-muted/50 transition-colors">
-                      <td className="py-3 px-4 text-foreground">{item.no}</td>
-                      <td className="py-3 px-4 text-foreground">{item.jabatan}</td>
+                  <>
+                    {abkData.map((item, index) => (
+                      <tr key={index} className="border-b hover:bg-muted/50 transition-colors">
+                        <td className="py-3 px-4 text-foreground">{item.no}</td>
+                        <td className="py-3 px-4 text-foreground">{item.jabatan}</td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg font-semibold bg-blue-100 text-blue-700">
+                            {item.formasi}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <ExistingCell 
+                            count={item.employees.length}
+                            employees={item.employees}
+                            jabatan={item.jabatan}
+                            totalFormasi={item.formasi}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Row Total */}
+                    <tr className="border-t-2 border-gray-400 font-semibold bg-gray-100">
+                      <td colSpan={2} className="py-3 px-4 text-foreground text-right">TOTAL</td>
                       <td className="py-3 px-4 text-center">
-                        <FormationCell 
-                          count={item.formasi} 
-                          employees={item.employees}
-                          jabatan={item.jabatan}
-                        />
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg font-semibold bg-blue-100 text-blue-700">
+                          {abkData.reduce((sum, item) => sum + item.formasi, 0)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg font-semibold bg-green-100 text-green-700">
+                          {abkData.reduce((sum, item) => sum + item.employees.length, 0)}
+                        </span>
                       </td>
                     </tr>
-                  ))
+                  </>
                 )}
               </tbody>
             </table>
@@ -268,80 +291,103 @@ const LayananKarirABK: React.FC = () => {
   );
 };
 
-// FormationCell Component with Tooltip
-const FormationCell: React.FC<{
+// ExistingCell Component with Tooltip (White background with green accents)
+const ExistingCell: React.FC<{
   count: number;
   employees: EmployeeMatch[];
   jabatan: string;
-}> = ({ count, employees, jabatan }) => {
+  totalFormasi: number;
+}> = ({ count, employees, jabatan, totalFormasi }) => {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState<'top' | 'bottom'>('top');
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    // Jika tooltip akan melebihi top, tampilkan di bawah
+    if (rect.top < 200) {
+      setTooltipPosition('bottom');
+    } else {
+      setTooltipPosition('top');
+    }
+    setShowTooltip(true);
+  };
 
   return (
     <div className="relative inline-block">
       <div
-        onMouseEnter={() => setShowTooltip(true)}
+        onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setShowTooltip(false)}
         className={`
           inline-flex items-center justify-center
           w-8 h-8 rounded-lg font-semibold cursor-help
           transition-all
-          ${count > 0 
-            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
-            : 'bg-gray-100 text-gray-700'
-          }
-          ${employees.length === count 
-            ? 'ring-2 ring-green-500' 
-            : employees.length > 0 
-              ? 'ring-2 ring-yellow-500' 
-              : ''
+          ${count === totalFormasi && totalFormasi > 0
+            ? 'bg-green-100 text-green-700 ring-2 ring-green-500' 
+            : count > 0
+              ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-500'
+              : 'bg-red-100 text-red-700'
           }
         `}
       >
         {count}
       </div>
 
-      {/* Tooltip */}
+      {/* Tooltip - White background with green accents */}
       {showTooltip && (
-        <div className="absolute z-50 w-80 p-3 text-sm bg-gray-900 text-white rounded-lg shadow-lg bottom-full mb-2 left-1/2 transform -translate-x-1/2">
-          {/* Header */}
-          <div className="font-semibold text-white mb-2">
+        <div className={`
+          absolute z-50 w-96 p-4 text-sm bg-white text-gray-900 rounded-lg shadow-xl border border-gray-200
+          ${tooltipPosition === 'top' 
+            ? 'bottom-full mb-3' 
+            : 'top-full mt-3'
+          }
+          left-1/2 transform -translate-x-1/2
+        `}>
+          {/* Header - Green background */}
+          <div className="font-semibold text-white bg-green-600 px-3 py-2 rounded -mx-4 -mt-4 mb-3">
             {jabatan}
           </div>
 
           {/* Employees List */}
           {employees.length > 0 ? (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+            <div className="space-y-2 max-h-60 overflow-y-auto">
               {employees.map((emp, idx) => (
-                <div key={idx} className="text-xs bg-gray-800 p-2 rounded">
-                  <p className="font-medium text-yellow-200">{emp.nama}</p>
-                  <p className="text-gray-300">NIP: {emp.nip}</p>
-                  <p className="text-gray-300">
+                <div key={idx} className="text-xs bg-gray-50 border border-gray-200 p-3 rounded">
+                  <p className="font-semibold text-gray-900">{emp.nama}</p>
+                  <p className="text-gray-600 mt-1">NIP: {emp.nip}</p>
+                  <p className="text-gray-600">
                     {emp.pangkat} ({emp.golongan})
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-xs text-gray-400 italic">
+            <div className="text-xs text-gray-500 italic py-2">
               Belum ada pegawai yang menduduki jabatan ini
             </div>
           )}
 
-          {/* Status */}
-          <div className="mt-2 pt-2 border-t border-gray-700 text-xs">
+          {/* Status Footer - Green accent */}
+          <div className="mt-3 pt-3 border-t border-gray-200 text-xs font-medium">
             <span className={
-              employees.length === count
-                ? 'text-green-300'
-                : employees.length > 0
-                  ? 'text-yellow-300'
-                  : 'text-red-300'
+              count === totalFormasi && totalFormasi > 0
+                ? 'text-green-700 bg-green-50 px-2 py-1 rounded'
+                : count > 0
+                  ? 'text-yellow-700 bg-yellow-50 px-2 py-1 rounded'
+                  : 'text-red-700 bg-red-50 px-2 py-1 rounded'
             }>
-              {employees.length} / {count} Terisi
+              {count} / {totalFormasi} Terisi
             </span>
           </div>
 
           {/* Arrow Pointer */}
-          <div className="absolute w-3 h-3 bg-gray-900 transform rotate-45 top-full -translate-y-1/2 left-1/2 -translate-x-1/2"></div>
+          <div className={`
+            absolute w-3 h-3 bg-white border border-gray-200 transform rotate-45 
+            ${tooltipPosition === 'top'
+              ? 'top-full -translate-y-1/2'
+              : 'bottom-full translate-y-1/2'
+            }
+            left-1/2 -translate-x-1/2
+          `}></div>
         </div>
       )}
     </div>
