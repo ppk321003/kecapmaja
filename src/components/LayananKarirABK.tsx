@@ -328,13 +328,17 @@ const LayananKarirABK: React.FC = () => {
 const convertGoogleDriveUrl = (url: string): string => {
   if (!url) return '';
   
-  // Pattern: https://drive.google.com/file/d/[FILE_ID]/view...
-  const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9-_]+)\//);
-  if (fileIdMatch && fileIdMatch[1]) {
-    return `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}`;
+  // Check if it's a Google Drive URL
+  if (url.includes('drive.google.com/file/d/')) {
+    const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    return fileIdMatch 
+      ? `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`
+      : url;
+  } else if (url.includes('http')) {
+    return url; // Return as-is if it's already an HTTP URL
   }
   
-  return url; // Return original URL if not a Google Drive URL
+  return url; // Return original URL
 };
 
 // ExistingCell Component with Click Dialog Popup
