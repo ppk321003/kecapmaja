@@ -76,12 +76,10 @@ export default function UsulanPencairan() {
   // Fungsi untuk mengecek apakah user memiliki role yang sesuai untuk pengajuan
   const shouldShowRoleWarning = () => {
     if (!currentUser) return false;
-    const role = currentUser.role || '';
-    // Jangan tampil warning jika role adalah "Ketua Tim" atau mengandung kata "Fungsi"
-    if (role === 'Ketua Tim' || role.includes('Fungsi')) {
-      return false;
-    }
-    return true;
+    const role = currentUser.role as UserRole;
+    // Tampil warning jika role TIDAK bisa membuat pengajuan
+    // Ini otomatis mengecek SUBMITTER_ROLES (Fungsi*, Bendahara, PPK)
+    return !canCreateSubmission(role);
   };
 
   useEffect(() => {
@@ -136,15 +134,32 @@ export default function UsulanPencairan() {
     }
   }, [sheetSubmissions, selectedSubmission?.id]);
 
-  const filteredSubmissions = useMemo(() => {
-    // Start dengan copy dari submissions, filtered by current user's satker
-    // (data dari usePencairanData seharusnya sudah filtered by satker, tapi ini sebagai safety check)
+  // 🆕 Filter hanya berdasarkan role (tanpa filter status tab) - untuk counts
+  const roleFilteredSubmissions = useMemo(() => {
     let result = submissions; // Already filtered by satker from usePencairanData
     
-    // 🆕 Filter berdasarkan role user - hanya tampilkan data yang sesuai dengan role mereka
+    // Filter berdasarkan role user - hanya tampilkan data yang sesuai dengan role mereka
     result = result.filter(sub => shouldShowSubmission(sub, userRole));
     
-    // Filter berdasarkan activeFilter
+    // Sort by ID - extract nomor urut (3 digit terakhir) dan sort descending
+    result = result.sort((a, b) => {
+      try {
+        const aNum = parseInt(a.id.substring(5));
+        const bNum = parseInt(b.id.substring(5));
+        return bNum - aNum;
+      } catch (e) {
+        return 0;
+      }
+    });
+    
+    return result;
+  }, [submissions, userRole]);
+
+  // Filter berdasarkan role user AND active status filter tab
+  const filteredSubmissions = useMemo(() => {
+    let result = roleFilteredSubmissions;
+    
+    // Filter berdasarkan activeFilter tab
     if (activeFilter !== 'all') {
       if (activeFilter === 'rejected') {
         result = result.filter(sub => 
@@ -159,23 +174,8 @@ export default function UsulanPencairan() {
       }
     }
     
-    // Sort by ID - extract nomor urut (3 digit terakhir) dan sort descending
-    // Format ID: SUBYYMMXXX (XX = tahun, MM = bulan, XXX = nomor urut)
-    result = result.sort((a, b) => {
-      try {
-        // Extract tahun, bulan, dan nomor urut
-        const aNum = parseInt(a.id.substring(5)); // SUB + 2 digit tahun + 2 digit bulan + 3 digit nomor = ambil dari index 5
-        const bNum = parseInt(b.id.substring(5));
-        
-        // Descending order (terbaru dulu)
-        return bNum - aNum;
-      } catch (e) {
-        return 0;
-      }
-    });
-    
     return result;
-  }, [submissions, activeFilter, userRole]);
+  }, [roleFilteredSubmissions, activeFilter]);
 
   const paginatedSubmissions = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -185,7 +185,8 @@ export default function UsulanPencairan() {
   const totalPages = Math.ceil(filteredSubmissions.length / pageSize);
 
   const counts = useMemo(() => {
-    // 🆕 Hitung berdasarkan filteredSubmissions (setelah role filtering), bukan submissions
+    // 🔧 Hitung berdasarkan roleFilteredSubmissions (sebelum filter status tab)
+    // Ini memastikan counts menampilkan jumlah sebenarnya untuk setiap status, bukan hanya yang ter-filter
     const result: Record<string, number> = {
       all: 0,
       draft: 0,
@@ -202,8 +203,8 @@ export default function UsulanPencairan() {
       incomplete_kppn: 0,
     };
     
-    // Hitung setiap status dari filtered data
-    filteredSubmissions.forEach(sub => {
+    // Hitung setiap status dari role-filtered data (BUKAN dari tab-filtered data)
+    roleFilteredSubmissions.forEach(sub => {
       result.all++;
       
       // Count ke kategori rejected jika status incomplete_*
@@ -216,7 +217,7 @@ export default function UsulanPencairan() {
       }
     });
     return result;
-  }, [filteredSubmissions]);
+  }, [roleFilteredSubmissions]);
 
   const handleUpdateSubmission = (id: string, updates: Partial<Submission>) => {
     setSubmissions(prev => prev.map(sub => sub.id === id ? { ...sub, ...updates } : sub));
@@ -267,7 +268,7 @@ export default function UsulanPencairan() {
               </h3>
               <div className="mt-2 text-sm text-amber-800 space-y-1">
                 <p>
-                  Untuk melakukan pengajuan SPJ, Anda harus menggunakan akun dengan role <strong>Ketua Tim</strong> atau <strong>Fungsi.</strong> Silakan hubungi administrator jika Anda perlu mengubah role akun Anda.
+                  Untuk melakukan pengajuan SPJ, Anda harus menggunakan akun dengan role <strong>Fungsi</strong> (Sosial, Neraca, Produksi, Distribusi, IPDS), <strong>Bendahara</strong>, atau <strong>Pejabat Pembuat Komitmen (PPK)</strong>. Silakan hubungi administrator jika Anda perlu mengubah role akun Anda.
                 </p>
               </div>
             </div>
