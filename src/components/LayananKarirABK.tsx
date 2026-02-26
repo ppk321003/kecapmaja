@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AlertCircle, Loader2, X } from 'lucide-react';
 
 interface ABKData {
   no: number;
@@ -219,13 +220,13 @@ const LayananKarirABK: React.FC = () => {
                       let keteranganColor = '';
                       
                       if (existing === formasi && formasi > 0) {
-                        keterangan = `✓ Sesuai (${existing}/${formasi})`;
+                        keterangan = `✓ Terpenuhi (${existing}/${formasi})`;
                         keteranganColor = 'text-green-700 bg-green-50';
-                      } else if (existing > formasi) {
-                        keterangan = `⚠ Surplus: ${existing - formasi} pegawai (${existing}/${formasi})`;
+                      } else if (existing < formasi && formasi > 0) {
+                        keterangan = `✗ Belum terpenuhi, tersedia ${existing} pegawai (${existing}/${formasi})`;
                         keteranganColor = 'text-orange-700 bg-orange-50';
-                      } else if (existing < formasi) {
-                        keterangan = `✗ Deficit: butuh ${formasi - existing} pegawai (${existing}/${formasi})`;
+                      } else if (existing > formasi) {
+                        keterangan = `✗ Melebihi formasi (${existing}/${formasi})`;
                         keteranganColor = 'text-red-700 bg-red-50';
                       } else {
                         keterangan = `- Tidak ada formasi`;
@@ -317,111 +318,80 @@ const LayananKarirABK: React.FC = () => {
   );
 };
 
-// ExistingCell Component with Scrollable Tooltip (not disappearing on hover)
+// ExistingCell Component with Click Dialog Popup
 const ExistingCell: React.FC<{
   count: number;
   employees: EmployeeMatch[];
   jabatan: string;
   totalFormasi: number;
 }> = ({ count, employees, jabatan, totalFormasi }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState<'top' | 'bottom'>('top');
-
-  const handleMouseEnterCell = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (rect.top < 250) {
-      setTooltipPosition('bottom');
-    } else {
-      setTooltipPosition('top');
-    }
-    setShowTooltip(true);
-  };
+  const [openDialog, setOpenDialog] = useState(false);
 
   return (
-    <div 
-      className="relative inline-block"
-      onMouseEnter={handleMouseEnterCell}
-      onMouseLeave={() => setShowTooltip(false)}
-    >
-      <div
+    <>
+      <button
+        onClick={() => setOpenDialog(true)}
         className={`
           inline-flex items-center justify-center
-          w-8 h-8 rounded-lg font-semibold cursor-help
-          transition-all
+          w-8 h-8 rounded-lg font-semibold cursor-pointer
+          transition-all hover:scale-110
           ${count === totalFormasi && totalFormasi > 0
-            ? 'bg-green-100 text-green-700 ring-2 ring-green-500' 
+            ? 'bg-green-100 text-green-700 ring-2 ring-green-500 hover:bg-green-200' 
             : count > 0
-              ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-500'
-              : 'bg-red-100 text-red-700'
+              ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-500 hover:bg-yellow-200'
+              : 'bg-red-100 text-red-700 hover:bg-red-200'
           }
         `}
       >
         {count}
-      </div>
+      </button>
 
-      {/* Tooltip - White background with green accents */}
-      {showTooltip && (
-        <div 
-          className={`
-            absolute z-50 w-96 p-4 text-sm bg-white text-gray-900 rounded-lg shadow-xl border border-gray-200
-            ${tooltipPosition === 'top' 
-              ? 'bottom-full mb-3' 
-              : 'top-full mt-3'
-            }
-            left-1/2 transform -translate-x-1/2
-          `}
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
-        >
-          {/* Header - Green background */}
-          <div className="font-semibold text-white bg-green-600 px-3 py-2 rounded -mx-4 -mt-4 mb-3">
-            {jabatan}
-          </div>
+      {/* Dialog Popup */}
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <DialogContent className="max-w-md max-h-96 overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-green-700">{jabatan}</DialogTitle>
+            <DialogDescription>
+              Detail penempatan pegawai pada posisi ini
+            </DialogDescription>
+          </DialogHeader>
 
-          {/* Employees List - Scrollable */}
-          {employees.length > 0 ? (
-            <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
-              {employees.map((emp, idx) => (
-                <div key={idx} className="text-xs bg-gray-50 border border-gray-200 p-3 rounded hover:bg-gray-100 transition-colors">
+          {/* Employees List */}
+          <div className="space-y-3 py-4">
+            {employees.length > 0 ? (
+              employees.map((emp, idx) => (
+                <div key={idx} className="text-sm bg-gray-50 border border-gray-200 p-3 rounded">
                   <p className="font-semibold text-gray-900">{emp.nama}</p>
-                  <p className="text-gray-600 mt-1">NIP: {emp.nip}</p>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 mt-1 text-xs">NIP: {emp.nip}</p>
+                  <p className="text-gray-600 text-xs">
                     {emp.pangkat} ({emp.golongan})
                   </p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs text-gray-500 italic py-2">
-              Belum ada pegawai yang menduduki jabatan ini
-            </div>
-          )}
-
-          {/* Status Footer - Green accent */}
-          <div className="mt-3 pt-3 border-t border-gray-200 text-xs font-medium">
-            <span className={
-              count === totalFormasi && totalFormasi > 0
-                ? 'text-green-700 bg-green-50 px-2 py-1 rounded inline-block'
-                : count > 0
-                  ? 'text-yellow-700 bg-yellow-50 px-2 py-1 rounded inline-block'
-                  : 'text-red-700 bg-red-50 px-2 py-1 rounded inline-block'
-            }>
-              {count} / {totalFormasi} Terisi
-            </span>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500 italic py-2 text-center">
+                Belum ada pegawai yang menduduki jabatan ini
+              </div>
+            )}
           </div>
 
-          {/* Arrow Pointer */}
-          <div className={`
-            absolute w-3 h-3 bg-white border border-gray-200 transform rotate-45 
-            ${tooltipPosition === 'top'
-              ? 'top-full -translate-y-1/2'
-              : 'bottom-full translate-y-1/2'
-            }
-            left-1/2 -translate-x-1/2
-          `}></div>
-        </div>
-      )}
-    </div>
+          {/* Status Summary */}
+          <div className="bg-gray-100 p-3 rounded text-sm">
+            <p className="font-semibold text-gray-900 mb-2">Ringkasan</p>
+            <div className="space-y-1 text-xs">
+              <p>Formasi: <span className="font-bold">{totalFormasi}</span></p>
+              <p>Terisi: <span className="font-bold text-green-700">{count}</span></p>
+              {count < totalFormasi && (
+                <p className="text-orange-700">Butuh: <span className="font-bold">{totalFormasi - count}</span> pegawai</p>
+              )}
+              {count > totalFormasi && (
+                <p className="text-red-700">Surplus: <span className="font-bold">{count - totalFormasi}</span> pegawai</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
