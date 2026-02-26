@@ -424,7 +424,7 @@ const ExistingCell: React.FC<{
               <p>Formasi: <span className="font-bold">{totalFormasi}</span></p>
               <p>Terisi: <span className="font-bold text-green-700">{count}</span></p>
               {count < totalFormasi && (
-                <p className="text-orange-700">Butuh: <span className="font-bold">{totalFormasi - count}</span> pegawai</p>
+                <p className="text-orange-700">Formasi: <span className="font-bold">{totalFormasi - count}</span> pegawai</p>
               )}
               {count > totalFormasi && (
                 <p className="text-red-700">Surplus: <span className="font-bold">{count - totalFormasi}</span> pegawai</p>
