@@ -17,6 +17,7 @@ interface EmployeeMatch {
   nip: string;
   pangkat: string;
   golongan: string;
+  foto?: string;
 }
 
 interface ABKWithMatches extends ABKData {
@@ -103,7 +104,8 @@ const LayananKarirABK: React.FC = () => {
             nip: row[2]?.toString() || '',
             jabatan: row[4]?.toString().trim() || '', // Column E: Jabatan
             pangkat: row[7]?.toString() || '',
-            golongan: row[6]?.toString() || ''
+            golongan: row[6]?.toString() || '',
+            foto: row[21]?.toString() || '' // Column V: Foto
           }))
           .filter(emp => emp.nama && emp.jabatan); // Filter empty rows
 
@@ -117,7 +119,8 @@ const LayananKarirABK: React.FC = () => {
             nama: emp.nama,
             nip: emp.nip,
             pangkat: emp.pangkat,
-            golongan: emp.golongan
+            golongan: emp.golongan,
+            foto: emp.foto
           });
         });
 
@@ -351,7 +354,7 @@ const ExistingCell: React.FC<{
 
       {/* Dialog Popup */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="max-w-md max-h-96 overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-96 overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-green-700">{jabatan}</DialogTitle>
             <DialogDescription>
@@ -363,12 +366,31 @@ const ExistingCell: React.FC<{
           <div className="space-y-3 py-4">
             {employees.length > 0 ? (
               employees.map((emp, idx) => (
-                <div key={idx} className="text-sm bg-gray-50 border border-gray-200 p-3 rounded">
-                  <p className="font-semibold text-gray-900">{emp.nama}</p>
-                  <p className="text-gray-600 mt-1 text-xs">NIP: {emp.nip}</p>
-                  <p className="text-gray-600 text-xs">
-                    {emp.pangkat} ({emp.golongan})
-                  </p>
+                <div key={idx} className="flex gap-3 bg-gray-50 border border-gray-200 p-3 rounded">
+                  {/* Foto */}
+                  {emp.foto ? (
+                    <img 
+                      src={emp.foto} 
+                      alt={emp.nama}
+                      className="w-16 h-20 object-cover rounded flex-shrink-0"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-16 h-20 bg-gray-300 rounded flex-shrink-0 flex items-center justify-center text-xs text-gray-600">
+                      No Photo
+                    </div>
+                  )}
+                  
+                  {/* Info */}
+                  <div className="flex-1 text-sm">
+                    <p className="font-semibold text-gray-900">{emp.nama}</p>
+                    <p className="text-gray-600 mt-1 text-xs">NIP: {emp.nip}</p>
+                    <p className="text-gray-600 text-xs">
+                      {emp.pangkat} ({emp.golongan})
+                    </p>
+                  </div>
                 </div>
               ))
             ) : (
