@@ -21,9 +21,12 @@ export type UserRole =
   | 'Fungsi IPDS'
   | 'Bendahara'
   | 'Pejabat Pembuat Komitmen'
+  | 'Pejabat Pengadaan'
   | 'Pejabat Penandatangan Surat Perintah Membayar'
+  | 'Padamel BPS 3210'
   | 'KPPN'
   | 'Arsip'
+  | 'operator'
   | 'admin';
 
 // Roles yang bisa mengajukan
@@ -34,6 +37,51 @@ export const SUBMITTER_ROLES: UserRole[] = [
   'Fungsi Distribusi',
   'Fungsi IPDS',
 ];
+
+// 🆕 Roles yang bisa melihat SEMUA data pengajuan
+export const ROLES_CAN_VIEW_ALL: UserRole[] = [
+  'Pejabat Pembuat Komitmen',
+  'Bendahara',
+  'Pejabat Pengadaan',
+  'Padamel BPS 3210',
+  'Pejabat Penandatangan Surat Perintah Membayar',
+  'Arsip',
+  'operator',
+  'admin',
+];
+
+// 🆕 Helper: Check apakah role bisa lihat semua atau hanya data mereka
+export function canViewAllSubmissions(role: UserRole): boolean {
+  return ROLES_CAN_VIEW_ALL.includes(role);
+}
+
+// 🆕 Helper: Check apakah submission harus ditampilkan untuk user dengan role tertentu
+export function shouldShowSubmission(submission: Submission, userRole: UserRole, userCreatorRole?: string): boolean {
+  // Admin dan roles khusus bisa lihat semua
+  if (canViewAllSubmissions(userRole)) {
+    return true;
+  }
+  
+  // Untuk submitter (Fungsi*), hanya tampilkan:
+  // 1. Data yang mereka buat sendiri (kolom R: user)
+  // 2. Data yang sedang dalam review mereka (status = incomplete_sm)
+  if (SUBMITTER_ROLES.includes(userRole)) {
+    // Jika buat pengajuan sendiri
+    if (submission.user && submission.user === userRole) {
+      return true;
+    }
+    
+    // Jika ada data untuk dikerjakan (incomplete/rejected ke mereka)
+    if (submission.status === 'incomplete_sm') {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  // Untuk role lain (operator, dll), tampilkan semua
+  return true;
+}
 
 export type DocumentType = string;
 
@@ -73,6 +121,7 @@ export interface Submission {
   ppspmCheckedAt?: Date;
   kppnCheckedAt?: Date;
   arsipCheckedAt?: Date; // ✅ TAMBAH untuk waktu record arsip
+  user?: string; // 🆕 Kolom R - role login yang membuat 'Buat Pengajuan Baru'
 }
 
 export const STATUS_LABELS: Record<SubmissionStatus, string> = {

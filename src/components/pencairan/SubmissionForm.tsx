@@ -230,7 +230,8 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             statusBendahara: '',
             waktuBendahara: '',
             statusKppn: '',
-            satker: user?.satker
+            satker: user?.satker,
+            user: user?.role || '', // 🆕 Kolom R - role login pembuat
           },
         });
         
@@ -336,6 +337,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             waktuBendahara: '',
             statusKppn: '',
             satker: user?.satker,
+            user: user?.role || '', // 🆕 Kolom R - role login pembuat
           },
         });
         

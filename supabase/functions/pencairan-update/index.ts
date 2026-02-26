@@ -205,8 +205,8 @@ serve(async (req) => {
     
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
     
-    // Baca 17 kolom (A:Q) - dengan Waktu Arsip
-    const readResponse = await fetch(`${baseUrl}/values/${SHEET_NAME}!A:Q`, {
+    // Baca 18 kolom (A:R) - dengan Waktu Arsip + User
+    const readResponse = await fetch(`${baseUrl}/values/${SHEET_NAME}!A:R`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const readData = await readResponse.json();
@@ -249,6 +249,7 @@ serve(async (req) => {
     const statusPpk = currentRow.length > 13 ? currentRow[13] || '' : '';    // N: Status PPK
     const statusPPSPM = currentRow.length > 14 ? currentRow[14] || '' : '';  // O: Status PPSPM
     const statusArsip = currentRow.length > 15 ? currentRow[15] || '' : '';  // P: Status Arsip
+    const user = currentRow.length > 17 ? currentRow[17] || '' : '';         // R: User (🆕)
 
     // Handle edit action from SM
     if (actor === 'sm' && action === 'edit') {
@@ -318,10 +319,11 @@ serve(async (req) => {
       }
     }
 
-    // Build updated row sesuai struktur: A-Q (17 kolom)
+    // Build updated row sesuai struktur: A-R (18 kolom)
     // A: ID, B: Uraian, C: Nama, D: Jenis, E: Kelengkapan, F: Catatan, G: Status
     // H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK, K: Waktu PPSPM, L: Waktu Arsip
     // M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip, Q: Update terakhir
+    // R: User (🆕)
     const updatedRow = [
       currentRow[0] || '', // A: ID
       newTitle,            // B: Uraian Pengajuan
@@ -340,14 +342,15 @@ serve(async (req) => {
       updatedStatusPPSPM,  // O: Status PPSPM
       updatedStatusArsip,  // P: Status Arsip
       updatedAt,           // Q: Update terakhir
+      user,                // R: User (🆕 preserve existing user)
     ];
 
     console.log(`Updating row ${rowIndex}:`, updatedRow);
     console.log('Row length:', updatedRow.length);
 
-    // Update dengan range A:Q untuk 17 kolom
+    // Update dengan range A:R untuk 18 kolom
     const updateResponse = await fetch(
-      `${baseUrl}/values/${SHEET_NAME}!A${rowIndex}:Q${rowIndex}?valueInputOption=USER_ENTERED`,
+      `${baseUrl}/values/${SHEET_NAME}!A${rowIndex}:R${rowIndex}?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {

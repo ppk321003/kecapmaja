@@ -6,7 +6,7 @@ import { SubmissionTable } from '@/components/pencairan/SubmissionTable';
 import { SubmissionDetail } from '@/components/pencairan/SubmissionDetail';
 import { SubmissionForm } from '@/components/pencairan/SubmissionForm';
 import { usePencairanData } from '@/hooks/use-pencairan-data';
-import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getDocumentsByJenisBelanja } from '@/types/pencairan';
+import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getDocumentsByJenisBelanja, shouldShowSubmission } from '@/types/pencairan';
 import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileEdit, AlertCircle, Send, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -141,6 +141,9 @@ export default function UsulanPencairan() {
     // (data dari usePencairanData seharusnya sudah filtered by satker, tapi ini sebagai safety check)
     let result = submissions; // Already filtered by satker from usePencairanData
     
+    // 🆕 Filter berdasarkan role user - hanya tampilkan data yang sesuai dengan role mereka
+    result = result.filter(sub => shouldShowSubmission(sub, userRole));
+    
     // Filter berdasarkan activeFilter
     if (activeFilter !== 'all') {
       if (activeFilter === 'rejected') {
@@ -172,7 +175,7 @@ export default function UsulanPencairan() {
     });
     
     return result;
-  }, [submissions, activeFilter]);
+  }, [submissions, activeFilter, userRole]);
 
   const paginatedSubmissions = useMemo(() => {
     const start = (currentPage - 1) * pageSize;

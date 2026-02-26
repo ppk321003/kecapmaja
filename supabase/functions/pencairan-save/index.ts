@@ -199,6 +199,7 @@ serve(async (req) => {
       catatan,
       statusPengajuan,
       satker, // Tambahan: satker dari frontend
+      user, // 🆕 User role yang membuat pengajuan (Kolom R)
       // Legacy naming
       title,
       submitterName,
@@ -222,11 +223,11 @@ serve(async (req) => {
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
     const waktuPengajuan = formatDateTime();
 
-    // Struktur kolom sesuai request (17 kolom A:Q):
+    // Struktur kolom sesuai request (18 kolom A:R):
     // A: ID, B: Uraian Pengajuan, C: Nama Pengaju, D: Jenis Pengajuan, E: Kelengkapan
     // F: Catatan, G: Status Pengajuan, H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK
     // K: Waktu PPSPM, L: Waktu Arsip, M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip
-    // Q: Update terakhir
+    // Q: Update terakhir, R: User (role login pembuat)
     const rowData = [
       id || '',                                        // A: ID
       uraianPengajuan || title || '',                 // B: Uraian Pengajuan
@@ -245,14 +246,15 @@ serve(async (req) => {
       '',                                             // O: Status PPSPM
       '',                                             // P: Status Arsip
       waktuPengajuan,                                 // Q: Update terakhir
+      user || '',                                     // R: User (🆕 role login pembuat)
     ];
 
-    console.log('Appending row with 17 columns:', rowData);
+    console.log('Appending row with 18 columns:', rowData);
     console.log('Row length:', rowData.length);
 
-    // Append dengan range A:Q untuk 17 kolom
+    // Append dengan range A:R untuk 18 kolom
     const response = await fetch(
-      `${baseUrl}/values/${SHEET_NAME}!A:Q:append?valueInputOption=USER_ENTERED`,
+      `${baseUrl}/values/${SHEET_NAME}!A:R:append?valueInputOption=USER_ENTERED`,
       {
         method: 'POST',
         headers: {

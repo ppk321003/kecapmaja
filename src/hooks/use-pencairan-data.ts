@@ -30,6 +30,7 @@ export interface PencairanRawData {
   statusPPSPM: string;
   statusArsip: string;
   updatedAt: string;
+  user?: string; // 🆕 Kolom R - role login yang membuat pengajuan
 }
 
 export interface OrganikData {
@@ -119,6 +120,7 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
     statusPpk: raw.statusPpk,
     statusPPSPM: raw.statusPPSPM,
     statusArsip: raw.statusArsip,
+    user: raw.user, // 🆕 Kolom R - role login pembuat
   };
 }
 
@@ -151,7 +153,7 @@ export function usePencairanData() {
         body: {
           spreadsheetId: spreadsheetId,
           operation: 'read',
-          range: `${SHEET_NAME}!A:Q`, // 17 kolom
+          range: `${SHEET_NAME}!A:R`, // 18 kolom (A-R, termasuk kolom U baru: user)
         },
       });
 
@@ -167,7 +169,8 @@ export function usePencairanData() {
       const submissions: Submission[] = rows.slice(1).map((row: string[]) => {
         // Deteksi struktur: 
         // OLD: Tanpa Waktu Bendahara (A-P, 16 kolom): H=Pengajuan, I=PPK, J=PPSPM, K=Arsip/KPPN, L=StatusBendahara
-        // NEW: Dengan Waktu Bendahara (A-Q, 17 kolom): H=Pengajuan, I=Bendahara, J=PPK, K=PPSPM, L=Arsip/KPPN, M=StatusBendahara
+        // CURRENT: Dengan Waktu Bendahara (A-Q, 17 kolom): H=Pengajuan, I=Bendahara, J=PPK, K=PPSPM, L=Arsip/KPPN, M=StatusBendahara
+        // NEW: Dengan Waktu Bendahara + User (A-R, 18 kolom): ...Q=Update, R=User
         // Catatan: KPPN = Arsip (mereka adalah tahap yang sama)
         let rawData: PencairanRawData;
         
@@ -193,9 +196,10 @@ export function usePencairanData() {
             statusPPSPM: row[13] || '',
             statusArsip: row[14] || '',
             updatedAt: row[15] || '',
+            user: '', // Tidak ada di struktur lama
           };
         } else if (row.length < 18) {
-          // NEW STRUCTURE (A-Q, 17 kolom) - DENGAN Waktu Bendahara
+          // STRUCTURE (A-Q, 17 kolom) - DENGAN Waktu Bendahara, TANPA User
           // H=7(Pengajuan), I=8(Bendahara), J=9(PPK), K=10(PPSPM), L=11(Arsip/KPPN), M=12(StatusBendahara), N=13(StatusPPK), O=14(StatusPPSPM), P=15(StatusArsip), Q=16(Update)
           rawData = {
             id: row[0] || '',
@@ -216,9 +220,11 @@ export function usePencairanData() {
             statusPPSPM: row[14] || '',
             statusArsip: row[15] || '',
             updatedAt: row[16] || '',
+            user: '', // Tidak ada di struktur ini
           };
         } else {
-          // JIKA STRUKTUR LEBIH DARI 18 KOLOM - untuk kompatibilitas di masa depan
+          // NEW STRUCTURE (A-R, 18 kolom) - DENGAN Waktu Bendahara + User
+          // H=7(Pengajuan), I=8(Bendahara), J=9(PPK), K=10(PPSPM), L=11(Arsip/KPPN), M=12(StatusBendahara), N=13(StatusPPK), O=14(StatusPPSPM), P=15(StatusArsip), Q=16(Update), R=17(User)
           rawData = {
             id: row[0] || '',
             title: row[1] || '',
@@ -231,13 +237,14 @@ export function usePencairanData() {
             waktuBendahara: row[8] || '',
             waktuPpk: row[9] || '',
             waktuPPSPM: row[10] || '',
-            waktuKppn: row[11] || '',
-            waktuArsip: row[12] || '',
-            statusBendahara: row[13] || '',
-            statusPpk: row[14] || '',
-            statusPPSPM: row[15] || '',
-            statusArsip: row[16] || '',
-            updatedAt: row[17] || '',
+            waktuKppn: row[11] || '', // Arsip/KPPN (sama)
+            waktuArsip: row[11] || '', // Arsip/KPPN (sama)
+            statusBendahara: row[12] || '',
+            statusPpk: row[13] || '',
+            statusPPSPM: row[14] || '',
+            statusArsip: row[15] || '',
+            updatedAt: row[16] || '',
+            user: row[17] || '', // 🆕 Kolom R - role login pembuat
           };
         }
         
