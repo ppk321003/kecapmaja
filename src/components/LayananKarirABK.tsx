@@ -226,7 +226,7 @@ const LayananKarirABK: React.FC = () => {
                         keterangan = `✓ Terpenuhi (${existing}/${formasi})`;
                         keteranganColor = 'text-green-700';
                       } else if (existing < formasi && formasi > 0) {
-                        keterangan = `✗ Belum terpenuhi, tersedia ${existing} pegawai (${existing}/${formasi})`;
+                        keterangan = `✗ Belum terpenuhi, terisi ${existing} pegawai (${existing}/${formasi})`;
                         keteranganColor = 'text-orange-700';
                       } else if (existing > formasi) {
                         keterangan = `✗ Melebihi formasi (${existing}/${formasi})`;
