@@ -14,8 +14,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, ArrowLeft, User, TrendingUp, Calendar, Award, FileText, LogIn, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, ExternalLink, HelpCircle, Mail, Phone, MessageCircle, BookOpen, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, ArrowLeft, User, TrendingUp, Calendar, Award, FileText, LogIn, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, Clock, ExternalLink, HelpCircle, Mail, Phone, MessageCircle, BookOpen, ChevronUp, ChevronDown, Users } from 'lucide-react';
 import LayananKarir from "@/components/LayananKarir";
+import LayananKarirABK from "@/components/LayananKarirABK";
 
 // ==================== TYPES ====================
 interface Karyawan {
@@ -2040,7 +2041,7 @@ const KarierKu: React.FC = () => {
   const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
   const [selectedKaryawan, setSelectedKaryawan] = useState<Karyawan | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'dokumen' | 'layanan'>('dashboard');
-  const [mainTab, setMainTab] = useState<'dashboardKarir' | 'tabelIndividu'>('dashboardKarir');
+  const [mainTab, setMainTab] = useState<'dashboardKarir' | 'tabelIndividu' | 'abkTab'>('dashboardKarir');
   const [loading, setLoading] = useState(true);
   const {
     toast
@@ -2318,7 +2319,7 @@ const KarierKu: React.FC = () => {
           </Card>
 
           <Tabs value={mainTab} onValueChange={(value: any) => setMainTab(value)}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="dashboardKarir" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
                 Dashboard KarierKu
@@ -2327,12 +2328,19 @@ const KarierKu: React.FC = () => {
                 <FileText className="h-4 w-4" />
                 Tabel Individu
               </TabsTrigger>
+              <TabsTrigger value="abkTab" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                ABK-{user?.satker}
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="dashboardKarir" className="space-y-6">
               <DashboardKarierKu karyawanList={karyawanList} onSelectKaryawan={handleSelectKaryawan} />
             </TabsContent>
             <TabsContent value="tabelIndividu" className="space-y-6">
               <EmployeeTable karyawanList={karyawanList} onSelect={setSelectedKaryawan} selectedNip={null} loading={loading} />
+            </TabsContent>
+            <TabsContent value="abkTab" className="space-y-6">
+              <LayananKarirABK />
             </TabsContent>
           </Tabs>
         </> : <>
