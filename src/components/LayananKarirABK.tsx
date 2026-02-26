@@ -324,6 +324,19 @@ const LayananKarirABK: React.FC = () => {
   );
 };
 
+// Helper function to convert Google Drive URL to embeddable format
+const convertGoogleDriveUrl = (url: string): string => {
+  if (!url) return '';
+  
+  // Pattern: https://drive.google.com/file/d/[FILE_ID]/view...
+  const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9-_]+)\//);
+  if (fileIdMatch && fileIdMatch[1]) {
+    return `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}`;
+  }
+  
+  return url; // Return original URL if not a Google Drive URL
+};
+
 // ExistingCell Component with Click Dialog Popup
 const ExistingCell: React.FC<{
   count: number;
@@ -370,7 +383,7 @@ const ExistingCell: React.FC<{
                   {/* Foto */}
                   {emp.foto ? (
                     <img 
-                      src={emp.foto} 
+                      src={convertGoogleDriveUrl(emp.foto)} 
                       alt={emp.nama}
                       className="w-16 h-20 object-cover rounded flex-shrink-0"
                       onError={(e) => {
