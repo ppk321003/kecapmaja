@@ -249,6 +249,7 @@ const deleteBudgetItem = async (sheetId: string, itemId: string, allItems: Budge
 /**
  * Approve budget item (PPK approval)
  * Sets status to 'unchanged' and copies 'menjadi' values to 'semula'
+ * Updates sisa_anggaran with the adjustment based on the change
  */
 const approveBudgetItem = async (
   sheetId: string,
@@ -260,6 +261,12 @@ const approveBudgetItem = async (
   const currentItem = allItems.find(item => item.id === itemId);
   if (!currentItem) throw new Error(`Item dengan ID ${itemId} tidak ditemukan`);
   
+  // Calculate the change (selisih)
+  const selisih = currentItem.jumlah_menjadi - currentItem.jumlah_semula;
+  
+  // Calculate new sisa_anggaran: old sisa + adjustment
+  const newSisaAnggaran = (currentItem.sisa_anggaran || 0) + selisih;
+  
   // Update semula values to match menjadi values
   const updatedItem = await updateBudgetItem(sheetId, itemId, {
     volume_semula: currentItem.volume_menjadi,
@@ -267,18 +274,20 @@ const approveBudgetItem = async (
     harga_satuan_semula: currentItem.harga_satuan_menjadi,
     jumlah_semula: currentItem.jumlah_menjadi,
     selisih: 0, // After approval, selisih becomes 0 since semula = menjadi
+    sisa_anggaran: newSisaAnggaran, // Update sisa_anggaran with the adjustment
     status: 'unchanged' as const,
     approved_by: approvedBy,
     approved_date: formatDateIndonesia(new Date().toISOString()),
   }, allItems);
 
-  console.log('[approveBudgetItem] Item approved by:', approvedBy);
+  console.log('[approveBudgetItem] Item approved by:', approvedBy, 'New sisa_anggaran:', newSisaAnggaran);
   return updatedItem;
 };
 
 /**
  * Reject budget item (PPK rejection)
  * Reverts 'menjadi' values to 'semula' and sets status to 'unchanged'
+ * Reverts sisa_anggaran to undo the proposed change
  */
 const rejectBudgetItem = async (
   sheetId: string,
@@ -291,6 +300,12 @@ const rejectBudgetItem = async (
   const currentItem = allItems.find(item => item.id === itemId);
   if (!currentItem) throw new Error(`Item dengan ID ${itemId} tidak ditemukan`);
   
+  // Calculate the change that needs to be undone
+  const selisih = currentItem.jumlah_menjadi - currentItem.jumlah_semula;
+  
+  // Revert sisa_anggaran by undoing the adjustment
+  const newSisaAnggaran = (currentItem.sisa_anggaran || 0) - selisih;
+  
   // Revert menjadi values to semula
   const updatedItem = await updateBudgetItem(sheetId, itemId, {
     volume_menjadi: currentItem.volume_semula,
@@ -298,12 +313,13 @@ const rejectBudgetItem = async (
     harga_satuan_menjadi: currentItem.harga_satuan_semula,
     jumlah_menjadi: currentItem.jumlah_semula,
     selisih: 0, // After rejection, selisih becomes 0 since menjadi = semula
+    sisa_anggaran: newSisaAnggaran, // Revert sisa_anggaran by undoing the adjustment
     status: 'unchanged' as const,
     rejected_date: formatDateIndonesia(new Date().toISOString()),
     notes: rejectionReason || '',
   }, allItems);
 
-  console.log('[rejectBudgetItem] Item rejected by:', rejectedBy, 'Reason:', rejectionReason);
+  console.log('[rejectBudgetItem] Item rejected by:', rejectedBy, 'Reason:', rejectionReason, 'Reverted sisa_anggaran:', newSisaAnggaran);
   return updatedItem;
 };
 
