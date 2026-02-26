@@ -197,39 +197,64 @@ const LayananKarirABK: React.FC = () => {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-semibold text-foreground bg-muted/50">No</th>
-                  <th className="text-left py-3 px-4 font-semibold text-foreground bg-muted/50">Nama Jabatan</th>
+                  <th className="text-left py-3 px-4 font-semibold text-foreground bg-muted/50 min-w-64">Nama Jabatan</th>
                   <th className="text-center py-3 px-4 font-semibold text-foreground bg-muted/50">Formasi Jabatan</th>
                   <th className="text-center py-3 px-4 font-semibold text-foreground bg-muted/50">Existing</th>
+                  <th className="text-left py-3 px-4 font-semibold text-foreground bg-muted/50 min-w-56">Keterangan</th>
                 </tr>
               </thead>
               <tbody>
                 {abkData.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
                       Tidak ada data jabatan
                     </td>
                   </tr>
                 ) : (
                   <>
-                    {abkData.map((item, index) => (
-                      <tr key={index} className="border-b hover:bg-muted/50 transition-colors">
-                        <td className="py-3 px-4 text-foreground">{item.no}</td>
-                        <td className="py-3 px-4 text-foreground">{item.jabatan}</td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg font-semibold bg-blue-100 text-blue-700">
-                            {item.formasi}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <ExistingCell 
-                            count={item.employees.length}
-                            employees={item.employees}
-                            jabatan={item.jabatan}
-                            totalFormasi={item.formasi}
-                          />
-                        </td>
-                      </tr>
-                    ))}
+                    {abkData.map((item, index) => {
+                      const existing = item.employees.length;
+                      const formasi = item.formasi;
+                      let keterangan = '';
+                      let keteranganColor = '';
+                      
+                      if (existing === formasi && formasi > 0) {
+                        keterangan = `✓ Sesuai (${existing}/${formasi})`;
+                        keteranganColor = 'text-green-700 bg-green-50';
+                      } else if (existing > formasi) {
+                        keterangan = `⚠ Surplus: ${existing - formasi} pegawai (${existing}/${formasi})`;
+                        keteranganColor = 'text-orange-700 bg-orange-50';
+                      } else if (existing < formasi) {
+                        keterangan = `✗ Deficit: butuh ${formasi - existing} pegawai (${existing}/${formasi})`;
+                        keteranganColor = 'text-red-700 bg-red-50';
+                      } else {
+                        keterangan = `- Tidak ada formasi`;
+                        keteranganColor = 'text-gray-700 bg-gray-50';
+                      }
+                      
+                      return (
+                        <tr key={index} className="border-b hover:bg-muted/50 transition-colors">
+                          <td className="py-3 px-4 text-foreground">{item.no}</td>
+                          <td className="py-3 px-4 text-foreground font-medium">{item.jabatan}</td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg font-semibold bg-blue-100 text-blue-700">
+                              {item.formasi}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <ExistingCell 
+                              count={existing}
+                              employees={item.employees}
+                              jabatan={item.jabatan}
+                              totalFormasi={item.formasi}
+                            />
+                          </td>
+                          <td className={`py-3 px-4 text-xs font-medium rounded ${keteranganColor}`}>
+                            {keterangan}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {/* Row Total */}
                     <tr className="border-t-2 border-gray-400 font-semibold bg-gray-100">
                       <td colSpan={2} className="py-3 px-4 text-foreground text-right">TOTAL</td>
@@ -243,6 +268,7 @@ const LayananKarirABK: React.FC = () => {
                           {abkData.reduce((sum, item) => sum + item.employees.length, 0)}
                         </span>
                       </td>
+                      <td className="py-3 px-4"></td>
                     </tr>
                   </>
                 )}
@@ -291,7 +317,7 @@ const LayananKarirABK: React.FC = () => {
   );
 };
 
-// ExistingCell Component with Tooltip (White background with green accents)
+// ExistingCell Component with Scrollable Tooltip (not disappearing on hover)
 const ExistingCell: React.FC<{
   count: number;
   employees: EmployeeMatch[];
@@ -301,10 +327,9 @@ const ExistingCell: React.FC<{
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState<'top' | 'bottom'>('top');
 
-  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseEnterCell = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    // Jika tooltip akan melebihi top, tampilkan di bawah
-    if (rect.top < 200) {
+    if (rect.top < 250) {
       setTooltipPosition('bottom');
     } else {
       setTooltipPosition('top');
@@ -313,10 +338,12 @@ const ExistingCell: React.FC<{
   };
 
   return (
-    <div className="relative inline-block">
+    <div 
+      className="relative inline-block"
+      onMouseEnter={handleMouseEnterCell}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
       <div
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={() => setShowTooltip(false)}
         className={`
           inline-flex items-center justify-center
           w-8 h-8 rounded-lg font-semibold cursor-help
@@ -334,24 +361,28 @@ const ExistingCell: React.FC<{
 
       {/* Tooltip - White background with green accents */}
       {showTooltip && (
-        <div className={`
-          absolute z-50 w-96 p-4 text-sm bg-white text-gray-900 rounded-lg shadow-xl border border-gray-200
-          ${tooltipPosition === 'top' 
-            ? 'bottom-full mb-3' 
-            : 'top-full mt-3'
-          }
-          left-1/2 transform -translate-x-1/2
-        `}>
+        <div 
+          className={`
+            absolute z-50 w-96 p-4 text-sm bg-white text-gray-900 rounded-lg shadow-xl border border-gray-200
+            ${tooltipPosition === 'top' 
+              ? 'bottom-full mb-3' 
+              : 'top-full mt-3'
+            }
+            left-1/2 transform -translate-x-1/2
+          `}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
           {/* Header - Green background */}
           <div className="font-semibold text-white bg-green-600 px-3 py-2 rounded -mx-4 -mt-4 mb-3">
             {jabatan}
           </div>
 
-          {/* Employees List */}
+          {/* Employees List - Scrollable */}
           {employees.length > 0 ? (
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
               {employees.map((emp, idx) => (
-                <div key={idx} className="text-xs bg-gray-50 border border-gray-200 p-3 rounded">
+                <div key={idx} className="text-xs bg-gray-50 border border-gray-200 p-3 rounded hover:bg-gray-100 transition-colors">
                   <p className="font-semibold text-gray-900">{emp.nama}</p>
                   <p className="text-gray-600 mt-1">NIP: {emp.nip}</p>
                   <p className="text-gray-600">
@@ -370,10 +401,10 @@ const ExistingCell: React.FC<{
           <div className="mt-3 pt-3 border-t border-gray-200 text-xs font-medium">
             <span className={
               count === totalFormasi && totalFormasi > 0
-                ? 'text-green-700 bg-green-50 px-2 py-1 rounded'
+                ? 'text-green-700 bg-green-50 px-2 py-1 rounded inline-block'
                 : count > 0
-                  ? 'text-yellow-700 bg-yellow-50 px-2 py-1 rounded'
-                  : 'text-red-700 bg-red-50 px-2 py-1 rounded'
+                  ? 'text-yellow-700 bg-yellow-50 px-2 py-1 rounded inline-block'
+                  : 'text-red-700 bg-red-50 px-2 py-1 rounded inline-block'
             }>
               {count} / {totalFormasi} Terisi
             </span>
