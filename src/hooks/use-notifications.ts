@@ -68,7 +68,7 @@ export function useNotifications() {
         body: {
           spreadsheetId: pencairanSheetId,
           operation: 'read',
-          range: 'data!A:Q', // Include column Q (Update Terakhir)
+          range: 'data!A:R', // Include column R (User - pembuat pengajuan)
         },
       });
 
@@ -97,14 +97,15 @@ export function useNotifications() {
       const headers = rows[0] || [];
       const notifs: Notification[] = [];
 
-      // Column indices - use hardcoded indices based on sheet structure (A:Q = 17 columns)
+      // Column indices - use hardcoded indices based on sheet structure (A:R = 18 columns)
       // A(0)=ID, B(1)=Title, C(2)=Submitter, D(3)=Jenis, E(4)=Documents, F(5)=Notes, G(6)=Status
       // H(7)=WaktuPengajuan, I(8)=WaktuBendahara, J(9)=WaktuPPK, K(10)=WaktuPPSPM, L(11)=WaktuKPPN
-      // M(12)=StatusBendahara, N(13)=StatusPPK, O(14)=StatusPPSPM, P(15)=StatusArsip, Q(16)=UpdateTerakhir
+      // M(12)=StatusBendahara, N(13)=StatusPPK, O(14)=StatusPPSPM, P(15)=StatusArsip, Q(16)=UpdateTerakhir, R(17)=User
       const idxId = 0; // Column A
       const idxTitle = 1; // Column B
       const idxStatus = 6; // Column G
       const idxUpdateTime = 16; // Column Q - Update Terakhir
+      const idxUser = 17; // Column R - User (pembuat pengajuan)
 
       console.log(`[fetchPencairanNotifications] Using column indices - id:${idxId}(A), title:${idxTitle}(B), status:${idxStatus}(G), updateTime:${idxUpdateTime}(Q)`);
       console.log(`[fetchPencairanNotifications] Status column (G) header: "${headers[idxStatus]}", UpdateTime column (Q) header: "${headers[idxUpdateTime]}"`);
@@ -116,16 +117,24 @@ export function useNotifications() {
         const row = rows[i];
         if (!row || !row[idxStatus]) continue;
 
-        // Detect structure: OLD (16 cols, P=Update) or NEW (17+ cols, Q=Update)
+        // Detect structure: OLD (16 cols, P=Update) or NEW (17 cols, Q=Update) or NEWEST (18 cols, Q=Update, R=User)
         let idxUpdateTimeActual = idxUpdateTime;
+        let idxUserActual = idxUser;
         if (row.length <= 16) {
           // OLD STRUCTURE - update is at column P (index 15)
           idxUpdateTimeActual = 15;
+          idxUserActual = -1; // User column doesn't exist
           if (i === 1) console.log(`[fetchPencairanNotifications] Detected OLD STRUCTURE (${row.length} cols), Update at P(15)`);
-        } else {
-          // NEW STRUCTURE - update is at column Q (index 16)
+        } else if (row.length === 17) {
+          // MIDDLE STRUCTURE - update is at column Q (index 16), no user yet
           idxUpdateTimeActual = 16;
-          if (i === 1) console.log(`[fetchPencairanNotifications] Detected NEW STRUCTURE (${row.length} cols), Update at Q(16)`);
+          idxUserActual = -1;
+          if (i === 1) console.log(`[fetchPencairanNotifications] Detected MIDDLE STRUCTURE (${row.length} cols), Update at Q(16)`);
+        } else {
+          // NEWEST STRUCTURE - update is at column Q (index 16), user is at column R (index 17)
+          idxUpdateTimeActual = 16;
+          idxUserActual = 17;
+          if (i === 1) console.log(`[fetchPencairanNotifications] Detected NEWEST STRUCTURE (${row.length} cols), Update at Q(16), User at R(17)`);
         }
 
         const statusRaw = row[idxStatus]?.toString() || '';
@@ -136,48 +145,60 @@ export function useNotifications() {
         const judul = row[idxTitle]?.toString() || 'Pengajuan';
         const submissionId = row[idxId]?.toString() || `pencairan-${i}`;
         const updateTimeStr = row[idxUpdateTimeActual]?.toString() || '';
+        const submissionUser = idxUserActual >= 0 ? row[idxUserActual]?.toString() || '' : ''; // Pembuat pengajuan (kolom R)
         
         // Use timestamp text as-is from database
         let updateTime = new Date();
         let displayTime = updateTimeStr?.trim() ? `Update terakhir: ${updateTimeStr.trim()}` : 'Baru saja';
         
-        console.log(`[fetchPencairanNotifications] Row ${i}: id=${submissionId}, title=${judul}, status=${status}, updateTimeStr="${updateTimeStr}", displayTime="${displayTime}"`);
+        console.log(`[fetchPencairanNotifications] Row ${i}: id=${submissionId}, title=${judul}, status=${status}, user="${submissionUser}", updateTimeStr="${updateTimeStr}", displayTime="${displayTime}"`);
 
         let targetRoles: string[] = [];
         let message = '';
         let title = 'Sigap SPJ - Pengajuan Baru';
+        let isCreatorOnly = false; // Flag untuk notifikasi yang hanya untuk pembuat
 
         // Map actual statuses to notification rules
+        // 🆕 Logika: Jika user adalah pembuat (kolom R), SEMUA status adalah untuk mereka
+        // Jika user bukan pembuat, hanya status tertentu yang sesuai role mereka
+        
         // incomplete_sm = Ditolak ke SM (needs correction by submitter)
         if (status === 'incomplete_sm') {
           title = 'Sigap SPJ - Pengajuan Ditolak';
-          targetRoles = ['Fungsi']; // Any role containing "Fungsi"
+          // Pembuat pengajuan ATAU roles di Fungsi* yang melakukan pengembalian
+          targetRoles = ['Fungsi', 'Bendahara', 'Pejabat Pembuat Komitmen'];
+          isCreatorOnly = true; // Prioritas: pembuat pengajuan
           message = `${judul} ditolak Bendahara. Mohon untuk segera memperbaiki`;
         }
         // Draft status
         else if (status === 'draft') {
-          targetRoles = ['Fungsi']; // Any role containing "Fungsi"
+          targetRoles = ['Fungsi', 'Bendahara', 'Pejabat Pembuat Komitmen'];
+          isCreatorOnly = true; // Prioritas: pembuat pengajuan
           message = `${judul} masih belum dilengkapi Subjek Metter`;
         }
-        // Rejected by bendahara, PPK, or PPSPM - needs correction
+        // Rejected by bendahara - needs correction
         else if (status === 'incomplete_bendahara') {
           title = 'Sigap SPJ - Pengajuan Ditolak';
           targetRoles = ['Bendahara'];
+          isCreatorOnly = true; // Pembuat yang juga bendahara perlu tahu
           message = `${judul} ditolak PPK. Mohon segera memperbaiki`;
         }
         else if (status === 'incomplete_ppk') {
           title = 'Sigap SPJ - Pengajuan Ditolak';
-          targetRoles = ['PPK'];
+          targetRoles = ['PPK', 'Pejabat Pembuat Komitmen'];
+          isCreatorOnly = true;
           message = `${judul} ditolak PPSPM. Mohon segera memperbaiki`;
         }
         else if (status === 'incomplete_ppspm') {
           title = 'Sigap SPJ - Pengajuan Ditolak';
           targetRoles = ['PPSPM'];
+          isCreatorOnly = true;
           message = `${judul} ditolak KPPN. Mohon segera memperbaiki`;
         }
         else if (status === 'incomplete_kppn') {
           title = 'Sigap SPJ - Pengajuan Ditolak';
           targetRoles = ['Arsip'];
+          isCreatorOnly = true;
           message = `${judul} ditolak Arsip. Mohon segera memperbaiki`;
         }
         // Pending at bendahara
@@ -187,7 +208,7 @@ export function useNotifications() {
         }
         // Pending at PPK
         else if (status === 'pending_ppk') {
-          targetRoles = ['PPK'];
+          targetRoles = ['PPK', 'Pejabat Pembuat Komitmen'];
           message = `${judul} untuk diperiksa`;
         }
         // Pending at PPSPM
@@ -204,9 +225,16 @@ export function useNotifications() {
         if (targetRoles.length > 0) {
           const matches = roleMatches(userRole, targetRoles);
           const normalizedUserRole = normalizeRole(userRole);
-          console.log(`[fetchPencairanNotifications] Row ${i}: status=${status}, judul=${judul}, targetRoles=${targetRoles}, userRole=${userRole}, normalizedUserRole=${normalizedUserRole}, matches=${matches}`);
+          const isCreator = submissionUser && (submissionUser === userRole || submissionUser === normalizedUserRole);
           
-          if (matches) {
+          // 🆕 Logika: Tampilkan notifikasi jika:
+          // 1. isCreatorOnly === true DAN user adalah creator, ATAU
+          // 2. isCreatorOnly === false DAN user role match dengan targetRoles
+          const shouldShow = isCreatorOnly ? isCreator : matches;
+          
+          console.log(`[fetchPencairanNotifications] Row ${i}: status=${status}, judul=${judul}, user="${submissionUser}", userRole=${userRole}, normalizedUserRole=${normalizedUserRole}, isCreator=${isCreator}, isCreatorOnly=${isCreatorOnly}, shouldShow=${shouldShow}`);
+          
+          if (shouldShow) {
             const notif: PencairanNotification = {
               id: `pencairan-${submissionId}`,
               type: 'pencairan',
