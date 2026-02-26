@@ -370,10 +370,17 @@ export function canViewDetail(role: UserRole, status: SubmissionStatus): boolean
   return true;
 }
 
-export function canEdit(role: UserRole, status: SubmissionStatus): boolean {
+export function canEdit(role: UserRole, status: SubmissionStatus, submissionUser?: string): boolean {
   if (role === 'admin') return true;
+  
+  // Hanya pembuat pengajuan yang bisa edit (submissionUser harus sama dengan userRole)
+  if (submissionUser && submissionUser !== role) {
+    return false; // Bukan pembuat, tidak boleh edit
+  }
+  
+  // Pembuat pengajuan bisa edit jika status draft atau incomplete_sm
   if (SUBMITTER_ROLES.includes(role) && status === 'incomplete_sm') return true;
-  if (SUBMITTER_ROLES.includes(role) && status === 'draft') return true; // ← TAMBAH INI
+  if (SUBMITTER_ROLES.includes(role) && status === 'draft') return true;
   return false;
 }
 

@@ -233,7 +233,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
 
   const handleFilterChange = () => setCurrentPage(1);
   const showViewButton = (submission: Submission) => canViewDetail(userRole, submission.status);
-  const showEditButton = (submission: Submission) => canEdit(userRole, submission.status);
+  const showEditButton = (submission: Submission) => canEdit(userRole, submission.status, submission.user);
 
   // Sort toggle handler
   const handleSort = (field: SortField) => {
