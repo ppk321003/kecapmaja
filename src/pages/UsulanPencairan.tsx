@@ -160,8 +160,11 @@ export default function UsulanPencairan() {
     let result = roleFilteredSubmissions;
     
     // Filter berdasarkan activeFilter tab
+    // 🆕 Logika baru: setiap tab juga tampilkan incomplete_* yang sesuai dengan tugasnya
+    // Ini agar tidak kehilangan jejak dan role bisa langsung eksekusi ulang
     if (activeFilter !== 'all') {
       if (activeFilter === 'rejected') {
+        // Tab Ditolak: tampilkan SEMUA incomplete_* untuk audit trail
         result = result.filter(sub => 
           sub.status === 'incomplete_sm' || 
           sub.status === 'incomplete_bendahara' || 
@@ -169,7 +172,38 @@ export default function UsulanPencairan() {
           sub.status === 'incomplete_ppspm' ||
           sub.status === 'incomplete_kppn'
         );
+      } else if (activeFilter === 'draft') {
+        // Tab Draft: tampilkan draft + incomplete_sm (penolakan dari Bendahara ke SM)
+        result = result.filter(sub => 
+          sub.status === 'draft' || 
+          sub.status === 'incomplete_sm'
+        );
+      } else if (activeFilter === 'pending_bendahara') {
+        // Tab Bendahara: tampilkan pending_bendahara + incomplete_bendahara (penolakan dari PPK)
+        result = result.filter(sub => 
+          sub.status === 'pending_bendahara' || 
+          sub.status === 'incomplete_bendahara'
+        );
+      } else if (activeFilter === 'pending_ppk') {
+        // Tab PPK: tampilkan pending_ppk + incomplete_ppk (penolakan dari PPSPM)
+        result = result.filter(sub => 
+          sub.status === 'pending_ppk' || 
+          sub.status === 'incomplete_ppk'
+        );
+      } else if (activeFilter === 'pending_ppspm') {
+        // Tab PPSPM: tampilkan pending_ppspm + incomplete_ppspm (penolakan dari KPPN)
+        result = result.filter(sub => 
+          sub.status === 'pending_ppspm' || 
+          sub.status === 'incomplete_ppspm'
+        );
+      } else if (activeFilter === 'sent_kppn') {
+        // Tab KPPN: tampilkan sent_kppn + incomplete_kppn (penolakan dari Arsip)
+        result = result.filter(sub => 
+          sub.status === 'sent_kppn' || 
+          sub.status === 'incomplete_kppn'
+        );
       } else {
+        // Status lainnya (complete_arsip, dll)
         result = result.filter(sub => sub.status === activeFilter);
       }
     }
@@ -282,8 +316,21 @@ export default function UsulanPencairan() {
           <TabsList className="flex flex-wrap w-full max-w-5xl bg-muted/60 p-1 rounded-xl shadow-inner justify-center gap-1 h-auto">
             {filterConfig.map((filter) => {
               const Icon = filter.icon;
-              // 🆕 Gunakan counts yang sudah di-filter berdasarkan role
-              const countValue = counts[filter.value] || 0;
+              // 🆕 Hitung count dengan menambahkan incomplete_* yang sesuai dengan setiap tab
+              let countValue = counts[filter.value] || 0;
+              
+              // Tambahkan incomplete_* ke tab yang sesuai dengan tugasnya
+              if (filter.value === 'draft') {
+                countValue = (counts['draft'] || 0) + (counts['incomplete_sm'] || 0);
+              } else if (filter.value === 'pending_bendahara') {
+                countValue = (counts['pending_bendahara'] || 0) + (counts['incomplete_bendahara'] || 0);
+              } else if (filter.value === 'pending_ppk') {
+                countValue = (counts['pending_ppk'] || 0) + (counts['incomplete_ppk'] || 0);
+              } else if (filter.value === 'pending_ppspm') {
+                countValue = (counts['pending_ppspm'] || 0) + (counts['incomplete_ppspm'] || 0);
+              } else if (filter.value === 'sent_kppn') {
+                countValue = (counts['sent_kppn'] || 0) + (counts['incomplete_kppn'] || 0);
+              }
 
               return (
                 <TabsTrigger
