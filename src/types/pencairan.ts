@@ -36,6 +36,8 @@ export const SUBMITTER_ROLES: UserRole[] = [
   'Fungsi Produksi',
   'Fungsi Distribusi',
   'Fungsi IPDS',
+  'Bendahara', // 🆕 Bendahara bisa membuat pengajuan
+  'Pejabat Pembuat Komitmen', // 🆕 PPK bisa membuat pengajuan
 ];
 
 // 🆕 Roles yang bisa melihat SEMUA data pengajuan

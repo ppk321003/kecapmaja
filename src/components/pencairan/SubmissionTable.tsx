@@ -169,13 +169,14 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   // Filter submissions
   const filteredSubmissions = useMemo(() => {
     return sortedSubmissions.filter((sub) => {
-      // Search filter
+      // Search filter - 🆕 tambah pencarian untuk kolom user
       const matchesSearch =
         searchQuery === '' ||
         sub.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         sub.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         sub.submitterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        sub.jenisBelanja.toLowerCase().includes(searchQuery.toLowerCase());
+        sub.jenisBelanja.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (sub.user?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
 
       // Month filter - use timestamp from getSubmissionTimestamp
       let matchesMonth = true;
