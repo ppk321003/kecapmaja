@@ -188,7 +188,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log('Request body:', JSON.stringify(body));
     
-    const { id, status, notes, actor, action, uraianPengajuan, namaPengaju, jenisPengajuan, kelengkapan, satker } = body;
+    const { id, status, notes, actor, action, uraianPengajuan, namaPengaju, jenisPengajuan, kelengkapan, satker, pembayaran, nomorSPM, nomorSPPD } = body;
     
     if (!id) {
       throw new Error('ID is required');
@@ -205,8 +205,8 @@ serve(async (req) => {
     
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
     
-    // Baca 18 kolom (A:R) - dengan Waktu Arsip + User
-    const readResponse = await fetch(`${baseUrl}/values/${SHEET_NAME}!A:R`, {
+    // Baca 21 kolom (A:U) - dengan Pembayaran, SPM, SPPD
+    const readResponse = await fetch(`${baseUrl}/values/${SHEET_NAME}!A:U`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const readData = await readResponse.json();
@@ -232,6 +232,7 @@ serve(async (req) => {
     // A: ID, B: Uraian, C: Nama, D: Jenis, E: Kelengkapan, F: Catatan, G: Status Pengajuan
     // H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK, K: Waktu PPSPM, L: Waktu Arsip
     // M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip, Q: Update terakhir
+    // R: User, S: Pembayaran (UP/LS), T: Nomor SPM, U: Nomor SPPD
     let newTitle = currentRow[1] || '';           // B: Uraian Pengajuan
     let newSubmitterName = currentRow[2] || '';   // C: Nama Pengaju
     let newJenisBelanja = currentRow[3] || '';    // D: Jenis Pengajuan
@@ -249,7 +250,10 @@ serve(async (req) => {
     const statusPpk = currentRow.length > 13 ? currentRow[13] || '' : '';    // N: Status PPK
     const statusPPSPM = currentRow.length > 14 ? currentRow[14] || '' : '';  // O: Status PPSPM
     const statusArsip = currentRow.length > 15 ? currentRow[15] || '' : '';  // P: Status Arsip
-    const user = currentRow.length > 17 ? currentRow[17] || '' : '';         // R: User (🆕)
+    const user = currentRow.length > 17 ? currentRow[17] || '' : '';         // R: User
+    const existingPembayaran = currentRow.length > 18 ? currentRow[18] || '' : ''; // S: Pembayaran
+    const existingNomorSPM = currentRow.length > 19 ? currentRow[19] || '' : '';   // T: Nomor SPM
+    const existingNomorSPPD = currentRow.length > 20 ? currentRow[20] || '' : '';  // U: Nomor SPPD
 
     // Handle edit action from SM
     if (actor === 'sm' && action === 'edit') {
@@ -270,6 +274,9 @@ serve(async (req) => {
     let updatedStatusPpk = statusPpk;
     let updatedStatusPPSPM = statusPPSPM;
     let updatedStatusArsip = statusArsip;
+    let updatedPembayaran = existingPembayaran;
+    let updatedNomorSPM = existingNomorSPM;
+    let updatedNomorSPPD = existingNomorSPPD;
     
     // Handle checklist-only save (no status change)
     if (action === 'checklist') {
@@ -282,10 +289,17 @@ serve(async (req) => {
       updatedWaktuBendahara = updatedAt;
       updatedStatusBendahara = action === 'approve' ? 'Disetujui' : 'Ditolak';
       
+      // Handle pembayaran and nomorSPM for Bendahara
+      if (pembayaran) updatedPembayaran = pembayaran;
+      if (nomorSPM) updatedNomorSPM = nomorSPM;
+      
       if (action === 'approve') {
         newStatus = 'pending_ppk'; // Bendahara approve → ke PPK
       } else if (action === 'reject') {
         newStatus = 'incomplete_sm'; // Bendahara reject → kembali ke SM
+      } else if (action === 'save_spby') {
+        // Keep current status, just save pembayaran and nomorSPM
+        updatedPembayaran = pembayaran || updatedPembayaran;
       }
       
     } else if (actor === 'ppk') {
@@ -312,6 +326,9 @@ serve(async (req) => {
       updatedWaktuArsip = updatedAt;
       updatedStatusArsip = action === 'approve' ? 'Disetujui' : 'Ditolak';
       
+      // Handle nomorSPPD for Arsip
+      if (nomorSPPD) updatedNomorSPPD = nomorSPPD;
+      
       if (action === 'approve') {
         newStatus = 'complete_arsip'; // Arsip catat → selesai
       } else if (action === 'reject') {
@@ -319,11 +336,11 @@ serve(async (req) => {
       }
     }
 
-    // Build updated row sesuai struktur: A-R (18 kolom)
+    // Build updated row sesuai struktur: A-U (21 kolom)
     // A: ID, B: Uraian, C: Nama, D: Jenis, E: Kelengkapan, F: Catatan, G: Status
     // H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK, K: Waktu PPSPM, L: Waktu Arsip
     // M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip, Q: Update terakhir
-    // R: User (🆕)
+    // R: User, S: Pembayaran (UP/LS), T: Nomor SPM, U: Nomor SPPD
     const updatedRow = [
       currentRow[0] || '', // A: ID
       newTitle,            // B: Uraian Pengajuan
@@ -342,15 +359,18 @@ serve(async (req) => {
       updatedStatusPPSPM,  // O: Status PPSPM
       updatedStatusArsip,  // P: Status Arsip
       updatedAt,           // Q: Update terakhir
-      user,                // R: User (🆕 preserve existing user)
+      user,                // R: User
+      updatedPembayaran,   // S: Pembayaran (UP/LS)
+      updatedNomorSPM,     // T: Nomor SPM
+      updatedNomorSPPD,    // U: Nomor SPPD
     ];
 
     console.log(`Updating row ${rowIndex}:`, updatedRow);
     console.log('Row length:', updatedRow.length);
 
-    // Update dengan range A:R untuk 18 kolom
+    // Update dengan range A:U untuk 21 kolom
     const updateResponse = await fetch(
-      `${baseUrl}/values/${SHEET_NAME}!A${rowIndex}:R${rowIndex}?valueInputOption=USER_ENTERED`,
+      `${baseUrl}/values/${SHEET_NAME}!A${rowIndex}:U${rowIndex}?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {
@@ -367,6 +387,13 @@ serve(async (req) => {
     if (!updateResponse.ok) {
       throw new Error(`Update failed: ${JSON.stringify(updateData)}`);
     }
+    
+    // Log untuk debugging
+    console.log(`Updated submission ${id}:`, {
+      pembayaran: updatedPembayaran,
+      nomorSPM: updatedNomorSPM,
+      nomorSPPD: updatedNomorSPPD
+    });
 
     return new Response(
       JSON.stringify({ 
