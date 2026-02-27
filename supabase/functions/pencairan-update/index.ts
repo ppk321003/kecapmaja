@@ -298,13 +298,17 @@ serve(async (req: Request) => {
       if (pembayaran) updatedPembayaran = pembayaran;
       if (nomorSPM) updatedNomorSPM = nomorSPM;
       
+      console.log(`[Bendahara] action=${action}, pembayaran=${pembayaran}, nomorSPM=${nomorSPM}`);
+      
       if (action === 'approve') {
         newStatus = 'pending_ppk'; // Bendahara approve → ke PPK
+        console.log(`[Bendahara] Setting status to pending_ppk`);
       } else if (action === 'reject') {
         newStatus = 'incomplete_sm'; // Bendahara reject → kembali ke SM
       } else if (action === 'save_spby') {
         // Keep current status, just save pembayaran and nomorSPM
         updatedPembayaran = pembayaran || updatedPembayaran;
+        console.log(`[Bendahara] save_spby - keeping status=${newStatus}, setting pembayaran=${pembayaran}`);
       }
       
     } else if (actor === 'ppk') {
@@ -346,6 +350,9 @@ serve(async (req: Request) => {
     // H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK, K: Waktu PPSPM, L: Waktu Arsip
     // M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip, Q: Update terakhir
     // R: User, S: Pembayaran (UP/LS), T: Nomor SPM, U: Nomor SPPD
+    
+    console.log(`[Before updatedRow] id=${id}, newStatus=${newStatus}, updatedPembayaran=${updatedPembayaran}, updatedNomorSPM=${updatedNomorSPM}`);
+    
     const updatedRow = [
       currentRow[0] || '', // A: ID
       newTitle,            // B: Uraian Pengajuan

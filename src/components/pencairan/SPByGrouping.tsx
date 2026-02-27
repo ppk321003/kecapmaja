@@ -84,9 +84,12 @@ export function SPByGrouping({
         )
       );
 
+      console.log('[SPByGrouping] Group SPM results:', results);
+
       // Check if any updates failed
       const errors = results.filter(r => r.error);
       if (errors.length > 0) {
+        console.error('[SPByGrouping] Errors from backend:', errors);
         throw new Error(`${errors.length} pengajuan gagal diperbarui`);
       }
 
@@ -145,9 +148,12 @@ export function SPByGrouping({
         )
       );
 
+      console.log('[SPByGrouping] Send to PPK results:', results);
+
       // Check if any updates failed
       const errors = results.filter(r => r.error);
       if (errors.length > 0) {
+        console.error('[SPByGrouping] Errors from backend:', errors);
         throw new Error(`${errors.length} pengajuan gagal dikirim ke PPK`);
       }
 
