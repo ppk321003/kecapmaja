@@ -1,3 +1,6 @@
+// deno-lint-ignore-file
+// This is a Deno Edge Function - ignore TypeScript/Node.js type checking
+// @ts-ignore - Deno std library
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -19,7 +22,9 @@ async function getAccessToken() {
   let privateKey: string;
   let serviceAccountEmail: string;
   
+  // @ts-ignore - Deno runtime API
   const googlePrivateKeyEnv = Deno.env.get('GOOGLE_PRIVATE_KEY');
+  // @ts-ignore - Deno runtime API
   const googleServiceAccountEmailEnv = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_EMAIL');
   
   try {
@@ -177,7 +182,7 @@ function formatDateTime(): string {
   return `${hours}:${minutes} - ${day}/${month}/${year}`;
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   console.log('pencairan-update function invoked');
   
   if (req.method === 'OPTIONS') {
@@ -250,10 +255,10 @@ serve(async (req) => {
     const statusPpk = currentRow.length > 13 ? currentRow[13] || '' : '';    // N: Status PPK
     const statusPPSPM = currentRow.length > 14 ? currentRow[14] || '' : '';  // O: Status PPSPM
     const statusArsip = currentRow.length > 15 ? currentRow[15] || '' : '';  // P: Status Arsip
-    const user = currentRow.length > 17 ? currentRow[17] || '' : '';         // R: User
-    const existingPembayaran = currentRow.length > 18 ? currentRow[18] || '' : ''; // S: Pembayaran
-    const existingNomorSPM = currentRow.length > 19 ? currentRow[19] || '' : '';   // T: Nomor SPM
-    const existingNomorSPPD = currentRow.length > 20 ? currentRow[20] || '' : '';  // U: Nomor SPPD
+    const user = currentRow.length > 17 ? currentRow[17] || '' : '';         // R: User (index 17)
+    const existingPembayaran = currentRow.length > 18 ? currentRow[18] || '' : ''; // S: Pembayaran (index 18)
+    const existingNomorSPM = currentRow.length > 19 ? currentRow[19] || '' : '';   // T: Nomor SPM (index 19)
+    const existingNomorSPPD = currentRow.length > 20 ? currentRow[20] || '' : '';  // U: Nomor SPPD (index 20)
 
     // Handle edit action from SM
     if (actor === 'sm' && action === 'edit') {
