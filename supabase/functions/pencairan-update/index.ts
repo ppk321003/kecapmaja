@@ -195,6 +195,8 @@ serve(async (req: Request) => {
     
     const { id, status, notes, actor, action, uraianPengajuan, namaPengaju, jenisPengajuan, kelengkapan, satker, pembayaran, nomorSPM, nomorSPPD } = body;
     
+    console.log(`[Request-Parsed] id=${id}, actor=${actor}, action=${action}, status=${status}, pembayaran=${pembayaran}, nomorSPM=${nomorSPM}`);
+    
     if (!id) {
       throw new Error('ID is required');
     }
@@ -232,6 +234,9 @@ serve(async (req: Request) => {
 
     const currentRow = rows[rowIndex - 1];
     const updatedAt = formatDateTime();
+    
+    console.log(`[CurrentRow-Read] id=${currentRow[0]}, status=${currentRow[6]}, pembayaran=${currentRow[18]}, nomorSPM=${currentRow[19]}`);
+    console.log(`[CurrentRow-StatusColumns] M=${currentRow[12]}, N=${currentRow[13]}, O=${currentRow[14]}, P=${currentRow[15]}`);
     
     // Default values from current row - Struktur kolom yang benar:
     // A: ID, B: Uraian, C: Nama, D: Jenis, E: Kelengkapan, F: Catatan, G: Status Pengajuan
@@ -283,6 +288,8 @@ serve(async (req: Request) => {
     let updatedNomorSPM = existingNomorSPM;
     let updatedNomorSPPD = existingNomorSPPD;
     
+    console.log(`[Start] Initial newStatus=${newStatus}, currentRow[6]=${currentRow[6]}, status param=${status}`);
+    
     // Handle checklist-only save (no status change)
     if (action === 'checklist') {
       // Just update the documents, status stays the same
@@ -298,20 +305,24 @@ serve(async (req: Request) => {
       if (pembayaran) updatedPembayaran = pembayaran;
       if (nomorSPM) updatedNomorSPM = nomorSPM;
       
-      console.log(`[Bendahara] action=${action}, pembayaran=${pembayaran}, nomorSPM=${nomorSPM}`);
+      console.log(`[Bendahara-Before] newStatus=${newStatus}, action=${action}, pembayaran=${pembayaran}, nomorSPM=${nomorSPM}`);
       
       if (action === 'approve') {
         newStatus = 'pending_ppk'; // Bendahara approve → ke PPK
-        console.log(`[Bendahara] Setting status to pending_ppk`);
+        console.log(`[Bendahara-After-Approve] newStatus set to ${newStatus}`);
       } else if (action === 'reject') {
         newStatus = 'incomplete_sm'; // Bendahara reject → kembali ke SM
+        console.log(`[Bendahara-After-Reject] newStatus set to ${newStatus}`);
       } else if (action === 'save_spby') {
         // Keep current status, just save pembayaran and nomorSPM
         updatedPembayaran = pembayaran || updatedPembayaran;
-        console.log(`[Bendahara] save_spby - keeping status=${newStatus}, setting pembayaran=${pembayaran}`);
+        console.log(`[Bendahara-save_spby] keeping status=${newStatus}, setting pembayaran=${pembayaran}`);
       }
       
-    } else if (actor === 'ppk') {
+      console.log(`[Bendahara-Final] newStatus=${newStatus}, updatedPembayaran=${updatedPembayaran}, updatedNomorSPM=${updatedNomorSPM}`);
+      console.log(`[Bendahara-Final-StatusCols] M=${updatedStatusBendahara}, N=${updatedStatusPpk}, O=${updatedStatusPPSPM}, P=${updatedStatusArsip}`);
+    }
+ else if (actor === 'ppk') {
       updatedWaktuPpk = updatedAt;
       updatedStatusPpk = action === 'approve' ? 'Disetujui' : 'Ditolak';
       
@@ -377,6 +388,9 @@ serve(async (req: Request) => {
       updatedNomorSPPD,    // U: Nomor SPPD
     ];
 
+    console.log(`[After-updatedRow] updatedRow[6]=${updatedRow[6]} (should be newStatus=${newStatus})`);
+    console.log(`[After-updatedRow] updatedRow[18]=${updatedRow[18]} (pembayaran), updatedRow[19]=${updatedRow[19]} (SPM), updatedRow[20]=${updatedRow[20]} (SPPD)`);
+    console.log(`[After-updatedRow-StatusCols] M=${updatedRow[12]}, N=${updatedRow[13]}, O=${updatedRow[14]}, P=${updatedRow[15]}`);
     console.log(`Updating row ${rowIndex}:`, updatedRow);
     console.log('Row length:', updatedRow.length);
 
@@ -395,6 +409,7 @@ serve(async (req: Request) => {
 
     const updateData = await updateResponse.json();
     console.log('Update response:', JSON.stringify(updateData));
+    console.log(`[Update-Status] id=${id}, newStatus=${newStatus}, updatedAt=${updatedAt}`);
 
     if (!updateResponse.ok) {
       throw new Error(`Update failed: ${JSON.stringify(updateData)}`);
@@ -402,9 +417,16 @@ serve(async (req: Request) => {
     
     // Log untuk debugging
     console.log(`Updated submission ${id}:`, {
+      status: newStatus,
+      statusBendahara: updatedStatusBendahara,
+      statusPpk: updatedStatusPpk,
+      statusPPSPM: updatedStatusPPSPM,
+      statusArsip: updatedStatusArsip,
       pembayaran: updatedPembayaran,
       nomorSPM: updatedNomorSPM,
-      nomorSPPD: updatedNomorSPPD
+      nomorSPPD: updatedNomorSPPD,
+      actor: actor,
+      action: action
     });
 
     return new Response(
