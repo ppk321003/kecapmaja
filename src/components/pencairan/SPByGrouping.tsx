@@ -6,6 +6,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   FileText,
   CheckCircle2,
   AlertCircle,
@@ -28,8 +37,8 @@ export function SPByGrouping({
 }: SPByGroupingProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [nomorSPM, setNomorSPM] = useState('');
-  const [isGrouping, setIsGrouping] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
 
   const handleSelectAll = (checked: boolean) => {
@@ -48,11 +57,11 @@ export function SPByGrouping({
     }
   };
 
-  const handleGroupSubmissions = async () => {
+  const handleOpenConfirmDialog = () => {
     if (selectedIds.length === 0) {
       toast({
         title: 'Validasi gagal',
-        description: 'Pilih minimal 1 pengajuan untuk dikelompokkan',
+        description: 'Pilih minimal 1 pengajuan',
         variant: 'destructive',
       });
       return;
@@ -67,10 +76,14 @@ export function SPByGrouping({
       return;
     }
 
-    setIsGrouping(true);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmProcess = async () => {
+    setShowConfirmDialog(false);
+    setIsProcessing(true);
     try {
-      // Update all selected submissions with the SPM number
-      // Must call pencairan-update for each ID separately since backend expects single 'id'
+      // Update all selected submissions: assign SPM and change status to pending_ppk in ONE call
       const results = await Promise.all(
         selectedIds.map(submissionId =>
           supabase.functions.invoke('pencairan-update', {
@@ -78,119 +91,50 @@ export function SPByGrouping({
               id: submissionId,
               nomorSPM: nomorSPM.trim(),
               actor: 'bendahara',
-              action: 'save_spby',
+              action: 'approve', // This will assign SPM and change status to pending_ppk
             },
           })
         )
       );
 
-      console.log('[SPByGrouping] Group SPM results:', results);
+      console.log('[SPByGrouping] Process results:', results);
 
       // Check if any updates failed
       const errors = results.filter(r => r.error);
       if (errors.length > 0) {
         console.error('[SPByGrouping] Errors from backend:', errors);
-        throw new Error(`${errors.length} pengajuan gagal diperbarui`);
+        throw new Error(`${errors.length} pengajuan gagal diproses`);
       }
 
       toast({
         title: 'Berhasil',
-        description: `${selectedIds.length} pengajuan berhasil dikelompokkan dengan SPM ${nomorSPM}`,
+        description: `${selectedIds.length} pengajuan berhasil dikelompokkan dengan SPM ${nomorSPM} dan dikirim ke PPK`,
       });
-      
+
+      // Update local state
       onUpdateSubmissions(selectedIds, {
+        status: 'pending_ppk',
         nomorSPM: nomorSPM.trim(),
+        pembayaran: 'UP',
       });
-      
+
+      // Reset form
       setSelectedIds([]);
       setNomorSPM('');
+      
+      // Refresh from server
       onRefresh();
     } catch (err) {
-      console.error('Error grouping submissions:', err);
+      console.error('Error processing submissions:', err);
       toast({
-        title: 'Gagal mengelompokkan',
+        title: 'Gagal memproses',
         description: err instanceof Error ? err.message : 'Unknown error',
         variant: 'destructive',
       });
     } finally {
-      setIsGrouping(false);
+      setIsProcessing(false);
     }
   };
-
-  const handleSendToPPK = async () => {
-    if (!nomorSPM.trim()) {
-      toast({
-        title: 'Validasi gagal',
-        description: 'Kelompokkan pengajuan dengan SPM terlebih dahulu',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      // Get all submissions with the same SPM
-      const submissionsWithSPM = upSubmissions.filter(sub => sub.nomorSPM === nomorSPM);
-      const submissionIds = submissionsWithSPM.map(sub => sub.id);
-
-      // Send all to PPK - must call for each ID separately
-      const results = await Promise.all(
-        submissionIds.map(submissionId =>
-          supabase.functions.invoke('pencairan-update', {
-            body: {
-              id: submissionId,
-              status: 'pending_ppk',
-              actor: 'bendahara',
-              action: 'approve',
-              nomorSPM: nomorSPM,
-            },
-          })
-        )
-      );
-
-      console.log('[SPByGrouping] Send to PPK results:', results);
-
-      // Check if any updates failed
-      const errors = results.filter(r => r.error);
-      if (errors.length > 0) {
-        console.error('[SPByGrouping] Errors from backend:', errors);
-        throw new Error(`${errors.length} pengajuan gagal dikirim ke PPK`);
-      }
-
-      toast({
-        title: 'Berhasil',
-        description: `${submissionIds.length} pengajuan SPM ${nomorSPM} berhasil dikirim ke PPK`,
-      });
-      
-      onUpdateSubmissions(submissionIds, {
-        status: 'pending_ppk',
-        pembayaran: 'UP',
-        nomorSPM: nomorSPM,
-      });
-      
-      setNomorSPM('');
-      onRefresh();
-    } catch (err) {
-      console.error('Error sending to PPK:', err);
-      toast({
-        title: 'Gagal mengirim ke PPK',
-        description: err instanceof Error ? err.message : 'Unknown error',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Group submissions by SPM
-  const groupedBySpM = upSubmissions.reduce((acc, sub) => {
-    const key = sub.nomorSPM || 'Belum dikelompokkan';
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(sub);
-    return acc;
-  }, {} as Record<string, Submission[]>);
 
   return (
     <div className="space-y-6">
@@ -260,87 +204,48 @@ export function SPByGrouping({
                 className="w-full px-3 py-2 border border-input rounded-md text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                Nomor ini akan disimpan untuk {selectedIds.length} pengajuan yang dipilih
+                Nomor ini akan disimpan untuk {selectedIds.length} pengajuan yang dipilih dan langsung dikirim ke PPK
               </p>
+              
+              {/* Unified Button - Group & Send */}
               <Button
-                onClick={handleGroupSubmissions}
-                disabled={isGrouping || selectedIds.length === 0 || !nomorSPM.trim()}
+                onClick={handleOpenConfirmDialog}
+                disabled={isProcessing || selectedIds.length === 0 || !nomorSPM.trim()}
                 className="w-full"
+                size="lg"
               >
-                {isGrouping ? (
+                {isProcessing ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  <Send className="w-4 h-4 mr-2" />
                 )}
-                Kelompokkan {selectedIds.length} Pengajuan
+                Kelompokkan & Kirim ke PPK ({selectedIds.length})
               </Button>
             </div>
           )}
+
+          {/* Confirmation Dialog */}
+          <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Konfirmasi Pengajuan</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Anda akan mengelompokkan <strong>{selectedIds.length} pengajuan</strong> dengan <strong>SPM {nomorSPM}</strong> dan langsung mengirimnya ke PPK.
+                  <br />
+                  <br />
+                  Status akan otomatis berubah dari <strong>pending_bendahara</strong> menjadi <strong>pending_ppk</strong>.
+                  <br />
+                  Proses ini tidak dapat dibatalkan setelah dikonfirmasi.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogAction onClick={handleConfirmProcess}>
+                Ya, Lanjutkan
+              </AlertDialogAction>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
-
-      {/* Grouped Submissions */}
-      {Object.keys(groupedBySpM).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Kelompok SPM
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {Object.entries(groupedBySpM).map(([spMNum, submissions]) => (
-              <div key={spMNum} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-sm">{spMNum}</h3>
-                    <p className="text-xs text-muted-foreground">{submissions.length} pengajuan</p>
-                  </div>
-                  {spMNum !== 'Belum dikelompokkan' && (
-                    <Button
-                      onClick={() => {
-                        setNomorSPM(spMNum);
-                        handleSendToPPK();
-                      }}
-                      disabled={isSubmitting}
-                      size="sm"
-                      className="ml-2"
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                      ) : (
-                        <Send className="w-3 h-3 mr-2" />
-                      )}
-                      Kirim ke PPK
-                    </Button>
-                  )}
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  {submissions.map((sub) => (
-                    <div key={sub.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded">
-                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-xs truncate">{sub.title}</p>
-                        <p className="text-xs text-muted-foreground">{sub.id}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {spMNum === 'Belum dikelompokkan' && (
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-900">
-                      Pengajuan ini belum dikelompokkan. Pilih dari daftar di atas untuk mengelompokkannya.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
 
       {upSubmissions.length === 0 && (
         <Card>
