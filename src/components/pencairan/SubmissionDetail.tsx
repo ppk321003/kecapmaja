@@ -82,7 +82,7 @@ export function SubmissionDetail({
   const [pembayaran, setPembayaran] = useState<'UP' | 'LS' | ''>('');
   const [nomorSPM, setNomorSPM] = useState('');
   const [nomorSPPD, setNomorSPPD] = useState('');
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'approve' | 'reject' | 'return' | null }>({ open: false, action: null });
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'approve' | 'reject' | 'return' | 'reset_and_resend' | null }>({ open: false, action: null });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -251,13 +251,21 @@ export function SubmissionDetail({
           return;
         }
         
-        // UP should not go through normal approval flow - should use "Simpan SPBy" instead
+        // UP should not go through normal approval flow
         if (pembayaran === 'UP') {
-          toast({
-            title: 'Langkah salah',
-            description: 'Untuk Uang Persediaan (UP), gunakan tombol "Simpan SPBy"',
-            variant: 'destructive',
-          });
+          if (submission.status === 'incomplete_bendahara') {
+            toast({
+              title: 'Tidak bisa mengirim UP dengan cara normal',
+              description: 'Pilih: (1) Ubah ke LS dan isi SPM baru, atau (2) Gunakan "Simpan SPBy" untuk mengelompokkan UP',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Langkah salah',
+              description: 'Untuk Uang Persediaan (UP), gunakan tombol "Simpan SPBy"',
+              variant: 'destructive',
+            });
+          }
           return;
         }
       }
@@ -354,6 +362,61 @@ export function SubmissionDetail({
     onClose();
   };
 
+  const executeResetAndResend = async () => {
+    // Clear pembayaran and nomorSPM, then resend to PPK
+    // This is for incomplete_bendahara + UP case where PPK rejected but metode/SPM might still be same
+    setIsUpdating(true);
+    try {
+      // Get checked documents
+      const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
+      const kelengkapan = checkedDocs.join('|');
+
+      const newStatus = 'pending_ppk';
+      const { data, error } = await supabase.functions.invoke('pencairan-update', {
+        body: {
+          id: submission.id,
+          status: newStatus,
+          notes: notes || undefined,
+          actor: 'bendahara',
+          action: 'approve',
+          kelengkapan,
+          pembayaran: '', // Clear pembayaran
+          nomorSPM: '', // Clear nomorSPM
+        },
+      });
+
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast({
+          title: 'Berhasil',
+          description: 'Metode pembayaran dan Nomor SPM dihapus, pengajuan dikirim ulang ke PPK tanpa metode pembayaran',
+        });
+        onRefresh();
+        
+        onUpdateSubmission(submission.id, {
+          status: newStatus as Submission['status'],
+          documents,
+          pembayaran: undefined,
+          nomorSPM: undefined,
+          bendaharaCheckedAt: new Date(),
+        });
+        onClose();
+      } else {
+        throw new Error(data?.error || 'Failed to reset and resend');
+      }
+    } catch (err) {
+      console.error('Error resetting and resending:', err);
+      toast({
+        title: 'Gagal mengirim ulang',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   // Handler untuk "Simpan SPBy" button (UP flow)
   const handleSaveSPBy = async () => {
     // Status tetap pending_bendahara, tapi pembayaran dan nomorSPM kosong
@@ -406,6 +469,7 @@ export function SubmissionDetail({
   const handleApprove = () => setConfirmDialog({ open: true, action: 'approve' });
   const handleReject = () => setConfirmDialog({ open: true, action: 'reject' });
   const handleReturnFromArsip = () => setConfirmDialog({ open: true, action: 'return' });
+  const handleResetAndResend = () => setConfirmDialog({ open: true, action: 'reset_and_resend' });
 
   const handleConfirm = async () => {
     setConfirmDialog({ open: false, action: null });
@@ -418,6 +482,9 @@ export function SubmissionDetail({
         break;
       case 'return':
         await executeReturnFromArsip();
+        break;
+      case 'reset_and_resend':
+        await executeResetAndResend();
         break;
     }
   };
@@ -448,6 +515,8 @@ export function SubmissionDetail({
         return 'Apakah Anda yakin ingin menolak pengajuan ini?';
       case 'return':
         return 'Apakah Anda yakin ingin mengembalikan ke PPSPM?';
+      case 'reset_and_resend':
+        return 'Nomor SPM dan metode pembayaran akan dihapus, kemudian kirim ulang ke PPK. Apakah Anda yakin?';
       default:
         return 'Apakah Anda yakin?';
     }
@@ -590,11 +659,31 @@ export function SubmissionDetail({
 
           {/* Pembayaran Field - Bendahara only */}
           {userRole === 'Bendahara' && (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Pilih Pembayaran <span className="text-red-500">*</span></CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <>
+              {/* Warning for incomplete_bendahara + UP */}
+              {submission.status === 'incomplete_bendahara' && submission.pembayaran === 'UP' && (
+                <Card className="border-amber-200 bg-amber-50">
+                  <CardContent className="pt-4 space-y-2 text-sm">
+                    <p className="font-medium text-amber-900 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>Pengajuan dikembalikan PPK</span>
+                    </p>
+                    <p className="text-amber-800 text-xs leading-relaxed ml-6">
+                      Pengajuan ini ditandai Uang Persediaan (UP). Untuk melanjutkan, Anda memiliki dua pilihan:
+                    </p>
+                    <ul className="text-amber-800 text-xs ml-6 list-disc list-inside space-y-1">
+                      <li><strong>Ubah ke Langsung (LS)</strong>: Ganti tipe pembayaran, hapus SPM lama, dan isi SPM baru. Kemudian kirim ke PPK.</li>
+                      <li><strong>Tetap UP</strong>: Gunakan tombol "Simpan SPBy" di bawah untuk mengelompokkan dengan pengajuan UP lainnya.</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Pilih Pembayaran <span className="text-red-500">*</span></CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-input hover:bg-accent">
                     <input
@@ -651,6 +740,7 @@ export function SubmissionDetail({
                 )}
               </CardContent>
             </Card>
+            </>
           )}
 
           {/* Identitas Pembayaran (SPM & SPPD) Display - Read Only */}
@@ -807,8 +897,23 @@ export function SubmissionDetail({
                 {canReturnArsip ? 'Kembalikan ke PPSPM' : getRejectButtonLabel()}
               </Button>
               
-              {/* For Bendahara with UP, show "Simpan SPBy" button instead */}
-              {userRole === 'Bendahara' && pembayaran === 'UP' && (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') ? (
+              {/* For Bendahara with incomplete_bendahara + UP + SPM, show reset & resend button */}
+              {userRole === 'Bendahara' && submission.status === 'incomplete_bendahara' && pembayaran === 'UP' && nomorSPM ? (
+                <Button 
+                  className="flex-1"
+                  variant="outline"
+                  onClick={handleResetAndResend}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4 mr-2" />
+                  )}
+                  Hapus & Resend
+                </Button>
+              ) : /* For Bendahara with UP, show "Simpan SPBy" button instead */
+              userRole === 'Bendahara' && pembayaran === 'UP' && (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') ? (
                 <Button 
                   className="flex-1"
                   onClick={handleSaveSPBy}
@@ -861,7 +966,7 @@ export function SubmissionDetail({
           <div className="flex gap-3">
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirm} className="bg-primary hover:bg-primary/90">
-              {confirmDialog.action === 'approve' ? 'Setujui' : 'Ya, Lanjutkan'}
+              {confirmDialog.action === 'approve' ? 'Setujui' : confirmDialog.action === 'reset_and_resend' ? 'Hapus & Kirim Ulang' : 'Ya, Lanjutkan'}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>
