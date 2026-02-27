@@ -223,11 +223,11 @@ serve(async (req) => {
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
     const waktuPengajuan = formatDateTime();
 
-    // Struktur kolom sesuai request (18 kolom A:R):
+    // Struktur kolom sesuai request (21 kolom A:U):
     // A: ID, B: Uraian Pengajuan, C: Nama Pengaju, D: Jenis Pengajuan, E: Kelengkapan
     // F: Catatan, G: Status Pengajuan, H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK
     // K: Waktu PPSPM, L: Waktu Arsip, M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip
-    // Q: Update terakhir, R: User (role login pembuat)
+    // Q: Update terakhir, R: User (role login pembuat), S: Pembayaran (UP/LS), T: Nomor SPM, U: Nomor SPPD
     const rowData = [
       id || '',                                        // A: ID
       uraianPengajuan || title || '',                 // B: Uraian Pengajuan
@@ -246,15 +246,18 @@ serve(async (req) => {
       '',                                             // O: Status PPSPM
       '',                                             // P: Status Arsip
       waktuPengajuan,                                 // Q: Update terakhir
-      user || '',                                     // R: User (🆕 role login pembuat)
+      user || '',                                     // R: User (role login pembuat)
+      '',                                             // S: Pembayaran (kosong untuk baru)
+      '',                                             // T: Nomor SPM (kosong untuk baru)
+      '',                                             // U: Nomor SPPD (kosong untuk baru)
     ];
 
-    console.log('Appending row with 18 columns:', rowData);
+    console.log('Appending row with 21 columns:', rowData);
     console.log('Row length:', rowData.length);
 
-    // Append dengan range A:R untuk 18 kolom
+    // Append dengan range A:U untuk 21 kolom
     const response = await fetch(
-      `${baseUrl}/values/${SHEET_NAME}!A:R:append?valueInputOption=USER_ENTERED`,
+      `${baseUrl}/values/${SHEET_NAME}!A:U:append?valueInputOption=USER_ENTERED`,
       {
         method: 'POST',
         headers: {
