@@ -121,6 +121,9 @@ export interface Submission {
   kppnCheckedAt?: Date;
   arsipCheckedAt?: Date; // ✅ TAMBAH untuk waktu record arsip
   user?: string; // 🆕 Kolom R - role login yang membuat 'Buat Pengajuan Baru'
+  pembayaran?: 'UP' | 'LS'; // 🆕 Kolom S - Tipe pembayaran (Uang Persediaan atau Langsung)
+  nomorSPM?: string; // 🆕 Kolom T - Nomor SPM
+  nomorSPPD?: string; // 🆕 Untuk Arsip - Nomor SPPD
 }
 
 export const STATUS_LABELS: Record<SubmissionStatus, string> = {

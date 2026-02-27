@@ -5,9 +5,10 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SubmissionTable } from '@/components/pencairan/SubmissionTable';
 import { SubmissionDetail } from '@/components/pencairan/SubmissionDetail';
 import { SubmissionForm } from '@/components/pencairan/SubmissionForm';
+import { SPByGrouping } from '@/components/pencairan/SPByGrouping';
 import { usePencairanData } from '@/hooks/use-pencairan-data';
 import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getDocumentsByJenisBelanja, shouldShowSubmission } from '@/types/pencairan';
-import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileEdit, AlertCircle, Send, Archive } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileEdit, AlertCircle, Send, Archive, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -21,6 +22,7 @@ const filterConfig = [
   { value: 'pending_ppspm', label: 'PPSPM', icon: Clock, color: 'text-pink-500' },
   { value: 'sent_kppn', label: 'KPPN', icon: Send, color: 'text-purple-500' },
   { value: 'complete_arsip', label: 'Arsip', icon: Archive, color: 'text-emerald-500' },
+  // SPBy tab will be added dynamically for Bendahara
 ];
 
 // Parse jenisBelanja yang disimpan sebagai "Jenis - SubJenis" di sheet
@@ -266,6 +268,16 @@ export default function UsulanPencairan() {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
+  // Get UP submissions for SPBy tab
+  const upSubmissions = useMemo(() => {
+    return submissions.filter(sub => sub.pembayaran === 'UP');
+  }, [submissions]);
+
+  // Dynamic filter config - add SPBy tab for Bendahara
+  const dynamicFilterConfig = userRole === 'Bendahara'
+    ? [...filterConfig, { value: 'spby', label: 'SPBy', icon: Package, color: 'text-cyan-500' }]
+    : filterConfig;
+
   return (
     <div className="space-y-6">
       {/* HEADER - Diperbarui dengan shadow dan rounded */}
@@ -314,7 +326,7 @@ export default function UsulanPencairan() {
       <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)} className="w-full">
         <div className="w-full flex justify-center">
           <TabsList className="flex flex-wrap w-full max-w-5xl bg-muted/60 p-1 rounded-xl shadow-inner justify-center gap-1 h-auto">
-            {filterConfig.map((filter) => {
+            {dynamicFilterConfig.map((filter) => {
               const Icon = filter.icon;
               // 🆕 Hitung count dengan menambahkan incomplete_* yang sesuai dengan setiap tab
               let countValue = counts[filter.value] || 0;
@@ -330,6 +342,8 @@ export default function UsulanPencairan() {
                 countValue = (counts['pending_ppspm'] || 0) + (counts['incomplete_ppspm'] || 0);
               } else if (filter.value === 'sent_kppn') {
                 countValue = (counts['sent_kppn'] || 0) + (counts['incomplete_kppn'] || 0);
+              } else if (filter.value === 'spby') {
+                countValue = upSubmissions.length;
               }
 
               return (
@@ -353,36 +367,55 @@ export default function UsulanPencairan() {
         </div>
       </Tabs>
 
+      {/* SPBy GROUPING - Only for Bendahara */}
+      {userRole === 'Bendahara' && activeFilter === 'spby' && (
+        <div className="flex justify-center">
+          <div className="w-full">
+            <SPByGrouping
+              upSubmissions={upSubmissions}
+              onUpdateSubmissions={(ids, updates) => {
+                setSubmissions(prev => prev.map(sub => 
+                  ids.includes(sub.id) ? { ...sub, ...updates } : sub
+                ));
+              }}
+              onRefresh={refetch}
+            />
+          </div>
+        </div>
+      )}
+
       {/* DAFTAR PENGAJUAN CARD */}
-      <div className="flex justify-center">
-        <Card className="w-full overflow-hidden rounded-xl shadow-sm">
-          <CardHeader className="px-4 sm:px-6 py-4 border-b">
-            <CardTitle className="text-lg sm:text-xl font-semibold tracking-tight">Daftar Pengajuan</CardTitle>
-          </CardHeader>
-          
-          <CardContent className="px-4 sm:px-6 py-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <>
-                <div className="w-full overflow-x-auto rounded-lg border bg-white dark:bg-slate-950">
-                  <SubmissionTable 
-                  submissions={filteredSubmissions} 
-                  onView={setSelectedSubmission} 
-                  onEdit={(sub) => { 
-                    setEditingSubmission(sub); 
-                    setShowForm(true); 
-                  }} 
-                  userRole={userRole} 
-                />
+      {(userRole !== 'Bendahara' || activeFilter !== 'spby') && (
+        <div className="flex justify-center">
+          <Card className="w-full overflow-hidden rounded-xl shadow-sm">
+            <CardHeader className="px-4 sm:px-6 py-4 border-b">
+              <CardTitle className="text-lg sm:text-xl font-semibold tracking-tight">Daftar Pengajuan</CardTitle>
+            </CardHeader>
+            
+            <CardContent className="px-4 sm:px-6 py-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              ) : (
+                <>
+                  <div className="w-full overflow-x-auto rounded-lg border bg-white dark:bg-slate-950">
+                    <SubmissionTable 
+                    submissions={filteredSubmissions} 
+                    onView={setSelectedSubmission} 
+                    onEdit={(sub) => { 
+                      setEditingSubmission(sub); 
+                      setShowForm(true); 
+                    }} 
+                    userRole={userRole} 
+                  />
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* MODALS */}
       <SubmissionForm 

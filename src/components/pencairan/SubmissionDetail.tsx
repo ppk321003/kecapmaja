@@ -70,6 +70,9 @@ export function SubmissionDetail({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(true);
   const [isDocumentsOpen, setIsDocumentsOpen] = useState(true);
+  const [pembayaran, setPembayaran] = useState<'UP' | 'LS' | ''>('');
+  const [nomorSPM, setNomorSPM] = useState('');
+  const [nomorSPPD, setNomorSPPD] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -102,6 +105,9 @@ export function SubmissionDetail({
       }
       
       setNotes(submission.notes || '');
+      setPembayaran(submission.pembayaran || '');
+      setNomorSPM(submission.nomorSPM || '');
+      setNomorSPPD(submission.nomorSPPD || '');
     }
   }, [submission]);
 
@@ -164,7 +170,7 @@ export function SubmissionDetail({
     newStatus: string, 
     newNotes?: string, 
     actor: 'ppk' | 'ppspm' | 'bendahara' | 'arsip' = 'ppk',
-    action: 'approve' | 'reject' | 'return' = 'approve'
+    action: 'approve' | 'reject' | 'return' | 'save_spby' = 'approve'
   ) => {
     setIsUpdating(true);
     try {
@@ -180,6 +186,9 @@ export function SubmissionDetail({
           actor,
           action,
           kelengkapan, // Include checked documents
+          pembayaran: actor === 'bendahara' ? pembayaran : undefined,
+          nomorSPM: nomorSPM || undefined,
+          nomorSPPD: actor === 'arsip' ? nomorSPPD : undefined,
         },
       });
 
@@ -212,6 +221,37 @@ export function SubmissionDetail({
     
     // Logika alur baru: SM > BENDAHARA > PPK > PPSPM > sent_kppn (Arsip catat) > complete_arsip
     if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
+      // For Bendahara, validate pembayaran and nomorSPM for LS
+      if (userRole === 'Bendahara') {
+        if (!pembayaran) {
+          toast({
+            title: 'Validasi gagal',
+            description: 'Pilih tipe pembayaran (UP atau LS) terlebih dahulu',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        if (pembayaran === 'LS' && !nomorSPM) {
+          toast({
+            title: 'Validasi gagal',
+            description: 'Nomor SPM wajib diisi untuk pembayaran Langsung (LS)',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        // UP should not go through normal approval flow - should use "Simpan SPBy" instead
+        if (pembayaran === 'UP') {
+          toast({
+            title: 'Langkah salah',
+            description: 'Untuk Uang Persediaan (UP), gunakan tombol "Simpan SPBy"',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+      
       newStatus = 'pending_ppk'; // Setelah Bendahara approve, ke PPK
       actor = 'bendahara';
     } else if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
@@ -221,6 +261,25 @@ export function SubmissionDetail({
       newStatus = 'sent_kppn'; // Setelah PPSPM approve, ke Arsip (sent_kppn)
       actor = 'ppspm';
     } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
+      // For Arsip, validate nomorSPPD
+      if (userRole === 'Arsip' && !nomorSPPD) {
+        toast({
+          title: 'Validasi gagal',
+          description: 'Nomor SPPD wajib diisi',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (!notes) {
+        toast({
+          title: 'Validasi gagal',
+          description: 'Catatan wajib diisi',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
       newStatus = 'complete_arsip'; // Setelah Arsip catat, selesai
       actor = 'arsip';
     } else {
@@ -232,6 +291,9 @@ export function SubmissionDetail({
     onUpdateSubmission(submission.id, {
       status: newStatus as Submission['status'],
       documents,
+      pembayaran: actor === 'bendahara' ? pembayaran as 'UP' | 'LS' : undefined,
+      nomorSPM: actor === 'bendahara' ? nomorSPM : undefined,
+      nomorSPPD: actor === 'arsip' ? nomorSPPD : undefined,
       ...(actor === 'bendahara' && { bendaharaCheckedAt: new Date() }),
       ...(actor === 'ppk' && { ppkCheckedAt: new Date() }),
       ...(actor === 'ppspm' && { ppspmCheckedAt: new Date() }),
@@ -280,6 +342,52 @@ export function SubmissionDetail({
       notes: notes || submission.notes,
     });
     onClose();
+  };
+
+  // Handler untuk "Simpan SPBy" button (UP flow)
+  const handleSaveSPBy = async () => {
+    // Status tetap pending_bendahara, tapi pembayaran dan nomorSPM kosong
+    // Data akan disimpan ke Sheet dan kemudian dapat dikelompokkan di tab SPBy
+    setIsUpdating(true);
+    try {
+      // Get checked documents
+      const checkedDocs = documents.filter(d => d.isChecked).map(d => d.name);
+      const kelengkapan = checkedDocs.join('|');
+
+      const { data, error } = await supabase.functions.invoke('pencairan-update', {
+        body: {
+          id: submission.id,
+          status: submission.status, // Keep same status
+          actor: 'bendahara',
+          action: 'save_spby',
+          kelengkapan,
+          pembayaran: 'UP',
+          // nomorSPM tetap kosong untuk UP sampai dikelompokkan
+        },
+      });
+
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast({
+          title: 'SPBy berhasil disimpan',
+          description: 'Pengajuan telah disimpan sebagai Uang Persediaan (UP). Lanjutkan ke tab SPBy untuk pengelompokan.',
+        });
+        onRefresh();
+        onClose();
+      } else {
+        throw new Error(data?.error || 'Failed to save SPBy');
+      }
+    } catch (err) {
+      console.error('Error saving SPBy:', err);
+      toast({
+        title: 'Gagal menyimpan SPBy',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const canAction = canTakeAction(userRole, submission.status);
@@ -420,6 +528,71 @@ export function SubmissionDetail({
             </Card>
           </Collapsible>
 
+          {/* Pembayaran Field - Bendahara only */}
+          {userRole === 'Bendahara' && (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Pilih Pembayaran <span className="text-red-500">*</span></CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-input hover:bg-accent">
+                    <input
+                      type="radio"
+                      name="pembayaran"
+                      value="LS"
+                      checked={pembayaran === 'LS'}
+                      onChange={(e) => {
+                        setPembayaran('LS' as const);
+                        setNomorSPM('');
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="flex-1">
+                      <span className="font-medium text-sm">Langsung (LS)</span>
+                      <p className="text-xs text-muted-foreground">1 Pengajuan = 1 SPM</p>
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded border border-input hover:bg-accent">
+                    <input
+                      type="radio"
+                      name="pembayaran"
+                      value="UP"
+                      checked={pembayaran === 'UP'}
+                      onChange={(e) => {
+                        setPembayaran('UP' as const);
+                        setNomorSPM('');
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="flex-1">
+                      <span className="font-medium text-sm">Uang Persediaan (UP)</span>
+                      <p className="text-xs text-muted-foreground">Beberapa Pengajuan = 1 SPM</p>
+                    </span>
+                  </label>
+                </div>
+
+                {/* Nomor SPM field - only for LS */}
+                {pembayaran === 'LS' && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <label htmlFor="nomorSPM" className="text-sm font-medium">
+                      Nomor SPM <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="nomorSPM"
+                      type="text"
+                      placeholder="Input nomor SPM"
+                      value={nomorSPM}
+                      onChange={(e) => setNomorSPM(e.target.value)}
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">Wajib diisi sebelum submit</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Document Checklist - Collapsible */}
           <Collapsible open={isDocumentsOpen} onOpenChange={setIsDocumentsOpen}>
             <Card>
@@ -483,17 +656,41 @@ export function SubmissionDetail({
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
-                  Catatan {submission.status === 'sent_kppn' && <span className="text-red-500">*</span>}
+                  {userRole === 'Arsip' && (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') ? 'Catatan dan Identitas' : 'Catatan'}
+                  {submission.status === 'sent_kppn' && <span className="text-red-500">*</span>}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Nomor SPPD field - Arsip only */}
+                {userRole === 'Arsip' && (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') && (
+                  <div className="space-y-2">
+                    <label htmlFor="nomorSPPD" className="text-sm font-medium">
+                      Nomor SPPD <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="nomorSPPD"
+                      type="text"
+                      placeholder="Input nomor SPPD"
+                      value={nomorSPPD}
+                      onChange={(e) => setNomorSPPD(e.target.value)}
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">Wajib diisi sebelum submit</p>
+                  </div>
+                )}
+
+                {/* Notes field */}
                 {(canAction || canReturnArsip) ? (
                   <div className="space-y-2">
-                    <Textarea
+                    <label htmlFor="notes" className="text-sm font-medium">
+                      Catatan {submission.status === 'sent_kppn' && <span className="text-red-500">*</span>}
+                    </label>
+                    <textarea
+                      id="notes"
                       placeholder={submission.status === 'sent_kppn' ? "Catatan wajib diisi..." : "Tambahkan catatan..."}
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="resize-none"
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm resize-none"
                       rows={3}
                     />
                     {submission.status === 'sent_kppn' && !notes && (
@@ -526,20 +723,44 @@ export function SubmissionDetail({
                 )}
                 {canReturnArsip ? 'Kembalikan ke PPSPM' : getRejectButtonLabel()}
               </Button>
-              <Button 
-                className="flex-1"
-                onClick={handleApprove}
-                disabled={(canAction && !allDocsComplete) || isUpdating || (submission.status === 'sent_kppn' && !notes)}
-              >
-                {isUpdating ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk' ? (
-                  <Send className="w-4 h-4 mr-2" />
-                ) : (
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                )}
-                {getApproveButtonLabel()}
-              </Button>
+              
+              {/* For Bendahara with UP, show "Simpan SPBy" button instead */}
+              {userRole === 'Bendahara' && pembayaran === 'UP' && (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') ? (
+                <Button 
+                  className="flex-1"
+                  onClick={handleSaveSPBy}
+                  disabled={isUpdating || !pembayaran}
+                >
+                  {isUpdating ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Simpan SPBy
+                </Button>
+              ) : (
+                <Button 
+                  className="flex-1"
+                  onClick={handleApprove}
+                  disabled={
+                    (canAction && !allDocsComplete) || 
+                    isUpdating || 
+                    (submission.status === 'sent_kppn' && !notes) ||
+                    (userRole === 'Bendahara' && !pembayaran) ||
+                    (userRole === 'Bendahara' && pembayaran === 'LS' && !nomorSPM) ||
+                    (userRole === 'Arsip' && !nomorSPPD)
+                  }
+                >
+                  {isUpdating ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk' ? (
+                    <Send className="w-4 h-4 mr-2" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                  )}
+                  {getApproveButtonLabel()}
+                </Button>
+              )}
             </div>
           )}
         </div>
