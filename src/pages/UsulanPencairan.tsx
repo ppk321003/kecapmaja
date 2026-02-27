@@ -351,9 +351,14 @@ export default function UsulanPencairan() {
               if (filter.value === 'draft') {
                 countValue = (counts['draft'] || 0) + (counts['incomplete_sm'] || 0);
               } else if (filter.value === 'pending_bendahara') {
-                // Count pending_bendahara TAPI exclude yang pembayaran UP (akan di SPBy)
+                // Count pending_bendahara + incomplete_bendahara TAPI exclude SEMUA yang pembayaran UP
+                // Perlu hitung berapa banyak incomplete_bendahara + UP yang akan dikecualikan
+                const upSubmissions = roleFilteredSubmissions.filter(sub => 
+                  sub.pembayaran === 'UP' && 
+                  (sub.status === 'pending_bendahara' || sub.status === 'incomplete_bendahara')
+                ).length;
                 const totalPending = (counts['pending_bendahara'] || 0) + (counts['incomplete_bendahara'] || 0);
-                countValue = totalPending - (counts['spby'] || 0);
+                countValue = totalPending - upSubmissions;
               } else if (filter.value === 'pending_ppk') {
                 countValue = (counts['pending_ppk'] || 0) + (counts['incomplete_ppk'] || 0);
               } else if (filter.value === 'pending_ppspm') {
