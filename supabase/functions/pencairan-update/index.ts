@@ -329,8 +329,10 @@ serve(async (req: Request) => {
       if (action === 'approve') {
         newStatus = 'pending_ppspm'; // PPK approve → ke PPSPM
       } else if (action === 'reject') {
-        newStatus = 'incomplete_bendahara'; // PPK reject → kembali ke Bendahara
-      }
+        newStatus = 'incomplete_bendahara'; // PPK reject → kembali ke Bendahara        // Clear pembayaran, nomorSPM, nomorSPPD saat PPK reject
+        updatedPembayaran = '';
+        updatedNomorSPM = '';
+        updatedNomorSPPD = '';      }
       
     } else if (actor === 'ppspm') {
       updatedWaktuPPSPM = updatedAt;
