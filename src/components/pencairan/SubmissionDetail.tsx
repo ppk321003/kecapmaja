@@ -689,13 +689,21 @@ export function SubmissionDetail({
             </>
           )}
 
-          {/* Identitas Pembayaran (SPM & SPPD) Display - Read Only */}
-          {(submission.nomorSPM || submission.nomorSPPD) && (
+          {/* Identitas Pembayaran (Metode, SPM & SPPD) Display - Read Only */}
+          {(submission.pembayaran || submission.nomorSPM || submission.nomorSPPD) && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Identitas Pembayaran</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {submission.pembayaran && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Metode Pembayaran</p>
+                    <p className="text-sm font-medium">
+                      {submission.pembayaran === 'UP' ? 'Uang Persediaan (UP)' : 'Langsung (LS)'}
+                    </p>
+                  </div>
+                )}
                 {submission.nomorSPM && (
                   <div>
                     <p className="text-xs text-muted-foreground">Nomor SPM</p>
