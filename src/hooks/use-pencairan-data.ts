@@ -31,6 +31,9 @@ export interface PencairanRawData {
   statusArsip: string;
   updatedAt: string;
   user?: string; // 🆕 Kolom R - role login yang membuat pengajuan
+  pembayaran?: string; // 🆕 Kolom S - LS atau UP
+  nomorSPM?: string; // 🆕 Kolom T - nomor SPM untuk LS
+  nomorSPPD?: string; // 🆕 Kolom U - nomor SPPD untuk Arsip
 }
 
 export interface OrganikData {
@@ -121,6 +124,9 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
     statusPPSPM: raw.statusPPSPM,
     statusArsip: raw.statusArsip,
     user: raw.user, // 🆕 Kolom R - role login pembuat
+    pembayaran: (raw.pembayaran === 'UP' || raw.pembayaran === 'LS') ? raw.pembayaran : undefined, // 🆕 Kolom S - LS atau UP
+    nomorSPM: raw.nomorSPM, // 🆕 Kolom T - nomor SPM untuk LS
+    nomorSPPD: raw.nomorSPPD, // 🆕 Kolom U - nomor SPPD untuk Arsip
   };
 }
 
@@ -153,7 +159,7 @@ export function usePencairanData() {
         body: {
           spreadsheetId: spreadsheetId,
           operation: 'read',
-          range: `${SHEET_NAME}!A:R`, // 18 kolom (A-R, termasuk kolom U baru: user)
+          range: `${SHEET_NAME}!A:U`, // 21 kolom (A-U: S=pembayaran, T=nomorSPM, U=nomorSPPD)
         },
       });
 
@@ -197,6 +203,9 @@ export function usePencairanData() {
             statusArsip: row[14] || '',
             updatedAt: row[15] || '',
             user: '', // Tidak ada di struktur lama
+            pembayaran: '', // Tidak ada di struktur lama
+            nomorSPM: '', // Tidak ada di struktur lama
+            nomorSPPD: '', // Tidak ada di struktur lama
           };
         } else if (row.length < 18) {
           // STRUCTURE (A-Q, 17 kolom) - DENGAN Waktu Bendahara, TANPA User
@@ -221,10 +230,13 @@ export function usePencairanData() {
             statusArsip: row[15] || '',
             updatedAt: row[16] || '',
             user: '', // Tidak ada di struktur ini
+            pembayaran: '', // Tidak ada di struktur ini
+            nomorSPM: '', // Tidak ada di struktur ini
+            nomorSPPD: '', // Tidak ada di struktur ini
           };
         } else {
-          // NEW STRUCTURE (A-R, 18 kolom) - DENGAN Waktu Bendahara + User
-          // H=7(Pengajuan), I=8(Bendahara), J=9(PPK), K=10(PPSPM), L=11(Arsip/KPPN), M=12(StatusBendahara), N=13(StatusPPK), O=14(StatusPPSPM), P=15(StatusArsip), Q=16(Update), R=17(User)
+          // NEW STRUCTURE (A-R+, 18+ kolom) - DENGAN Waktu Bendahara + User + Pembayaran + SPM + SPPD
+          // H=7(Pengajuan), I=8(Bendahara), J=9(PPK), K=10(PPSPM), L=11(Arsip/KPPN), M=12(StatusBendahara), N=13(StatusPPK), O=14(StatusPPSPM), P=15(StatusArsip), Q=16(Update), R=17(User), S=18(Pembayaran), T=19(NomorSPM), U=20(NomorSPPD)
           rawData = {
             id: row[0] || '',
             title: row[1] || '',
@@ -245,6 +257,9 @@ export function usePencairanData() {
             statusArsip: row[15] || '',
             updatedAt: row[16] || '',
             user: row[17] || '', // 🆕 Kolom R - role login pembuat
+            pembayaran: row[18] || '', // 🆕 Kolom S - LS atau UP
+            nomorSPM: row[19] || '', // 🆕 Kolom T - nomor SPM untuk LS
+            nomorSPPD: row[20] || '', // 🆕 Kolom U - nomor SPPD untuk Arsip
           };
         }
         
