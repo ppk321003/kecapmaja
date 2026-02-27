@@ -70,33 +70,38 @@ export function SPByGrouping({
     setIsGrouping(true);
     try {
       // Update all selected submissions with the SPM number
-      const { data, error } = await supabase.functions.invoke('pencairan-update', {
-        body: {
-          ids: selectedIds,
-          nomorSPM: nomorSPM.trim(),
-          actor: 'bendahara',
-          action: 'assign_spm',
-        },
-      });
+      // Must call pencairan-update for each ID separately since backend expects single 'id'
+      const results = await Promise.all(
+        selectedIds.map(submissionId =>
+          supabase.functions.invoke('pencairan-update', {
+            body: {
+              id: submissionId,
+              nomorSPM: nomorSPM.trim(),
+              actor: 'bendahara',
+              action: 'save_spby',
+            },
+          })
+        )
+      );
 
-      if (error) throw error;
-
-      if (data?.success) {
-        toast({
-          title: 'Berhasil',
-          description: `${selectedIds.length} pengajuan berhasil dikelompokkan dengan SPM ${nomorSPM}`,
-        });
-        
-        onUpdateSubmissions(selectedIds, {
-          nomorSPM: nomorSPM.trim(),
-        });
-        
-        setSelectedIds([]);
-        setNomorSPM('');
-        onRefresh();
-      } else {
-        throw new Error(data?.error || 'Failed to group submissions');
+      // Check if any updates failed
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        throw new Error(`${errors.length} pengajuan gagal diperbarui`);
       }
+
+      toast({
+        title: 'Berhasil',
+        description: `${selectedIds.length} pengajuan berhasil dikelompokkan dengan SPM ${nomorSPM}`,
+      });
+      
+      onUpdateSubmissions(selectedIds, {
+        nomorSPM: nomorSPM.trim(),
+      });
+      
+      setSelectedIds([]);
+      setNomorSPM('');
+      onRefresh();
     } catch (err) {
       console.error('Error grouping submissions:', err);
       toast({
@@ -125,36 +130,40 @@ export function SPByGrouping({
       const submissionsWithSPM = upSubmissions.filter(sub => sub.nomorSPM === nomorSPM);
       const submissionIds = submissionsWithSPM.map(sub => sub.id);
 
-      // Send all to PPK
-      const { data, error } = await supabase.functions.invoke('pencairan-update', {
-        body: {
-          ids: submissionIds,
-          status: 'pending_ppk',
-          actor: 'bendahara',
-          action: 'approve',
-          nomorSPM: nomorSPM,
-        },
-      });
+      // Send all to PPK - must call for each ID separately
+      const results = await Promise.all(
+        submissionIds.map(submissionId =>
+          supabase.functions.invoke('pencairan-update', {
+            body: {
+              id: submissionId,
+              status: 'pending_ppk',
+              actor: 'bendahara',
+              action: 'approve',
+              nomorSPM: nomorSPM,
+            },
+          })
+        )
+      );
 
-      if (error) throw error;
-
-      if (data?.success) {
-        toast({
-          title: 'Berhasil',
-          description: `${submissionIds.length} pengajuan SPM ${nomorSPM} berhasil dikirim ke PPK`,
-        });
-        
-        onUpdateSubmissions(submissionIds, {
-          status: 'pending_ppk',
-          pembayaran: 'UP',
-          nomorSPM: nomorSPM,
-        });
-        
-        setNomorSPM('');
-        onRefresh();
-      } else {
-        throw new Error(data?.error || 'Failed to send to PPK');
+      // Check if any updates failed
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        throw new Error(`${errors.length} pengajuan gagal dikirim ke PPK`);
       }
+
+      toast({
+        title: 'Berhasil',
+        description: `${submissionIds.length} pengajuan SPM ${nomorSPM} berhasil dikirim ke PPK`,
+      });
+      
+      onUpdateSubmissions(submissionIds, {
+        status: 'pending_ppk',
+        pembayaran: 'UP',
+        nomorSPM: nomorSPM,
+      });
+      
+      setNomorSPM('');
+      onRefresh();
     } catch (err) {
       console.error('Error sending to PPK:', err);
       toast({
