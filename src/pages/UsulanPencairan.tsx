@@ -182,9 +182,16 @@ export default function UsulanPencairan() {
         );
       } else if (activeFilter === 'pending_bendahara') {
         // Tab Bendahara: tampilkan pending_bendahara + incomplete_bendahara (penolakan dari PPK)
+        // TAPI EXCLUDE pembayaran UP (akan ditampilkan di tab SPBy)
         result = result.filter(sub => 
-          sub.status === 'pending_bendahara' || 
-          sub.status === 'incomplete_bendahara'
+          (sub.status === 'pending_bendahara' || sub.status === 'incomplete_bendahara') &&
+          sub.pembayaran !== 'UP'
+        );
+      } else if (activeFilter === 'spby') {
+        // Tab SPBy: tampilkan HANYA UP dengan pending_bendahara
+        result = result.filter(sub =>
+          sub.status === 'pending_bendahara' &&
+          sub.pembayaran === 'UP'
         );
       } else if (activeFilter === 'pending_ppk') {
         // Tab PPK: tampilkan pending_ppk + incomplete_ppk (penolakan dari PPSPM)
@@ -232,6 +239,7 @@ export default function UsulanPencairan() {
       sent_kppn: 0,
       complete_arsip: 0,
       rejected: 0, // Untuk tab "Ditolak"
+      spby: 0,     // Untuk tab "SPBy"
       incomplete_sm: 0,
       incomplete_bendahara: 0,
       incomplete_ppk: 0,
@@ -251,6 +259,11 @@ export default function UsulanPencairan() {
       if (sub.status in result) {
         result[sub.status]++;
       }
+      
+      // Hitung spby: UP dengan pending_bendahara
+      if (sub.pembayaran === 'UP' && sub.status === 'pending_bendahara') {
+        result.spby++;
+      }
     });
     return result;
   }, [roleFilteredSubmissions]);
@@ -268,9 +281,12 @@ export default function UsulanPencairan() {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
-  // Get UP submissions for SPBy tab
+  // Get UP submissions for SPBy tab - only those awaiting bendahara
   const upSubmissions = useMemo(() => {
-    return submissions.filter(sub => sub.pembayaran === 'UP');
+    return submissions.filter(sub => 
+      sub.pembayaran === 'UP' && 
+      sub.status === 'pending_bendahara'
+    );
   }, [submissions]);
 
   // Dynamic filter config - add SPBy tab for Bendahara
@@ -335,7 +351,9 @@ export default function UsulanPencairan() {
               if (filter.value === 'draft') {
                 countValue = (counts['draft'] || 0) + (counts['incomplete_sm'] || 0);
               } else if (filter.value === 'pending_bendahara') {
-                countValue = (counts['pending_bendahara'] || 0) + (counts['incomplete_bendahara'] || 0);
+                // Count pending_bendahara TAPI exclude yang pembayaran UP (akan di SPBy)
+                const totalPending = (counts['pending_bendahara'] || 0) + (counts['incomplete_bendahara'] || 0);
+                countValue = totalPending - (counts['spby'] || 0);
               } else if (filter.value === 'pending_ppk') {
                 countValue = (counts['pending_ppk'] || 0) + (counts['incomplete_ppk'] || 0);
               } else if (filter.value === 'pending_ppspm') {
@@ -343,7 +361,7 @@ export default function UsulanPencairan() {
               } else if (filter.value === 'sent_kppn') {
                 countValue = (counts['sent_kppn'] || 0) + (counts['incomplete_kppn'] || 0);
               } else if (filter.value === 'spby') {
-                countValue = upSubmissions.length;
+                countValue = counts['spby'] || 0;
               }
 
               return (
