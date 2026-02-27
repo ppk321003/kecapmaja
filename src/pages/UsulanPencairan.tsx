@@ -245,6 +245,7 @@ export default function UsulanPencairan() {
       incomplete_ppk: 0,
       incomplete_ppspm: 0,
       incomplete_kppn: 0,
+      bendahara_up: 0,  // 🆕 Count untuk pending_bendahara + incomplete_bendahara yang pembayaran UP
     };
     
     // Hitung setiap status dari role-filtered data (BUKAN dari tab-filtered data)
@@ -260,9 +261,9 @@ export default function UsulanPencairan() {
         result[sub.status]++;
       }
       
-      // Hitung spby: UP dengan pending_bendahara
-      if (sub.pembayaran === 'UP' && sub.status === 'pending_bendahara') {
-        result.spby++;
+      // 🆕 Hitung UP submissions untuk tab Bendahara (pending_bendahara + incomplete_bendahara dengan UP)
+      if (sub.pembayaran === 'UP' && (sub.status === 'pending_bendahara' || sub.status === 'incomplete_bendahara')) {
+        result.bendahara_up++;
       }
     });
     return result;
@@ -351,14 +352,9 @@ export default function UsulanPencairan() {
               if (filter.value === 'draft') {
                 countValue = (counts['draft'] || 0) + (counts['incomplete_sm'] || 0);
               } else if (filter.value === 'pending_bendahara') {
-                // Count pending_bendahara + incomplete_bendahara TAPI exclude SEMUA yang pembayaran UP
-                // Perlu hitung berapa banyak incomplete_bendahara + UP yang akan dikecualikan
-                const upSubmissions = roleFilteredSubmissions.filter(sub => 
-                  sub.pembayaran === 'UP' && 
-                  (sub.status === 'pending_bendahara' || sub.status === 'incomplete_bendahara')
-                ).length;
+                // Count pending_bendahara + incomplete_bendahara TAPI exclude yang pembayaran UP
                 const totalPending = (counts['pending_bendahara'] || 0) + (counts['incomplete_bendahara'] || 0);
-                countValue = totalPending - upSubmissions;
+                countValue = totalPending - (counts['bendahara_up'] || 0);
               } else if (filter.value === 'pending_ppk') {
                 countValue = (counts['pending_ppk'] || 0) + (counts['incomplete_ppk'] || 0);
               } else if (filter.value === 'pending_ppspm') {
