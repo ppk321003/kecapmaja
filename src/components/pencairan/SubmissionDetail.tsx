@@ -14,6 +14,15 @@ import { TrackingTimeline } from './TrackingTimeline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   Sheet, 
   SheetContent, 
@@ -73,6 +82,7 @@ export function SubmissionDetail({
   const [pembayaran, setPembayaran] = useState<'UP' | 'LS' | ''>('');
   const [nomorSPM, setNomorSPM] = useState('');
   const [nomorSPPD, setNomorSPPD] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'approve' | 'reject' | 'return' | null }>({ open: false, action: null });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -215,7 +225,7 @@ export function SubmissionDetail({
     }
   };
 
-  const handleApprove = async () => {
+  const executeApprove = async () => {
     let newStatus: string;
     let actor: 'bendahara' | 'ppk' | 'ppspm' | 'arsip';
     
@@ -302,7 +312,7 @@ export function SubmissionDetail({
     onClose();
   };
 
-  const handleReject = async () => {
+  const executeReject = async () => {
     let newStatus: string;
     let actor: 'bendahara' | 'ppk' | 'ppspm' | 'arsip';
     
@@ -333,7 +343,7 @@ export function SubmissionDetail({
     onClose();
   };
 
-  const handleReturnFromArsip = async () => {
+  const executeReturnFromArsip = async () => {
     const newStatus = 'incomplete_ppspm';
     await updateStatusInSheet(newStatus, notes, 'arsip', 'return');
 
@@ -392,6 +402,56 @@ export function SubmissionDetail({
 
   const canAction = canTakeAction(userRole, submission.status);
   const canReturnArsip = canReturnFromArsip(userRole, submission.status);
+
+  const handleApprove = () => setConfirmDialog({ open: true, action: 'approve' });
+  const handleReject = () => setConfirmDialog({ open: true, action: 'reject' });
+  const handleReturnFromArsip = () => setConfirmDialog({ open: true, action: 'return' });
+
+  const handleConfirm = async () => {
+    setConfirmDialog({ open: false, action: null });
+    switch (confirmDialog.action) {
+      case 'approve':
+        await executeApprove();
+        break;
+      case 'reject':
+        await executeReject();
+        break;
+      case 'return':
+        await executeReturnFromArsip();
+        break;
+    }
+  };
+
+  const getConfirmMessage = () => {
+    switch (confirmDialog.action) {
+      case 'approve':
+        if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
+          return 'Apakah Anda yakin ingin menyetujui dan mengirim ke PPK?';
+        } else if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
+          return 'Apakah Anda yakin ingin menyetujui dan mengirim ke PPSPM?';
+        } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
+          return 'Apakah Anda yakin ingin menyetujui dan mengirim ke Arsip?';
+        } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
+          return 'Apakah Anda yakin ingin menyelesaikan pengajuan ini?';
+        }
+        return 'Apakah Anda yakin ingin menyetujui pengajuan ini?';
+      case 'reject':
+        if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
+          return 'Apakah Anda yakin ingin menolak dan mengembalikan ke SM?';
+        } else if (submission.status === 'pending_ppk' || submission.status === 'incomplete_ppk') {
+          return 'Apakah Anda yakin ingin menolak dan mengembalikan ke Bendahara?';
+        } else if (submission.status === 'pending_ppspm' || submission.status === 'incomplete_ppspm') {
+          return 'Apakah Anda yakin ingin menolak dan mengembalikan ke PPK?';
+        } else if (submission.status === 'sent_kppn' || submission.status === 'incomplete_kppn') {
+          return 'Apakah Anda yakin ingin menolak dan mengembalikan ke PPSPM?';
+        }
+        return 'Apakah Anda yakin ingin menolak pengajuan ini?';
+      case 'return':
+        return 'Apakah Anda yakin ingin mengembalikan ke PPSPM?';
+      default:
+        return 'Apakah Anda yakin?';
+    }
+  };
 
   const getApproveButtonLabel = () => {
     if (submission.status === 'pending_bendahara' || submission.status === 'incomplete_bendahara') {
@@ -765,6 +825,24 @@ export function SubmissionDetail({
           )}
         </div>
       </SheetContent>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Aksi</AlertDialogTitle>
+            <AlertDialogDescription>
+              {getConfirmMessage()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3">
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} className="bg-primary hover:bg-primary/90">
+              {confirmDialog.action === 'approve' ? 'Setujui' : 'Ya, Lanjutkan'}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }
