@@ -316,6 +316,9 @@ const LayananKarirABK: React.FC = () => {
               <p className="text-3xl font-bold text-primary mt-2">
                 {abkData.filter(item => item.employees.length > 0).length} / {abkData.length}
               </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {((abkData.filter(item => item.employees.length > 0).length / abkData.length) * 100).toFixed(1)}% dari total jabatan
+              </p>
             </div>
           </CardContent>
         </Card>
