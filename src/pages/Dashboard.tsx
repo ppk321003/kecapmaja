@@ -1507,7 +1507,7 @@ export default function Dashboard() {
               <TabsTrigger value="honorarium">Honorarium</TabsTrigger>
               <TabsTrigger value="perjadin">Perjadin</TabsTrigger>
               {isSatker3210 && <TabsTrigger value="kinerja">Kinerja</TabsTrigger>}
-              <TabsTrigger value="pencairan">Pencairan</TabsTrigger>
+              <TabsTrigger value="pencairan">Sigap</TabsTrigger>
               {isSatker3210 && <TabsTrigger value="sikostik28">Sikostik28</TabsTrigger>}
             </TabsList>
           </Tabs>
