@@ -240,13 +240,12 @@ export default function UsulanPencairan() {
       sent_kppn: 0,
       complete_arsip: 0,
       rejected: 0, // Untuk tab "Ditolak"
-      spby: 0,     // Untuk tab "SPBy"
+      spby: 0,     // Untuk tab "SPBy" - pending_bendahara + pembayaran UP
       incomplete_sm: 0,
       incomplete_bendahara: 0,
       incomplete_ppk: 0,
       incomplete_ppspm: 0,
       incomplete_kppn: 0,
-      bendahara_up: 0,  // 🆕 Count untuk HANYA pending_bendahara dengan pembayaran UP (untuk SPBy tab)
     };
     
     // Hitung setiap status dari role-filtered data (BUKAN dari tab-filtered data)
@@ -262,9 +261,9 @@ export default function UsulanPencairan() {
         result[sub.status]++;
       }
       
-      // 🆕 Count untuk SPBy: HANYA pending_bendahara dengan pembayaran UP
+      // Count untuk SPBy: pending_bendahara dengan pembayaran UP
       if (sub.pembayaran === 'UP' && sub.status === 'pending_bendahara') {
-        result.bendahara_up++;
+        result.spby++;
       }
     });
     return result;
@@ -356,7 +355,7 @@ export default function UsulanPencairan() {
                 // Count pending_bendahara + incomplete_bendahara
                 // Tapi EXCLUDE HANYA pending_bendahara dengan pembayaran UP (itu untuk SPBy tab)
                 const totalPending = (counts['pending_bendahara'] || 0) + (counts['incomplete_bendahara'] || 0);
-                countValue = totalPending - (counts['bendahara_up'] || 0);
+                countValue = totalPending - (counts['spby'] || 0);
               } else if (filter.value === 'pending_ppk') {
                 countValue = (counts['pending_ppk'] || 0) + (counts['incomplete_ppk'] || 0);
               } else if (filter.value === 'pending_ppspm') {

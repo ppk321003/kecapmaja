@@ -15,11 +15,20 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
   FileText,
   CheckCircle2,
   AlertCircle,
   Loader2,
   Send,
+  Edit2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
@@ -39,6 +48,10 @@ export function SPByGrouping({
   const [nomorSPM, setNomorSPM] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [changePaymentDialog, setChangePaymentDialog] = useState<{ open: boolean; submissionId: string | null }>({ open: false, submissionId: null });
+  const [changePaymentType, setChangePaymentType] = useState<'UP' | 'LS'>('UP');
+  const [changePaymentSPM, setChangePaymentSPM] = useState('');
+  const [isChangingPayment, setIsChangingPayment] = useState(false);
   const { toast } = useToast();
 
   const handleSelectAll = (checked: boolean) => {
@@ -136,6 +149,66 @@ export function SPByGrouping({
     }
   };
 
+  const handleOpenChangePaymentDialog = (submissionId: string) => {
+    const submission = upSubmissions.find(s => s.id === submissionId);
+    if (submission) {
+      setChangePaymentDialog({ open: true, submissionId });
+      setChangePaymentType((submission.pembayaran as 'UP' | 'LS') || 'UP');
+      setChangePaymentSPM(submission.nomorSPM || '');
+    }
+  };
+
+  const handleChangePayment = async () => {
+    if (!changePaymentDialog.submissionId) return;
+
+    // Validasi
+    if (changePaymentType === 'LS' && !changePaymentSPM.trim()) {
+      toast({
+        title: 'Validasi gagal',
+        description: 'Nomor SPM wajib diisi untuk pembayaran Langsung (LS)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsChangingPayment(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('pencairan-update', {
+        body: {
+          id: changePaymentDialog.submissionId,
+          pembayaran: changePaymentType,
+          nomorSPM: changePaymentType === 'LS' ? changePaymentSPM.trim() : '',
+          actor: 'bendahara',
+          action: 'save_spby',
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: 'Berhasil',
+          description: `Metode pembayaran diubah ke ${changePaymentType === 'UP' ? 'Uang Persediaan (UP)' : 'Langsung (LS)'}`,
+        });
+        setChangePaymentDialog({ open: false, submissionId: null });
+        setChangePaymentType('UP');
+        setChangePaymentSPM('');
+        onRefresh();
+      } else {
+        throw new Error(data?.error || 'Gagal mengubah metode pembayaran');
+      }
+    } catch (err) {
+      console.error('Error changing payment:', err);
+      toast({
+        title: 'Gagal mengubah metode pembayaran',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsChangingPayment(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Grouping Section */}
@@ -169,7 +242,7 @@ export function SPByGrouping({
                   </label>
                   <div className="border-t pt-2"></div>
                   {upSubmissions.map((sub) => (
-                    <label key={sub.id} className="flex items-center gap-3 p-2 rounded hover:bg-muted cursor-pointer">
+                    <div key={sub.id} className="flex items-center gap-3 p-2 rounded hover:bg-muted">
                       <Checkbox
                         checked={selectedIds.includes(sub.id)}
                         onCheckedChange={(checked) => handleSelectOne(sub.id, checked as boolean)}
@@ -186,7 +259,16 @@ export function SPByGrouping({
                           SPM: {sub.nomorSPM}
                         </span>
                       )}
-                    </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenChangePaymentDialog(sub.id)}
+                        className="flex-shrink-0"
+                      >
+                        <Edit2 className="w-3 h-3 mr-1" />
+                        Ubah
+                      </Button>
+                    </div>
                   ))}
                 </>
               )}
@@ -246,6 +328,92 @@ export function SPByGrouping({
           </AlertDialog>
         </CardContent>
       </Card>
+
+      {/* Change Payment Dialog */}
+      <Dialog open={changePaymentDialog.open} onOpenChange={(open) => setChangePaymentDialog({ ...changePaymentDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ubah Metode Pembayaran</DialogTitle>
+            <DialogDescription>
+              Pilih metode pembayaran (UP atau LS) untuk pengajuan ini
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="payment-method"
+                  value="UP"
+                  checked={changePaymentType === 'UP'}
+                  onChange={() => {
+                    setChangePaymentType('UP');
+                    setChangePaymentSPM('');
+                  }}
+                  className="w-4 h-4"
+                />
+                <div>
+                  <p className="text-sm font-medium">Uang Persediaan (UP)</p>
+                  <p className="text-xs text-muted-foreground">Tidak memerlukan nomor SPM</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="payment-method"
+                  value="LS"
+                  checked={changePaymentType === 'LS'}
+                  onChange={() => setChangePaymentType('LS')}
+                  className="w-4 h-4"
+                />
+                <div>
+                  <p className="text-sm font-medium">Langsung (LS)</p>
+                  <p className="text-xs text-muted-foreground">Memerlukan nomor SPM</p>
+                </div>
+              </label>
+            </div>
+
+            {changePaymentType === 'LS' && (
+              <div className="space-y-2">
+                <label htmlFor="change-spm" className="text-sm font-medium">
+                  Nomor SPM <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="change-spm"
+                  type="text"
+                  placeholder="Contoh: SPM-001/2025"
+                  value={changePaymentSPM}
+                  onChange={(e) => setChangePaymentSPM(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setChangePaymentDialog({ open: false, submissionId: null })}
+              disabled={isChangingPayment}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleChangePayment}
+              disabled={isChangingPayment || (changePaymentType === 'LS' && !changePaymentSPM.trim())}
+            >
+              {isChangingPayment ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Simpan'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {upSubmissions.length === 0 && (
         <Card>

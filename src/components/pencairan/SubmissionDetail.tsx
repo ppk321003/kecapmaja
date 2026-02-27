@@ -653,6 +653,29 @@ export function SubmissionDetail({
             </Card>
           )}
 
+          {/* Identitas Pembayaran (SPM & SPPD) Display - Read Only */}
+          {(submission.nomorSPM || submission.nomorSPPD) && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Identitas Pembayaran</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {submission.nomorSPM && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Nomor SPM</p>
+                    <p className="text-sm font-medium">{submission.nomorSPM}</p>
+                  </div>
+                )}
+                {submission.nomorSPPD && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Nomor SPPD</p>
+                    <p className="text-sm font-medium">{submission.nomorSPPD}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Document Checklist - Collapsible */}
           <Collapsible open={isDocumentsOpen} onOpenChange={setIsDocumentsOpen}>
             <Card>
