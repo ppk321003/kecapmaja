@@ -182,10 +182,9 @@ export default function UsulanPencairan() {
         );
       } else if (activeFilter === 'pending_bendahara') {
         // Tab Bendahara: tampilkan pending_bendahara + incomplete_bendahara (penolakan dari PPK)
-        // TAPI EXCLUDE HANYA pending_bendahara dengan pembayaran UP (akan ditampilkan di tab SPBy)
-        // incomplete_bendahara + UP HARUS include karena hasil rejection dari PPK/roles lain
+        // TAPI EXCLUDE pending_bendahara/incomplete_bendahara dengan pembayaran UP (ditampilkan di tab SPBy)
         result = result.filter(sub => 
-          (sub.status === 'incomplete_bendahara') ||
+          (sub.status === 'incomplete_bendahara' && sub.pembayaran !== 'UP') ||
           (sub.status === 'pending_bendahara' && sub.pembayaran !== 'UP')
         );
       } else if (activeFilter === 'spby') {
@@ -241,7 +240,7 @@ export default function UsulanPencairan() {
       sent_kppn: 0,
       complete_arsip: 0,
       rejected: 0, // Untuk tab "Ditolak"
-      spby: 0,     // Untuk tab "SPBy" - pending_bendahara + pembayaran UP
+      spby: 0,     // Untuk tab "SPBy" - pending_bendahara OR incomplete_bendahara + pembayaran UP
       incomplete_sm: 0,
       incomplete_bendahara: 0,
       incomplete_ppk: 0,
@@ -262,8 +261,8 @@ export default function UsulanPencairan() {
         result[sub.status]++;
       }
       
-      // Count untuk SPBy: pending_bendahara dengan pembayaran UP
-      if (sub.pembayaran === 'UP' && sub.status === 'pending_bendahara') {
+      // Count untuk SPBy: pending_bendahara atau incomplete_bendahara dengan pembayaran UP
+      if (sub.pembayaran === 'UP' && (sub.status === 'pending_bendahara' || sub.status === 'incomplete_bendahara')) {
         result.spby++;
       }
     });
