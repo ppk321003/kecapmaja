@@ -4,7 +4,7 @@ import KonversiPredikat from '@/components/KonversiPredikat';
 import DownloadPAK from '@/components/DownloadPAK';
 import { ManualWABroadcast } from '@/components/ManualWABroadcast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Karyawan } from '@/types';
+import { Karyawan, Mitra } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +24,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   );
 
   const [allEmployees, setAllEmployees] = useState<Karyawan[]>([]);
+  const [allMitra, setAllMitra] = useState<Mitra[]>([]);
   const [ppkName, setPpkName] = useState<string>(user?.username || 'PPK');
 
   // Fetch all employees for broadcast feature
@@ -102,6 +103,79 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
 
     if (isPPK && !satkerConfig?.isLoading) {
       fetchEmployees();
+    }
+  }, [isPPK, satkerConfig]);
+
+  // Fetch all mitra for broadcast feature
+  useEffect(() => {
+    const fetchMitra = async () => {
+      try {
+        const spreadsheetId = satkerConfig?.getUserSatkerSheetId('mastermitra');
+        
+        console.log('[LayananKarir] Attempting fetch mitra with:', {
+          spreadsheetId,
+          isPPK,
+          satkerConfigLoading: satkerConfig?.isLoading
+        });
+        
+        if (!spreadsheetId) {
+          console.warn('[LayananKarir] No spreadsheetId configured for mastermitra');
+          return;
+        }
+
+        const requestBody = {
+          spreadsheetId: spreadsheetId,
+          operation: 'read',
+          range: 'MASTER.MITRA!A:Z'
+        };
+
+        console.log('[LayananKarir] Invoking google-sheets for mitra with body:', requestBody);
+
+        const { data, error } = await supabase.functions.invoke('google-sheets', {
+          body: requestBody
+        });
+
+        console.log('[LayananKarir] Google Sheets Mitra Response:', { 
+          hasError: !!error, 
+          dataLength: data?.values?.length,
+          error: error?.message || error 
+        });
+
+        if (!error && data?.values && Array.isArray(data.values)) {
+          const rows = data.values;
+          // Adjust column indices based on MASTER.MITRA structure
+          // Assuming: Column 0: No, 1: Nama, 2: No HP, 3: Kecamatan, 4: Alamat, 5: Status
+          const mitra = rows.slice(1)
+            .filter((row: any[]) => row[1]?.toString().trim()) // Filter out empty rows
+            .map((row: any[], idx: number) => ({
+              id: `mitra-${idx}`,
+              nama: row[1]?.toString() || '',
+              no_hp: row[2]?.toString() || '',
+              kecamatan: row[3]?.toString() || '',
+              alamat: row[4]?.toString() || '',
+              status: row[5]?.toString() || 'Aktif',
+            })) as Mitra[];
+          
+          console.log('[LayananKarir] ✅ Fetched mitra for broadcast:', {
+            count: mitra.length, 
+            sample: mitra[0],
+            kecamatanList: [...new Set(mitra.map(m => m.kecamatan))]
+          });
+          setAllMitra(mitra);
+        } else {
+          console.error('[LayananKarir] ❌ Error or empty data from google-sheets mitra:', {
+            error,
+            hasValues: !!data?.values,
+            isArray: Array.isArray(data?.values)
+          });
+        }
+      } catch (err) {
+        console.error('[LayananKarir] ❌ Exception fetching mitra:', err);
+      }
+    };
+
+    if (isPPK && !satkerConfig?.isLoading) {
+      fetchMitra();
     }
   }, [isPPK, satkerConfig]);
 
@@ -219,6 +293,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           <div className="w-full">
             <ManualWABroadcast 
               allEmployees={allEmployees}
+              allMitra={allMitra}
               userRole={userRole}
               ppkName={ppkName}
             />
