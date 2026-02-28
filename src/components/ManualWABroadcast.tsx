@@ -266,7 +266,6 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
                   <SelectValue placeholder="Semua Kecamatan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua Kecamatan</SelectItem>
                   {kecamatanList.map((kecamatan) => (
                     <SelectItem key={kecamatan} value={kecamatan}>
                       {kecamatan}
