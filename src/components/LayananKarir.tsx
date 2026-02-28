@@ -161,11 +161,8 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
 
         const mitraData = rows.slice(1)
           .filter((row: any[]) => {
-            // Filter by nama column being non-empty
-            const nama = row[1] || row.find((_, idx) => {
-              const headerLower = headers[idx]?.toString().toLowerCase() || '';
-              return headerLower.includes('nama');
-            });
+            // Filter by nama column (Column C, index 2)
+            const nama = row[2] || '';
             return nama && nama.toString().trim();
           })
           .map((row: any[], index: number) => {
@@ -175,14 +172,15 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
               rowObj[header.toLowerCase().trim()] = row[colIndex] || '';
             });
 
-            // Map data with fallback to default column indices
+            // Map data based on column positions from MASTER.MITRA structure:
+            // A: No, B: NIK, C: Nama, D: Pekerjaan, E: Alamat, F: Bank, G: Rekening, H: Kecamatan, I: No. HP
             const mitra: Mitra = {
               id: `mitra-${index}`,
-              nama: rowObj['nama'] || rowObj['name'] || row[1] || '',
-              no_hp: rowObj['whatsapp'] || rowObj['no. hp'] || rowObj['no.hp'] || rowObj['nomor hp'] || rowObj['telepon'] || row[2] || '',
-              kecamatan: rowObj['kecamatan'] || rowObj['district'] || row[3] || '',
-              alamat: rowObj['alamat'] || rowObj['address'] || row[4] || '',
-              status: rowObj['status'] || 'Aktif'
+              nama: row[2] || rowObj['nama'] || '',  // Column C
+              no_hp: row[8] || rowObj['no. hp'] || rowObj['telepon'] || '',  // Column I
+              kecamatan: row[7] || rowObj['kecamatan'] || '',  // Column H
+              alamat: row[4] || rowObj['alamat'] || '',  // Column E
+              status: 'Aktif'  // Default status
             };
             
             return mitra;
