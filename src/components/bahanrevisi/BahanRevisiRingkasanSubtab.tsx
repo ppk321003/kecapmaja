@@ -3,12 +3,15 @@
  * Button-based navigation dengan Chart, Table, dan Kesimpulan
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { FileImage, FileText } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { BudgetItem } from '@/types/bahanrevisi';
 import {
   formatCurrency,
@@ -168,6 +171,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   const [selectedDetailItems, setSelectedDetailItems] = useState<BudgetChangeItem[]>([]);
   const [detailsModalCurrentPage, setDetailsModalCurrentPage] = useState(0);
   const itemsPerPage = 20;
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Separate changed, new, and deleted items
   const changedItems = useMemo(() => items.filter(item => item.status === 'changed'), [items]);
@@ -598,6 +602,63 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
     };
   };
 
+  // Export JPEG function
+  const handleExportJPEG = async () => {
+    if (!contentRef.current) return;
+    try {
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+      const image = canvas.toDataURL('image/jpeg', 0.95);
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `ringkasan-revisi-anggaran-${new Date().getTime()}.jpg`;
+      link.click();
+    } catch (error) {
+      console.error('Error exporting JPEG:', error);
+    }
+  };
+
+  // Export PDF function
+  const handleExportPDF = async () => {
+    if (!contentRef.current) return;
+    try {
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 10;
+
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight - 20;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight + 10;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight - 20;
+      }
+
+      pdf.save(`ringkasan-revisi-anggaran-${new Date().getTime()}.pdf`);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+    }
+  };
+
   const getSummaryTitle = (): string => {
     switch (summaryView) {
       case 'program_pembebanan':
@@ -743,12 +804,6 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                         <TableHead className="text-right py-2 px-3 font-semibold">
                           Selisih
                         </TableHead>
-                        <TableHead className="text-right py-2 px-3 font-semibold">
-                          Realisasi
-                        </TableHead>
-                        <TableHead className="text-right py-2 px-3 font-semibold">
-                          Persentase Realisasi
-                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -777,12 +832,6 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                           >
                             {formatCurrencyNoRp(item.selisih)}
                           </TableCell>
-                          <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                            {formatCurrencyNoRp(item.realisasi || 0)}
-                          </TableCell>
-                          <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                            {formatPercentage(item.persentaseRealisasi || 0)}
-                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -804,23 +853,6 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                         <TableCell className="text-right py-2 px-3">
                           {formatCurrencyNoRp(
                             getChangedBudgetItems().reduce((sum, item) => sum + item.selisih, 0)
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                          {formatCurrencyNoRp(
-                            getChangedBudgetItems().reduce((sum, item) => sum + (item.realisasi || 0), 0)
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                          {formatPercentage(
-                            getChangedBudgetItems().length > 0
-                              ? Math.round(
-                                  (getChangedBudgetItems().reduce((sum, item) => sum + (item.realisasi || 0), 0) /
-                                    getChangedBudgetItems().reduce((sum, item) => sum + item.jumlahMenjadi, 0)) *
-                                    100 *
-                                    100
-                                ) / 100
-                              : 0
                           )}
                         </TableCell>
                       </TableRow>
@@ -865,12 +897,6 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                         <TableHead className="text-right py-2 px-3 font-semibold">
                           Jumlah
                         </TableHead>
-                        <TableHead className="text-right py-2 px-3 font-semibold">
-                          Realisasi
-                        </TableHead>
-                        <TableHead className="text-right py-2 px-3 font-semibold">
-                          Persentase Realisasi
-                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -895,12 +921,6 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                             <TableCell className="text-right py-2 px-3 font-semibold text-green-600">
                               {formatCurrencyNoRp(item.jumlahMenjadi)}
                             </TableCell>
-                            <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                              {formatCurrencyNoRp(item.realisasi || 0)}
-                            </TableCell>
-                            <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                              {formatPercentage(item.persentaseRealisasi || 0)}
-                            </TableCell>
                           </TableRow>
                         );
                       })}
@@ -913,23 +933,6 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                         <TableCell className="text-right py-2 px-3">
                           {formatCurrencyNoRp(
                             getNewBudgetItems().reduce((sum, item) => sum + item.jumlahMenjadi, 0)
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                          {formatCurrencyNoRp(
-                            getNewBudgetItems().reduce((sum, item) => sum + (item.realisasi || 0), 0)
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right py-2 px-3 text-purple-600 font-medium">
-                          {formatPercentage(
-                            getNewBudgetItems().length > 0
-                              ? Math.round(
-                                  (getNewBudgetItems().reduce((sum, item) => sum + (item.realisasi || 0), 0) /
-                                    getNewBudgetItems().reduce((sum, item) => sum + item.jumlahMenjadi, 0)) *
-                                    100 *
-                                    100
-                                ) / 100
-                              : 0
                           )}
                         </TableCell>
                       </TableRow>
@@ -1056,9 +1059,33 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
   };
 
   return (
-    <div className="w-full space-y-4">
-      {/* Title */}
-      <h2 className="text-xl font-semibold text-slate-800">Ringkasan Usulan Revisi Anggaran</h2>
+    <div className="w-full space-y-4" ref={contentRef}>
+      {/* Header with Title and Export Buttons */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-slate-800">Ringkasan Usulan Revisi Anggaran</h2>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportJPEG}
+            title="Export ringkasan sebagai JPEG"
+            className="text-xs"
+          >
+            <FileImage className="h-4 w-4 mr-1" />
+            Export JPEG
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPDF}
+            title="Export ringkasan sebagai PDF"
+            className="text-xs"
+          >
+            <FileText className="h-4 w-4 mr-1" />
+            Export PDF
+          </Button>
+        </div>
+      </div>
 
       {/* Button Navigation */}
       <div className="flex flex-wrap gap-2 bg-white p-3 rounded-lg border">
