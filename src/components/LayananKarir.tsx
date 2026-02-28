@@ -110,67 +110,94 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   useEffect(() => {
     const fetchMitra = async () => {
       try {
-        const spreadsheetId = satkerConfig?.getUserSatkerSheetId('mastermitra');
+        // Get satker-specific MASTER sheet ID (same pattern as EntriPengelola.tsx)
+        let spreadsheetId = satkerConfig?.getUserSatkerSheetId('masterorganik');
         
         console.log('[LayananKarir] Attempting fetch mitra with:', {
-          spreadsheetId,
+          spreadsheetId: spreadsheetId?.substring(0, 30) + '...',
           isPPK,
           satkerConfigLoading: satkerConfig?.isLoading
         });
         
         if (!spreadsheetId) {
-          console.warn('[LayananKarir] No spreadsheetId configured for mastermitra');
+          console.warn('[LayananKarir] No spreadsheetId available - check satker config');
+          setAllMitra([]);
           return;
         }
 
-        const requestBody = {
-          spreadsheetId: spreadsheetId,
-          operation: 'read',
-          range: 'MASTER.MITRA!A:Z'
-        };
-
-        console.log('[LayananKarir] Invoking google-sheets for mitra with body:', requestBody);
-
+        // Fetch MASTER.MITRA sheet (same pattern as EntriPengelola.tsx)
         const { data, error } = await supabase.functions.invoke('google-sheets', {
-          body: requestBody
+          body: {
+            spreadsheetId: spreadsheetId,
+            operation: 'read',
+            range: 'MASTER.MITRA'  // No A:Z suffix like in EntriPengelola
+          }
         });
 
         console.log('[LayananKarir] Google Sheets Mitra Response:', { 
           hasError: !!error, 
           dataLength: data?.values?.length,
-          error: error?.message || error 
+          error: error?.message || error,
+          firstRow: data?.values?.[0]
         });
 
-        if (!error && data?.values && Array.isArray(data.values)) {
-          const rows = data.values;
-          // Adjust column indices based on MASTER.MITRA structure
-          // Assuming: Column 0: No, 1: Nama, 2: No HP, 3: Kecamatan, 4: Alamat, 5: Status
-          const mitra = rows.slice(1)
-            .filter((row: any[]) => row[1]?.toString().trim()) // Filter out empty rows
-            .map((row: any[], idx: number) => ({
-              id: `mitra-${idx}`,
-              nama: row[1]?.toString() || '',
-              no_hp: row[2]?.toString() || '',
-              kecamatan: row[3]?.toString() || '',
-              alamat: row[4]?.toString() || '',
-              status: row[5]?.toString() || 'Aktif',
-            })) as Mitra[];
-          
-          console.log('[LayananKarir] ✅ Fetched mitra for broadcast:', {
-            count: mitra.length, 
-            sample: mitra[0],
-            kecamatanList: [...new Set(mitra.map(m => m.kecamatan))]
-          });
-          setAllMitra(mitra);
-        } else {
-          console.error('[LayananKarir] ❌ Error or empty data from google-sheets mitra:', {
-            error,
-            hasValues: !!data?.values,
-            isArray: Array.isArray(data?.values)
-          });
+        if (error || !data?.values || data.values.length === 0) {
+          console.warn('[LayananKarir] No MASTER.MITRA data found or error occurred');
+          setAllMitra([]);
+          return;
         }
+
+        const rows = data.values;
+        
+        if (rows.length <= 1) {
+          console.warn('[LayananKarir] MASTER.MITRA sheet has no data rows (only header)');
+          setAllMitra([]);
+          return;
+        }
+
+        // Use first row as headers (exactly like EntriPengelola)
+        const headers = rows[0];
+        console.log('[LayananKarir] MASTER.MITRA headers:', headers);
+
+        const mitraData = rows.slice(1)
+          .filter((row: any[]) => {
+            // Filter by nama column being non-empty
+            const nama = row[1] || row.find((_, idx) => {
+              const headerLower = headers[idx]?.toString().toLowerCase() || '';
+              return headerLower.includes('nama');
+            });
+            return nama && nama.toString().trim();
+          })
+          .map((row: any[], index: number) => {
+            // Create object from headers (case-insensitive matching like EntriPengelola)
+            const rowObj: any = {};
+            headers.forEach((header: string, colIndex: number) => {
+              rowObj[header.toLowerCase().trim()] = row[colIndex] || '';
+            });
+
+            // Map data with fallback to default column indices
+            const mitra: Mitra = {
+              id: `mitra-${index}`,
+              nama: rowObj['nama'] || rowObj['name'] || row[1] || '',
+              no_hp: rowObj['whatsapp'] || rowObj['no. hp'] || rowObj['no.hp'] || rowObj['nomor hp'] || rowObj['telepon'] || row[2] || '',
+              kecamatan: rowObj['kecamatan'] || rowObj['district'] || row[3] || '',
+              alamat: rowObj['alamat'] || rowObj['address'] || row[4] || '',
+              status: rowObj['status'] || 'Aktif'
+            };
+            
+            return mitra;
+          });
+
+        console.log('[LayananKarir] ✅ Fetched mitra for broadcast:', {
+          count: mitraData.length, 
+          sample: mitraData.slice(0, 2),
+          kecamatanList: [...new Set(mitraData.map(m => m.kecamatan).filter(Boolean))].sort()
+        });
+
+        setAllMitra(mitraData);
       } catch (err) {
         console.error('[LayananKarir] ❌ Exception fetching mitra:', err);
+        setAllMitra([]);
       }
     };
 
