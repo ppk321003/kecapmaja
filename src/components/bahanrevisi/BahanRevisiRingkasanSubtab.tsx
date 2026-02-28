@@ -875,7 +875,7 @@ const BahanRevisiRingkasanSubtab: React.FC<BahanRevisiRingkasanSubtabProps> = ({
                     </TableHeader>
                     <TableBody>
                       {getNewBudgetItems().map((item, idx) => {
-                        const newItem = newItems[idx];
+                        const newItem = newItems.find(ni => ni.id === item.id);
                         return (
                           <TableRow key={item.id} className={idx % 2 === 0 ? '' : 'bg-slate-50'}>
                             <TableCell className="py-2 px-3">{idx + 1}</TableCell>
