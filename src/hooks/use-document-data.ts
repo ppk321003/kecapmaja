@@ -14,7 +14,7 @@ export function useDocumentData({ sheetId, sheetName }: UseDocumentDataProps) {
         body: {
           spreadsheetId: sheetId,
           operation: "read",
-          range: sheetName,
+          range: `${sheetName}!A:ZZ`,
         },
       });
 
