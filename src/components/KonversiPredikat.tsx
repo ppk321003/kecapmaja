@@ -754,7 +754,7 @@ const useSpreadsheetAPI = () => {
 
 const getDataFromDataSheet = async (nip: string): Promise<{tempatLahir: string; jenisKelamin: string}> => {
   try {
-    const result = await callAPI('read', { range: DATA_SHEET_NAME });
+    const result = await callAPI('read', { range: `${DATA_SHEET_NAME}!A:Z` });
     const rows = result.values || [];
     
     if (rows.length <= 1) return { tempatLahir: '', jenisKelamin: 'Laki-laki' };
@@ -815,7 +815,7 @@ const getDataFromDataSheet = async (nip: string): Promise<{tempatLahir: string; 
 
   const readData = async (nip?: string) => {
     try {
-      const result = await callAPI('read', { range: SHEET_NAME });
+      const result = await callAPI('read', { range: `${SHEET_NAME}!A:Z` });
       const rows = result.values || [];
       
       if (rows.length <= 1) return [];
