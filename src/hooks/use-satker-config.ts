@@ -12,7 +12,6 @@ export interface SatkerConfig {
   entrikegiatan_sheet_id: string;
   tagging_sheet_id: string;
   masterorganik_sheet_id: string;
-  mastermitra_sheet_id?: string;
   perjalanan_sheet_id?: string;
   daftarhadir_sheet_id?: string;
   dokpengadaan_sheet_id?: string;
@@ -49,7 +48,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:Z`, // 26 kolom (semua sheet IDs termasuk mastermitra_sheet_id dan bahanrevisi_sheet_id)
+            range: `${sheetName}!A:Y`, // 25 kolom (semua sheet IDs termasuk bahanrevisi_sheet_id di kolom Y)
           },
         });
         
@@ -86,25 +85,24 @@ export function useSatkerConfig() {
           entrikegiatan_sheet_id: row[4]?.trim() || '',
           tagging_sheet_id: row[5]?.trim() || '',
           masterorganik_sheet_id: row[6]?.trim() || '',
-          mastermitra_sheet_id: row[7]?.trim() || '',
-          perjalanan_sheet_id: row[8]?.trim() || '',
-          daftarhadir_sheet_id: row[9]?.trim() || '',
-          dokpengadaan_sheet_id: row[10]?.trim() || '',
-          kak_sheet_id: row[11]?.trim() || '',
-          kuiperjadin_sheet_id: row[12]?.trim() || '',
-          kuitranport_sheet_id: row[13]?.trim() || '',
-          lembur_sheet_id: row[14]?.trim() || '',
-          spjhonor_sheet_id: row[15]?.trim() || '',
-          sk_sheet_id: row[16]?.trim() || '',
-          super_sheet_id: row[17]?.trim() || '',
-          tandaterima_sheet_id: row[18]?.trim() || '',
-          spjtranslok_sheet_id: row[19]?.trim() || '',
-          uh_sheet_id: row[20]?.trim() || '',
-          linkers_sheet_id: row[21]?.trim() || '',
-          kecaptobendahara_sheet_id: row[22]?.trim() || '',
-          generatespj_sheet_id: row[23]?.trim() || '',
-          kuitansi_sheet_id: row[24]?.trim() || '',
-          bahanrevisi_sheet_id: row[25]?.trim() || '',
+          perjalanan_sheet_id: row[7]?.trim() || '',
+          daftarhadir_sheet_id: row[8]?.trim() || '',
+          dokpengadaan_sheet_id: row[9]?.trim() || '',
+          kak_sheet_id: row[10]?.trim() || '',
+          kuiperjadin_sheet_id: row[11]?.trim() || '',
+          kuitranport_sheet_id: row[12]?.trim() || '',
+          lembur_sheet_id: row[13]?.trim() || '',
+          spjhonor_sheet_id: row[14]?.trim() || '',
+          sk_sheet_id: row[15]?.trim() || '',
+          super_sheet_id: row[16]?.trim() || '',
+          tandaterima_sheet_id: row[17]?.trim() || '',
+          spjtranslok_sheet_id: row[18]?.trim() || '',
+          uh_sheet_id: row[19]?.trim() || '',
+          linkers_sheet_id: row[20]?.trim() || '',
+          kecaptobendahara_sheet_id: row[21]?.trim() || '',
+          generatespj_sheet_id: row[22]?.trim() || '',
+          kuitansi_sheet_id: row[23]?.trim() || '',
+          bahanrevisi_sheet_id: row[24]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
@@ -127,7 +125,7 @@ export function useSatkerConfig() {
 export function getSheetIdBySatkerAndModule(
   configs: SatkerConfig[] | undefined,
   satker_id: string,
-  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'mastermitra' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara' | 'kuitansi' | 'bahanrevisi'
+  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara' | 'kuitansi' | 'bahanrevisi'
 ): string | null {
   if (!configs) {
     console.warn(`[getSheetIdBySatkerAndModule] Configs is undefined, cannot find satker ${satker_id}`);
@@ -146,7 +144,6 @@ export function getSheetIdBySatkerAndModule(
     entrikegiatan: 'entrikegiatan_sheet_id',
     tagging: 'tagging_sheet_id',
     masterorganik: 'masterorganik_sheet_id',
-    mastermitra: 'mastermitra_sheet_id',
     perjalanan: 'perjalanan_sheet_id',
     daftarhadir: 'daftarhadir_sheet_id',
     dokpengadaan: 'dokpengadaan_sheet_id',

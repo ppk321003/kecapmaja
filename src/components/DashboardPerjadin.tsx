@@ -482,7 +482,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
         body: {
           spreadsheetId: spreadsheetId,
           operation: "read",
-          range: `${SHEET_NAME}!A:Z`
+          range: SHEET_NAME
         }
       });
 

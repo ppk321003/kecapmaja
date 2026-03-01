@@ -139,7 +139,7 @@ export const useSikostikData = () => {
         body: {
           spreadsheetId: spreadsheetId,
           operation: "read",
-          range: `${sheetName}!A:Z`
+          range: sheetName
         }
       });
 

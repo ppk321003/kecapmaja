@@ -33,8 +33,6 @@ export interface Karyawan {
   jenisKelamin: 'Laki-laki' | 'Perempuan' | 'L' | 'P';
   linkSkJabatan?: string;
   linkSkPangkat?: string;
-  telepon?: string;
-  no_hp?: string;
 }
 
 export interface KonversiData {
@@ -56,13 +54,4 @@ export interface KonversiData {
   rowIndex?: number;
   Masa_Kerja_Bulan?: number;
   Jenis_Penilaian?: 'PENUFH' | 'PROPORSIONAL';
-}
-
-export interface Mitra {
-  id?: string;
-  nama: string;
-  no_hp: string;
-  kecamatan: string;
-  alamat?: string;
-  status?: string;
 }

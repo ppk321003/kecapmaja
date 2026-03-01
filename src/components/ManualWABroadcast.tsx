@@ -14,29 +14,20 @@ import { AlertCircle, CheckCircle2, Send, X, Search } from 'lucide-react';
 import { broadcastTemplates, renderMessage } from '@/lib/karir/broadcastTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { Karyawan, Mitra } from '@/types';
+import type { Karyawan } from '@/types';
 
 interface ManualWABroadcastProps {
   userRole: string[];
   ppkName: string;
   allEmployees: Karyawan[];
-  allMitra?: Mitra[];
 }
 
-type RecipientMode = 'organik' | 'mitra';
-
-interface Recipient {
-  id: string;
-  nama: string;
-  no_hp: string;
-  type: 'organik' | 'mitra';
-}
+type RecipientMode = 'manual';
 
 export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   userRole,
   ppkName,
   allEmployees,
-  allMitra = [],
 }) => {
   const { toast } = useToast();
 
@@ -55,10 +46,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   }
 
   // State
-  const [recipientMode, setRecipientMode] = useState<RecipientMode>('organik');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>('manual');
+  const [selectedNips, setSelectedNips] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedKecamatan, setSelectedKecamatan] = useState<string>('');
 
   // Message state
   const [selectedTemplate, setSelectedTemplate] = useState('informasi-penting');
@@ -73,57 +63,28 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Convert employees to recipients format
-  const employeeRecipients: Recipient[] = allEmployees.map((emp) => ({
-    id: emp.nip,
-    nama: emp.nama,
-    no_hp: emp.no_hp || emp.telepon || '',
-    type: 'organik',
-  }));
+  // Computed
+  const filteredEmployees = useMemo(() => {
+    return allEmployees.filter((emp) => {
+      // Search
+      if (
+        searchQuery &&
+        !emp.nama.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !emp.nip.includes(searchQuery)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [searchQuery, allEmployees]);
 
-  // Convert mitra to recipients format
-  const mitraRecipients: Recipient[] = allMitra.map((m, idx) => ({
-    id: `mitra-${idx}`,
-    nama: m.nama,
-    no_hp: m.no_hp,
-    type: 'mitra',
-  }));
-
-  // Get kecamatan list from mitra
-  const kecamatanList = useMemo(() => {
-    return [...new Set(allMitra.map((m) => m.kecamatan).filter(Boolean))].sort();
-  }, [allMitra]);
-
-  // Filter data based on mode and search
-  const filteredRecipients = useMemo(() => {
-    let recipients: Recipient[] = recipientMode === 'organik' ? employeeRecipients : mitraRecipients;
-
-    // Filter by kecamatan if in mitra mode
-    if (recipientMode === 'mitra' && selectedKecamatan) {
-      recipients = recipients.filter((r) => {
-        const mitra = allMitra.find((m) => m.nama === r.nama);
-        return mitra?.kecamatan === selectedKecamatan;
-      });
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      recipients = recipients.filter((r) => {
-        const query = searchQuery.toLowerCase();
-        return r.nama.toLowerCase().includes(query) || r.no_hp.includes(query);
-      });
-    }
-
-    return recipients;
-  }, [recipientMode, searchQuery, selectedKecamatan, employeeRecipients, mitraRecipients, allMitra]);
-
-  const recipients = filteredRecipients.filter((r) => selectedIds.has(r.id));
+  const recipients = Array.from(selectedNips).map((nip) => allEmployees.find((e) => e.nip === nip)).filter(Boolean) as Karyawan[];
 
   // Template rendering
   const template = broadcastTemplates[selectedTemplate];
   const basePreviewMessage = template
     ? renderMessage(template, {
-        nama: 'Nama Penerima',
+        nama: 'Nama Karyawan',
         detail: customDetail || '[Ubah detail template]',
         custom: customMessage,
         kegiatan: kegiatan || '[Ubah kegiatan]',
@@ -131,7 +92,8 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
         ppkName: ppkName,
       })
     : '';
-
+  
+  // Use editable preview if user is editing, otherwise use base message
   const previewMessage = editablePreview || basePreviewMessage;
 
   // Handle send
@@ -139,12 +101,13 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
     if (recipients.length === 0) {
       toast({
         title: 'Peringatan',
-        description: `Pilih minimal 1 ${recipientMode === 'organik' ? 'karyawan' : 'mitra'}`,
-        variant: 'destructive',
+        description: 'Pilih minimal 1 karyawan',
+        variant: 'destructive'
       });
       return;
     }
 
+    // Show confirmation modal instead of window.confirm
     setShowConfirm(true);
   };
 
@@ -156,13 +119,8 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
     try {
       const { data, error } = await supabase.functions.invoke('send-manual-wa-notifications', {
         body: {
-          nips: recipients.map((r) => r.id),
-          recipients: recipients.map((r) => ({
-            id: r.id,
-            nama: r.nama,
-            no_hp: r.no_hp,
-            type: r.type,
-          })),
+          nips: recipients.map((r) => r.nip),
+          employees: recipients, // Pass employee data so function doesn't need to fetch
           templateId: selectedTemplate,
           customDetail,
           customMessage,
@@ -170,7 +128,6 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           tanggal,
           previewMessage: editablePreview || basePreviewMessage,
           ppkName,
-          recipientMode,
         },
       });
 
@@ -178,7 +135,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
         toast({
           title: 'Error',
           description: `Gagal mengirim: ${error.message}`,
-          variant: 'destructive',
+          variant: 'destructive'
         });
       } else {
         toast({
@@ -187,7 +144,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
         });
 
         // Reset form
-        setSelectedIds(new Set());
+        setSelectedNips(new Set());
         setCustomDetail('');
         setCustomMessage('');
         setKegiatan('');
@@ -199,7 +156,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
       toast({
         title: 'Error',
         description: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setIsLoading(false);
@@ -208,128 +165,66 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
   return (
     <div className="space-y-6">
-      {allEmployees.length === 0 && allMitra.length === 0 && (
+      {allEmployees.length === 0 && (
         <div className="flex items-center justify-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
           <AlertCircle className="w-5 h-5 text-yellow-600 mr-2" />
           <span className="text-yellow-700 text-sm">
-            ⏳ Memuat daftar penerima... Jika tetap kosong, silakan refresh halaman
+            ⏳ Memuat daftar karyawan... Jika tetap kosong, silakan refresh halaman
           </span>
         </div>
       )}
-
-      {/* Section 1: Recipient Mode & Selection */}
+      
+      {/* Section 1: Recipient Selection */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             👥 Pilih Penerima
           </CardTitle>
-          <CardDescription>
-            {recipientMode === 'organik' ? 'Kirim ke Karyawan' : 'Kirim ke Mitra'}
-          </CardDescription>
+          <CardDescription>Pilih manual atau gunakan filter untuk bulk selection</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Mode Selector */}
-          <div className="flex gap-2">
-            <Button
-              variant={recipientMode === 'organik' ? 'default' : 'outline'}
-              onClick={() => {
-                setRecipientMode('organik');
-                setSelectedIds(new Set());
-                setSelectedKecamatan('');
-                setSearchQuery('');
-              }}
-              className="flex-1"
-            >
-              👔 Karyawan
-            </Button>
-            {allMitra.length > 0 && (
-              <Button
-                variant={recipientMode === 'mitra' ? 'default' : 'outline'}
-                onClick={() => {
-                  setRecipientMode('mitra');
-                  setSelectedIds(new Set());
-                  setSearchQuery('');
-                }}
-                className="flex-1"
-              >
-                🤝 Mitra
-              </Button>
-            )}
-          </div>
-
-          {/* Kecamatan Filter (only for mitra) */}
-          {recipientMode === 'mitra' && kecamatanList.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium mb-2">Filter Kecamatan (opsional):</label>
-              <Select value={selectedKecamatan} onValueChange={setSelectedKecamatan}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua Kecamatan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {kecamatanList.map((kecamatan) => (
-                    <SelectItem key={kecamatan} value={kecamatan}>
-                      {kecamatan}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Search */}
-          <div>
+          {/* Manual Selection */}
+          <div className="space-y-3">
             <Input
-              placeholder={`Cari nama atau nomor HP...`}
+              placeholder="Cari nama atau NIP..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full"
             />
-          </div>
 
-          {/* Recipient List */}
-          <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-2">
-            {filteredRecipients.length === 0 ? (
-              <p className="text-gray-500 text-sm">
-                {recipientMode === 'organik'
-                  ? 'Tidak ada karyawan ditemukan'
-                  : 'Tidak ada mitra ditemukan'}
-              </p>
-            ) : (
-              filteredRecipients.map((recipient) => (
-                <label
-                  key={recipient.id}
-                  className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(recipient.id)}
-                    onChange={(e) => {
-                      const newSet = new Set(selectedIds);
-                      if (e.target.checked) {
-                        newSet.add(recipient.id);
-                      } else {
-                        newSet.delete(recipient.id);
-                      }
-                      setSelectedIds(newSet);
-                    }}
-                    className="w-4 h-4"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{recipient.nama}</div>
-                    <div className="text-xs text-gray-500">{recipient.no_hp}</div>
-                  </div>
-                  {recipientMode === 'mitra' && (
-                    <div className="text-xs text-gray-600">
-                      {allMitra.find((m) => m.nama === recipient.nama)?.kecamatan}
+            <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-2">
+              {filteredEmployees.length === 0 ? (
+                <p className="text-gray-500 text-sm">Tidak ada karyawan ditemukan</p>
+              ) : (
+                filteredEmployees.map((emp) => (
+                  <label key={emp.nip} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedNips.has(emp.nip)}
+                      onChange={(e) => {
+                        const newSet = new Set(selectedNips);
+                        if (e.target.checked) {
+                          newSet.add(emp.nip);
+                        } else {
+                          newSet.delete(emp.nip);
+                        }
+                        setSelectedNips(newSet);
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{emp.nama}</div>
+                      <div className="text-xs text-gray-500">{emp.nip}</div>
                     </div>
-                  )}
-                </label>
-              ))
-            )}
-          </div>
+                    <div className="text-xs text-gray-600">{emp.golongan}</div>
+                  </label>
+                ))
+              )}
+            </div>
 
-          <div className="text-sm text-blue-600 font-medium">
-            ✓ {selectedIds.size} {recipientMode === 'organik' ? 'karyawan' : 'mitra'} dipilih
+            <div className="text-sm text-blue-600 font-medium">
+              ✓ {selectedNips.size} orang dipilih
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -444,7 +339,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
                   placeholder="Preview akan ditampilkan di sini..."
                 />
                 <p className="text-xs text-blue-600">
-                  ℹ️ Anda dapat mengedit pesan di atas. Nama akan tetap &quot;Nama Penerima&quot; di preview, tapi akan diganti dengan nama individual untuk setiap penerima saat dikirim.
+                  ℹ️ Anda dapat mengedit pesan di atas. Nama karyawan akan tetap &quot;Nama Karyawan&quot; di preview, tapi akan diganti dengan nama individual untuk setiap penerima saat dikirim.
                 </p>
               </div>
             )}
@@ -463,10 +358,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           <div className="bg-white p-3 rounded space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-700">Penerima:</span>
-              <span className="font-medium text-blue-600">
-                {recipients.length}{' '}
-                {recipientMode === 'organik' ? 'karyawan' : 'mitra'}
-              </span>
+              <span className="font-medium text-blue-600">{recipients.length} karyawan</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-700">Template:</span>
@@ -486,12 +378,13 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
             <Button
               variant="outline"
               onClick={() => {
-                setSelectedIds(new Set());
+                setSelectedNips(new Set());
                 setCustomDetail('');
                 setCustomMessage('');
                 setKegiatan('');
                 setTanggal('');
                 setEditablePreview('');
+                setRecipientMode('manual');
               }}
               className="flex-1"
               disabled={isLoading}
@@ -512,8 +405,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
               ) : (
                 <>
                   <Send className="w-4 h-4 mr-2" />
-                  Kirim ke {recipients.length}{' '}
-                  {recipientMode === 'organik' ? 'karyawan' : 'mitra'}
+                  Kirim ke {recipients.length} orang
                 </>
               )}
             </Button>
@@ -537,14 +429,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <p className="font-medium">
-                  Anda akan mengirim notifikasi WA ke:
-                </p>
+                <p className="font-medium">Anda akan mengirim notifikasi WA ke:</p>
                 <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                  <p className="text-sm font-semibold text-blue-900">
-                    {recipients.length}{' '}
-                    {recipientMode === 'organik' ? 'karyawan' : 'mitra'}
-                  </p>
+                  <p className="text-sm font-semibold text-blue-900">{recipients.length} orang</p>
                 </div>
               </div>
 
@@ -562,8 +449,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
               <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
                 <p className="text-xs text-yellow-800">
-                  ⚠️ <strong>Perhatian:</strong> Aksi ini tidak dapat dibatalkan. Notifikasi akan
-                  segera dikirim.
+                  ⚠️ <strong>Perhatian:</strong> Aksi ini tidak dapat dibatalkan. Notifikasi akan segera dikirim.
                 </p>
               </div>
 
