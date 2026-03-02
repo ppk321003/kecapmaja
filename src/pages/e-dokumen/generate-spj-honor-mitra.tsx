@@ -549,7 +549,7 @@ export default function GenerateSPJHonorMitra() {
     fetchDataFromSheets();
   }, [dynamicSheetId]);
 
-  // Filter data berdasarkan search term dan bulan/tahun
+  // Filter data berdasarkan search term dan bulan/tahun (Year-to-Date)
   useEffect(() => {
     let filtered = [...data];
 
@@ -563,13 +563,20 @@ export default function GenerateSPJHonorMitra() {
       );
     }
 
-    // Filter berdasarkan periode (bulan dan tahun)
-    const selectedPeriode = `${selectedBulan} ${selectedTahun}`;
-    filtered = filtered.filter(item => item.periode === selectedPeriode);
+    // Filter berdasarkan periode (Year-to-Date: dari Januari sampai bulan yang dipilih)
+    const selectedBulanIndex = bulanOptions.indexOf(selectedBulan);
+    filtered = filtered.filter(item => {
+      if (!item.bulan || !item.tahun) return false;
+      // Hanya tampilkan data dari tahun yang dipilih
+      if (item.tahun !== selectedTahun) return false;
+      // Tampilkan semua data dari Januari sampai bulan yang dipilih (YTD)
+      const itemBulanIndex = bulanOptions.indexOf(item.bulan);
+      return itemBulanIndex >= 0 && itemBulanIndex <= selectedBulanIndex;
+    });
 
     setFilteredData(filtered);
     setCurrentPage(1); // Reset to first page when filter changes
-  }, [data, searchTerm, selectedBulan, selectedTahun]);
+  }, [data, searchTerm, selectedBulan, selectedTahun, bulanOptions]);
 
   // Calculate totals
   const totals = useMemo(() => ({
@@ -892,12 +899,16 @@ export default function GenerateSPJHonorMitra() {
                 />
               </div>
 
-              {/* Bulan - Sort berdasarkan urutan bulan, bukan abjad */}
-              <Select value={selectedBulan} onValueChange={setSelectedBulan}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Bulan" />
-                </SelectTrigger>
-                <SelectContent>
+              {/* Bulan - Year-to-Date Filter (Januari sampai bulan yang dipilih) */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  Bulan (YTD: Jan - Bulan Dipilih)
+                </label>
+                <Select value={selectedBulan} onValueChange={setSelectedBulan}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Bulan" />
+                  </SelectTrigger>
+                  <SelectContent>
                   {(() => {
                     const bulanMap = new Map();
                     availablePeriodes.forEach(p => {
@@ -912,10 +923,15 @@ export default function GenerateSPJHonorMitra() {
                     ));
                   })()}
                 </SelectContent>
-              </Select>
+                </Select>
+              </div>
 
               {/* Tahun - Show semua tahun yang ada data */}
-              <Select value={selectedTahun} onValueChange={setSelectedTahun}>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  Tahun
+                </label>
+                <Select value={selectedTahun} onValueChange={setSelectedTahun}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih Tahun" />
                 </SelectTrigger>
@@ -941,7 +957,8 @@ export default function GenerateSPJHonorMitra() {
                     ));
                   })()}
                 </SelectContent>
-              </Select>
+                </Select>
+              </div>
 
               {/* Refresh Button */}
               <Button
