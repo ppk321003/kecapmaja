@@ -125,40 +125,47 @@ export default function GenerateSPKBAST() {
     }
   };
 
-  const handleConfirmGenerate = () => {
+  const handleConfirmGenerate = async () => {
     setIsLoading(true);
     setShowConfirmation(false);
     
     try {
-      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec?spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
-      
-      // Gunakan Image approach untuk bypass CORS
-      const img = new Image();
-      img.onload = () => {
+      // Call Supabase Edge Function to trigger Apps Script
+      const { data, error } = await supabase.functions.invoke("generate-spk-bast", {
+        body: {
+          spreadsheetId: spreadsheetId
+        }
+      });
+
+      if (error) {
+        console.error('Error from Supabase function:', error);
         toast({
-          title: "✅ Berhasil",
-          description: "Proses generation SPK & BAST dimulai. Harap tunggu beberapa menit dan cek Google Drive Anda untuk hasil dokumen di folder periode.",
+          title: "⚠️ Warning",
+          description: "Tidak dapat menghubungi server. Proses mungkin tetap berjalan di background. Cek Google Drive Anda dalam 5-10 menit.",
           variant: "default"
         });
         setIsLoading(false);
-      };
-      img.onerror = () => {
-        toast({
-          title: "✅ Request Terkirim",
-          description: "Proses generation dimulai. Cek Google Drive Anda dalam 5-10 menit.",
-          variant: "default"
-        });
-        setIsLoading(false);
-      };
+        return;
+      }
+
+      console.log('✅ Generation triggered via Supabase:', data);
       
-      // Trigger Apps Script dengan image URL (bypass CORS)
-      img.src = APPS_SCRIPT_URL;
-    } catch (error) {
-      console.error('Error:', error);
+      // Tampilkan success message
       toast({
-        title: "❌ Error",
-        description: "Terjadi kesalahan. Silakan coba lagi.",
-        variant: "destructive"
+        title: "✅ Generating Started",
+        description: "Proses generation SPK & BAST dimulai. Harap tunggu beberapa menit dan cek Google Drive Anda untuk hasil dokumen di folder periode.",
+        variant: "default"
+      });
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error calling generation:', error);
+      
+      // Still show a success message as the process might have started
+      toast({
+        title: "✅ Request Sent",
+        description: "Proses generation telah dikirim. Cek Google Drive Anda dalam 5-10 menit untuk hasil dokumen.",
+        variant: "default"
       });
       setIsLoading(false);
     }
