@@ -93,6 +93,9 @@ export default function GenerateSPJHonorMitra() {
     if (userData) {
       setCurrentUser(JSON.parse(userData));
     }
+    // Clear default filter selections to allow user to choose
+    setSelectedBulan("");
+    setSelectedTahun("");
   }, []);
 
   const canAccessFeatures = () => {
@@ -565,7 +568,7 @@ export default function GenerateSPJHonorMitra() {
 
     // Filter berdasarkan periode (Year-to-Date: dari Januari sampai bulan yang dipilih)
     // Hanya filter jika user sudah memilih bulan dan tahun
-    if (selectedBulan && selectedTahun) {
+    if (selectedBulan !== undefined && selectedBulan !== "" && selectedTahun !== undefined && selectedTahun !== "") {
       const selectedBulanIndex = bulanOptions.indexOf(selectedBulan);
       filtered = filtered.filter(item => {
         if (!item.bulan || !item.tahun) return false;
