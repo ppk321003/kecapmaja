@@ -72,8 +72,8 @@ export default function GenerateSPJHonorMitra() {
   const [data, setData] = useState<KegiatanSPJData[]>([]);
   const [filteredData, setFilteredData] = useState<KegiatanSPJData[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedBulan, setSelectedBulan] = useState(currentMonthName);
-  const [selectedTahun, setSelectedTahun] = useState(currentYear);
+  const [selectedBulan, setSelectedBulan] = useState("");
+  const [selectedTahun, setSelectedTahun] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -564,15 +564,18 @@ export default function GenerateSPJHonorMitra() {
     }
 
     // Filter berdasarkan periode (Year-to-Date: dari Januari sampai bulan yang dipilih)
-    const selectedBulanIndex = bulanOptions.indexOf(selectedBulan);
-    filtered = filtered.filter(item => {
-      if (!item.bulan || !item.tahun) return false;
-      // Hanya tampilkan data dari tahun yang dipilih
-      if (item.tahun !== selectedTahun) return false;
-      // Tampilkan semua data dari Januari sampai bulan yang dipilih (YTD)
-      const itemBulanIndex = bulanOptions.indexOf(item.bulan);
-      return itemBulanIndex >= 0 && itemBulanIndex <= selectedBulanIndex;
-    });
+    // Hanya filter jika user sudah memilih bulan dan tahun
+    if (selectedBulan && selectedTahun) {
+      const selectedBulanIndex = bulanOptions.indexOf(selectedBulan);
+      filtered = filtered.filter(item => {
+        if (!item.bulan || !item.tahun) return false;
+        // Hanya tampilkan data dari tahun yang dipilih
+        if (item.tahun !== selectedTahun) return false;
+        // Tampilkan semua data dari Januari sampai bulan yang dipilih (YTD)
+        const itemBulanIndex = bulanOptions.indexOf(item.bulan);
+        return itemBulanIndex >= 0 && itemBulanIndex <= selectedBulanIndex;
+      });
+    }
 
     setFilteredData(filtered);
     setCurrentPage(1); // Reset to first page when filter changes
@@ -887,10 +890,13 @@ export default function GenerateSPJHonorMitra() {
             <CardTitle className="text-lg">Filter Data</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
               {/* Search */}
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  Cari Data
+                </label>
+                <Search className="absolute left-2 top-9 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Cari kegiatan, penanggungjawab..."
                   className="pl-8"
@@ -968,6 +974,7 @@ export default function GenerateSPJHonorMitra() {
                 }}
                 variant="outline"
                 disabled={isRefreshing || isLoading}
+                className="w-full"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                 {isRefreshing ? 'Refresh...' : 'Refresh'}
