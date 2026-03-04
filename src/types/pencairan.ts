@@ -147,6 +147,7 @@ export const JENIS_BELANJA_OPTIONS = [
   'Belanja Bahan',
   'Belanja Barang Persediaan',
   'Paket Meeting Dalam Kota',
+  'Lain-lain',
 ];
 
 // Sub-Jenis Belanja for each main category
@@ -156,6 +157,7 @@ export const SUB_JENIS_BELANJA: Record<string, string[]> = {
   'Belanja Bahan': ['Konsumsi', 'Pulsa/Paket Data', 'Perlengkapan'],
   'Belanja Barang Persediaan': ['ATK dan Computer Supplies', 'Pencetakan'],
   'Paket Meeting Dalam Kota': ['Paket Meeting', 'Perjalanan'],
+  'Lain-lain': ['Manajemen Building'],
 };
 
 // Documents by Jenis and Sub-Jenis Belanja
@@ -319,6 +321,17 @@ export const DOCUMENTS_BY_SUB_JENIS: Record<string, Record<string, Document[]>> 
       { type: 'notulen', name: 'Notulen/Laporan dan Dokumentasi Rapat', isRequired: true, isChecked: false },
       { type: 'spd_super', name: 'SPD, Super Kendis, Daftar Uang Harian', isRequired: true, isChecked: false },
       { type: 'ssp', name: 'Surat Setor Pajak (SSP)', isRequired: false, isChecked: false, note: 'dilengkapi Bendahara' },
+    ],
+  },
+  'Lain-lain': {
+    'Manajemen Building': [
+      { type: 'kak', name: 'Kerangka Acuan Kerja (KAK)', isRequired: true, isChecked: false },
+      { type: 'form_permintaan', name: 'Form Permintaan (FP)', isRequired: true, isChecked: false },
+      { type: 'laporan', name: 'Laporan dan Dokumentasi', isRequired: true, isChecked: false },
+      { type: 'kontrak', name: 'Komitmen/Kontrak', isRequired: true, isChecked: false },
+      { type: 'bukti_prestasi', name: 'Bukti Prestasi (BAPP/BAST/BAP)', isRequired: true, isChecked: false },
+      { type: 'invoice_kuitansi', name: 'Invoice/Kuitansi', isRequired: true, isChecked: false },
+      { type: 'ssp', name: 'Surat Setor Pajak (SSP)', isRequired: false, isChecked: false },
     ],
   },
 };
