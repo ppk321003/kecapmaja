@@ -580,6 +580,13 @@ export default function GenerateSPJHonorMitra() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
+  // Ensure currentPage doesn't exceed totalPages
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
   // Generate ID dengan format genSPJ-yymmxxx dimana xxx adalah nomor urut perbulan
   const generateSPJId = async (bulan: string, tahun: string): Promise<string> => {
     const yy = tahun.slice(-2); // 2 digit tahun terakhir
@@ -1238,7 +1245,7 @@ export default function GenerateSPJHonorMitra() {
                         variant="outline"
                         size="sm"
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage >= totalPages || totalPages === 0}
                       >
                         Selanjutnya
                       </Button>
