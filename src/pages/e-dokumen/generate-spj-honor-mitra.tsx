@@ -104,8 +104,14 @@ export default function GenerateSPJHonorMitra() {
     return allowedRoles.includes(currentUser.role);
   };
 
-  const bulanOptions = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  const tahunOptions = Array.from({ length: 7 }, (_, i) => (2024 + i).toString());
+  const bulanOptions = useMemo(() => 
+    ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"],
+    []
+  );
+  const tahunOptions = useMemo(() =>
+    Array.from({ length: 7 }, (_, i) => (2024 + i).toString()),
+    []
+  );
 
   // Fetch data dari Google Sheets
   const fetchDataFromSheets = async () => {
@@ -580,12 +586,12 @@ export default function GenerateSPJHonorMitra() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
-  // Ensure currentPage doesn't exceed totalPages
+  // Ensure currentPage doesn't exceed totalPages when data changes
   useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
     }
-  }, [totalPages, currentPage]);
+  }, [totalPages]);
 
   // Generate ID dengan format genSPJ-yymmxxx dimana xxx adalah nomor urut perbulan
   const generateSPJId = async (bulan: string, tahun: string): Promise<string> => {
