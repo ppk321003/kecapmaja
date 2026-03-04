@@ -509,31 +509,9 @@ export default function GenerateSPJHonorMitra() {
       
       setData(deduplicatedData);
       setCurrentPage(1); // Reset to first page when data is loaded
-
-      // Extract available bulan dan tahun dari periode data
-      if (deduplicatedData.length > 0) {
-        const periodSet = new Set(deduplicatedData.map(item => item.periode));
-        const availBulanTahun = Array.from(periodSet).sort();
-        console.log('Available periods:', availBulanTahun);
-        
-        // Cek apakah current month/year ada di available periods
-        const currentPeriode = `${currentMonthName} ${currentYear}`;
-        const currentPeriodeExists = availBulanTahun.includes(currentPeriode);
-        
-        if (currentPeriodeExists) {
-          // Jika current period ada, gunakan itu (jangan override)
-          console.log('✅ Current period available, keeping filters:', currentPeriode);
-          setSelectedBulan(currentMonthName);
-          setSelectedTahun(currentYear);
-        } else if (availBulanTahun.length > 0) {
-          // Hanya jika current period tidak ada, gunakan first available
-          console.log('⚠️ Current period not available, using first available:', availBulanTahun[0]);
-          const firstPeriode = availBulanTahun[0];
-          const periodParts = firstPeriode?.split(' ') || [];
-          setSelectedBulan(periodParts[0] || currentMonthName);
-          setSelectedTahun(periodParts[1] || currentYear);
-        }
-      }
+      
+      // Don't auto-set bulan/tahun - let user choose themselves
+      // Filter dropdown will populate with available options from data
 
     } catch (error: any) {
       console.error('❌ Error fetching data:', error);
