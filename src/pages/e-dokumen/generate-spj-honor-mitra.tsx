@@ -536,7 +536,7 @@ export default function GenerateSPJHonorMitra() {
     fetchDataFromSheets();
   }, [dynamicSheetId]);
 
-  // Filter data berdasarkan search term dan bulan/tahun (Year-to-Date)
+  // Filter data berdasarkan search term dan bulan/tahun
   useEffect(() => {
     let filtered = [...data];
 
@@ -550,17 +550,21 @@ export default function GenerateSPJHonorMitra() {
       );
     }
 
-    // Filter berdasarkan periode (Year-to-Date: dari Januari sampai bulan yang dipilih)
-    // Hanya filter jika user sudah memilih bulan dan tahun
-    if (selectedBulan !== undefined && selectedBulan !== "" && selectedTahun !== undefined && selectedTahun !== "") {
-      const selectedBulanIndex = bulanOptions.indexOf(selectedBulan);
+    // Filter berdasarkan bulan dan tahun
+    // Jika bulan dipilih → filter untuk bulan spesifik
+    // Jika hanya tahun dipilih → tampilkan semua bulan di tahun itu
+    if (selectedTahun && selectedTahun !== "") {
       filtered = filtered.filter(item => {
-        if (!item.bulan || !item.tahun) return false;
-        // Hanya tampilkan data dari tahun yang dipilih
+        if (!item.tahun) return false;
+        // Harus match tahun yang dipilih
         if (item.tahun !== selectedTahun) return false;
-        // Tampilkan semua data dari Januari sampai bulan yang dipilih (YTD)
-        const itemBulanIndex = bulanOptions.indexOf(item.bulan);
-        return itemBulanIndex >= 0 && itemBulanIndex <= selectedBulanIndex;
+        
+        // Jika bulan juga dipilih, harus match bulan itu juga
+        if (selectedBulan && selectedBulan !== "") {
+          return item.bulan === selectedBulan;
+        }
+        // Jika bulan kosong, tampilkan semua bulan di tahun itu
+        return true;
       });
     }
 
@@ -899,10 +903,10 @@ export default function GenerateSPJHonorMitra() {
                 />
               </div>
 
-              {/* Bulan - Year-to-Date Filter (Januari sampai bulan yang dipilih) */}
+              {/* Bulan - optional filter */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  Bulan (YTD: Jan - Bulan Dipilih)
+                  Bulan (Opsional)
                 </label>
                 <Select value={selectedBulan} onValueChange={setSelectedBulan}>
                   <SelectTrigger>
