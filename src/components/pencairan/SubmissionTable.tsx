@@ -383,6 +383,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                   <SortIcon field="updatedAt" />
                 </button>
               </TableHead>
+              <TableHead>No SPM - SPPD</TableHead>
               <TableHead className="text-right w-[100px]">Aksi</TableHead>
             </TableRow>
           </TableHeader>
@@ -427,6 +428,13 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                     <TableCell className="text-xs font-semibold text-foreground font-mono">
                       <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md inline-block whitespace-nowrap">
                         {timestamp}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      <span className="text-muted-foreground font-mono">
+                        {submission.nomorSPM || submission.nomorSPPD 
+                          ? `${submission.nomorSPM || '-'} - ${submission.nomorSPPD || '-'}` 
+                          : '-'}
                       </span>
                     </TableCell>
                     <TableCell>

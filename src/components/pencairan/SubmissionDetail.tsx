@@ -676,7 +676,7 @@ export function SubmissionDetail({
                     <input
                       id="nomorSPM"
                       type="text"
-                      placeholder="Input nomor SPM"
+                      placeholder="Input nomor SPM (contoh: 00043A)"
                       value={nomorSPM}
                       onChange={(e) => setNomorSPM(e.target.value)}
                       className="w-full px-3 py-2 border border-input rounded-md text-sm"
@@ -797,7 +797,7 @@ export function SubmissionDetail({
                     <input
                       id="nomorSPPD"
                       type="text"
-                      placeholder="Input nomor SPPD"
+                      placeholder="Input nomor SPPD (contoh: 00043T)"
                       value={nomorSPPD}
                       onChange={(e) => setNomorSPPD(e.target.value)}
                       className="w-full px-3 py-2 border border-input rounded-md text-sm"
