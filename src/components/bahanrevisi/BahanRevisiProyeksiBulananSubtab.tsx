@@ -85,19 +85,23 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   const subKomponenNameMap = useMemo(() => Object.fromEntries(subKomponen.flatMap(s => [[s.id, `${s.code} - ${s.name}`], [s.code, `${s.code} - ${s.name}`]])), [subKomponen]);
   const akunNameMap = useMemo(() => Object.fromEntries(akuns.flatMap(a => [[a.id, `${a.id} - ${a.name}`], [a.code, `${a.code} - ${a.name}`]])), [akuns]);
 
+  // Strip leading apostrophes from codes (Google Sheets artifact)
+  const cleanCode = (code: string) => code.replace(/^'+/, '');
+
   const formatName = (code: string | undefined, type: string) => {
     if (!code) return 'Unknown';
+    const clean = cleanCode(code);
     switch (type) {
-      case 'program': return programNameMap[code] || code;
-      case 'kegiatan': return kegiatanNameMap[code] || code;
+      case 'program': return programNameMap[clean] || clean;
+      case 'kegiatan': return kegiatanNameMap[clean] || clean;
       case 'rincian_output': {
-        const rincian = rincianOutputs.find(r => r.code === code);
-        return rincian ? `${rincian.code} - ${rincian.name}` : code;
+        const rincian = rincianOutputs.find(r => r.code === clean);
+        return rincian ? `${rincian.code} - ${rincian.name}` : clean;
       }
-      case 'komponen_output': return komponenNameMap[code] || code;
-      case 'sub_komponen': return subKomponenNameMap[code] || code;
-      case 'akun': return akunNameMap[code] || code;
-      default: return code;
+      case 'komponen_output': return komponenNameMap[clean] || clean;
+      case 'sub_komponen': return subKomponenNameMap[clean] || clean;
+      case 'akun': return akunNameMap[clean] || clean;
+      default: return clean;
     }
   };
 
