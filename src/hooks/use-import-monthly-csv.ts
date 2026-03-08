@@ -383,8 +383,8 @@ export const useImportMonthlyCSV = ({
 
       // Match priority: ID first, then composite key fallback
       // IMPORTANT: process non-zero period rows first so meaningful monthly values
-      // don't lose candidates to zero-value rows when matchedBudgetIds is enforced.
-      const matchedBudgetIds = new Set<string>();
+      // are matched first.
+      const matchedBudgetUsage = new Map<string, number>();
       const parsedItemsForMatching = [...dedupedParsedItems].sort((a, b) => {
         const bVal = Number(b.periodeIni) || 0;
         const aVal = Number(a.periodeIni) || 0;
