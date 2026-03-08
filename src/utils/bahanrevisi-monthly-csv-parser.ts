@@ -343,17 +343,38 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                 }
               }
 
-              // Only create item if we have valid uraian and hierarchy is complete
-              // Note: periodeIni and sisaAnggaran can be 0, which is valid
-              if (uraian && hierarchy.program && hierarchy.kegiatan) {
-                // Ensure sub_komponen is always 3-digit normalized
-                // Always apply normalizeSubKomponen to ensure consistent 3-digit format (001, 002, etc.)
+              // CONTINUATION LINE HANDLING:
+              // If no uraian prefix found (no "000XXX." pattern), this is a continuation line
+              // from a *Lock Pagu interruption. Merge values into the PREVIOUS item.
+              if (!uraian && items.length > 0) {
+                const lastItem = items[items.length - 1];
+                // Only merge if this continuation has non-zero values
+                // Continuation lines typically duplicate the previous item's values,
+                // so we DON'T add them - the previous item already has the correct values.
+                // However, some continuations have DIFFERENT values (split across lines).
+                // Check: if the previous item's periodeIni is different, this is a true split.
+                if (periodeIni > 0 && periodeIni !== lastItem.periodeIni) {
+                  // This continuation has a different value - likely a split item
+                  // The previous item may have had 0 or a different value
+                  // Use the continuation's value if the previous was 0
+                  if (lastItem.periodeIni === 0) {
+                    lastItem.periodeIni = periodeIni;
+                    console.log(`[parseMonthlyCSV] Continuation merged periodeIni=${periodeIni} into previous item: ${lastItem.uraian.substring(0, 40)}`);
+                  }
+                }
+                if (sisaAnggaran > 0 && sisaAnggaran !== lastItem.sisaAnggaran) {
+                  if (lastItem.sisaAnggaran === 0) {
+                    lastItem.sisaAnggaran = sisaAnggaran;
+                    console.log(`[parseMonthlyCSV] Continuation merged sisaAnggaran=${sisaAnggaran} into previous item: ${lastItem.uraian.substring(0, 40)}`);
+                  }
+                }
+                stats.continuationsMerged++;
+              } else if (uraian && hierarchy.program && hierarchy.kegiatan) {
+                // Normal item creation
                 let normalizedSubKomponen = normalizeSubKomponen(hierarchy.subKomponen);
                 
-                // Append program code to sub_komponen ONLY for specific values: 051, 053, 054
-                // e.g., "051" + "GG" → "051_GG"
                 if (normalizedSubKomponen && ['051', '053', '054'].includes(normalizedSubKomponen) && hierarchy.program) {
-                  const programCode = hierarchy.program.split('.').pop(); // Get last part (GG from 054.01.GG)
+                  const programCode = hierarchy.program.split('.').pop();
                   normalizedSubKomponen = `${normalizedSubKomponen}_${programCode}`;
                   console.log(`[parseMonthlyCSV] Sub-komponen with program (special): ${normalizedSubKomponen}`);
                 }
@@ -375,14 +396,13 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                   subKomponen: normalizedSubKomponen,
                   akun: hierarchy.akun,
                   uraian: uraian,
-                  periodeIni: periodeIni,        // Column 24 value for RPD
-                  sisaAnggaran: sisaAnggaran,    // Column AE value for budget_items
+                  periodeIni: periodeIni,
+                  sisaAnggaran: sisaAnggaran,
                 };
 
                 items.push(item);
                 stats.itemsParsed++;
                 
-                // DEBUG: Track items by program
                 const programName = hierarchy.program || 'UNKNOWN';
                 if (!stats.itemsByProgram) stats.itemsByProgram = {};
                 if (!stats.itemsByProgram[programName]) stats.itemsByProgram[programName] = 0;
