@@ -442,7 +442,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
         const fetchResult = await supabase.functions.invoke('google-sheets', {
           body: {
             spreadsheetId: sheetId,
-            operation: 'get',
+            operation: 'read',
             range: 'rpd_items!A:Z',
           },
         });
