@@ -260,7 +260,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
         const isProgram = /^\d{3}\.\d{2}\.[A-Z]{2}$/.test(code);      // 054.01.GG
         const isKegiatan = /^\d{4}$/.test(code);                        // 2896
         const isRO = /^\d{4}\.[A-Z]{2,3}$/.test(code);                 // 2896.BMA
-        const isKomponen = /^[A-Z]{2,3}\.\d{3}$/.test(code);           // BMA.004
+        const isKomponen = /^[A-Z]{2,3}\.[A-Z0-9]{3}$/.test(code);     // BMA.004, FAN.ZZI
         const isSubKomp = /^\d{1,3}$/.test(code) && code.length <= 3;  // 052, 005
         const isSkipLevel = /^[A-Z]$/.test(code) && name.toUpperCase().includes('TANPA SUB KOMPONEN');
         const isAkun = /^\d{5,6}$/.test(code);                          // 524113
