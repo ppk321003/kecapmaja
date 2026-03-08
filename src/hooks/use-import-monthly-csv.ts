@@ -23,6 +23,28 @@ export interface MatchResult {
   }>;
 }
 
+export interface ImportAuditSummary {
+  bulan?: number;
+  tahun?: number;
+  versioned_sheet?: string;
+  unmatched_sheet?: string;
+  matched_count?: number;
+  unmatched_count?: number;
+  matched_periode_ini?: number;
+  unmatched_periode_ini?: number;
+  combined_periode_ini?: number;
+  rpd_update_payload_count?: number;
+  rpd_update_deduped_count?: number;
+  unmatched_by_kegiatan?: Record<string, number>;
+  top_unmatched_items?: Array<{
+    program_pembebanan?: string;
+    kegiatan?: string;
+    akun?: string;
+    uraian?: string;
+    periode_ini?: number;
+  }>;
+}
+
 interface UseImportMonthlyCSVProps {
   sheetId: string | null;
   budgetItems: BudgetItem[];
@@ -43,6 +65,7 @@ export const useImportMonthlyCSV = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importErrors, setImportErrors] = useState<ImportError[]>([]);
   const [parseProgress, setParseProgress] = useState<string>('');
+  const [lastImportAudit, setLastImportAudit] = useState<ImportAuditSummary | null>(null);
 
   const matching = useCallback(
     (parsedData: ParsedMonthlyData): MatchResult => {
@@ -593,6 +616,7 @@ export const useImportMonthlyCSV = ({
       try {
         setIsImporting(true);
         setImportErrors([]);
+        setLastImportAudit(null);
         setParseProgress('Parsing CSV...');
 
         // Parse CSV
@@ -809,6 +833,12 @@ export const useImportMonthlyCSV = ({
               unmatchedItems: unmatchedData,
               bulan: parsedData.bulan,
               tahun: parsedData.tahun,
+              auditSummary: {
+                totalPeriodeIniCSV,
+                totalPeriodeIniMatched,
+                totalPeriodeIniUnmatched,
+                gap: totalPeriodeIniCSV - totalPeriodeIniMatched,
+              },
             },
           });
           
@@ -852,6 +882,11 @@ export const useImportMonthlyCSV = ({
           return;
         }
 
+        if (uploadData?.audit) {
+          setLastImportAudit(uploadData.audit as ImportAuditSummary);
+          console.log('[useImportMonthlyCSV] Import audit:', uploadData.audit);
+        }
+
         console.log(`[useImportMonthlyCSV] Successfully appended ${uploadData.matched_appended} matched + ${uploadData.unmatched_appended} unmatched items (total: ${uploadData.total_appended})`);
 
         setParseProgress('');
@@ -888,12 +923,14 @@ export const useImportMonthlyCSV = ({
   const clearErrors = useCallback(() => {
     setImportErrors([]);
     setParseProgress('');
+    setLastImportAudit(null);
   }, []);
 
   return {
     isImporting,
     importErrors,
     parseProgress,
+    lastImportAudit,
     handleImportFile,
     clearErrors,
   };
