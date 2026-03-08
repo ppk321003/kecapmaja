@@ -711,7 +711,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                     {monthNames.map((mn) => (
                       <div key={mn} className="py-2 px-3 text-right font-semibold">{mn}</div>
                     ))}
-                    <div className="py-2 px-3 text-right font-semibold">Total RPD</div>
+                    <div className="py-2 px-3 text-right font-semibold">Total Realisasi</div>
                     <div className="py-2 px-3 text-right font-semibold">Sisa</div>
                   </div>
                     <div style={{ height: 400 }}>
