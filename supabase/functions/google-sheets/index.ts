@@ -1239,15 +1239,23 @@ serve(async (req: Request) => {
           const key = `${itemId}|${bulanColumnLetter}`;
           const existing = rpdUpdateMap.get(key);
 
-          // Prefer non-zero periodeIni if duplicate key exists
-          if (!existing || (Number(existing.periodeIni ?? 0) === 0 && periodeIni !== 0)) {
-            rpdUpdateMap.set(key, {
-              item: candidate.item,
-              bulanColumn: bulanColumnLetter,
-              periodeIni,
-              bulan,
-            });
+          if (existing) {
+            // Accumulative dedupe: merge fragmented rows for the same budget item & month
+            existing.periodeIni = Number(existing.periodeIni ?? 0) + periodeIni;
+            // Keep the most complete item payload
+            if (!existing.item && candidate.item) {
+              existing.item = candidate.item;
+            }
+            rpdUpdateMap.set(key, existing);
+            return;
           }
+
+          rpdUpdateMap.set(key, {
+            item: candidate.item,
+            bulanColumn: bulanColumnLetter,
+            periodeIni,
+            bulan,
+          });
         };
 
         // 1) Start from explicit rpdUpdates sent by frontend
