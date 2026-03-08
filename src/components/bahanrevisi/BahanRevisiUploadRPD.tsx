@@ -498,6 +498,14 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
 
     const existingById = new Map(existingRPDItems.map(item => [normalizeToken(item.id), item]));
     const existingByKey = new Map(existingRPDItems.map(item => [createRPDKey(item), item]));
+    const existingByLooseKey = new Map<string, RPDItem[]>();
+
+    existingRPDItems.forEach(item => {
+      const looseKey = createRPDLooseKey(item);
+      const arr = existingByLooseKey.get(looseKey) || [];
+      arr.push(item);
+      existingByLooseKey.set(looseKey, arr);
+    });
 
     const matched: Partial<RPDItem>[] = [];
     const unmatched: Partial<RPDItem>[] = [];
@@ -507,7 +515,20 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
     newItems.forEach(item => {
       const id = normalizeToken(item.id);
       const key = createRPDKey(item);
-      const existing = (id ? existingById.get(id) : undefined) || existingByKey.get(key);
+      const looseKey = createRPDLooseKey(item);
+
+      let existing = (id ? existingById.get(id) : undefined) || existingByKey.get(key);
+
+      // Fallback matching to prevent false "Unknown/New" due minor sub_komponen variants
+      if (!existing) {
+        const looseCandidates = existingByLooseKey.get(looseKey) || [];
+        if (looseCandidates.length === 1) {
+          existing = looseCandidates[0];
+        } else if (looseCandidates.length > 1) {
+          const targetPagu = Number(item.total_pagu || 0);
+          existing = looseCandidates.find(c => Number(c.total_pagu || 0) === targetPagu) || looseCandidates[0];
+        }
+      }
 
       if (!existing) {
         unmatched.push(item);
