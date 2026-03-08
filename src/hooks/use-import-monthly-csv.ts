@@ -270,6 +270,17 @@ export const useImportMonthlyCSV = ({
 
         setParseProgress('Validasi hasil matching...');
 
+        const totalPeriodeIniCSV = parsedData.items.reduce((sum, item) => sum + (Number(item.periodeIni) || 0), 0);
+        const totalPeriodeIniMatched = matchResult.matched_items.reduce((sum, item) => sum + (Number(item.item.periodeIni) || 0), 0);
+        const totalPeriodeIniUnmatched = matchResult.not_matched_items.reduce((sum, item) => sum + (Number(item.item.periodeIni) || 0), 0);
+
+        console.log('[useImportMonthlyCSV] Periode Ini totals check:', {
+          csv: totalPeriodeIniCSV,
+          matched: totalPeriodeIniMatched,
+          unmatched: totalPeriodeIniUnmatched,
+          gap: totalPeriodeIniCSV - totalPeriodeIniMatched,
+        });
+
         // Validation
         if (matchResult.matched === 0) {
           errors.push({
