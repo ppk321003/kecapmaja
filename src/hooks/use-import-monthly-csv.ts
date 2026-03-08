@@ -234,6 +234,7 @@ export const useImportMonthlyCSV = ({
         ambiguousTextKey: budgetItemTextDuplicates.size,
         byLooseKey: budgetItemLooseMap.size,
         ambiguousLooseKey: budgetItemLooseDuplicates.size,
+        trioBuckets: budgetItemTrioMap.size,
       });
 
       // Match priority: ID first, then composite key fallback
