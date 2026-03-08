@@ -334,6 +334,8 @@ export const useImportMonthlyCSV = ({
       });
 
       // Match priority: ID first, then composite key fallback
+      const matchedBudgetIds = new Set<string>();
+
       dedupedParsedItems.forEach((parsedItem, idx) => {
         const normalizedParsedId = normalizeToken(parsedItem.id);
         const key = createUniqueKey(parsedItem);
