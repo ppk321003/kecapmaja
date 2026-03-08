@@ -467,7 +467,32 @@ export const useImportMonthlyCSV = ({
           }
         }
 
-        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic || byIdPrefix6;
+        let byIdPrefixNoSub: BudgetItem | undefined;
+        if (!byId && !byKey && !byText && !byHierarchy && !byLoose && !byHeuristic && !byIdPrefix6) {
+          const parsedPrefixNoSub = getIdPrefixWithoutSubKomponen(parsedItem.id);
+          const noSubCandidates = (parsedPrefixNoSub ? budgetItemIdPrefixNoSubMap.get(parsedPrefixNoSub) || [] : [])
+            .filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id)));
+
+          if (noSubCandidates.length === 1) {
+            byIdPrefixNoSub = noSubCandidates[0];
+          } else if (noSubCandidates.length > 1) {
+            const scoredNoSub = noSubCandidates
+              .map((candidate) => ({
+                candidate,
+                score: getUraianSimilarity(candidate.uraian, parsedItem.uraian),
+              }))
+              .sort((a, b) => b.score - a.score);
+
+            if (scoredNoSub[0] && scoredNoSub[0].score >= 0.62) {
+              const gapWithSecond = scoredNoSub[1] ? scoredNoSub[0].score - scoredNoSub[1].score : scoredNoSub[0].score;
+              if (gapWithSecond >= 0.08) {
+                byIdPrefixNoSub = scoredNoSub[0].candidate;
+              }
+            }
+          }
+        }
+
+        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic || byIdPrefix6 || byIdPrefixNoSub;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
