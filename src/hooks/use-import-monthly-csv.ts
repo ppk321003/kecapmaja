@@ -537,13 +537,22 @@ export const useImportMonthlyCSV = ({
         }
       });
 
+      const multiMappedBudgetItems = Array.from(matchedBudgetUsage.entries())
+        .filter(([, count]) => count > 1)
+        .sort((a, b) => b[1] - a[1]);
+
       console.log('[useImportMonthlyCSV] Matching complete:', {
         parsedOriginal: parsedData.items.length,
         parsedAfterDedup: dedupedParsedItems.length,
         matched: result.matched,
         notMatched: result.notMatched,
         total: result.matched + result.notMatched,
+        multiMappedBudgetItems: multiMappedBudgetItems.length,
       });
+
+      if (multiMappedBudgetItems.length > 0) {
+        console.log('[useImportMonthlyCSV] Budget IDs matched by multiple parsed rows:', multiMappedBudgetItems.slice(0, 10));
+      }
 
       const programCounts: Record<string, { matched?: number; unmatched?: number; kegiatan: Set<string> }> = {};
       result.matched_items.forEach(item => {
