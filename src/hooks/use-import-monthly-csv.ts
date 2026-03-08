@@ -285,6 +285,8 @@ export const useImportMonthlyCSV = ({
         byId: budgetItemIdMap.size,
         byTextKey: budgetItemTextMap.size,
         ambiguousTextKey: budgetItemTextDuplicates.size,
+        byHierarchyKey: budgetItemHierarchyMap.size,
+        ambiguousHierarchyKey: budgetItemHierarchyDuplicates.size,
         byLooseKey: budgetItemLooseMap.size,
         ambiguousLooseKey: budgetItemLooseDuplicates.size,
         trioBuckets: budgetItemTrioMap.size,
