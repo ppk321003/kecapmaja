@@ -758,7 +758,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                       {months.map((m, i) => (
                         <TableHead key={m} className="text-right py-2 px-3 font-semibold">{monthNames[i]}</TableHead>
                       ))}
-                      <TableHead className="text-right py-2 px-3 font-semibold">Total RPD</TableHead>
+                      <TableHead className="text-right py-2 px-3 font-semibold">Total Realisasi</TableHead>
                       <TableHead className="text-right py-2 px-3 font-semibold">Sisa</TableHead>
                     </TableRow>
                   </TableHeader>
