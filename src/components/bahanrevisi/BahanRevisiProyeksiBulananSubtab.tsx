@@ -633,7 +633,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
               <div>
                 <div className="text-sm font-semibold">Hasil QA Perbandingan</div>
                 <div className="text-xs text-slate-700">Total Budget (jumlah_menjadi): {formatCurrencyNoRp(qaResult.budgetTotal)}</div>
-                <div className="text-xs text-slate-700">Total Proyeksi (RPD): {formatCurrencyNoRp(qaResult.proyeksiTotal)}</div>
+                <div className="text-xs text-slate-700">Total Realisasi: {formatCurrencyNoRp(qaResult.proyeksiTotal)}</div>
                 <div className={`text-xs font-semibold ${qaResult.diff === 0 ? 'text-green-600' : 'text-red-600'}`}>Selisih: {formatCurrencyNoRp(qaResult.diff)}</div>
               </div>
               <div>
