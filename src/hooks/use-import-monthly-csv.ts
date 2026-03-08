@@ -352,7 +352,10 @@ export const useImportMonthlyCSV = ({
 
         let byHeuristic: BudgetItem | undefined;
         if (!byId && !byKey && !byText && !byHierarchy && !byLoose && trioKey) {
-          const trioCandidates = budgetItemTrioMap.get(trioKey) || [];
+          const trioCandidates = budgetItemTrioMap
+            .get(trioKey)
+            ?.filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id))) || [];
+
           const closeCandidates = trioCandidates.filter((candidate) =>
             isCloseUraian(candidate.uraian, parsedItem.uraian)
           );
