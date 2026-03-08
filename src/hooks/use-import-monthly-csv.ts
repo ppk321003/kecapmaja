@@ -65,6 +65,7 @@ export const useImportMonthlyCSV = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importErrors, setImportErrors] = useState<ImportError[]>([]);
   const [parseProgress, setParseProgress] = useState<string>('');
+  const [lastImportAudit, setLastImportAudit] = useState<ImportAuditSummary | null>(null);
 
   const matching = useCallback(
     (parsedData: ParsedMonthlyData): MatchResult => {
