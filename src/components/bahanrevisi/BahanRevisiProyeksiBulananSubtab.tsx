@@ -369,7 +369,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
 
   // Export helpers using SheetJS and html2canvas + jsPDF
   const downloadExcel = () => {
-    const headers = ['Nama', 'Total Pagu', ...monthNames, 'Total RPD', 'Sisa'];
+    const headers = ['Nama', 'Total Pagu', ...monthNames, 'Total Realisasi', 'Sisa'];
     const wsData: any[][] = [headers];
     data.forEach(d => {
       wsData.push([d.name, d.total_pagu || 0, ...months.map(m => d.months[m] || 0), d.total || 0, d.sisa_anggaran || 0]);
@@ -447,7 +447,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                 Total pagu anggaran sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalBudget)}</strong>.
               </p>
               <p className="text-sm text-blue-900 leading-relaxed mt-2">
-                Sampai dengan periode berjalan, total realisasi pengeluaran dana (RPD) tercatat sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalYear)}</strong> atau <strong className="text-blue-700">{persentaseSerapan.toFixed(2)}%</strong> dari total pagu.
+                Sampai dengan periode berjalan, total realisasi pengeluaran dana tercatat sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalYear)}</strong> atau <strong className="text-blue-700">{persentaseSerapan.toFixed(2)}%</strong> dari total pagu.
               </p>
               <p className="text-sm text-blue-900 leading-relaxed mt-2">
                 Sisa anggaran yang belum direalisasikan sebesar <strong className="text-blue-700">{formatCurrencyNoRp(sisaAnggaran)}</strong>.
@@ -543,7 +543,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                       <li>Serapan anggaran masih sangat rendah ({persentaseSerapan.toFixed(2)}%). Disarankan agar unit terkait segera meninjau rencana penarikan dana.</li>
                     )}
                     {hasManyZeroMonths && (
-                      <li>Sebagian besar alokasi anggaran belum memiliki rencana penarikan dana. Disarankan agar unit terkait segera menyusun RPD untuk menghindari penumpukan realisasi di akhir tahun.</li>
+                      <li>Sebagian besar alokasi anggaran belum memiliki rencana penarikan dana. Disarankan agar unit terkait segera menyusun rencana realisasi untuk menghindari penumpukan realisasi di akhir tahun.</li>
                     )}
                   </ul>
                 </div>
@@ -633,7 +633,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
               <div>
                 <div className="text-sm font-semibold">Hasil QA Perbandingan</div>
                 <div className="text-xs text-slate-700">Total Budget (jumlah_menjadi): {formatCurrencyNoRp(qaResult.budgetTotal)}</div>
-                <div className="text-xs text-slate-700">Total Proyeksi (RPD): {formatCurrencyNoRp(qaResult.proyeksiTotal)}</div>
+                <div className="text-xs text-slate-700">Total Realisasi: {formatCurrencyNoRp(qaResult.proyeksiTotal)}</div>
                 <div className={`text-xs font-semibold ${qaResult.diff === 0 ? 'text-green-600' : 'text-red-600'}`}>Selisih: {formatCurrencyNoRp(qaResult.diff)}</div>
               </div>
               <div>
@@ -689,7 +689,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                           <YAxis dataKey="name" type="category" width={295} tick={{ fontSize: 10 }} />
                           <Tooltip formatter={(value) => formatCurrencyNoRp(Number(value))} />
                           <Legend />
-                          <Bar dataKey="total" fill="#10b981" name="Total RPD" radius={[0, 8, 8, 0]} />
+                          <Bar dataKey="total" fill="#10b981" name="Total Realisasi" radius={[0, 8, 8, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -711,7 +711,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                     {monthNames.map((mn) => (
                       <div key={mn} className="py-2 px-3 text-right font-semibold">{mn}</div>
                     ))}
-                    <div className="py-2 px-3 text-right font-semibold">Total RPD</div>
+                    <div className="py-2 px-3 text-right font-semibold">Total Realisasi</div>
                     <div className="py-2 px-3 text-right font-semibold">Sisa</div>
                   </div>
                     <div style={{ height: 400 }}>
@@ -758,7 +758,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                       {months.map((m, i) => (
                         <TableHead key={m} className="text-right py-2 px-3 font-semibold">{monthNames[i]}</TableHead>
                       ))}
-                      <TableHead className="text-right py-2 px-3 font-semibold">Total RPD</TableHead>
+                      <TableHead className="text-right py-2 px-3 font-semibold">Total Realisasi</TableHead>
                       <TableHead className="text-right py-2 px-3 font-semibold">Sisa</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -826,7 +826,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                         </th>
                       ))}
                       <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
-                        Total RPD
+                        Total Realisasi
                       </th>
                       <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
                         Sisa
