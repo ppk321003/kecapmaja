@@ -89,7 +89,7 @@ const addBudgetItem = async (sheetId: string, item: Omit<BudgetItem, 'id'>): Pro
 
   const newItem: BudgetItem = {
     ...item,
-    id: generateId(),
+    id: generateDeterministicId(item),
   };
 
   const row = budgetItemToRow(newItem);

@@ -395,7 +395,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
             modified_date: new Date().toISOString(),
           };
         }
-        return { ...newItem, id: `rpd_${Date.now()}` } as RPDItem;
+        return { ...newItem, id: [newItem.program_pembebanan, newItem.kegiatan, '', newItem.komponen_output, newItem.sub_komponen, newItem.akun, newItem.uraian].map(s => (s || '').trim()).join('|') } as RPDItem;
       }) as RPDItem[];
 
       // Upload new items (append to sheet)
