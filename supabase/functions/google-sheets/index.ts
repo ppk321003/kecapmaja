@@ -439,17 +439,17 @@ serve(async (req: Request) => {
     if (operation === 'update') {
       // Support both rowIndex-based update and direct range update
       let updateRange = range || 'Sheet1';
-      
+
       if (rowIndex !== undefined) {
         // Legacy support: if rowIndex is provided, use it with Sheet name
         const sheetName = range?.split('!')[0] || 'Sheet1';
         updateRange = `${sheetName}!A${rowIndex}`;
       }
-      
+
       console.log(`Updating range: ${updateRange}`);
       console.log('Values to update:', JSON.stringify(values));
-      
-      const response = await fetch(
+
+      const data = await fetchGoogleSheetsWithRetry(
         `${baseUrl}/values/${updateRange}?valueInputOption=USER_ENTERED`,
         {
           method: 'PUT',
@@ -458,17 +458,63 @@ serve(async (req: Request) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ values }),
-        }
+        },
+        'Update'
       );
-      const data = await response.json();
-      console.log('Update response:', JSON.stringify(data));
-      
-      if (!response.ok) {
-        console.error('Update failed:', data);
-        throw new Error(`Update failed: ${JSON.stringify(data)}`);
-      }
-      
+
       return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (operation === 'batch-update') {
+      const updates = Array.isArray(body.updates) ? body.updates : [];
+
+      if (updates.length === 0) {
+        return new Response(JSON.stringify({ error: 'Missing required field: updates[]' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const chunkSize = 200;
+      let totalChunks = 0;
+      let totalUpdatedCells = 0;
+
+      for (let i = 0; i < updates.length; i += chunkSize) {
+        const chunk = updates.slice(i, i + chunkSize);
+        totalChunks += 1;
+
+        const data = await fetchGoogleSheetsWithRetry(
+          `${baseUrl}/values:batchUpdate`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              valueInputOption: 'USER_ENTERED',
+              data: chunk,
+            }),
+          },
+          `Batch update chunk ${totalChunks}`
+        );
+
+        totalUpdatedCells += Number(data?.totalUpdatedCells || 0);
+
+        // Small pause to reduce chance of burst limit
+        if (i + chunkSize < updates.length) {
+          await sleep(250);
+        }
+      }
+
+      return new Response(JSON.stringify({
+        ok: true,
+        chunks: totalChunks,
+        totalUpdates: updates.length,
+        totalUpdatedCells,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
