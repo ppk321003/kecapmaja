@@ -348,7 +348,14 @@ export const useImportMonthlyCSV = ({
           budgetItemIdPrefixMap.set(idPrefix6, existingByPrefix);
         }
 
-        if (idx < 3) {
+
+        const idPrefixNoSub = getIdPrefixWithoutSubKomponen(item.id);
+        if (idPrefixNoSub) {
+          const existingByPrefixNoSub = budgetItemIdPrefixNoSubMap.get(idPrefixNoSub) || [];
+          existingByPrefixNoSub.push(item);
+          budgetItemIdPrefixNoSubMap.set(idPrefixNoSub, existingByPrefixNoSub);
+        }
+
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
             id: item.id,
             program_pembebanan: item.program_pembebanan,
