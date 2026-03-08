@@ -366,9 +366,16 @@ export const useImportMonthlyCSV = ({
       });
 
       // Match priority: ID first, then composite key fallback
+      // IMPORTANT: process non-zero period rows first so meaningful monthly values
+      // don't lose candidates to zero-value rows when matchedBudgetIds is enforced.
       const matchedBudgetIds = new Set<string>();
+      const parsedItemsForMatching = [...dedupedParsedItems].sort((a, b) => {
+        const bVal = Number(b.periodeIni) || 0;
+        const aVal = Number(a.periodeIni) || 0;
+        return bVal - aVal;
+      });
 
-      dedupedParsedItems.forEach((parsedItem, idx) => {
+      parsedItemsForMatching.forEach((parsedItem, idx) => {
         const normalizedParsedId = normalizeToken(parsedItem.id);
         const key = createUniqueKey(parsedItem);
         const textKey = buildTextMatchKey(parsedItem as any);
@@ -486,7 +493,7 @@ export const useImportMonthlyCSV = ({
         }
 
         if ((idx + 1) % 100 === 0) {
-          console.log(`[useImportMonthlyCSV] Matching progress: ${idx + 1}/${dedupedParsedItems.length}, Matched so far: ${result.matched}`);
+          console.log(`[useImportMonthlyCSV] Matching progress: ${idx + 1}/${parsedItemsForMatching.length}, Matched so far: ${result.matched}`);
         }
       });
 
