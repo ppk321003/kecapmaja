@@ -514,6 +514,8 @@ export const useImportMonthlyCSV = ({
               ? 'heuristic-uraian'
               : byIdPrefix6
               ? 'id-prefix6'
+              : byIdPrefixNoSub
+              ? 'id-prefix-no-sub'
               : 'none',
           });
         }
