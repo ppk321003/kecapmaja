@@ -467,8 +467,7 @@ export const useImportMonthlyCSV = ({
         let byIdPrefixNoSub: BudgetItem | undefined;
         if (!byId && !byKey && !byText && !byHierarchy && !byLoose && !byHeuristic && !byIdPrefix6) {
           const parsedPrefixNoSub = getIdPrefixWithoutSubKomponen(parsedItem.id);
-          const noSubCandidates = (parsedPrefixNoSub ? budgetItemIdPrefixNoSubMap.get(parsedPrefixNoSub) || [] : [])
-            .filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id)));
+          const noSubCandidates = parsedPrefixNoSub ? budgetItemIdPrefixNoSubMap.get(parsedPrefixNoSub) || [] : [];
 
           if (noSubCandidates.length === 1) {
             byIdPrefixNoSub = noSubCandidates[0];
