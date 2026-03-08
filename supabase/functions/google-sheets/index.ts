@@ -631,35 +631,36 @@ serve(async (req: Request) => {
         // Get unmatched items from body
         const unmatchedItemsArg = (body.unmatchedItems || []) as any[];
 
-        // Step 3: Create versioned sheet if it doesn't exist
-        console.log(`📋 Checking if ${versionedSheetName} exists...`);
-        
+        // Step 3: Ensure versioned sheet exists and ALWAYS has header
+        console.log(`📋 Ensuring ${versionedSheetName} exists and has header...`);
+
         let versionedSheetExists = false;
+        let versionedSheetHasHeader = false;
+
         try {
-          // Try to read the versioned sheet
-          const versionedReadResponse = await fetch(
-            `${baseUrl}/values/${versionedSheetName}`,
+          const headerCheckResponse = await fetch(
+            `${baseUrl}/values/${versionedSheetName}!1:1`,
             {
               headers: { Authorization: `Bearer ${accessToken}` },
             }
           );
-          
-          if (versionedReadResponse.ok) {
-            const versionedData = await versionedReadResponse.json();
-            if (versionedData.values && versionedData.values.length > 0) {
-              versionedSheetExists = true;
-              console.log(`✓ ${versionedSheetName} already exists with ${versionedData.values.length} rows`);
-            }
+
+          if (headerCheckResponse.ok) {
+            versionedSheetExists = true;
+            const headerCheckData = await headerCheckResponse.json();
+            versionedSheetHasHeader = Array.isArray(headerCheckData.values?.[0]) && headerCheckData.values[0].length > 0;
+            console.log(`✓ ${versionedSheetName} exists (${versionedSheetHasHeader ? 'header found' : 'header missing'})`);
+          } else {
+            console.log(`ℹ️ ${versionedSheetName} does not exist yet (status ${headerCheckResponse.status})`);
           }
         } catch (err) {
-          console.log(`⚠️ Could not check ${versionedSheetName}, will create if needed`);
+          console.log(`⚠️ Could not verify ${versionedSheetName}, will attempt create/repair`);
         }
 
-        // If versioned sheet doesn't exist, create it with header
+        // Create sheet if it doesn't exist
         if (!versionedSheetExists) {
           console.log(`📊 Creating new sheet: ${versionedSheetName}`);
           try {
-            // Use batchUpdate API to add a new sheet
             const createSheetResponse = await fetch(
               `${baseUrl.replace('/values', '')}:batchUpdate`,
               {
@@ -685,39 +686,12 @@ serve(async (req: Request) => {
                 }),
               }
             );
-            
+
             const createResult = await createSheetResponse.json();
             if (createSheetResponse.ok && createResult.replies && createResult.replies[0]) {
               console.log(`✅ Created sheet: ${versionedSheetName}`);
               versionedSheetExists = true;
-              
-              // Now insert the header row
-              try {
-                const endColumnLetter = indexToColumnLetter(headers.length - 1);
-                const headerInsertResponse = await fetch(
-                  `${baseUrl}/values/${versionedSheetName}!A1:${endColumnLetter}1`,
-                  {
-                    method: 'PUT',
-                    headers: {
-                      Authorization: `Bearer ${accessToken}`,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      values: [headers],
-                      majorDimension: 'ROWS',
-                    }),
-                  }
-                );
-                
-                if (headerInsertResponse.ok) {
-                  console.log(`✅ Inserted header row into ${versionedSheetName}`);
-                } else {
-                  const headerError = await headerInsertResponse.json();
-                  console.warn(`⚠️ Failed to insert header:`, headerError.error?.message);
-                }
-              } catch (headerError) {
-                console.warn(`⚠️ Error inserting header:`, headerError);
-              }
+              versionedSheetHasHeader = false;
             } else {
               const errorMsg = createResult?.error?.message || 'Unknown error';
               console.warn(`⚠️ Failed to create sheet:`, errorMsg);
@@ -725,6 +699,37 @@ serve(async (req: Request) => {
             }
           } catch (error) {
             console.warn(`⚠️ Error creating sheet:`, error);
+          }
+        }
+
+        // Insert/repair header when missing (including pre-existing empty sheet)
+        if (versionedSheetExists && !versionedSheetHasHeader) {
+          try {
+            const endColumnLetter = indexToColumnLetter(headers.length - 1);
+            const headerInsertResponse = await fetch(
+              `${baseUrl}/values/${versionedSheetName}!A1:${endColumnLetter}1?valueInputOption=USER_ENTERED`,
+              {
+                method: 'PUT',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  values: [headers],
+                  majorDimension: 'ROWS',
+                }),
+              }
+            );
+
+            if (headerInsertResponse.ok) {
+              console.log(`✅ Header row ensured for ${versionedSheetName}`);
+              versionedSheetHasHeader = true;
+            } else {
+              const headerError = await headerInsertResponse.json();
+              console.warn(`⚠️ Failed to ensure header:`, headerError.error?.message);
+            }
+          } catch (headerError) {
+            console.warn(`⚠️ Error ensuring header:`, headerError);
           }
         }
 
@@ -1489,7 +1494,7 @@ serve(async (req: Request) => {
             console.log(`📤 Appending ${rpdCreateRows.length} new RPD items...`);
             
             const rpdAppendResponse = await fetch(
-              `${baseUrl}/values/rpd_items:append`,
+              `${baseUrl}/values/rpd_items:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
               {
                 method: 'POST',
                 headers: {
@@ -1498,8 +1503,6 @@ serve(async (req: Request) => {
                 },
                 body: JSON.stringify({
                   values: rpdCreateRows,
-                  valueInputOption: 'RAW',
-                  insertDataOption: 'INSERT_ROWS',
                 }),
               }
             );
