@@ -343,20 +343,35 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                 }
               }
 
+              // Capture possible continuation text fragment (e.g. page break split: "... Desa" + "cantik")
+              const continuationText = !uraian
+                ? parts.find((part) => {
+                    const cleaned = String(part || '').trim();
+                    if (!cleaned) return false;
+                    if (/^\d+[.,]?\d*$/.test(cleaned)) return false;
+                    if (/^\d{1,6}$/.test(cleaned)) return false;
+                    if (cleaned.toLowerCase().includes('lock pagu') || cleaned.toLowerCase().includes('spm koreksi')) return false;
+                    return /[a-zA-Z]/.test(cleaned);
+                  }) || ''
+                : '';
+
               // CONTINUATION LINE HANDLING:
-              // If no uraian prefix found (no "000XXX." pattern), this is a continuation line
-              // from a *Lock Pagu interruption. Merge values into the PREVIOUS item.
+              // If no uraian prefix found, treat as continuation of previous item.
               if (!uraian && items.length > 0) {
                 const lastItem = items[items.length - 1];
-                // Only merge if this continuation has non-zero values
-                // Continuation lines typically duplicate the previous item's values,
-                // so we DON'T add them - the previous item already has the correct values.
-                // However, some continuations have DIFFERENT values (split across lines).
-                // Check: if the previous item's periodeIni is different, this is a true split.
+
+                // Merge continuation description text when available
+                if (continuationText) {
+                  const normalizedLast = String(lastItem.uraian || '').toLowerCase().trim();
+                  const normalizedCont = String(continuationText).toLowerCase().trim();
+                  if (normalizedCont && !normalizedLast.includes(normalizedCont)) {
+                    lastItem.uraian = `${String(lastItem.uraian || '').trim()} ${continuationText}`.replace(/\s+/g, ' ').trim();
+                  }
+                }
+
+                // Continuation lines may contain values split by page break.
+                // Never add values (to avoid double count), only fill missing zeros.
                 if (periodeIni > 0 && periodeIni !== lastItem.periodeIni) {
-                  // This continuation has a different value - likely a split item
-                  // The previous item may have had 0 or a different value
-                  // Use the continuation's value if the previous was 0
                   if (lastItem.periodeIni === 0) {
                     lastItem.periodeIni = periodeIni;
                     console.log(`[parseMonthlyCSV] Continuation merged periodeIni=${periodeIni} into previous item: ${lastItem.uraian.substring(0, 40)}`);
