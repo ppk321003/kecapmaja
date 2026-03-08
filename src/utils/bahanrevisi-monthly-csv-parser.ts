@@ -500,10 +500,11 @@ function normalizeForMatching(value: any): string {
   if (!value) return '';
   
   let str = String(value)
-    .toUpperCase() // ALL cases → uppercase (gg=GG, bma=BMA, bm=BM)
-    .trim() // Remove leading/trailing spaces
-    .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
-    .replace(/[\s_-]+/g, '_'); // Normalize separators to underscore (_)
+    .replace(/^'+/, '')   // Strip leading apostrophes (Google Sheets text prefix)
+    .toUpperCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[\s_-]+/g, '_');
   
   // Normalize numbers with suffix like "051_GG" or "051 GG"
   if (/^\d+(_|$)/.test(str)) {

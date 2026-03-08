@@ -323,35 +323,13 @@ export const useImportMonthlyCSV = ({
           };
         });
 
-        // RPD updates for UNMATCHED items too - so their periodeIni is not lost
-        const rpdUnmatchedData = matchResult.not_matched_items.map((unmatch) => {
-          return {
-            item: {
-              id: unmatch.item.id,
-              program_pembebanan: unmatch.item.program,
-              kegiatan: unmatch.item.kegiatan,
-              rincian_output: unmatch.item.rincianOutput,
-              komponen_output: unmatch.item.komponenOutput,
-              sub_komponen: unmatch.item.subKomponen,
-              akun: unmatch.item.akun,
-              uraian: unmatch.item.uraian,
-            },
-            bulan: parsedData.bulan,
-            bulanColumn: bulanColumn,
-            periodeIni: unmatch.item.periodeIni,
-          };
-        });
+        // DO NOT send unmatched items to rpd_items or budget_items main sheet
+        // Unmatched items go ONLY to the versioned sheet and separate unmatched sheet
+        // This prevents pagu inflation from accumulating "New" items each upload cycle
+        const rpdUnmatchedData: any[] = [];
 
-        console.log('[useImportMonthlyCSV] RPD update data prepared for bulan', parsedData.bulan, 'column', bulanColumn);
-        console.log('[useImportMonthlyCSV] Sample RPD update:', {
-          item_id: rpdUpdateData[0]?.item.id,
-          periodeIni: rpdUpdateData[0]?.periodeIni,
-          bulanColumn: rpdUpdateData[0]?.bulanColumn,
-        });
-
-        // Prepare unmatched items untuk insert ke versioned/main sheet
+        // Prepare unmatched items for VERSIONED/UNMATCHED sheet ONLY (not main budget_items)
         const unmatchedData = matchResult.not_matched_items.map((item) => {
-          // Use deterministic ID dari parsed item (bukan random ID)
           return {
             id: item.item.id,
             program_pembebanan: item.item.program,
@@ -361,26 +339,26 @@ export const useImportMonthlyCSV = ({
             sub_komponen: item.item.subKomponen,
             akun: item.item.akun,
             uraian: item.item.uraian,
-            periodeIni: item.item.periodeIni, // penting untuk pembuatan rpd_items unmatched
-            volume_semula: 1,
-            satuan_semula: 'OK',
-            harga_satuan_semula: item.item.sisaAnggaran,
-            jumlah_semula: item.item.sisaAnggaran,
-            volume_menjadi: 1,
-            satuan_menjadi: 'OK',
-            harga_satuan_menjadi: item.item.sisaAnggaran,
-            jumlah_menjadi: item.item.sisaAnggaran,
+            periodeIni: item.item.periodeIni,
+            volume_semula: 0,
+            satuan_semula: '',
+            harga_satuan_semula: 0,
+            jumlah_semula: 0,
+            volume_menjadi: 0,
+            satuan_menjadi: '',
+            harga_satuan_menjadi: 0,
+            jumlah_menjadi: 0,
             selisih: 0,
             sisa_anggaran: item.item.sisaAnggaran,
             blokir: 0,
-            status: 'new',
+            status: 'UNMATCHED',
             approved_by: '',
             approved_date: '',
             rejected_date: '',
             submitted_by: 'import',
             submitted_date: formatDateIndonesia(new Date().toISOString()),
             updated_date: formatDateIndonesia(new Date().toISOString()),
-            notes: `[Kegiatan Baru] ${item.reason}`,
+            notes: `[Unmatched] ${item.reason}`,
             catatan_ppk: '',
           };
         });
