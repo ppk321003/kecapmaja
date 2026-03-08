@@ -435,7 +435,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       // Prepare items to update (matched) with past-month protection
       const normalizeId = (value: unknown) => String(value ?? '').trim().replace(/^'+/, '');
 
-      const itemsToUpdate = matched.map(newItem => {
+      const itemsToUpdate = changed.map(newItem => {
         const newItemId = normalizeId(newItem.id);
         const existing = existingRPDItems.find(e => normalizeId(e.id) === newItemId)
           || existingRPDItems.find(e => createRPDKey(e) === createRPDKey(newItem));
