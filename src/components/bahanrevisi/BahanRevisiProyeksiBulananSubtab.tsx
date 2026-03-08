@@ -77,27 +77,31 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   const [detailsModalCurrentPage, setDetailsModalCurrentPage] = useState(0);
   const itemsPerPage = 20;
 
-  // Name maps to match Ringkasan behavior
-  const programNameMap = useMemo(() => Object.fromEntries(programs.map(p => [p.id, `${p.id} - ${p.name}`])), [programs]);
-  const kegiatanNameMap = useMemo(() => Object.fromEntries(kegiatans.map(k => [k.id, `${k.id} - ${k.name}`])), [kegiatans]);
-  const rincianNameMap = useMemo(() => Object.fromEntries(rincianOutputs.map(r => [r.id, `${r.id} - ${r.name}`])), [rincianOutputs]);
-  const komponenNameMap = useMemo(() => Object.fromEntries(komponenOutputs.map(k => [k.id, `${k.id} - ${k.name}`])), [komponenOutputs]);
-  const subKomponenNameMap = useMemo(() => Object.fromEntries(subKomponen.map(s => [s.id, `${s.id} - ${s.name}`])), [subKomponen]);
-  const akunNameMap = useMemo(() => Object.fromEntries(akuns.map(a => [a.id, `${a.id} - ${a.name}`])), [akuns]);
+  // Name maps to match Ringkasan behavior - map by both id and code for robust matching
+  const programNameMap = useMemo(() => Object.fromEntries(programs.flatMap(p => [[p.id, `${p.id} - ${p.name}`], [p.code, `${p.code} - ${p.name}`]])), [programs]);
+  const kegiatanNameMap = useMemo(() => Object.fromEntries(kegiatans.flatMap(k => [[k.id, `${k.id} - ${k.name}`], [k.code, `${k.code} - ${k.name}`]])), [kegiatans]);
+  const rincianNameMap = useMemo(() => Object.fromEntries(rincianOutputs.flatMap(r => [[r.id, `${r.id} - ${r.name}`], [r.code, `${r.code} - ${r.name}`]])), [rincianOutputs]);
+  const komponenNameMap = useMemo(() => Object.fromEntries(komponenOutputs.flatMap(k => [[k.id, `${k.id} - ${k.name}`], [k.code, `${k.code} - ${k.name}`]])), [komponenOutputs]);
+  const subKomponenNameMap = useMemo(() => Object.fromEntries(subKomponen.flatMap(s => [[s.id, `${s.code} - ${s.name}`], [s.code, `${s.code} - ${s.name}`]])), [subKomponen]);
+  const akunNameMap = useMemo(() => Object.fromEntries(akuns.flatMap(a => [[a.id, `${a.id} - ${a.name}`], [a.code, `${a.code} - ${a.name}`]])), [akuns]);
+
+  // Strip leading apostrophes from codes (Google Sheets artifact)
+  const cleanCode = (code: string) => code.replace(/^'+/, '');
 
   const formatName = (code: string | undefined, type: string) => {
     if (!code) return 'Unknown';
+    const clean = cleanCode(code);
     switch (type) {
-      case 'program': return programNameMap[code] || code;
-      case 'kegiatan': return kegiatanNameMap[code] || code;
+      case 'program': return programNameMap[clean] || clean;
+      case 'kegiatan': return kegiatanNameMap[clean] || clean;
       case 'rincian_output': {
-        const rincian = rincianOutputs.find(r => r.code === code);
-        return rincian ? `${rincian.code} - ${rincian.name}` : code;
+        const rincian = rincianOutputs.find(r => r.code === clean);
+        return rincian ? `${rincian.code} - ${rincian.name}` : clean;
       }
-      case 'komponen_output': return komponenNameMap[code] || code;
-      case 'sub_komponen': return subKomponenNameMap[code] || code;
-      case 'akun': return akunNameMap[code] || code;
-      default: return code;
+      case 'komponen_output': return komponenNameMap[clean] || clean;
+      case 'sub_komponen': return subKomponenNameMap[clean] || clean;
+      case 'akun': return akunNameMap[clean] || clean;
+      default: return clean;
     }
   };
 
@@ -112,7 +116,8 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   const aggregateBy = (field: keyof RPDItem) => {
     const map = new Map<string, GroupedRow>();
     items.forEach(item => {
-      const key = String(item[field] || 'Unknown');
+      const rawKey = String(item[field] || 'Unknown');
+      const key = cleanCode(rawKey);
       if (!map.has(key)) {
         map.set(key, {
           id: key,
