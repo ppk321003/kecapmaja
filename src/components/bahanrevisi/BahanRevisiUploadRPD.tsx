@@ -320,7 +320,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       // Create item jika: ada akun, ada uraian, dan nilai > 0
       if (lastAkun && detailUraian && totalRPD > 0) {
         const item: Partial<RPDItem> = {
-          id: `rpd_${Date.now()}_${i}_${Math.random()}`,
+          id: [currentProgram, currentKegiatan, '', currentKomponen, currentSubKomponen, lastAkun, detailUraian].map(s => (s || '').trim()).join('|'),
           program_pembebanan: currentProgram,
           kegiatan: currentKegiatan,
           komponen_output: currentKomponen,
