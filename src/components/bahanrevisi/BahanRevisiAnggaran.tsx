@@ -438,24 +438,26 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
           {/* Tabs */}
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 bg-slate-200">
+            <TabsList className={`grid w-full ${user?.role === 'Pejabat Pembuat Komitmen' ? 'grid-cols-4' : 'grid-cols-3'} bg-slate-200`}>
               <TabsTrigger value="anggaran" className="text-sm">
                 Anggaran
                 <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
                   {itemsVisibleByHideZero.length}
                 </span>
               </TabsTrigger>
-              <TabsTrigger value="rpd" className="text-sm">
-                Rencana Penarikan Dana
-                <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
-                  {rpdVisibleItems.length}
-                </span>
-              </TabsTrigger>
+              {user?.role === 'Pejabat Pembuat Komitmen' && (
+                <TabsTrigger value="rpd" className="text-sm">
+                  Rencana Penarikan Dana
+                  <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
+                    {rpdVisibleItems.length}
+                  </span>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="ringkasan" className="text-sm">
                 Ringkasan Revisi
               </TabsTrigger>
-              <TabsTrigger value="proyeksi" className="text-sm">
-                Proyeksi Bulanan
+              <TabsTrigger value="realisasi" className="text-sm">
+                Realisasi Bulanan
               </TabsTrigger>
             </TabsList>
 
@@ -586,8 +588,8 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
             }
             </TabsContent>
 
-            {/* Tab: Proyeksi Bulanan */}
-            <TabsContent value="proyeksi" className="space-y-4">
+            {/* Tab: Realisasi Bulanan */}
+            <TabsContent value="realisasi" className="space-y-4">
               <BahanRevisiProyeksiBulananSubtab
                   items={rpdVisibleItems}
                   budgetItems={itemsVisibleByHideZero}

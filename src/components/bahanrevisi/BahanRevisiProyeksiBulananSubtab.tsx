@@ -17,7 +17,7 @@ const months = ['jan','feb','mar','apr','mei','jun','jul','aug','sep','oct','nov
 const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 type SummaryViewType =
-  | 'proyeksi'
+  | 'realisasi'
   | 'program_pembebanan'
   | 'kegiatan'
   | 'rincian_output'
@@ -65,7 +65,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   onUploadRPD,
 }) => {
   const { user } = useAuth();
-  const [summaryView, setSummaryView] = useState<SummaryViewType>('proyeksi');
+  const [summaryView, setSummaryView] = useState<SummaryViewType>('realisasi');
   const [qaResult, setQaResult] = useState<{ budgetTotal: number; proyeksiTotal: number; diff: number } | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedDetailGroup, setSelectedDetailGroup] = useState<GroupedRow | null>(null);
@@ -254,7 +254,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
         });
         return Array.from(map.values());
       }
-      case 'proyeksi':
+      case 'realisasi':
       default:
         return items.map(it => ({
           id: it.id,
@@ -367,13 +367,13 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     });
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Proyeksi');
+    XLSX.utils.book_append_sheet(wb, ws, 'Realisasi');
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `proyeksi-bulanan-${summaryView}.xlsx`;
+    a.download = `realisasi-bulanan-${summaryView}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -388,7 +388,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`proyeksi-bulanan-${summaryView}.pdf`);
+    pdf.save(`realisasi-bulanan-${summaryView}.pdf`);
   };
 
   const downloadJPEG = async () => {
@@ -397,7 +397,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     const a = document.createElement('a');
     a.href = dataUrl;
-    a.download = `proyeksi-bulanan-${summaryView}.jpg`;
+    a.download = `realisasi-bulanan-${summaryView}.jpg`;
     a.click();
   };
 
@@ -433,15 +433,15 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
         <Card className="bg-blue-50/50 border-blue-100">
           <CardContent className="pt-6 space-y-4">
             <div>
-              <h2 className="text-lg font-semibold text-blue-900 mb-4">Ringkasan Proyeksi Bulanan</h2>
+              <h2 className="text-lg font-semibold text-blue-900 mb-4">Ringkasan Realisasi Bulanan</h2>
               <p className="text-sm text-blue-900 leading-relaxed">
                 Total pagu anggaran sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalBudget)}</strong>.
               </p>
               <p className="text-sm text-blue-900 leading-relaxed mt-2">
-                Sampai dengan periode proyeksi, total rencana penarikan dana (RPD) tercatat sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalYear)}</strong> atau <strong className="text-blue-700">{persentaseSerapan.toFixed(2)}%</strong> dari total pagu.
+                Sampai dengan periode berjalan, total realisasi pengeluaran dana (RPD) tercatat sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalYear)}</strong> atau <strong className="text-blue-700">{persentaseSerapan.toFixed(2)}%</strong> dari total pagu.
               </p>
               <p className="text-sm text-blue-900 leading-relaxed mt-2">
-                Sisa anggaran yang belum diproyeksikan sebesar <strong className="text-blue-700">{formatCurrencyNoRp(sisaAnggaran)}</strong>.
+                Sisa anggaran yang belum direalisasikan sebesar <strong className="text-blue-700">{formatCurrencyNoRp(sisaAnggaran)}</strong>.
               </p>
             </div>
           </CardContent>
@@ -450,16 +450,16 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
         {/* Kondisi Serapan */}
         <Card className="bg-slate-50/50 border-slate-200">
           <CardContent className="pt-6 space-y-3">
-            <h3 className="text-sm font-semibold text-slate-800">Kondisi Serapan / Proyeksi</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Kondisi Serapan / Realisasi</h3>
             <p className="text-sm text-slate-700 leading-relaxed">
-              Proyeksi penarikan dana masih tergolong{' '}
+              Realisasi pengeluaran dana masih tergolong{' '}
               <strong className={absorbedPercentage > 20 ? 'text-green-600' : absorbedPercentage > 10 ? 'text-amber-600' : 'text-red-600'}>
                 {absorbedPercentage > 20 ? 'sehat' : absorbedPercentage > 10 ? 'cukup' : 'rendah'}
               </strong>{' '}
-              dibandingkan total pagu. Penarikan terbesar direncanakan pada{' '}
+              dibandingkan total pagu. Realisasi terbesar terjadi pada{' '}
               <strong>{dominantMonths[0]?.name || 'bulan tidak tersedia'}</strong>
               {monthsWithZero > 0 && (
-                <>, sementara <strong>{monthsWithZero} bulan</strong> lainnya masih menunjukkan nilai proyeksi Rp 0</>
+                <>, sementara <strong>{monthsWithZero} bulan</strong> lainnya masih menunjukkan nilai realisasi Rp 0</>
               )}.
             </p>
           </CardContent>
@@ -468,7 +468,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
         {/* Bulan dengan Proyeksi Tertinggi - Semua 12 Bulan */}
         <Card className="bg-green-50/50 border-green-100">
           <CardContent className="pt-6">
-            <h3 className="text-sm font-semibold text-green-900 mb-4">Bulan dengan Proyeksi Tertinggi (Semua 12 Bulan)</h3>
+            <h3 className="text-sm font-semibold text-green-900 mb-4">Bulan dengan Realisasi Tertinggi (Semua 12 Bulan)</h3>
             
             <div className="space-y-3">
               {(() => {
@@ -542,18 +542,18 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
           </Card>
         )}
 
-        {/* Risiko Proyeksi */}
+        {/* Risiko Realisasi */}
         <Card className="bg-red-50/50 border-red-100">
           <CardContent className="pt-6">
-            <h3 className="text-sm font-semibold text-red-900 mb-3">Risiko Proyeksi yang Perlu Diperhatikan</h3>
+            <h3 className="text-sm font-semibold text-red-900 mb-3">Risiko Realisasi yang Perlu Diperhatikan</h3>
             <ul className="text-sm text-red-900 space-y-2 list-disc list-inside">
-              <li>Potensi keterlambatan realisasi anggaran jika proyeksi tidak sesuai dengan implementasi sebenarnya</li>
+              <li>Potensi penundaan realisasi jika distribusi pengeluaran aktual tidak sesuai dengan rencana</li>
               {(monthsWithZero > 6 || dominantMonths[0]?.total > totalYear * 0.4) && (
-                <li>Penumpukan penarikan pada bulan-bulan tertentu dapat menyebabkan ketidakseimbangan distribusi RPD</li>
+                <li>Penumpukan pengeluaran pada bulan-bulan tertentu dapat menyebabkan ketidakseimbangan dalam serapan anggaran</li>
               )}
-              <li>Ketidakseimbangan distribusi RPD bulanan yang dapat mempengaruhi likuiditas operasional</li>
+              <li>Ketidakseimbangan distribusi realisasi bulanan yang dapat mempengaruhi likuiditas operasional</li>
               {sisaAnggaran > totalBudget * 0.5 && (
-                <li>Proporsi anggaran yang belum diproyeksikan cukup besar, memerlukan perencanaan lebih detail</li>
+                <li>Proporsi anggaran yang belum direalisasikan cukup besar, memerlukan akselerasi dalam pengeluaran</li>
               )}
             </ul>
           </CardContent>
@@ -571,11 +571,11 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
 
   return (
     <div className="w-full space-y-4">
-      <h2 className="text-xl font-semibold text-slate-800">Proyeksi Bulanan</h2>
+      <h2 className="text-xl font-semibold text-slate-800">Realisasi Bulanan</h2>
 
       {/* Button Navigation */}
       <div className="flex flex-wrap gap-2 bg-white p-3 rounded-lg border">
-        <Button variant={summaryView === 'proyeksi' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('proyeksi')} className="text-xs">Ringkasan Proyeksi Bulanan</Button>
+        <Button variant={summaryView === 'realisasi' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('realisasi')} className="text-xs">Ringkasan Realisasi Bulanan</Button>
         <Button variant={summaryView === 'program_pembebanan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('program_pembebanan')} className="text-xs">Program Pembebanan</Button>
         <Button variant={summaryView === 'kegiatan' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('kegiatan')} className="text-xs">Kegiatan</Button>
         <Button variant={summaryView === 'rincian_output' ? 'default' : 'outline'} size="sm" onClick={() => setSummaryView('rincian_output')} className="text-xs">Rincian Output</Button>
