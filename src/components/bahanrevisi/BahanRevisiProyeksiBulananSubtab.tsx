@@ -52,6 +52,7 @@ interface Props {
   akuns?: Akun[];
   sheetId?: string | null;
   onUploadRPD?: () => Promise<void>;
+  onRefresh?: () => void;
 }
 
 const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
