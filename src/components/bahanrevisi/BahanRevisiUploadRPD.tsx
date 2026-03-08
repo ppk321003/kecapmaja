@@ -510,7 +510,10 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
             if (rowId) idToRowIndex.set(rowId, i + 1); // 1-based sheet index
           }
 
-          // Update items
+          // Build batched update requests to avoid Google Sheets write-rate limits
+          const updateRequests: Array<{ range: string; values: (string | number | boolean | null)[][] }> = [];
+          let notFoundCount = 0;
+
           for (const updateItem of itemsToUpdate) {
             const updateId = normalizeId(updateItem.id);
             let rowIdx = updateId ? (idToRowIndex.get(updateId) || -1) : -1;
@@ -538,21 +541,35 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
 
             if (rowIdx > 0) {
               const updateRow = rpdItemToRow(updateItem);
-              const updateResult = await supabase.functions.invoke('google-sheets', {
-                body: {
-                  spreadsheetId: sheetId,
-                  operation: 'update',
-                  range: `rpd_items!A${rowIdx}:Z${rowIdx}`,
-                  values: [updateRow],
-                },
+              updateRequests.push({
+                range: `rpd_items!A${rowIdx}:Z${rowIdx}`,
+                values: [updateRow],
               });
-
-              if (updateResult.error) {
-                console.warn(`Failed to update item ${updateItem.id}:`, updateResult.error);
-              }
             } else {
+              notFoundCount += 1;
               console.warn('[BahanRevisiUploadRPD] Row not found for update item:', updateItem.id);
             }
+          }
+
+          if (updateRequests.length > 0) {
+            const batchResult = await supabase.functions.invoke('google-sheets', {
+              body: {
+                spreadsheetId: sheetId,
+                operation: 'batch-update',
+                updates: updateRequests,
+              },
+            });
+
+            if (batchResult.error) {
+              throw new Error(`Gagal batch update items: ${batchResult.error.message}`);
+            }
+
+            console.log('[BahanRevisiUploadRPD] Batch update success:', {
+              requested: itemsToUpdate.length,
+              updated: updateRequests.length,
+              notFound: notFoundCount,
+              result: batchResult.data,
+            });
           }
         } else {
           throw new Error('Gagal membaca data rpd_items untuk proses update');

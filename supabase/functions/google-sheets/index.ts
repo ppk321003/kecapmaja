@@ -15,7 +15,7 @@ const corsHeaders = {
 
 interface SheetOperation {
   spreadsheetId: string;
-  operation: 'read' | 'append' | 'update' | 'delete' | 'update-sisa-anggaran' | 'health';
+  operation: 'read' | 'append' | 'update' | 'batch-update' | 'delete' | 'update-sisa-anggaran' | 'health';
   range?: string;
   values?: any[][];
   rowIndex?: number;
@@ -24,6 +24,7 @@ interface SheetOperation {
   tahun?: number;
   unmatchedItems?: any[];
   rpdUpdates?: any[];
+  updates?: Array<{ range: string; values: any[][] }>;
 }
 
 async function getAccessToken() {
@@ -297,6 +298,48 @@ function indexToColumnLetter(index: number): string {
   return result;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRateLimited = (status: number, data: any): boolean => {
+  if (status === 429) return true;
+  const reason = data?.error?.details?.find((d: any) => d?.reason)?.reason;
+  return reason === 'RATE_LIMIT_EXCEEDED';
+};
+
+async function fetchGoogleSheetsWithRetry(
+  url: string,
+  init: RequestInit,
+  context: string,
+  maxRetries = 5
+): Promise<any> {
+  let lastError: any = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, init);
+    const data = await response.json().catch(() => ({}));
+
+    if (response.ok) {
+      return data;
+    }
+
+    lastError = data;
+
+    if (isRateLimited(response.status, data) && attempt < maxRetries) {
+      const baseDelayMs = 1000;
+      const backoffMs = Math.min(baseDelayMs * 2 ** attempt, 10000);
+      const jitterMs = Math.floor(Math.random() * 300);
+      const waitMs = backoffMs + jitterMs;
+      console.warn(`⚠️ ${context} rate limited (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${waitMs}ms`);
+      await sleep(waitMs);
+      continue;
+    }
+
+    throw new Error(`${context} failed: ${JSON.stringify(data)}`);
+  }
+
+  throw new Error(`${context} failed after retries: ${JSON.stringify(lastError)}`);
+}
+
 serve(async (req: Request) => {
   console.log('Google Sheets function invoked');
   
@@ -373,9 +416,8 @@ serve(async (req: Request) => {
     if (operation === 'append') {
       console.log(`Appending to range: ${range || 'Sheet1'}`);
       console.log('Values to append:', JSON.stringify(values));
-      console.log('Append URL:', `${baseUrl}/values/${range || 'Sheet1'}:append?valueInputOption=USER_ENTERED`);
-      
-      const response = await fetch(
+
+      const data = await fetchGoogleSheetsWithRetry(
         `${baseUrl}/values/${range || 'Sheet1'}:append?valueInputOption=USER_ENTERED`,
         {
           method: 'POST',
@@ -384,21 +426,10 @@ serve(async (req: Request) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ values }),
-        }
+        },
+        'Append'
       );
-      const data = await response.json();
-      console.log('Append response status:', response.status);
-      console.log('Append response:', JSON.stringify(data));
-      
-      if (!response.ok) {
-        console.error('❌ Append failed with status', response.status);
-        console.error('Append error details:', JSON.stringify(data, null, 2));
-        if (data.error) {
-          console.error('Google Sheets API Error:', data.error.message || JSON.stringify(data.error));
-        }
-        throw new Error(`Append failed: ${data.error?.message || JSON.stringify(data)}`);
-      }
-      
+
       console.log('✅ Append succeeded');
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -408,17 +439,17 @@ serve(async (req: Request) => {
     if (operation === 'update') {
       // Support both rowIndex-based update and direct range update
       let updateRange = range || 'Sheet1';
-      
+
       if (rowIndex !== undefined) {
         // Legacy support: if rowIndex is provided, use it with Sheet name
         const sheetName = range?.split('!')[0] || 'Sheet1';
         updateRange = `${sheetName}!A${rowIndex}`;
       }
-      
+
       console.log(`Updating range: ${updateRange}`);
       console.log('Values to update:', JSON.stringify(values));
-      
-      const response = await fetch(
+
+      const data = await fetchGoogleSheetsWithRetry(
         `${baseUrl}/values/${updateRange}?valueInputOption=USER_ENTERED`,
         {
           method: 'PUT',
@@ -427,17 +458,63 @@ serve(async (req: Request) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ values }),
-        }
+        },
+        'Update'
       );
-      const data = await response.json();
-      console.log('Update response:', JSON.stringify(data));
-      
-      if (!response.ok) {
-        console.error('Update failed:', data);
-        throw new Error(`Update failed: ${JSON.stringify(data)}`);
-      }
-      
+
       return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (operation === 'batch-update') {
+      const updates = Array.isArray(body.updates) ? body.updates : [];
+
+      if (updates.length === 0) {
+        return new Response(JSON.stringify({ error: 'Missing required field: updates[]' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const chunkSize = 200;
+      let totalChunks = 0;
+      let totalUpdatedCells = 0;
+
+      for (let i = 0; i < updates.length; i += chunkSize) {
+        const chunk = updates.slice(i, i + chunkSize);
+        totalChunks += 1;
+
+        const data = await fetchGoogleSheetsWithRetry(
+          `${baseUrl}/values:batchUpdate`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              valueInputOption: 'USER_ENTERED',
+              data: chunk,
+            }),
+          },
+          `Batch update chunk ${totalChunks}`
+        );
+
+        totalUpdatedCells += Number(data?.totalUpdatedCells || 0);
+
+        // Small pause to reduce chance of burst limit
+        if (i + chunkSize < updates.length) {
+          await sleep(250);
+        }
+      }
+
+      return new Response(JSON.stringify({
+        ok: true,
+        chunks: totalChunks,
+        totalUpdates: updates.length,
+        totalUpdatedCells,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
