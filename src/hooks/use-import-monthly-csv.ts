@@ -287,6 +287,13 @@ export const useImportMonthlyCSV = ({
           budgetItemTrioMap.set(trioKey, existing);
         }
 
+        const idPrefix6 = getIdPrefix6(item.id);
+        if (idPrefix6) {
+          const existingByPrefix = budgetItemIdPrefixMap.get(idPrefix6) || [];
+          existingByPrefix.push(item);
+          budgetItemIdPrefixMap.set(idPrefix6, existingByPrefix);
+        }
+
         if (idx < 3) {
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
             id: item.id,
