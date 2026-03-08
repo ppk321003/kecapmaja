@@ -670,23 +670,29 @@ export const useImportMonthlyCSV = ({
 
         setParseProgress('Upload ke Google Sheets...');
 
-        // Prepare data untuk update budget_items - COPY ALL COLUMNS from CSV, not just sisa_anggaran
-        const updateData = matchResult.matched_items.map((match) => {
-          const updated = { ...match.budgetItem };
-          // Update with ALL columns from CSV (periodeIni is for RPD, but other fields go here)
+        // Prepare data untuk update budget_items - dedupe by budget item ID
+        const updateDataMap = new Map<string, BudgetItem>();
+        matchResult.matched_items.forEach((match) => {
+          const budgetId = String(match.budgetItem.id || '').trim();
+          if (!budgetId) return;
+
+          const existing = updateDataMap.get(budgetId);
+          const updated = { ...(existing || match.budgetItem) };
           updated.sub_komponen = match.item.subKomponen;
-          updated.sisa_anggaran = match.item.sisaAnggaran;
+          if ((Number(match.item.sisaAnggaran) || 0) > 0) {
+            updated.sisa_anggaran = match.item.sisaAnggaran;
+          }
           updated.updated_date = formatDateIndonesia(new Date().toISOString());
-          // No need to set periodeIni here - it's only for RPD items
-          
-          // Clean up undefined values to avoid serialization issues
-          Object.keys(updated).forEach(key => {
+
+          Object.keys(updated).forEach((key) => {
             if (updated[key as keyof typeof updated] === undefined) {
               delete updated[key as keyof typeof updated];
             }
           });
-          return updated;
+
+          updateDataMap.set(budgetId, updated);
         });
+        const updateData = Array.from(updateDataMap.values());
 
         // Prepare data untuk update rpd_items (kolom bulan sesuai periode, plus total_rpd & sisa_anggaran auto-calc)
         // Mapping bulan ke kolom: Jan=I(8), Feb=J(9), ..., Dec=T(19)
@@ -711,16 +717,29 @@ export const useImportMonthlyCSV = ({
           setIsImporting(false);
           return;
         }
-        
-        // RPD updates for MATCHED items
-        const rpdUpdateData = matchResult.matched_items.map((match) => {
-          return {
-            item: match.budgetItem,
-            bulan: parsedData.bulan,
-            bulanColumn: bulanColumn,
-            periodeIni: match.item.periodeIni,
-          };
+
+        // RPD updates for MATCHED items - aggregate duplicate mapping to same budget item
+        const rpdUpdateMap = new Map<string, { item: BudgetItem; bulan: number; bulanColumn: string; periodeIni: number }>();
+        matchResult.matched_items.forEach((match) => {
+          const budgetId = String(match.budgetItem.id || '').trim();
+          if (!budgetId) return;
+
+          const key = `${budgetId}|${parsedData.bulan}`;
+          const existing = rpdUpdateMap.get(key);
+          const periodeIniValue = Number(match.item.periodeIni) || 0;
+
+          if (existing) {
+            existing.periodeIni += periodeIniValue;
+          } else {
+            rpdUpdateMap.set(key, {
+              item: match.budgetItem,
+              bulan: parsedData.bulan,
+              bulanColumn,
+              periodeIni: periodeIniValue,
+            });
+          }
         });
+        const rpdUpdateData = Array.from(rpdUpdateMap.values());
 
         // DO NOT send unmatched items to rpd_items or budget_items main sheet
         // Unmatched items go ONLY to the versioned sheet and separate unmatched sheet
