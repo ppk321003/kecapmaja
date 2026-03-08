@@ -170,7 +170,7 @@ export const useImportMonthlyCSV = ({
             kegiatan: parsedItem.kegiatan,
             akun: parsedItem.akun,
             uraian: parsedItem.uraian.substring(0, 40),
-            matchedBy: byId ? 'id' : byKey ? 'key' : 'none',
+            matchedBy: byId ? 'id' : byKey ? 'key' : byLoose ? 'loose-key' : 'none',
           });
         }
 
