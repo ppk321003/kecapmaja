@@ -305,11 +305,11 @@ export const useImportMonthlyCSV = ({
           bulanColumn: rpdUpdateData[0]?.bulanColumn,
         });
 
-        // Prepare unmatched items untuk insert ke versioned sheet
+        // Prepare unmatched items untuk insert ke versioned/main sheet
         const unmatchedData = matchResult.not_matched_items.map((item) => {
           // Use deterministic ID dari parsed item (bukan random ID)
           return {
-            id: item.item.id,  // ← Use deterministic ID dari parser
+            id: item.item.id,
             program_pembebanan: item.item.program,
             kegiatan: item.item.kegiatan,
             rincian_output: item.item.rincianOutput,
@@ -317,6 +317,7 @@ export const useImportMonthlyCSV = ({
             sub_komponen: item.item.subKomponen,
             akun: item.item.akun,
             uraian: item.item.uraian,
+            periodeIni: item.item.periodeIni, // penting untuk pembuatan rpd_items unmatched
             volume_semula: 1,
             satuan_semula: 'OK',
             harga_satuan_semula: item.item.sisaAnggaran,

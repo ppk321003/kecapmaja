@@ -729,14 +729,61 @@ serve(async (req: Request) => {
           }
         }
 
-        // Step 4: APPEND matched items to VERSIONED sheet (for historical record)
-        let appendCountMatched = rowsToInsert.length; // Ini akan di-append nanti
+        // Step 4: APPEND matched + unmatched items to VERSIONED sheet (for historical record)
+        let appendCountMatched = rowsToInsert.length;
         const appendErrors: string[] = [];
 
-        console.log(`📥 Step 1: Appending ${rowsToInsert.length} matched items to ${versionedSheetName}...`);
+        const rowsToInsertVersioned = [...rowsToInsert];
+        if (unmatchedItemsArg.length > 0) {
+          console.log(`📦 Including ${unmatchedItemsArg.length} unmatched items into ${versionedSheetName}`);
+
+          unmatchedItemsArg.forEach((unmatchedItem: any) => {
+            const unmatchedRow = new Array(headers.length).fill('');
+
+            headers.forEach((header: string, colIndex: number) => {
+              const headerLower = header.toLowerCase();
+
+              if (headerLower === 'id') unmatchedRow[colIndex] = unmatchedItem.id || '';
+              else if (headerLower === 'program_pembebanan') unmatchedRow[colIndex] = unmatchedItem.program_pembebanan || '';
+              else if (headerLower === 'kegiatan') unmatchedRow[colIndex] = unmatchedItem.kegiatan || '';
+              else if (headerLower === 'rincian_output') unmatchedRow[colIndex] = unmatchedItem.rincian_output || '';
+              else if (headerLower === 'komponen_output') unmatchedRow[colIndex] = unmatchedItem.komponen_output || '';
+              else if (headerLower === 'sub_komponen') {
+                const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
+                unmatchedRow[colIndex] = normalized ? `'${normalized}` : '';
+              }
+              else if (headerLower === 'akun') unmatchedRow[colIndex] = unmatchedItem.akun || '';
+              else if (headerLower === 'uraian') unmatchedRow[colIndex] = unmatchedItem.uraian || '';
+              else if (headerLower === 'volume_semula') unmatchedRow[colIndex] = unmatchedItem.volume_semula !== undefined ? unmatchedItem.volume_semula : 0;
+              else if (headerLower === 'satuan_semula') unmatchedRow[colIndex] = unmatchedItem.satuan_semula || '';
+              else if (headerLower === 'harga_satuan_semula') unmatchedRow[colIndex] = unmatchedItem.harga_satuan_semula !== undefined ? unmatchedItem.harga_satuan_semula : 0;
+              else if (headerLower === 'jumlah_semula') unmatchedRow[colIndex] = unmatchedItem.jumlah_semula !== undefined ? unmatchedItem.jumlah_semula : 0;
+              else if (headerLower === 'volume_menjadi') unmatchedRow[colIndex] = unmatchedItem.volume_menjadi !== undefined ? unmatchedItem.volume_menjadi : 1;
+              else if (headerLower === 'satuan_menjadi') unmatchedRow[colIndex] = unmatchedItem.satuan_menjadi || '';
+              else if (headerLower === 'harga_satuan_menjadi') unmatchedRow[colIndex] = unmatchedItem.harga_satuan_menjadi !== undefined ? unmatchedItem.harga_satuan_menjadi : 0;
+              else if (headerLower === 'jumlah_menjadi') unmatchedRow[colIndex] = unmatchedItem.jumlah_menjadi !== undefined ? unmatchedItem.jumlah_menjadi : 0;
+              else if (headerLower === 'selisih') unmatchedRow[colIndex] = unmatchedItem.selisih !== undefined ? unmatchedItem.selisih : 0;
+              else if (headerLower === 'sisa_anggaran') unmatchedRow[colIndex] = unmatchedItem.sisa_anggaran !== undefined ? unmatchedItem.sisa_anggaran : 0;
+              else if (headerLower === 'blokir') unmatchedRow[colIndex] = unmatchedItem.blokir !== undefined ? unmatchedItem.blokir : 0;
+              else if (headerLower === 'status') unmatchedRow[colIndex] = 'UNMATCHED';
+              else if (headerLower === 'approved_by') unmatchedRow[colIndex] = '';
+              else if (headerLower === 'approved_date') unmatchedRow[colIndex] = '';
+              else if (headerLower === 'rejected_date') unmatchedRow[colIndex] = '';
+              else if (headerLower === 'submitted_by') unmatchedRow[colIndex] = 'import';
+              else if (headerLower === 'submitted_date') unmatchedRow[colIndex] = unmatchedItem.submitted_date || new Date().toISOString();
+              else if (headerLower === 'updated_date') unmatchedRow[colIndex] = new Date().toISOString();
+              else if (headerLower === 'notes') unmatchedRow[colIndex] = unmatchedItem.notes || 'Import unmatched - perlu review manual';
+              else if (headerLower === 'catatan_ppk') unmatchedRow[colIndex] = unmatchedItem.catatan_ppk || '';
+            });
+
+            rowsToInsertVersioned.push(unmatchedRow);
+          });
+        }
+
+        console.log(`📥 Step 1: Appending ${rowsToInsertVersioned.length} items (matched+unmatched) to ${versionedSheetName}...`);
         
         try {
-          if (rowsToInsert.length > 0) {
+          if (rowsToInsertVersioned.length > 0) {
             const appendResponse = await fetch(
               `${baseUrl}/values/${versionedSheetName}:append?valueInputOption=USER_ENTERED`,
               {
@@ -746,17 +793,18 @@ serve(async (req: Request) => {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  values: rowsToInsert,
+                  values: rowsToInsertVersioned,
                 }),
               }
             );
             
             const appendResult = await appendResponse.json();
             if (appendResponse.ok) {
-              console.log(`✅ Appended ${appendCountMatched} matched items to ${versionedSheetName}`);
+              appendCountMatched = rowsToInsertVersioned.length;
+              console.log(`✅ Appended ${appendCountMatched} items to ${versionedSheetName}`);
             } else {
               const errorMsg = appendResult?.error?.message || 'Unknown error';
-              console.warn(`⚠️ Failed to append matched items to versioned sheet:`, errorMsg);
+              console.warn(`⚠️ Failed to append to versioned sheet:`, errorMsg);
               appendErrors.push(`Versioned sheet append: ${errorMsg}`);
             }
           }
