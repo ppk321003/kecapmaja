@@ -54,6 +54,12 @@ export const useImportMonthlyCSV = ({
       const normalizeToken = (value: unknown) =>
         String(value ?? '').trim().replace(/^'+/, '').toLowerCase();
 
+      const normalizeTextToken = (value: unknown) =>
+        normalizeToken(value)
+          .replace(/[^a-z0-9]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
       const buildLooseMatchKey = (item: {
         program?: string;
         program_pembebanan?: string;
@@ -64,8 +70,25 @@ export const useImportMonthlyCSV = ({
         const program = normalizeToken(item.program ?? item.program_pembebanan);
         const kegiatan = normalizeToken(item.kegiatan);
         const akun = normalizeToken(item.akun);
-        const uraian = normalizeToken(item.uraian).replace(/\s+/g, ' ');
+        const uraian = normalizeTextToken(item.uraian);
         return [program, kegiatan, akun, uraian].join('|');
+      };
+
+      const buildTextMatchKey = (item: {
+        program?: string;
+        program_pembebanan?: string;
+        kegiatan?: string;
+        komponenOutput?: string;
+        komponen_output?: string;
+        akun?: string;
+        uraian?: string;
+      }) => {
+        const program = normalizeToken(item.program ?? item.program_pembebanan);
+        const kegiatan = normalizeToken(item.kegiatan);
+        const komponen = normalizeToken(item.komponenOutput ?? item.komponen_output);
+        const akun = normalizeToken(item.akun);
+        const uraian = normalizeTextToken(item.uraian);
+        return [program, kegiatan, komponen, akun, uraian].join('|');
       };
 
       // Merge duplicate parsed rows by ID (split-line protection)
