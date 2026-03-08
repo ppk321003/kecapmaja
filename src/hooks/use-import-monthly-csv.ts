@@ -297,16 +297,18 @@ export const useImportMonthlyCSV = ({
         const normalizedParsedId = normalizeToken(parsedItem.id);
         const key = createUniqueKey(parsedItem);
         const textKey = buildTextMatchKey(parsedItem as any);
+        const hierarchyKey = buildHierarchyMatchKey(parsedItem as any);
         const looseKey = buildLooseMatchKey(parsedItem as any);
         const trioKey = buildTrioKey(parsedItem as any);
 
         const byId = normalizedParsedId ? budgetItemIdMap.get(normalizedParsedId) : undefined;
         const byKey = budgetItemMap.get(key);
         const byText = textKey ? budgetItemTextMap.get(textKey) : undefined;
+        const byHierarchy = hierarchyKey ? budgetItemHierarchyMap.get(hierarchyKey) : undefined;
         const byLoose = looseKey ? budgetItemLooseMap.get(looseKey) : undefined;
 
         let byHeuristic: BudgetItem | undefined;
-        if (!byId && !byKey && !byText && !byLoose && trioKey) {
+        if (!byId && !byKey && !byText && !byHierarchy && !byLoose && trioKey) {
           const trioCandidates = budgetItemTrioMap.get(trioKey) || [];
           const closeCandidates = trioCandidates.filter((candidate) =>
             isCloseUraian(candidate.uraian, parsedItem.uraian)
@@ -316,7 +318,7 @@ export const useImportMonthlyCSV = ({
           }
         }
 
-        const budgetItem = byId || byKey || byText || byLoose || byHeuristic;
+        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
