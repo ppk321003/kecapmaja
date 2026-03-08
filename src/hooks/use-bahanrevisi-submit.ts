@@ -5,7 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BudgetItem, RPDItem } from '@/types/bahanrevisi';
-import { generateId, formatDateIndonesia, calculateJumlahMenjadi } from '@/utils/bahanrevisi-calculations';
+import { generateId, generateDeterministicId, formatDateIndonesia, calculateJumlahMenjadi } from '@/utils/bahanrevisi-calculations';
 
 interface UseBahanRevisiSubmitProps {
   sheetId: string | null;
