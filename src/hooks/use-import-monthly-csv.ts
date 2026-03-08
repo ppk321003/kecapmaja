@@ -91,6 +91,42 @@ export const useImportMonthlyCSV = ({
         return [program, kegiatan, komponen, akun, uraian].join('|');
       };
 
+      const buildTrioKey = (item: {
+        program?: string;
+        program_pembebanan?: string;
+        kegiatan?: string;
+        akun?: string;
+      }) => {
+        const program = normalizeToken(item.program ?? item.program_pembebanan);
+        const kegiatan = normalizeToken(item.kegiatan);
+        const akun = normalizeToken(item.akun);
+        return [program, kegiatan, akun].join('|');
+      };
+
+      const normalizeWords = (value: unknown) => {
+        const stopwords = new Set(['di', 'ke', 'dan', 'yang', 'dalam', 'untuk', 'dari', 'kab', 'kota', 'kabkota']);
+        return normalizeTextToken(value)
+          .split(' ')
+          .filter((w) => w && !stopwords.has(w));
+      };
+
+      const isCloseUraian = (left: unknown, right: unknown) => {
+        const leftWords = normalizeWords(left);
+        const rightWords = normalizeWords(right);
+        if (leftWords.length === 0 || rightWords.length === 0) return false;
+
+        const leftSet = new Set(leftWords);
+        const rightSet = new Set(rightWords);
+        let overlap = 0;
+        leftSet.forEach((w) => {
+          if (rightSet.has(w)) overlap++;
+        });
+
+        const minLen = Math.min(leftSet.size, rightSet.size);
+        const ratio = minLen > 0 ? overlap / minLen : 0;
+        return ratio >= 0.8;
+      };
+
       // Merge duplicate parsed rows by ID (split-line protection)
       const parsedById = new Map<string, ParsedMonthlyItem>();
       parsedData.items.forEach((item) => {
@@ -139,6 +175,7 @@ export const useImportMonthlyCSV = ({
       const budgetItemTextDuplicates = new Set<string>();
       const budgetItemLooseMap = new Map<string, BudgetItem>();
       const budgetItemLooseDuplicates = new Set<string>();
+      const budgetItemTrioMap = new Map<string, BudgetItem[]>();
 
       budgetItems.forEach((item, idx) => {
         const key = createUniqueKey(item);
@@ -171,6 +208,13 @@ export const useImportMonthlyCSV = ({
           }
         }
 
+        const trioKey = buildTrioKey(item as any);
+        if (trioKey) {
+          const existing = budgetItemTrioMap.get(trioKey) || [];
+          existing.push(item);
+          budgetItemTrioMap.set(trioKey, existing);
+        }
+
         if (idx < 3) {
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
             id: item.id,
@@ -190,6 +234,7 @@ export const useImportMonthlyCSV = ({
         ambiguousTextKey: budgetItemTextDuplicates.size,
         byLooseKey: budgetItemLooseMap.size,
         ambiguousLooseKey: budgetItemLooseDuplicates.size,
+        trioBuckets: budgetItemTrioMap.size,
       });
 
       // Match priority: ID first, then composite key fallback
@@ -198,12 +243,25 @@ export const useImportMonthlyCSV = ({
         const key = createUniqueKey(parsedItem);
         const textKey = buildTextMatchKey(parsedItem as any);
         const looseKey = buildLooseMatchKey(parsedItem as any);
+        const trioKey = buildTrioKey(parsedItem as any);
 
         const byId = normalizedParsedId ? budgetItemIdMap.get(normalizedParsedId) : undefined;
         const byKey = budgetItemMap.get(key);
         const byText = textKey ? budgetItemTextMap.get(textKey) : undefined;
         const byLoose = looseKey ? budgetItemLooseMap.get(looseKey) : undefined;
-        const budgetItem = byId || byKey || byText || byLoose;
+
+        let byHeuristic: BudgetItem | undefined;
+        if (!byId && !byKey && !byText && !byLoose && trioKey) {
+          const trioCandidates = budgetItemTrioMap.get(trioKey) || [];
+          const closeCandidates = trioCandidates.filter((candidate) =>
+            isCloseUraian(candidate.uraian, parsedItem.uraian)
+          );
+          if (closeCandidates.length === 1) {
+            byHeuristic = closeCandidates[0];
+          }
+        }
+
+        const budgetItem = byId || byKey || byText || byLoose || byHeuristic;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
@@ -211,7 +269,17 @@ export const useImportMonthlyCSV = ({
             kegiatan: parsedItem.kegiatan,
             akun: parsedItem.akun,
             uraian: parsedItem.uraian.substring(0, 40),
-            matchedBy: byId ? 'id' : byKey ? 'key' : byText ? 'text-key' : byLoose ? 'loose-key' : 'none',
+            matchedBy: byId
+              ? 'id'
+              : byKey
+              ? 'key'
+              : byText
+              ? 'text-key'
+              : byLoose
+              ? 'loose-key'
+              : byHeuristic
+              ? 'heuristic-uraian'
+              : 'none',
           });
         }
 
