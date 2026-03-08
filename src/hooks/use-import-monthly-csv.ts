@@ -91,6 +91,42 @@ export const useImportMonthlyCSV = ({
         return [program, kegiatan, komponen, akun, uraian].join('|');
       };
 
+      const buildTrioKey = (item: {
+        program?: string;
+        program_pembebanan?: string;
+        kegiatan?: string;
+        akun?: string;
+      }) => {
+        const program = normalizeToken(item.program ?? item.program_pembebanan);
+        const kegiatan = normalizeToken(item.kegiatan);
+        const akun = normalizeToken(item.akun);
+        return [program, kegiatan, akun].join('|');
+      };
+
+      const normalizeWords = (value: unknown) => {
+        const stopwords = new Set(['di', 'ke', 'dan', 'yang', 'dalam', 'untuk', 'dari', 'kab', 'kota', 'kabkota']);
+        return normalizeTextToken(value)
+          .split(' ')
+          .filter((w) => w && !stopwords.has(w));
+      };
+
+      const isCloseUraian = (left: unknown, right: unknown) => {
+        const leftWords = normalizeWords(left);
+        const rightWords = normalizeWords(right);
+        if (leftWords.length === 0 || rightWords.length === 0) return false;
+
+        const leftSet = new Set(leftWords);
+        const rightSet = new Set(rightWords);
+        let overlap = 0;
+        leftSet.forEach((w) => {
+          if (rightSet.has(w)) overlap++;
+        });
+
+        const minLen = Math.min(leftSet.size, rightSet.size);
+        const ratio = minLen > 0 ? overlap / minLen : 0;
+        return ratio >= 0.8;
+      };
+
       // Merge duplicate parsed rows by ID (split-line protection)
       const parsedById = new Map<string, ParsedMonthlyItem>();
       parsedData.items.forEach((item) => {
