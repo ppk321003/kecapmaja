@@ -369,7 +369,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
 
   // Export helpers using SheetJS and html2canvas + jsPDF
   const downloadExcel = () => {
-    const headers = ['Nama', 'Total Pagu', ...monthNames, 'Total RPD', 'Sisa'];
+    const headers = ['Nama', 'Total Pagu', ...monthNames, 'Total Realisasi', 'Sisa'];
     const wsData: any[][] = [headers];
     data.forEach(d => {
       wsData.push([d.name, d.total_pagu || 0, ...months.map(m => d.months[m] || 0), d.total || 0, d.sisa_anggaran || 0]);
