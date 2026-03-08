@@ -66,6 +66,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   akuns = [],
   sheetId,
   onUploadRPD,
+  onRefresh,
 }) => {
   const { user } = useAuth();
   const [summaryView, setSummaryView] = useState<SummaryViewType>('realisasi');
