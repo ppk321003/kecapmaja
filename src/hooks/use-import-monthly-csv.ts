@@ -135,6 +135,8 @@ export const useImportMonthlyCSV = ({
       // Build lookup maps
       const budgetItemMap = new Map<string, BudgetItem>();
       const budgetItemIdMap = new Map<string, BudgetItem>();
+      const budgetItemTextMap = new Map<string, BudgetItem>();
+      const budgetItemTextDuplicates = new Set<string>();
       const budgetItemLooseMap = new Map<string, BudgetItem>();
       const budgetItemLooseDuplicates = new Set<string>();
 
