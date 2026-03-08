@@ -412,15 +412,18 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       }) as RPDItem[];
 
       // Prepare items to update (matched) with past-month protection
+      const normalizeId = (value: unknown) => String(value ?? '').trim().replace(/^'+/, '');
+
       const itemsToUpdate = matched.map(newItem => {
-        const existing = existingRPDItems.find(
-          e => createRPDKey(e) === createRPDKey(newItem)
-        );
+        const newItemId = normalizeId(newItem.id);
+        const existing = existingRPDItems.find(e => normalizeId(e.id) === newItemId)
+          || existingRPDItems.find(e => createRPDKey(e) === createRPDKey(newItem));
+
         if (existing) {
           const merged: any = {
             ...existing,
             ...newItem,
-            id: existing.id, // IMPORTANT: keep existing ID for sheet row matching
+            id: existing.id, // ALWAYS use existing sheet ID for safe row matching
             modified_by: 'system',
             modified_date: new Date().toISOString(),
           };
