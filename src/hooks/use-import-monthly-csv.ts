@@ -289,6 +289,7 @@ export const useImportMonthlyCSV = ({
       const budgetItemLooseDuplicates = new Set<string>();
       const budgetItemTrioMap = new Map<string, BudgetItem[]>();
       const budgetItemIdPrefixMap = new Map<string, BudgetItem[]>();
+      const budgetItemIdPrefixNoSubMap = new Map<string, BudgetItem[]>();
 
       budgetItems.forEach((item, idx) => {
         const key = createUniqueKey(item);
