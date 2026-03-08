@@ -65,26 +65,26 @@ const fetchRPDItemsFromSheet = async (sheetId: string): Promise<RPDItem[]> => {
       .filter((row: string[]) => row[0]?.trim())
       .map((row: string[]) => {
         // Calculate jumlah_rpd from monthly values
-        const januari = parseFloat(row[8]) || 0;
-        const februari = parseFloat(row[9]) || 0;
-        const maret = parseFloat(row[10]) || 0;
-        const april = parseFloat(row[11]) || 0;
-        const mei = parseFloat(row[12]) || 0;
-        const juni = parseFloat(row[13]) || 0;
-        const juli = parseFloat(row[14]) || 0;
-        const agustus = parseFloat(row[15]) || 0;
-        const september = parseFloat(row[16]) || 0;
-        const oktober = parseFloat(row[17]) || 0;
-        const november = parseFloat(row[18]) || 0;
-        const desember = parseFloat(row[19]) || 0;
+        const januari = parseIndonesianNumber(row[8]);
+        const februari = parseIndonesianNumber(row[9]);
+        const maret = parseIndonesianNumber(row[10]);
+        const april = parseIndonesianNumber(row[11]);
+        const mei = parseIndonesianNumber(row[12]);
+        const juni = parseIndonesianNumber(row[13]);
+        const juli = parseIndonesianNumber(row[14]);
+        const agustus = parseIndonesianNumber(row[15]);
+        const september = parseIndonesianNumber(row[16]);
+        const oktober = parseIndonesianNumber(row[17]);
+        const november = parseIndonesianNumber(row[18]);
+        const desember = parseIndonesianNumber(row[19]);
 
         const jumlahRpd = roundToThousands(
           januari + februari + maret + april + mei + juni + 
           juli + agustus + september + oktober + november + desember
         );
 
-        const jumlahMenjadi = parseFloat(row[7]) || 0;
-        const blokir = parseFloat(row[25]) || 0;
+        const jumlahMenjadi = parseIndonesianNumber(row[7]);
+        const blokir = parseIndonesianNumber(row[25]);
         const selisih = roundToThousands(jumlahMenjadi - jumlahRpd - blokir);
         
         // Determine status based on allocation
