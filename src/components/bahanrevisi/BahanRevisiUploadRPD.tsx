@@ -406,7 +406,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
 
     setIsUploading(true);
     try {
-      const { matched, unmatched } = uploadState.matchResult;
+      const { unmatched, changed } = uploadState.matchResult;
 
       // Past-month protection: determine which months should be preserved
       const currentMonthIdx = new Date().getMonth(); // 0=Jan, 1=Feb, 2=Mar (March 2026 → 2)
