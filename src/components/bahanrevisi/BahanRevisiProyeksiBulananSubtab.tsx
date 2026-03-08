@@ -540,10 +540,10 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                   <h3 className="text-sm font-semibold text-amber-900 mb-2">Catatan Perhatian</h3>
                   <ul className="text-sm text-amber-900 space-y-2 list-disc list-inside">
                     {hasLowAbsorption && (
-                      <li>Serapan anggaran masih sangat rendah ({persentaseSerapan.toFixed(2)}%). Disarankan agar unit terkait segera meninjau rencana penarikan dana.</li>
+                      <li>Serapan anggaran masih sangat rendah ({persentaseSerapan.toFixed(2)}%). Disarankan agar unit terkait segera meninjau dan mempercepat realisasi anggaran.</li>
                     )}
                     {hasManyZeroMonths && (
-                      <li>Sebagian besar alokasi anggaran belum memiliki rencana penarikan dana. Disarankan agar unit terkait segera menyusun rencana realisasi untuk menghindari penumpukan realisasi di akhir tahun.</li>
+                      <li>Sebagian besar alokasi anggaran belum terealisasi. Disarankan agar unit terkait segera mempercepat pelaksanaan kegiatan untuk menghindari penumpukan realisasi di akhir tahun.</li>
                     )}
                   </ul>
                 </div>
