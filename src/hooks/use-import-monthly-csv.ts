@@ -149,6 +149,8 @@ export const useImportMonthlyCSV = ({
       console.log('[useImportMonthlyCSV] Budget lookup maps created:', {
         byKey: budgetItemMap.size,
         byId: budgetItemIdMap.size,
+        byLooseKey: budgetItemLooseMap.size,
+        ambiguousLooseKey: budgetItemLooseDuplicates.size,
       });
 
       // Match priority: ID first, then composite key fallback
