@@ -89,6 +89,17 @@ const stripUraianPrefix = (uraian: string): string => {
 };
 
 /**
+ * Parse angka dari sel CSV dengan format Indonesia
+ */
+const parseNumberCell = (value: string | undefined): number | null => {
+  const raw = String(value ?? '').replace('%', '').trim();
+  if (!raw || !/[0-9]/.test(raw)) return null;
+
+  const parsed = parseIndonesianNumber(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+/**
  * Parse CSV bulanan ke structured data dengan proper hierarchical parsing
  * Structure: leading semicolons indicate hierarchy level
  *   ;GG;... → Program level
