@@ -74,6 +74,27 @@ export const useImportMonthlyCSV = ({
         return [program, kegiatan, akun, uraian].join('|');
       };
 
+      const buildHierarchyMatchKey = (item: {
+        program?: string;
+        program_pembebanan?: string;
+        kegiatan?: string;
+        rincianOutput?: string;
+        rincian_output?: string;
+        komponenOutput?: string;
+        komponen_output?: string;
+        subKomponen?: string;
+        sub_komponen?: string;
+        akun?: string;
+      }) => {
+        const program = normalizeToken(item.program ?? item.program_pembebanan);
+        const kegiatan = normalizeToken(item.kegiatan);
+        const rincian = normalizeToken(item.rincianOutput ?? item.rincian_output);
+        const komponen = normalizeToken(item.komponenOutput ?? item.komponen_output);
+        const subKomponen = normalizeToken(item.subKomponen ?? item.sub_komponen);
+        const akun = normalizeToken(item.akun);
+        return [program, kegiatan, rincian, komponen, subKomponen, akun].join('|');
+      };
+
       const buildTextMatchKey = (item: {
         program?: string;
         program_pembebanan?: string;
@@ -191,6 +212,8 @@ export const useImportMonthlyCSV = ({
       const budgetItemIdMap = new Map<string, BudgetItem>();
       const budgetItemTextMap = new Map<string, BudgetItem>();
       const budgetItemTextDuplicates = new Set<string>();
+      const budgetItemHierarchyMap = new Map<string, BudgetItem>();
+      const budgetItemHierarchyDuplicates = new Set<string>();
       const budgetItemLooseMap = new Map<string, BudgetItem>();
       const budgetItemLooseDuplicates = new Set<string>();
       const budgetItemTrioMap = new Map<string, BudgetItem[]>();
@@ -211,6 +234,18 @@ export const useImportMonthlyCSV = ({
             budgetItemTextDuplicates.add(textKey);
           } else {
             budgetItemTextMap.set(textKey, item);
+          }
+        }
+
+        const hierarchyKey = buildHierarchyMatchKey(item as any);
+        if (hierarchyKey && hierarchyKey !== '|||||') {
+          if (budgetItemHierarchyDuplicates.has(hierarchyKey)) {
+            // already marked ambiguous
+          } else if (budgetItemHierarchyMap.has(hierarchyKey)) {
+            budgetItemHierarchyMap.delete(hierarchyKey);
+            budgetItemHierarchyDuplicates.add(hierarchyKey);
+          } else {
+            budgetItemHierarchyMap.set(hierarchyKey, item);
           }
         }
 
@@ -250,6 +285,8 @@ export const useImportMonthlyCSV = ({
         byId: budgetItemIdMap.size,
         byTextKey: budgetItemTextMap.size,
         ambiguousTextKey: budgetItemTextDuplicates.size,
+        byHierarchyKey: budgetItemHierarchyMap.size,
+        ambiguousHierarchyKey: budgetItemHierarchyDuplicates.size,
         byLooseKey: budgetItemLooseMap.size,
         ambiguousLooseKey: budgetItemLooseDuplicates.size,
         trioBuckets: budgetItemTrioMap.size,
@@ -260,16 +297,18 @@ export const useImportMonthlyCSV = ({
         const normalizedParsedId = normalizeToken(parsedItem.id);
         const key = createUniqueKey(parsedItem);
         const textKey = buildTextMatchKey(parsedItem as any);
+        const hierarchyKey = buildHierarchyMatchKey(parsedItem as any);
         const looseKey = buildLooseMatchKey(parsedItem as any);
         const trioKey = buildTrioKey(parsedItem as any);
 
         const byId = normalizedParsedId ? budgetItemIdMap.get(normalizedParsedId) : undefined;
         const byKey = budgetItemMap.get(key);
         const byText = textKey ? budgetItemTextMap.get(textKey) : undefined;
+        const byHierarchy = hierarchyKey ? budgetItemHierarchyMap.get(hierarchyKey) : undefined;
         const byLoose = looseKey ? budgetItemLooseMap.get(looseKey) : undefined;
 
         let byHeuristic: BudgetItem | undefined;
-        if (!byId && !byKey && !byText && !byLoose && trioKey) {
+        if (!byId && !byKey && !byText && !byHierarchy && !byLoose && trioKey) {
           const trioCandidates = budgetItemTrioMap.get(trioKey) || [];
           const closeCandidates = trioCandidates.filter((candidate) =>
             isCloseUraian(candidate.uraian, parsedItem.uraian)
@@ -279,7 +318,7 @@ export const useImportMonthlyCSV = ({
           }
         }
 
-        const budgetItem = byId || byKey || byText || byLoose || byHeuristic;
+        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
@@ -293,6 +332,8 @@ export const useImportMonthlyCSV = ({
               ? 'key'
               : byText
               ? 'text-key'
+              : byHierarchy
+              ? 'hierarchy-key'
               : byLoose
               ? 'loose-key'
               : byHeuristic
@@ -311,7 +352,7 @@ export const useImportMonthlyCSV = ({
           result.notMatched++;
           result.not_matched_items.push({
             item: parsedItem,
-            reason: `Tidak ditemukan (id: ${parsedItem.id || '-'}, key: ${key.substring(0, 35)}..., text: ${textKey.substring(0, 35)}..., loose: ${looseKey.substring(0, 35)}...)`,
+            reason: `Tidak ditemukan (id: ${parsedItem.id || '-'}, key: ${key.substring(0, 35)}..., text: ${textKey.substring(0, 35)}..., hierarchy: ${(hierarchyKey || '').substring(0, 35)}..., loose: ${looseKey.substring(0, 35)}...)`,
           });
         }
 
