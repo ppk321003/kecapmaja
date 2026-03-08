@@ -15,7 +15,7 @@ const corsHeaders = {
 
 interface SheetOperation {
   spreadsheetId: string;
-  operation: 'read' | 'append' | 'update' | 'delete' | 'update-sisa-anggaran' | 'health';
+  operation: 'read' | 'append' | 'update' | 'batch-update' | 'delete' | 'update-sisa-anggaran' | 'health';
   range?: string;
   values?: any[][];
   rowIndex?: number;
@@ -24,6 +24,7 @@ interface SheetOperation {
   tahun?: number;
   unmatchedItems?: any[];
   rpdUpdates?: any[];
+  updates?: Array<{ range: string; values: any[][] }>;
 }
 
 async function getAccessToken() {
