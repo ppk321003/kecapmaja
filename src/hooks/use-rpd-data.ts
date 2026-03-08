@@ -7,6 +7,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RPDItem } from '@/types/bahanrevisi';
 import { roundToThousands } from '@/utils/bahanrevisi-calculations';
+import { parseIndonesianNumber } from '@/lib/parseNumber';
 
 export type RPDMonthValues = {
   januar: number;

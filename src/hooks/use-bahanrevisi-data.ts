@@ -17,6 +17,7 @@ import {
   BahanRevisiFilters
 } from '@/types/bahanrevisi';
 import { filterBudgetItems, getFilteredDropdownValues, roundToThousands, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
+import { parseIndonesianNumber } from '@/lib/parseNumber';
 
 /**
  * Normalize sub_komponen to 3-digit format
