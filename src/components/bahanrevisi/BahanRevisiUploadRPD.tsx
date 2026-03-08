@@ -63,15 +63,53 @@ const normalizeKomponenOutputForMatch = (value: unknown): string => {
   return raw;
 };
 
+const normalizeSubKomponenForMatch = (value: unknown): string => {
+  const raw = String(value ?? '').trim().replace(/^'+/, '').toLowerCase();
+  if (!raw) return '';
+
+  // 051_GG -> 051, 51 -> 051
+  const withOptionalSuffix = raw.match(/^(\d{1,3})(?:_[a-z]{1,5})?$/);
+  if (withOptionalSuffix) {
+    return withOptionalSuffix[1].replace(/^0+/, '').padStart(3, '0');
+  }
+
+  // Keep letter-based grouping as-is (A/B/C etc.)
+  if (/^[a-z]$/.test(raw)) return raw;
+
+  return raw;
+};
+
+const normalizeTextForMatch = (value: unknown): string => {
+  return String(value ?? '')
+    .trim()
+    .replace(/^'+/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 // Helper function to create a unique key for matching RPD items
 const createRPDKey = (item: Partial<RPDItem>): string => {
   return [
     item.program_pembebanan || '',
     item.kegiatan || '',
     normalizeKomponenOutputForMatch(item.komponen_output),
-    item.sub_komponen || '',
+    normalizeSubKomponenForMatch(item.sub_komponen),
     item.akun || '',
-    item.uraian || '',
+    normalizeTextForMatch(item.uraian),
+  ]
+    .map(v => String(v).trim().replace(/^'+/, '').toLowerCase())
+    .join('|');
+};
+
+const createRPDLooseKey = (item: Partial<RPDItem>): string => {
+  return [
+    item.program_pembebanan || '',
+    item.kegiatan || '',
+    normalizeKomponenOutputForMatch(item.komponen_output),
+    item.akun || '',
+    normalizeTextForMatch(item.uraian),
   ]
     .map(v => String(v).trim().replace(/^'+/, '').toLowerCase())
     .join('|');
