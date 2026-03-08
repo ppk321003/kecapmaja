@@ -345,22 +345,31 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
               
               // Extract TWO values from different columns:
               // 1. Column 24 (index 23) = "Periode Ini" (Monthly Period value for RPD)
-              let periodeIni = 0;
-              if (parts.length > 23) {
-                const periodeIniValue = parts[23];
-                const numValue = parseFloat(periodeIniValue.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'));
-                if (!isNaN(numValue) && numValue >= 0) {
-                  periodeIni = numValue;
-                }
-              }
-              
+              let periodeIni = parseNumberCell(parts[23]) ?? 0;
+
               // 2. Column AE (index 30) = "SISA ANGGARAN" (Remaining Budget for budget_items)
-              let sisaAnggaran = 0;
-              if (parts.length > 30) {
-                const sisaAnggaranValue = parts[30];
-                const numValue = parseFloat(sisaAnggaranValue.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'));
-                if (!isNaN(numValue) && numValue >= 0) {
-                  sisaAnggaran = numValue;
+              let sisaAnggaran = parseNumberCell(parts[30]) ?? 0;
+
+              // Fallback parser: anchor to percentage column so offset shift/page-break rows are still parsed correctly
+              const percentIndex = parts.findIndex((part) => String(part).includes('%'));
+              if (percentIndex > 0) {
+                const numericBeforePercent = parts
+                  .slice(0, percentIndex)
+                  .map((part) => parseNumberCell(part))
+                  .filter((value): value is number => value !== null);
+
+                const numericAfterPercent = parts
+                  .slice(percentIndex + 1)
+                  .map((part) => parseNumberCell(part))
+                  .filter((value): value is number => value !== null);
+
+                // Pattern near percentage is usually: ... Periode Lalu, Periode Ini, s.d. Periode, %, Sisa Anggaran
+                if (periodeIni === 0 && numericBeforePercent.length >= 2) {
+                  periodeIni = numericBeforePercent[numericBeforePercent.length - 2];
+                }
+
+                if (sisaAnggaran === 0 && numericAfterPercent.length >= 1) {
+                  sisaAnggaran = numericAfterPercent[0];
                 }
               }
 
