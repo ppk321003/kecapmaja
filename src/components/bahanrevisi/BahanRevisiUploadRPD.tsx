@@ -382,13 +382,23 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       const pastMonthFields = monthFields.slice(0, currentMonthIdx);
       console.log('[BahanRevisiUploadRPD] Past months protected:', pastMonthFields);
 
-      // Prepare items to add (unmatched)
-      const itemsToAdd = unmatched.map(item => ({
-        ...item,
-        id: item.id || [item.program_pembebanan, item.kegiatan, '', item.komponen_output, item.sub_komponen, item.akun, item.uraian].map(s => (s || '').trim()).join('|'),
-        modified_by: 'system',
-        modified_date: new Date().toISOString(),
-      })) as RPDItem[];
+      // Prepare items to add (unmatched) — zero out past months
+      const itemsToAdd = unmatched.map(item => {
+        const cleaned: any = {
+          ...item,
+          id: item.id || [item.program_pembebanan, item.kegiatan, '', item.komponen_output, item.sub_komponen, item.akun, item.uraian].map(s => (s || '').trim()).join('|'),
+          modified_by: 'system',
+          modified_date: new Date().toISOString(),
+        };
+        // Zero out past month values — they should not be set from CSV for months already passed
+        for (const field of pastMonthFields) {
+          cleaned[field] = 0;
+        }
+        // Recalculate totals
+        cleaned.total_rpd = monthFields.reduce((sum, m) => sum + (Number(cleaned[m]) || 0), 0);
+        cleaned.sisa_anggaran = (Number(cleaned.total_pagu) || 0) - cleaned.total_rpd;
+        return cleaned;
+      }) as RPDItem[];
 
       // Prepare items to update (matched) with past-month protection
       const itemsToUpdate = matched.map(newItem => {
