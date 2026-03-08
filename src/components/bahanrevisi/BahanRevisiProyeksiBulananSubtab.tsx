@@ -826,7 +826,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                         </th>
                       ))}
                       <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
-                        Total RPD
+                        Total Realisasi
                       </th>
                       <th className="sticky top-0 z-10 text-right py-2 px-3 font-semibold bg-slate-100 border-b border-slate-200 whitespace-nowrap">
                         Sisa
