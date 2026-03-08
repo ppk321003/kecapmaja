@@ -298,6 +298,48 @@ function indexToColumnLetter(index: number): string {
   return result;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRateLimited = (status: number, data: any): boolean => {
+  if (status === 429) return true;
+  const reason = data?.error?.details?.find((d: any) => d?.reason)?.reason;
+  return reason === 'RATE_LIMIT_EXCEEDED';
+};
+
+async function fetchGoogleSheetsWithRetry(
+  url: string,
+  init: RequestInit,
+  context: string,
+  maxRetries = 5
+): Promise<any> {
+  let lastError: any = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, init);
+    const data = await response.json().catch(() => ({}));
+
+    if (response.ok) {
+      return data;
+    }
+
+    lastError = data;
+
+    if (isRateLimited(response.status, data) && attempt < maxRetries) {
+      const baseDelayMs = 1000;
+      const backoffMs = Math.min(baseDelayMs * 2 ** attempt, 10000);
+      const jitterMs = Math.floor(Math.random() * 300);
+      const waitMs = backoffMs + jitterMs;
+      console.warn(`⚠️ ${context} rate limited (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${waitMs}ms`);
+      await sleep(waitMs);
+      continue;
+    }
+
+    throw new Error(`${context} failed: ${JSON.stringify(data)}`);
+  }
+
+  throw new Error(`${context} failed after retries: ${JSON.stringify(lastError)}`);
+}
+
 serve(async (req: Request) => {
   console.log('Google Sheets function invoked');
   
