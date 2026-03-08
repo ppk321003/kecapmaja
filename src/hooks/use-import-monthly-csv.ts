@@ -923,12 +923,14 @@ export const useImportMonthlyCSV = ({
   const clearErrors = useCallback(() => {
     setImportErrors([]);
     setParseProgress('');
+    setLastImportAudit(null);
   }, []);
 
   return {
     isImporting,
     importErrors,
     parseProgress,
+    lastImportAudit,
     handleImportFile,
     clearErrors,
   };
