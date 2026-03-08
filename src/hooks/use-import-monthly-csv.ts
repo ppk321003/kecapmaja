@@ -389,6 +389,8 @@ export const useImportMonthlyCSV = ({
               ? 'loose-key'
               : byHeuristic
               ? 'heuristic-uraian'
+              : byIdPrefix6
+              ? 'id-prefix6'
               : 'none',
           });
         }
