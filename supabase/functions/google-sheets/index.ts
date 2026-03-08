@@ -1461,7 +1461,7 @@ serve(async (req: Request) => {
             console.log(`📤 Appending ${rpdCreateRows.length} new RPD items...`);
             
             const rpdAppendResponse = await fetch(
-              `${baseUrl}/values/rpd_items:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+              `${baseUrl}/values/rpd_items:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
               {
                 method: 'POST',
                 headers: {
