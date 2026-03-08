@@ -1223,32 +1223,53 @@ serve(async (req: Request) => {
         let rpdCreateCount = 0;
         const rpdUpdateErrors: string[] = [];
         
-        // Prepare RPD updates for unmatched items as well
-        const allRpdUpdates = [...(body.rpdUpdates || [])];
-        
-        // Add unmatched items to RPD items creation
-        if (unmatchedItemsArg.length > 0) {
-          console.log(`📋 Adding ${unmatchedItemsArg.length} unmatched items to RPD creation...`);
-          
-          unmatchedItemsArg.forEach((unmatchedItem: any) => {
-            // Create RPD updates for each unmatched item across all months
-            // For unmatched items, we only set the periodeIni (current month) value
-            const bulanColumnMap: { [key: number]: string } = {
-              1: 'I', 2: 'J', 3: 'K', 4: 'L', 5: 'M', 6: 'N',
-              7: 'O', 8: 'P', 9: 'Q', 10: 'R', 11: 'S', 12: 'T'
-            };
-            
-            const bulanColumnLetter = bulanColumnMap[bulan];
-            const periodeIni = unmatchedItem.periodeIni !== undefined ? unmatchedItem.periodeIni : 0;
-            
-            allRpdUpdates.push({
-              item: unmatchedItem,
+        // Prepare RPD updates (deduplicated) for matched + unmatched items
+        const bulanColumnMap: { [key: number]: string } = {
+          1: 'I', 2: 'J', 3: 'K', 4: 'L', 5: 'M', 6: 'N',
+          7: 'O', 8: 'P', 9: 'Q', 10: 'R', 11: 'S', 12: 'T'
+        };
+
+        const incomingRpdUpdates = Array.isArray(body.rpdUpdates) ? body.rpdUpdates : [];
+        const rpdUpdateMap = new Map<string, any>();
+
+        const upsertRpdUpdate = (candidate: any) => {
+          const itemId = candidate?.item?.id;
+          const bulanColumnLetter = candidate?.bulanColumn || bulanColumnMap[bulan];
+          const periodeIni = Number(candidate?.periodeIni ?? 0);
+
+          if (!itemId || !bulanColumnLetter) return;
+
+          const key = `${itemId}|${bulanColumnLetter}`;
+          const existing = rpdUpdateMap.get(key);
+
+          // Prefer non-zero periodeIni if duplicate key exists
+          if (!existing || (Number(existing.periodeIni ?? 0) === 0 && periodeIni !== 0)) {
+            rpdUpdateMap.set(key, {
+              item: candidate.item,
               bulanColumn: bulanColumnLetter,
-              periodeIni: periodeIni,
-              bulan: bulan,
+              periodeIni,
+              bulan,
+            });
+          }
+        };
+
+        // 1) Start from explicit rpdUpdates sent by frontend
+        incomingRpdUpdates.forEach((update: any) => upsertRpdUpdate(update));
+
+        // 2) Backward-compat fallback: add unmatchedItems only if not already present
+        if (unmatchedItemsArg.length > 0) {
+          console.log(`📋 Reconciling ${unmatchedItemsArg.length} unmatched items into RPD updates...`);
+          unmatchedItemsArg.forEach((unmatchedItem: any) => {
+            upsertRpdUpdate({
+              item: unmatchedItem,
+              bulanColumn: bulanColumnMap[bulan],
+              periodeIni: Number(unmatchedItem?.periodeIni ?? 0),
+              bulan,
             });
           });
         }
+
+        const allRpdUpdates = Array.from(rpdUpdateMap.values());
       
       if (allRpdUpdates.length > 0) {
         console.log(`🔄 Step 5: Updating rpd_items with ${allRpdUpdates.length} monthly values (including ${unmatchedItemsArg.length} unmatched items)...`);
