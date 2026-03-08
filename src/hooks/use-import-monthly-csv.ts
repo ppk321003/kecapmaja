@@ -153,6 +153,13 @@ export const useImportMonthlyCSV = ({
         return parts.length >= 6 ? parts.slice(0, 6).join('|') : '';
       };
 
+      const getIdPrefixWithoutSubKomponen = (id: unknown) => {
+        const parts = String(id ?? '').split('|').map((part) => normalizeToken(part));
+        return parts.length >= 6
+          ? [parts[0], parts[1], parts[2], parts[3], parts[5]].join('|')
+          : '';
+      };
+
       const getLevenshteinDistance = (left: string, right: string) => {
         const a = left;
         const b = right;
@@ -282,6 +289,7 @@ export const useImportMonthlyCSV = ({
       const budgetItemLooseDuplicates = new Set<string>();
       const budgetItemTrioMap = new Map<string, BudgetItem[]>();
       const budgetItemIdPrefixMap = new Map<string, BudgetItem[]>();
+      const budgetItemIdPrefixNoSubMap = new Map<string, BudgetItem[]>();
 
       budgetItems.forEach((item, idx) => {
         const key = createUniqueKey(item);
@@ -340,6 +348,13 @@ export const useImportMonthlyCSV = ({
           budgetItemIdPrefixMap.set(idPrefix6, existingByPrefix);
         }
 
+        const idPrefixNoSub = getIdPrefixWithoutSubKomponen(item.id);
+        if (idPrefixNoSub) {
+          const existingByPrefixNoSub = budgetItemIdPrefixNoSubMap.get(idPrefixNoSub) || [];
+          existingByPrefixNoSub.push(item);
+          budgetItemIdPrefixNoSubMap.set(idPrefixNoSub, existingByPrefixNoSub);
+        }
+
         if (idx < 3) {
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
             id: item.id,
@@ -363,6 +378,7 @@ export const useImportMonthlyCSV = ({
         ambiguousLooseKey: budgetItemLooseDuplicates.size,
         trioBuckets: budgetItemTrioMap.size,
         idPrefix6Buckets: budgetItemIdPrefixMap.size,
+        idPrefixNoSubBuckets: budgetItemIdPrefixNoSubMap.size,
       });
 
       // Match priority: ID first, then composite key fallback
@@ -451,7 +467,32 @@ export const useImportMonthlyCSV = ({
           }
         }
 
-        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic || byIdPrefix6;
+        let byIdPrefixNoSub: BudgetItem | undefined;
+        if (!byId && !byKey && !byText && !byHierarchy && !byLoose && !byHeuristic && !byIdPrefix6) {
+          const parsedPrefixNoSub = getIdPrefixWithoutSubKomponen(parsedItem.id);
+          const noSubCandidates = (parsedPrefixNoSub ? budgetItemIdPrefixNoSubMap.get(parsedPrefixNoSub) || [] : [])
+            .filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id)));
+
+          if (noSubCandidates.length === 1) {
+            byIdPrefixNoSub = noSubCandidates[0];
+          } else if (noSubCandidates.length > 1) {
+            const scoredNoSub = noSubCandidates
+              .map((candidate) => ({
+                candidate,
+                score: getUraianSimilarity(candidate.uraian, parsedItem.uraian),
+              }))
+              .sort((a, b) => b.score - a.score);
+
+            if (scoredNoSub[0] && scoredNoSub[0].score >= 0.62) {
+              const gapWithSecond = scoredNoSub[1] ? scoredNoSub[0].score - scoredNoSub[1].score : scoredNoSub[0].score;
+              if (gapWithSecond >= 0.08) {
+                byIdPrefixNoSub = scoredNoSub[0].candidate;
+              }
+            }
+          }
+        }
+
+        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic || byIdPrefix6 || byIdPrefixNoSub;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
@@ -473,6 +514,8 @@ export const useImportMonthlyCSV = ({
               ? 'heuristic-uraian'
               : byIdPrefix6
               ? 'id-prefix6'
+              : byIdPrefixNoSub
+              ? 'id-prefix-no-sub'
               : 'none',
           });
         }
