@@ -440,6 +440,7 @@ export const useImportMonthlyCSV = ({
 
         if (budgetItem) {
           result.matched++;
+          matchedBudgetIds.add(normalizeToken(budgetItem.id));
           result.matched_items.push({
             item: parsedItem,
             budgetItem,
