@@ -463,31 +463,6 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
 
             {/* Tab: Anggaran (Budget Items) */}
             <TabsContent value="anggaran" className="space-y-4">
-              {/* Upload Bulanan - Only for PPK */}
-              {user?.role === 'Pejabat Pembuat Komitmen' && (
-                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="text-sm">
-                    <p className="font-semibold text-blue-900">📊 Update Sisa Anggaran Bulanan</p>
-                    {lastMonthlyImport && (
-                      <p className="text-xs text-blue-700 mt-1">
-                        Last update: {lastMonthlyImport.bulan < 10 ? '0' : ''}{lastMonthlyImport.bulan}/{lastMonthlyImport.tahun}
-                      </p>
-                    )}
-                  </div>
-                  <BahanRevisiUploadBulanan
-                    sheetId={sheetId}
-                    budgetItems={budgetItems}
-                    onImportSuccess={(matchResult, parsedData) => {
-                      setLastMonthlyImport({
-                        bulan: parsedData.bulan,
-                        tahun: parsedData.tahun,
-                      });
-                      // Refetch data for updated sisa_anggaran
-                      refetch();
-                    }}
-                  />
-                </div>
-              )}
 
               <BahanRevisiBudgetTable
               items={filteredBudgetItems}
