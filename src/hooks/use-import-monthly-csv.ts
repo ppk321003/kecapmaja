@@ -237,6 +237,18 @@ export const useImportMonthlyCSV = ({
           }
         }
 
+        const hierarchyKey = buildHierarchyMatchKey(item as any);
+        if (hierarchyKey && hierarchyKey !== '|||||') {
+          if (budgetItemHierarchyDuplicates.has(hierarchyKey)) {
+            // already marked ambiguous
+          } else if (budgetItemHierarchyMap.has(hierarchyKey)) {
+            budgetItemHierarchyMap.delete(hierarchyKey);
+            budgetItemHierarchyDuplicates.add(hierarchyKey);
+          } else {
+            budgetItemHierarchyMap.set(hierarchyKey, item);
+          }
+        }
+
         const looseKey = buildLooseMatchKey(item as any);
         if (looseKey && looseKey !== '|||') {
           if (budgetItemLooseDuplicates.has(looseKey)) {
