@@ -296,9 +296,12 @@ export const useImportMonthlyCSV = ({
           errors.push({
             type: 'validation',
             message: `⚠️ ${matchResult.notMatched} item(s) tidak berhasil dimatching (dari total ${parsedData.items.length})`,
-            details: matchResult.not_matched_items.slice(0, 3).map((item) => {
-              return `Program: ${item.item.program}, Akun: ${item.item.akun}, Uraian: ${item.item.uraian.substring(0, 40)}...`;
-            }),
+            details: [
+              `Selisih realisasi yang belum termapping: ${totalPeriodeIniUnmatched.toLocaleString('id-ID')}`,
+              ...matchResult.not_matched_items.slice(0, 3).map((item) => {
+                return `Program: ${item.item.program}, Akun: ${item.item.akun}, Uraian: ${item.item.uraian.substring(0, 40)}...`;
+              }),
+            ],
           });
         }
 
