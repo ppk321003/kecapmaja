@@ -420,8 +420,7 @@ export const useImportMonthlyCSV = ({
         let byIdPrefix6: BudgetItem | undefined;
         if (!byId && !byKey && !byText && !byHierarchy && !byLoose && !byHeuristic) {
           const parsedPrefix6 = getIdPrefix6(parsedItem.id);
-          const prefixCandidates = (parsedPrefix6 ? budgetItemIdPrefixMap.get(parsedPrefix6) || [] : [])
-            .filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id)));
+          const prefixCandidates = parsedPrefix6 ? budgetItemIdPrefixMap.get(parsedPrefix6) || [] : [];
 
           if (prefixCandidates.length === 1) {
             byIdPrefix6 = prefixCandidates[0];
