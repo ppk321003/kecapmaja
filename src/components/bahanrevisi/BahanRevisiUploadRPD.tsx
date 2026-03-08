@@ -479,30 +479,39 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
             : [];
 
         if (allRows.length > 1) {
+          const normalizeId = (value: unknown) => String(value ?? '').trim().replace(/^'+/, '');
+          const idToRowIndex = new Map<string, number>();
+
+          for (let i = 1; i < allRows.length; i++) {
+            const row = allRows[i];
+            if (!row) continue;
+            const rowId = normalizeId(row[0]);
+            if (rowId) idToRowIndex.set(rowId, i + 1); // 1-based sheet index
+          }
+
           // Update items
           for (const updateItem of itemsToUpdate) {
-            // Find row index by matching ID first, then fallback to composite key
-            let rowIdx = -1;
-            const updateId = String(updateItem.id || '').trim().replace(/^'+/, '');
-            const updateKey = createRPDKey(updateItem);
+            const updateId = normalizeId(updateItem.id);
+            let rowIdx = updateId ? (idToRowIndex.get(updateId) || -1) : -1;
 
-            for (let i = 1; i < allRows.length; i++) {
-              const row = allRows[i];
-              if (!row) continue;
-
-              const rowId = String(row[0] || '').trim().replace(/^'+/, '');
-              const rowKey = createRPDKey({
-                program_pembebanan: row[1],
-                kegiatan: row[2],
-                komponen_output: row[3],
-                sub_komponen: row[4],
-                akun: row[5],
-                uraian: row[6],
-              });
-
-              if ((updateId && rowId === updateId) || rowKey === updateKey) {
-                rowIdx = i + 1; // 1-based for sheet
-                break;
+            // Fallback by key only if ID not found
+            if (rowIdx <= 0) {
+              const updateKey = createRPDKey(updateItem);
+              for (let i = 1; i < allRows.length; i++) {
+                const row = allRows[i];
+                if (!row) continue;
+                const rowKey = createRPDKey({
+                  program_pembebanan: row[1],
+                  kegiatan: row[2],
+                  komponen_output: row[3],
+                  sub_komponen: row[4],
+                  akun: row[5],
+                  uraian: row[6],
+                });
+                if (rowKey === updateKey) {
+                  rowIdx = i + 1;
+                  break;
+                }
               }
             }
 
