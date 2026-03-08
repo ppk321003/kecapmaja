@@ -349,17 +349,28 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
   };
 
   const performMatching = (newItems: Partial<RPDItem>[]): MatchResult => {
+    const normalizeToken = (v: unknown) => String(v ?? '').trim().replace(/^'+/, '').toLowerCase();
+
     const existingKeys = new Set(existingRPDItems.map(createRPDKey));
+    const existingIds = new Set(existingRPDItems.map(item => normalizeToken(item.id)));
+
     const matched: Partial<RPDItem>[] = [];
     const unmatched: Partial<RPDItem>[] = [];
 
     newItems.forEach(item => {
       const key = createRPDKey(item);
-      if (existingKeys.has(key)) {
+      const id = normalizeToken(item.id);
+      if ((id && existingIds.has(id)) || existingKeys.has(key)) {
         matched.push(item);
       } else {
         unmatched.push(item);
       }
+    });
+
+    console.log('[BahanRevisiUploadRPD] Matching result:', {
+      total: newItems.length,
+      matched: matched.length,
+      unmatched: unmatched.length,
     });
 
     return { matched, unmatched };
@@ -457,16 +468,36 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
           },
         });
 
-        if (fetchResult.data && Array.isArray(fetchResult.data)) {
-          const allRows = fetchResult.data;
-          
+        const readPayload: any = fetchResult.data;
+        const allRows: any[][] = Array.isArray(readPayload)
+          ? readPayload
+          : Array.isArray(readPayload?.values)
+            ? readPayload.values
+            : [];
+
+        if (allRows.length > 1) {
           // Update items
           for (const updateItem of itemsToUpdate) {
-            // Find row index by matching ID or key
+            // Find row index by matching ID first, then fallback to composite key
             let rowIdx = -1;
+            const updateId = String(updateItem.id || '').trim().replace(/^'+/, '');
+            const updateKey = createRPDKey(updateItem);
+
             for (let i = 1; i < allRows.length; i++) {
               const row = allRows[i];
-              if (row && row[0] === updateItem.id) {
+              if (!row) continue;
+
+              const rowId = String(row[0] || '').trim().replace(/^'+/, '');
+              const rowKey = createRPDKey({
+                program_pembebanan: row[1],
+                kegiatan: row[2],
+                komponen_output: row[3],
+                sub_komponen: row[4],
+                akun: row[5],
+                uraian: row[6],
+              });
+
+              if ((updateId && rowId === updateId) || rowKey === updateKey) {
                 rowIdx = i + 1; // 1-based for sheet
                 break;
               }
@@ -486,8 +517,12 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
               if (updateResult.error) {
                 console.warn(`Failed to update item ${updateItem.id}:`, updateResult.error);
               }
+            } else {
+              console.warn('[BahanRevisiUploadRPD] Row not found for update item:', updateItem.id);
             }
           }
+        } else {
+          throw new Error('Gagal membaca data rpd_items untuk proses update');
         }
       }
 
