@@ -3,7 +3,7 @@
  * Parse hierarchical data dengan inheritance dan multi-line uraian handling
  * Format: Semicolon-delimited dengan struktur hierarki indentasi
  */
-
+import { parseIndonesianNumber } from '@/lib/parseNumber';
 export interface ParsedMonthlyItem {
   id: string;              // Deterministic ID from 7-field key: program|kegiatan|rincian|komponen|subkomp|akun|uraian
   program: string;
