@@ -354,12 +354,16 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
             } else if (leadingSemicolons >= 11) {
               // Level 11+: ;;;;;;;;;;;;;000001. text... → Item description with value
               
-              // Extract TWO values from different columns:
-              // 1. Column 24 (index 23) = "Periode Ini" (Monthly Period value for RPD)
-              let periodeIni = parseNumberCell(parts[23]) ?? 0;
+              // CSV column layout for item rows (13 leading empty + uraian at [13]):
+              //   [16] = Pagu, [18] = Lock Pagu
+              //   [23] = Periode Lalu, [24] = Periode Ini, [26] = s.d. Periode
+              //   [30] = %, [32] = Sisa Anggaran
+              
+              // 1. "Periode Ini" = parts[24] (NOT parts[23] which is Periode Lalu!)
+              let periodeIni = parseNumberCell(parts[24]) ?? 0;
 
-              // 2. Column AE (index 30) = "SISA ANGGARAN" (Remaining Budget for budget_items)
-              let sisaAnggaran = parseNumberCell(parts[30]) ?? 0;
+              // 2. "SISA ANGGARAN" = parts[32] (NOT parts[30] which is %)
+              let sisaAnggaran = parseNumberCell(parts[32]) ?? 0;
 
               // Fallback parser: anchor to percentage column so offset shift/page-break rows are still parsed correctly
               const percentIndex = parts.findIndex((part) => String(part).includes('%'));
@@ -374,7 +378,8 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                   .map((part) => parseNumberCell(part))
                   .filter((value): value is number => value !== null);
 
-                // Pattern near percentage is usually: ... Periode Lalu, Periode Ini, s.d. Periode, %, Sisa Anggaran
+                // Pattern: ... Periode Lalu, Periode Ini, s.d. Periode, %, Sisa Anggaran
+                // numericBeforePercent[-2] = Periode Ini (second-to-last before %)
                 if (periodeIni === 0 && numericBeforePercent.length >= 2) {
                   periodeIni = numericBeforePercent[numericBeforePercent.length - 2];
                 }
