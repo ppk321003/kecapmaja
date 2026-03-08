@@ -345,7 +345,31 @@ export const useImportMonthlyCSV = ({
           }
         }
 
-        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic;
+        let byIdPrefix6: BudgetItem | undefined;
+        if (!byId && !byKey && !byText && !byHierarchy && !byLoose && !byHeuristic) {
+          const parsedPrefix6 = getIdPrefix6(parsedItem.id);
+          const prefixCandidates = parsedPrefix6 ? budgetItemIdPrefixMap.get(parsedPrefix6) || [] : [];
+
+          if (prefixCandidates.length === 1) {
+            byIdPrefix6 = prefixCandidates[0];
+          } else if (prefixCandidates.length > 1) {
+            const scored = prefixCandidates
+              .map((candidate) => ({
+                candidate,
+                score: getUraianSimilarity(candidate.uraian, parsedItem.uraian),
+              }))
+              .sort((a, b) => b.score - a.score);
+
+            if (scored[0] && scored[0].score >= 0.75) {
+              const gapWithSecond = scored[1] ? scored[0].score - scored[1].score : scored[0].score;
+              if (gapWithSecond >= 0.1) {
+                byIdPrefix6 = scored[0].candidate;
+              }
+            }
+          }
+        }
+
+        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic || byIdPrefix6;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
