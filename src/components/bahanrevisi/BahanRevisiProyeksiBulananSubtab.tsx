@@ -557,13 +557,13 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
           <CardContent className="pt-6">
             <h3 className="text-sm font-semibold text-red-900 mb-3">Risiko Realisasi yang Perlu Diperhatikan</h3>
             <ul className="text-sm text-red-900 space-y-2 list-disc list-inside">
-              <li>Potensi penundaan realisasi jika distribusi pengeluaran aktual tidak sesuai dengan rencana</li>
+              <li>Potensi keterlambatan serapan jika realisasi aktual tidak sesuai dengan target yang telah ditetapkan</li>
               {(monthsWithZero > 6 || dominantMonths[0]?.total > totalYear * 0.4) && (
-                <li>Penumpukan pengeluaran pada bulan-bulan tertentu dapat menyebabkan ketidakseimbangan dalam serapan anggaran</li>
+                <li>Penumpukan realisasi pada bulan-bulan tertentu dapat menyebabkan ketidakseimbangan dalam serapan anggaran</li>
               )}
-              <li>Ketidakseimbangan distribusi realisasi bulanan yang dapat mempengaruhi likuiditas operasional</li>
+              <li>Ketidakseimbangan distribusi realisasi bulanan dapat mempengaruhi kelancaran operasional satker</li>
               {sisaAnggaran > totalBudget * 0.5 && (
-                <li>Proporsi anggaran yang belum direalisasikan cukup besar, memerlukan akselerasi dalam pengeluaran</li>
+                <li>Proporsi anggaran yang belum terealisasi cukup besar, memerlukan percepatan realisasi segera</li>
               )}
             </ul>
           </CardContent>
