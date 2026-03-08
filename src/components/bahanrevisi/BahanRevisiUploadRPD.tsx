@@ -728,7 +728,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
                     <Card className="bg-amber-50">
                       <CardContent className="pt-6">
                         <div className="text-3xl font-bold text-amber-700">
-                          {uploadState.matchResult.changed.length}
+                          {uploadState.matchResult.changed?.length ?? 0}
                         </div>
                         <div className="text-sm text-slate-600">Item Berubah</div>
                       </CardContent>
