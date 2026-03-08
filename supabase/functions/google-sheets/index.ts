@@ -984,26 +984,41 @@ serve(async (req: Request) => {
           appendErrors.push(`Main update error: ${errorMsg}`);
         }
 
-        // Step 4b: APPEND unmatched items to SEPARATE SHEET (NOT to budget_items)
+        // Step 4b: APPEND unmatched items to separate unmatched sheet
         let appendCountUnmatched = 0;
         const unmatchedSheetName = `budget_items_unmatched_${bulanName}_${tahun}`;
-        
+
         console.log(`\n📋 STEP 3: UNMATCHED ITEMS PROCESSING`);
-        console.log(`  unmatchedItemsArg type: ${Array.isArray(unmatchedItemsArg) ? 'Array' : typeof unmatchedItemsArg}`);
         console.log(`  unmatchedItemsArg.length: ${unmatchedItemsArg?.length || 0}`);
-        
+
         if (unmatchedItemsArg.length > 0) {
           console.log(`📥 Processing ${unmatchedItemsArg.length} unmatched items → sheet: ${unmatchedSheetName}...`);
-          
+
           try {
-            // Try to create sheet (if exists, will error but we'll catch and continue)
-            let sheetJustCreated = false;
-            
-            try {
-              console.log(`🔨 Attempting to create sheet: ${unmatchedSheetName}`);
-              
-              const createSheetResponse = await fetch(
-                `${baseUrl}/batchUpdate`,
+            let unmatchedSheetExists = false;
+            let unmatchedSheetHasHeader = false;
+
+            // Check existence + header
+            const unmatchedHeaderCheckResponse = await fetch(
+              `${baseUrl}/values/${unmatchedSheetName}!1:1`,
+              {
+                headers: { Authorization: `Bearer ${accessToken}` },
+              }
+            );
+
+            if (unmatchedHeaderCheckResponse.ok) {
+              unmatchedSheetExists = true;
+              const unmatchedHeaderData = await unmatchedHeaderCheckResponse.json();
+              unmatchedSheetHasHeader = Array.isArray(unmatchedHeaderData.values?.[0]) && unmatchedHeaderData.values[0].length > 0;
+              console.log(`✓ ${unmatchedSheetName} exists (${unmatchedSheetHasHeader ? 'header found' : 'header missing'})`);
+            } else {
+              console.log(`ℹ️ ${unmatchedSheetName} does not exist yet (status ${unmatchedHeaderCheckResponse.status})`);
+            }
+
+            // Create sheet if missing
+            if (!unmatchedSheetExists) {
+              const createUnmatchedSheetResponse = await fetch(
+                `${baseUrl.replace('/values', '')}:batchUpdate`,
                 {
                   method: 'POST',
                   headers: {
@@ -1028,70 +1043,60 @@ serve(async (req: Request) => {
                 }
               );
 
-              const createResult = await createSheetResponse.json();
-              console.log(`  Create sheet response: ${createSheetResponse.status}`, createResult.replies ? `✅ Created` : createResult.error?.message);
-              
-              if (createSheetResponse.ok) {
-                console.log(`✅ Sheet created: ${unmatchedSheetName}`);
-                sheetJustCreated = true;
-              } else if (createResult?.error?.message?.includes('already exists')) {
-                console.log(`⚠️ Sheet already exists: ${unmatchedSheetName}`);
-                sheetJustCreated = false;
+              const createUnmatchedResult = await createUnmatchedSheetResponse.json();
+              if (createUnmatchedSheetResponse.ok && createUnmatchedResult.replies && createUnmatchedResult.replies[0]) {
+                console.log(`✅ Created sheet: ${unmatchedSheetName}`);
+                unmatchedSheetExists = true;
+                unmatchedSheetHasHeader = false;
               } else {
-                throw new Error(createResult?.error?.message || 'Failed to create unmatched sheet');
-              }
-            } catch (createErr) {
-              const errorMsg = createErr instanceof Error ? createErr.message : String(createErr);
-              console.error(`❌ Create sheet error: ${errorMsg}`);
-              // If error adalah "already exists", continue; otherwise log and continue anyway
-              if (errorMsg.includes('already exists')) {
-                console.log(`  → Continuing with existing sheet`);
-                sheetJustCreated = false;
-              } else {
-                console.warn(`  → Continuing anyway (may create issues)`);
-                sheetJustCreated = false;
+                throw new Error(createUnmatchedResult?.error?.message || 'Failed to create unmatched sheet');
               }
             }
 
-            // Build rows for unmatched items - ALWAYS INCLUDE HEADER for new sheets
-            const unmatchedRows: any[][] = [];
-            
-            // FORCE append header if sheet just created
-            if (sheetJustCreated) {
-              console.log(`📋 Adding header row to NEW sheet`);
-              unmatchedRows.push(headers);
+            // Ensure header
+            if (unmatchedSheetExists && !unmatchedSheetHasHeader) {
+              const endColumnLetter = indexToColumnLetter(headers.length - 1);
+              const unmatchedHeaderInsertResponse = await fetch(
+                `${baseUrl}/values/${unmatchedSheetName}!A1:${endColumnLetter}1?valueInputOption=USER_ENTERED`,
+                {
+                  method: 'PUT',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    values: [headers],
+                    majorDimension: 'ROWS',
+                  }),
+                }
+              );
+
+              if (unmatchedHeaderInsertResponse.ok) {
+                unmatchedSheetHasHeader = true;
+                console.log(`✅ Header ensured for ${unmatchedSheetName}`);
+              } else {
+                const headerErr = await unmatchedHeaderInsertResponse.json();
+                throw new Error(headerErr?.error?.message || 'Failed to ensure unmatched header');
+              }
             }
-            
-            // Add all data items with status 'UNMATCHED'
-            const statusColumnIndex = headerIndexes['status'] !== undefined ? headerIndexes['status'] : -1;
-            console.log(`  Status column index: ${statusColumnIndex}, Total columns: ${headers.length}`);
-            
-            unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
+
+            // Build unmatched data rows (without header)
+            const unmatchedRows: any[][] = unmatchedItemsArg.map((unmatchedItem: any) => {
               const unmatchedRow = new Array(headers.length).fill('');
-              
-              // Map all columns from unmatched item to row
+
               headers.forEach((header: string, colIndex: number) => {
                 const headerLower = header.toLowerCase();
-                
-                // Copy column values from unmatched item
+
                 if (headerLower === 'id') unmatchedRow[colIndex] = unmatchedItem.id || '';
                 else if (headerLower === 'program_pembebanan') unmatchedRow[colIndex] = unmatchedItem.program_pembebanan || '';
                 else if (headerLower === 'kegiatan') unmatchedRow[colIndex] = unmatchedItem.kegiatan || '';
                 else if (headerLower === 'rincian_output') unmatchedRow[colIndex] = unmatchedItem.rincian_output || '';
                 else if (headerLower === 'komponen_output') unmatchedRow[colIndex] = unmatchedItem.komponen_output || '';
                 else if (headerLower === 'sub_komponen') {
-                  // Normalize sub_komponen with single quote
-                  if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
-                    try {
-                      const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
-                      unmatchedRow[colIndex] = `'${normalized || ''}`;
-                    } catch (e) {
-                      unmatchedRow[colIndex] = unmatchedItem.sub_komponen || '';
-                    }
-                  } else {
-                    unmatchedRow[colIndex] = '';
-                  }
-                } else if (headerLower === 'akun') unmatchedRow[colIndex] = unmatchedItem.akun || '';
+                  const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
+                  unmatchedRow[colIndex] = normalized ? `'${normalized}` : '';
+                }
+                else if (headerLower === 'akun') unmatchedRow[colIndex] = unmatchedItem.akun || '';
                 else if (headerLower === 'uraian') unmatchedRow[colIndex] = unmatchedItem.uraian || '';
                 else if (headerLower === 'volume_semula') unmatchedRow[colIndex] = unmatchedItem.volume_semula !== undefined ? unmatchedItem.volume_semula : 0;
                 else if (headerLower === 'satuan_semula') unmatchedRow[colIndex] = unmatchedItem.satuan_semula || '';
@@ -1104,10 +1109,7 @@ serve(async (req: Request) => {
                 else if (headerLower === 'selisih') unmatchedRow[colIndex] = unmatchedItem.selisih !== undefined ? unmatchedItem.selisih : 0;
                 else if (headerLower === 'sisa_anggaran') unmatchedRow[colIndex] = unmatchedItem.sisa_anggaran !== undefined ? unmatchedItem.sisa_anggaran : 0;
                 else if (headerLower === 'blokir') unmatchedRow[colIndex] = unmatchedItem.blokir !== undefined ? unmatchedItem.blokir : 0;
-                else if (headerLower === 'status') {
-                  unmatchedRow[colIndex] = 'UNMATCHED';
-                  if (itemIdx === 0) console.log(`  ✔️ Status column (index ${colIndex}) = 'UNMATCHED'`);
-                }
+                else if (headerLower === 'status') unmatchedRow[colIndex] = 'UNMATCHED';
                 else if (headerLower === 'approved_by') unmatchedRow[colIndex] = '';
                 else if (headerLower === 'approved_date') unmatchedRow[colIndex] = '';
                 else if (headerLower === 'rejected_date') unmatchedRow[colIndex] = '';
@@ -1117,93 +1119,39 @@ serve(async (req: Request) => {
                 else if (headerLower === 'notes') unmatchedRow[colIndex] = 'Item tidak ditemukan di budget_items utama - perlu pengecekan/persetujuan manual';
                 else if (headerLower === 'catatan_ppk') unmatchedRow[colIndex] = 'Menunggu review PPK';
               });
-              
-              unmatchedRows.push(unmatchedRow);
-              if ((itemIdx + 1) % 100 === 0) {
-                console.log(`  Prepared ${itemIdx + 1}/${unmatchedItemsArg.length} unmatched rows`);
-              }
+
+              return unmatchedRow;
             });
-            
-            console.log(`✓ Ready to append: ${unmatchedRows.length} rows (${sheetJustCreated ? 'header + items' : 'items only'})`);
-            
-            // Append to unmatched sheet (NOT to budget_items)
+
             if (unmatchedRows.length > 0) {
-              console.log(`📤 Appending to ${unmatchedSheetName}...`);
-              console.log(`  Data: ${unmatchedRows.length} rows`);
-              if (unmatchedRows.length > 0) {
-                console.log(`  First row cols: ${unmatchedRows[0]?.length || 0}`);
-                console.log(`  First row sample:`, JSON.stringify(unmatchedRows[0]?.slice(0, 5)));
-              }
-              if (unmatchedRows.length > 1) {
-                console.log(`  Second row sample:`, JSON.stringify(unmatchedRows[1]?.slice(0, 5)));
-              }
-              
-              // If sheet just created, use PUT to write headers + first batch
-              if (sheetJustCreated && unmatchedRows.length > 0) {
-                console.log(`✍️ Using PUT (insert) for fresh sheet with header + data`);
-                
-                const putResponse = await fetch(
-                  `${baseUrl}/values/${unmatchedSheetName}?valueInputOption=USER_ENTERED`,
-                  {
-                    method: 'PUT',
-                    headers: {
-                      Authorization: `Bearer ${accessToken}`,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      values: unmatchedRows,
-                    }),
-                  }
-                );
-                
-                const putResult = await putResponse.json();
-                console.log(`  PUT response: ${putResponse.status}`, putResult.updatedCells !== undefined ? `✅ Updated ${putResult.updatedCells} cells` : `❌ ${putResult.error?.message}`);
-                
-                if (putResponse.ok) {
-                  appendCountUnmatched = unmatchedRows.length - 1; // All minus header
-                  console.log(`✅ DONE: PUT ${unmatchedRows.length} rows (header + data) to ${unmatchedSheetName}`);
-                } else {
-                  const errorMsg = putResult?.error?.message || 'Unknown error';
-                  console.error(`❌ PUT failed: ${errorMsg}`);
-                  appendErrors.push(`Unmatched items PUT: ${errorMsg}`);
+              const unmatchedAppendResponse = await fetch(
+                `${baseUrl}/values/${unmatchedSheetName}:append?valueInputOption=USER_ENTERED`,
+                {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    values: unmatchedRows,
+                  }),
                 }
+              );
+
+              const unmatchedAppendResult = await unmatchedAppendResponse.json();
+              if (unmatchedAppendResponse.ok) {
+                appendCountUnmatched = unmatchedRows.length;
+                console.log(`✅ Appended ${appendCountUnmatched} unmatched items to ${unmatchedSheetName}`);
               } else {
-                // Sheet exists, use APPEND
-                console.log(`📌 Using APPEND (existing sheet)`);
-                
-                const appendResponse = await fetch(
-                  `${baseUrl}/values/${unmatchedSheetName}:append?valueInputOption=USER_ENTERED`,
-                  {
-                    method: 'POST',
-                    headers: {
-                      Authorization: `Bearer ${accessToken}`,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      values: unmatchedRows,
-                    }),
-                  }
-                );
-                
-                const appendResult = await appendResponse.json();
-                console.log(`  APPEND response: ${appendResponse.status}`, appendResult.updates ? `✅ Success` : `❌ ${appendResult.error?.message}`);
-                
-                if (appendResponse.ok) {
-                  appendCountUnmatched = unmatchedRows.length - (sheetJustCreated ? 1 : 0); // Exclude header if just created
-                  console.log(`✅ DONE: APPENDED ${unmatchedRows.length} rows to ${unmatchedSheetName}`);
-                } else {
-                  const errorMsg = appendResult?.error?.message || 'Unknown error';
-                  console.error(`❌ APPEND failed: ${errorMsg}`);
-                  appendErrors.push(`Unmatched items: ${errorMsg}`);
-                }
+                const errorMsg = unmatchedAppendResult?.error?.message || 'Unknown error';
+                appendErrors.push(`Unmatched items append: ${errorMsg}`);
+                console.warn(`⚠️ Failed to append unmatched items: ${errorMsg}`);
               }
-            } else {
-              console.log(`⚠️ No rows to append (unmatchedRows.length = 0)`);
             }
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
-            console.error(`❌ EXCEPTION in unmatched processing: ${errorMsg}`);
             appendErrors.push(`Unmatched error: ${errorMsg}`);
+            console.error(`❌ EXCEPTION in unmatched processing: ${errorMsg}`);
           }
         } else {
           console.log(`ℹ️ No unmatched items to process (unmatchedItemsArg.length = 0)`);
