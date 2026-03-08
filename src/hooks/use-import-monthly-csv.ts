@@ -371,12 +371,30 @@ export const useImportMonthlyCSV = ({
               .map((candidate) => ({
                 candidate,
                 score: getUraianSimilarity(candidate.uraian, parsedItem.uraian),
+                containment: hasStrongContainment(candidate.uraian, parsedItem.uraian),
               }))
               .sort((a, b) => b.score - a.score);
 
+            // High confidence pick
             if (scored[0] && scored[0].score >= 0.75) {
               const gapWithSecond = scored[1] ? scored[0].score - scored[1].score : scored[0].score;
               if (gapWithSecond >= 0.1) {
+                byIdPrefix6 = scored[0].candidate;
+              }
+            }
+
+            // Medium confidence fallback: strong text containment and clear winner
+            if (!byIdPrefix6) {
+              const containmentCandidates = scored.filter((entry) => entry.containment);
+              if (containmentCandidates.length === 1) {
+                byIdPrefix6 = containmentCandidates[0].candidate;
+              }
+            }
+
+            // Last safe fallback: relaxed similarity with larger confidence gap
+            if (!byIdPrefix6 && scored[0] && scored[0].score >= 0.58) {
+              const gapWithSecond = scored[1] ? scored[0].score - scored[1].score : scored[0].score;
+              if (gapWithSecond >= 0.2) {
                 byIdPrefix6 = scored[0].candidate;
               }
             }
