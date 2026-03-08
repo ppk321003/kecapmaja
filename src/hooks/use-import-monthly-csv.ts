@@ -348,7 +348,6 @@ export const useImportMonthlyCSV = ({
           budgetItemIdPrefixMap.set(idPrefix6, existingByPrefix);
         }
 
-
         const idPrefixNoSub = getIdPrefixWithoutSubKomponen(item.id);
         if (idPrefixNoSub) {
           const existingByPrefixNoSub = budgetItemIdPrefixNoSubMap.get(idPrefixNoSub) || [];
@@ -356,6 +355,7 @@ export const useImportMonthlyCSV = ({
           budgetItemIdPrefixNoSubMap.set(idPrefixNoSub, existingByPrefixNoSub);
         }
 
+        if (idx < 3) {
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
             id: item.id,
             program_pembebanan: item.program_pembebanan,
@@ -379,6 +379,7 @@ export const useImportMonthlyCSV = ({
         trioBuckets: budgetItemTrioMap.size,
         idPrefix6Buckets: budgetItemIdPrefixMap.size,
         idPrefixNoSubBuckets: budgetItemIdPrefixNoSubMap.size,
+      });
 
       // Match priority: ID first, then composite key fallback
       // IMPORTANT: process non-zero period rows first so meaningful monthly values
