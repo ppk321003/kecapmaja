@@ -54,6 +54,20 @@ export const useImportMonthlyCSV = ({
       const normalizeToken = (value: unknown) =>
         String(value ?? '').trim().replace(/^'+/, '').toLowerCase();
 
+      const buildLooseMatchKey = (item: {
+        program?: string;
+        program_pembebanan?: string;
+        kegiatan?: string;
+        akun?: string;
+        uraian?: string;
+      }) => {
+        const program = normalizeToken(item.program ?? item.program_pembebanan);
+        const kegiatan = normalizeToken(item.kegiatan);
+        const akun = normalizeToken(item.akun);
+        const uraian = normalizeToken(item.uraian).replace(/\s+/g, ' ');
+        return [program, kegiatan, akun, uraian].join('|');
+      };
+
       // Merge duplicate parsed rows by ID (split-line protection)
       const parsedById = new Map<string, ParsedMonthlyItem>();
       parsedData.items.forEach((item) => {
@@ -98,6 +112,8 @@ export const useImportMonthlyCSV = ({
       // Build lookup maps
       const budgetItemMap = new Map<string, BudgetItem>();
       const budgetItemIdMap = new Map<string, BudgetItem>();
+      const budgetItemLooseMap = new Map<string, BudgetItem>();
+      const budgetItemLooseDuplicates = new Set<string>();
 
       budgetItems.forEach((item, idx) => {
         const key = createUniqueKey(item);
@@ -105,6 +121,18 @@ export const useImportMonthlyCSV = ({
 
         const normalizedId = normalizeToken(item.id);
         if (normalizedId) budgetItemIdMap.set(normalizedId, item);
+
+        const looseKey = buildLooseMatchKey(item as any);
+        if (looseKey && looseKey !== '|||') {
+          if (budgetItemLooseDuplicates.has(looseKey)) {
+            // already marked ambiguous
+          } else if (budgetItemLooseMap.has(looseKey)) {
+            budgetItemLooseMap.delete(looseKey);
+            budgetItemLooseDuplicates.add(looseKey);
+          } else {
+            budgetItemLooseMap.set(looseKey, item);
+          }
+        }
 
         if (idx < 3) {
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
@@ -121,16 +149,20 @@ export const useImportMonthlyCSV = ({
       console.log('[useImportMonthlyCSV] Budget lookup maps created:', {
         byKey: budgetItemMap.size,
         byId: budgetItemIdMap.size,
+        byLooseKey: budgetItemLooseMap.size,
+        ambiguousLooseKey: budgetItemLooseDuplicates.size,
       });
 
       // Match priority: ID first, then composite key fallback
       dedupedParsedItems.forEach((parsedItem, idx) => {
         const normalizedParsedId = normalizeToken(parsedItem.id);
         const key = createUniqueKey(parsedItem);
+        const looseKey = buildLooseMatchKey(parsedItem as any);
 
         const byId = normalizedParsedId ? budgetItemIdMap.get(normalizedParsedId) : undefined;
         const byKey = budgetItemMap.get(key);
-        const budgetItem = byId || byKey;
+        const byLoose = looseKey ? budgetItemLooseMap.get(looseKey) : undefined;
+        const budgetItem = byId || byKey || byLoose;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
@@ -138,7 +170,7 @@ export const useImportMonthlyCSV = ({
             kegiatan: parsedItem.kegiatan,
             akun: parsedItem.akun,
             uraian: parsedItem.uraian.substring(0, 40),
-            matchedBy: byId ? 'id' : byKey ? 'key' : 'none',
+            matchedBy: byId ? 'id' : byKey ? 'key' : byLoose ? 'loose-key' : 'none',
           });
         }
 
@@ -152,7 +184,7 @@ export const useImportMonthlyCSV = ({
           result.notMatched++;
           result.not_matched_items.push({
             item: parsedItem,
-            reason: `Tidak ditemukan (id: ${parsedItem.id || '-'}, key: ${key.substring(0, 45)}...)`,
+            reason: `Tidak ditemukan (id: ${parsedItem.id || '-'}, key: ${key.substring(0, 35)}..., loose: ${looseKey.substring(0, 35)}...)`,
           });
         }
 
@@ -238,6 +270,17 @@ export const useImportMonthlyCSV = ({
 
         setParseProgress('Validasi hasil matching...');
 
+        const totalPeriodeIniCSV = parsedData.items.reduce((sum, item) => sum + (Number(item.periodeIni) || 0), 0);
+        const totalPeriodeIniMatched = matchResult.matched_items.reduce((sum, item) => sum + (Number(item.item.periodeIni) || 0), 0);
+        const totalPeriodeIniUnmatched = matchResult.not_matched_items.reduce((sum, item) => sum + (Number(item.item.periodeIni) || 0), 0);
+
+        console.log('[useImportMonthlyCSV] Periode Ini totals check:', {
+          csv: totalPeriodeIniCSV,
+          matched: totalPeriodeIniMatched,
+          unmatched: totalPeriodeIniUnmatched,
+          gap: totalPeriodeIniCSV - totalPeriodeIniMatched,
+        });
+
         // Validation
         if (matchResult.matched === 0) {
           errors.push({
@@ -253,9 +296,12 @@ export const useImportMonthlyCSV = ({
           errors.push({
             type: 'validation',
             message: `⚠️ ${matchResult.notMatched} item(s) tidak berhasil dimatching (dari total ${parsedData.items.length})`,
-            details: matchResult.not_matched_items.slice(0, 3).map((item) => {
-              return `Program: ${item.item.program}, Akun: ${item.item.akun}, Uraian: ${item.item.uraian.substring(0, 40)}...`;
-            }),
+            details: [
+              `Selisih realisasi yang belum termapping: ${totalPeriodeIniUnmatched.toLocaleString('id-ID')}`,
+              ...matchResult.not_matched_items.slice(0, 3).map((item) => {
+                return `Program: ${item.item.program}, Akun: ${item.item.akun}, Uraian: ${item.item.uraian.substring(0, 40)}...`;
+              }),
+            ],
           });
         }
 
