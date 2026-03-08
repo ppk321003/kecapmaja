@@ -153,6 +153,13 @@ export const useImportMonthlyCSV = ({
         return parts.length >= 6 ? parts.slice(0, 6).join('|') : '';
       };
 
+      const getIdPrefixWithoutSubKomponen = (id: unknown) => {
+        const parts = String(id ?? '').split('|').map((part) => normalizeToken(part));
+        return parts.length >= 6
+          ? [parts[0], parts[1], parts[2], parts[3], parts[5]].join('|')
+          : '';
+      };
+
       const getLevenshteinDistance = (left: string, right: string) => {
         const a = left;
         const b = right;
