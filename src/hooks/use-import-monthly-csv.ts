@@ -148,6 +148,24 @@ export const useImportMonthlyCSV = ({
         return ratio >= 0.8;
       };
 
+      const getIdPrefix6 = (id: unknown) => {
+        const parts = String(id ?? '').split('|').map((part) => normalizeToken(part));
+        return parts.length >= 6 ? parts.slice(0, 6).join('|') : '';
+      };
+
+      const getUraianSimilarity = (left: unknown, right: unknown) => {
+        const leftWords = new Set(normalizeWords(left));
+        const rightWords = new Set(normalizeWords(right));
+        if (leftWords.size === 0 || rightWords.size === 0) return 0;
+
+        let overlap = 0;
+        leftWords.forEach((w) => {
+          if (rightWords.has(w)) overlap++;
+        });
+
+        return overlap / Math.min(leftWords.size, rightWords.size);
+      };
+
       // Merge duplicate parsed rows by ID with fingerprint-safe aggregation
       // - exact duplicate line -> ignored
       // - same ID but different numeric fragment -> periodeIni is accumulated
