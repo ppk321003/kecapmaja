@@ -1046,14 +1046,131 @@ serve(async (req: Request) => {
           console.log(`ℹ️ No unmatched items to process (unmatchedItemsArg.length = 0)`);
         }
 
+        // Step 4c: ALSO APPEND unmatched items to MAIN budget_items sheet
+        if (unmatchedItemsArg.length > 0) {
+          console.log(`\n📋 STEP 2b: ALSO APPENDING ${unmatchedItemsArg.length} unmatched items to main ${mainSheetName} sheet...`);
+          
+          try {
+            const unmatchedRowsForMain: any[] = [];
+            
+            // Build rows for unmatched items - same structure as matched items
+            unmatchedItemsArg.forEach((unmatchedItem: any, itemIdx: number) => {
+              const unmatchedRow = new Array(headers.length).fill('');
+              
+              headers.forEach((header: string, colIndex: number) => {
+                const headerLower = header.toLowerCase();
+                
+                if (headerLower === 'id') unmatchedRow[colIndex] = unmatchedItem.id || '';
+                else if (headerLower === 'program_pembebanan') unmatchedRow[colIndex] = unmatchedItem.program_pembebanan || '';
+                else if (headerLower === 'kegiatan') unmatchedRow[colIndex] = unmatchedItem.kegiatan || '';
+                else if (headerLower === 'rincian_output') unmatchedRow[colIndex] = unmatchedItem.rincian_output || '';
+                else if (headerLower === 'komponen_output') unmatchedRow[colIndex] = unmatchedItem.komponen_output || '';
+                else if (headerLower === 'sub_komponen') {
+                  if (unmatchedItem.sub_komponen !== undefined && unmatchedItem.sub_komponen !== null && unmatchedItem.sub_komponen !== '') {
+                    try {
+                      const normalized = normalizeSubKomponenValue(unmatchedItem.sub_komponen || '');
+                      unmatchedRow[colIndex] = `'${normalized || ''}`;
+                    } catch (e) {
+                      unmatchedRow[colIndex] = unmatchedItem.sub_komponen || '';
+                    }
+                  } else {
+                    unmatchedRow[colIndex] = '';
+                  }
+                } else if (headerLower === 'akun') unmatchedRow[colIndex] = unmatchedItem.akun || '';
+                else if (headerLower === 'uraian') unmatchedRow[colIndex] = unmatchedItem.uraian || '';
+                else if (headerLower === 'volume_semula') unmatchedRow[colIndex] = unmatchedItem.volume_semula !== undefined ? unmatchedItem.volume_semula : 0;
+                else if (headerLower === 'satuan_semula') unmatchedRow[colIndex] = unmatchedItem.satuan_semula || '';
+                else if (headerLower === 'harga_satuan_semula') unmatchedRow[colIndex] = unmatchedItem.harga_satuan_semula !== undefined ? unmatchedItem.harga_satuan_semula : 0;
+                else if (headerLower === 'jumlah_semula') unmatchedRow[colIndex] = unmatchedItem.jumlah_semula !== undefined ? unmatchedItem.jumlah_semula : 0;
+                else if (headerLower === 'volume_menjadi') unmatchedRow[colIndex] = unmatchedItem.volume_menjadi !== undefined ? unmatchedItem.volume_menjadi : 1;
+                else if (headerLower === 'satuan_menjadi') unmatchedRow[colIndex] = unmatchedItem.satuan_menjadi || '';
+                else if (headerLower === 'harga_satuan_menjadi') unmatchedRow[colIndex] = unmatchedItem.harga_satuan_menjadi !== undefined ? unmatchedItem.harga_satuan_menjadi : 0;
+                else if (headerLower === 'jumlah_menjadi') unmatchedRow[colIndex] = unmatchedItem.jumlah_menjadi !== undefined ? unmatchedItem.jumlah_menjadi : 0;
+                else if (headerLower === 'selisih') unmatchedRow[colIndex] = unmatchedItem.selisih !== undefined ? unmatchedItem.selisih : 0;
+                else if (headerLower === 'sisa_anggaran') unmatchedRow[colIndex] = unmatchedItem.sisa_anggaran !== undefined ? unmatchedItem.sisa_anggaran : 0;
+                else if (headerLower === 'blokir') unmatchedRow[colIndex] = unmatchedItem.blokir !== undefined ? unmatchedItem.blokir : 0;
+                else if (headerLower === 'status') unmatchedRow[colIndex] = 'UNMATCHED';
+                else if (headerLower === 'approved_by') unmatchedRow[colIndex] = '';
+                else if (headerLower === 'approved_date') unmatchedRow[colIndex] = '';
+                else if (headerLower === 'rejected_date') unmatchedRow[colIndex] = '';
+                else if (headerLower === 'submitted_by') unmatchedRow[colIndex] = 'import';
+                else if (headerLower === 'submitted_date') unmatchedRow[colIndex] = new Date().toISOString();
+                else if (headerLower === 'updated_date') unmatchedRow[colIndex] = new Date().toISOString();
+                else if (headerLower === 'notes') unmatchedRow[colIndex] = 'Import unmatched - perlu review manual';
+                else if (headerLower === 'catatan_ppk') unmatchedRow[colIndex] = '';
+              });
+              
+              unmatchedRowsForMain.push(unmatchedRow);
+            });
+            
+            console.log(`✓ Ready to append: ${unmatchedRowsForMain.length} unmatched rows to main sheet`);
+            
+            if (unmatchedRowsForMain.length > 0) {
+              const appendMainResponse = await fetch(
+                `${baseUrl}/values/${mainSheetName}:append?valueInputOption=USER_ENTERED`,
+                {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    values: unmatchedRowsForMain,
+                  }),
+                }
+              );
+              
+              const appendMainResult = await appendMainResponse.json();
+              if (appendMainResponse.ok) {
+                console.log(`✅ Appended ${unmatchedRowsForMain.length} unmatched items to main ${mainSheetName} sheet`);
+                appendCountMatched += unmatchedRowsForMain.length; // Include in total count
+              } else {
+                const errorMsg = appendMainResult?.error?.message || 'Unknown error';
+                console.warn(`⚠️ Failed to append unmatched to main sheet:`, errorMsg);
+                appendErrors.push(`Unmatched to main sheet: ${errorMsg}`);
+              }
+            }
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            console.warn(`⚠️ Error appending unmatched to main sheet:`, errorMsg);
+            appendErrors.push(`Unmatched append error: ${errorMsg}`);
+          }
+        }
+
         // Step 5: Update rpd_items dengan bulan updates dan auto-calc total_rpd + sisa_anggaran
         let rpdUpdateCount = 0;
         let rpdCreateCount = 0;
         const rpdUpdateErrors: string[] = [];
         
+        // Prepare RPD updates for unmatched items as well
+        const allRpdUpdates = [...(body.rpdUpdates || [])];
+        
+        // Add unmatched items to RPD items creation
+        if (unmatchedItemsArg.length > 0) {
+          console.log(`📋 Adding ${unmatchedItemsArg.length} unmatched items to RPD creation...`);
+          
+          unmatchedItemsArg.forEach((unmatchedItem: any) => {
+            // Create RPD updates for each unmatched item across all months
+            // For unmatched items, we only set the periodeIni (current month) value
+            const bulanColumnMap: { [key: number]: string } = {
+              1: 'I', 2: 'J', 3: 'K', 4: 'L', 5: 'M', 6: 'N',
+              7: 'O', 8: 'P', 9: 'Q', 10: 'R', 11: 'S', 12: 'T'
+            };
+            
+            const bulanColumnLetter = bulanColumnMap[bulan];
+            const periodeIni = unmatchedItem.periodeIni !== undefined ? unmatchedItem.periodeIni : 0;
+            
+            allRpdUpdates.push({
+              item: unmatchedItem,
+              bulanColumn: bulanColumnLetter,
+              periodeIni: periodeIni,
+              bulan: bulan,
+            });
+          });
+        }
       
-      if (body.rpdUpdates && Array.isArray(body.rpdUpdates) && body.rpdUpdates.length > 0) {
-        console.log(`🔄 Step 4: Updating rpd_items with ${body.rpdUpdates.length} monthly values...`);
+      if (allRpdUpdates.length > 0) {
+        console.log(`🔄 Step 5: Updating rpd_items with ${allRpdUpdates.length} monthly values (including ${unmatchedItemsArg.length} unmatched items)...`);
         
         try {
           // Read rpd_items sheet
@@ -1151,8 +1268,8 @@ serve(async (req: Request) => {
             }
           }
           
-          // Process each rpd update
-          for (const rpdUpdate of body.rpdUpdates) {
+          // Process each rpd update (both matched and unmatched)
+          for (const rpdUpdate of allRpdUpdates) {
             const itemId = rpdUpdate.item.id;
             const bulanColumnLetter = rpdUpdate.bulanColumn; // 'I', 'J', etc.
             const periodeIni = rpdUpdate.periodeIni;  // Column 24: Monthly realization value (Periode Ini)
