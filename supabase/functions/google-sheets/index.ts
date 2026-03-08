@@ -1465,6 +1465,28 @@ serve(async (req: Request) => {
       
       console.log(`✅ RPD Step 5 complete: ${rpdUpdateCount} updated, ${rpdCreateCount} created`);
       
+      const auditSummaryFromClient = body.auditSummary || {};
+      const matchedPeriodeIni = Number(auditSummaryFromClient.totalPeriodeIniMatched ?? 0);
+      const unmatchedPeriodeIni = Number(auditSummaryFromClient.totalPeriodeIniUnmatched ?? 0);
+      const combinedPeriodeIni = Number(auditSummaryFromClient.totalPeriodeIniCSV ?? (matchedPeriodeIni + unmatchedPeriodeIni));
+
+      const unmatchedByKegiatan = unmatchedItemsArg.reduce((acc: Record<string, number>, item: any) => {
+        const key = String(item?.kegiatan || 'UNKNOWN');
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      const topUnmatchedItems = [...unmatchedItemsArg]
+        .sort((a: any, b: any) => (Number(b?.periodeIni || 0) - Number(a?.periodeIni || 0)))
+        .slice(0, 10)
+        .map((item: any) => ({
+          program_pembebanan: item?.program_pembebanan || '',
+          kegiatan: item?.kegiatan || '',
+          akun: item?.akun || '',
+          uraian: item?.uraian || '',
+          periode_ini: Number(item?.periodeIni || 0),
+        }));
+
       // Return success - all data (matched and unmatched) is now appended to budget_items
       const successResponse = {
         success: true,
@@ -1481,6 +1503,21 @@ serve(async (req: Request) => {
         tahun,
         errors: appendErrors.length > 0 ? appendErrors.slice(0, 10) : undefined,
         rpd_errors: rpdUpdateErrors.length > 0 ? rpdUpdateErrors.slice(0, 10) : undefined,
+        audit: {
+          bulan,
+          tahun,
+          versioned_sheet: versionedSheetName,
+          unmatched_sheet: unmatchedSheetName,
+          matched_count: rowsToInsert.length,
+          unmatched_count: unmatchedItemsArg.length,
+          matched_periode_ini: matchedPeriodeIni,
+          unmatched_periode_ini: unmatchedPeriodeIni,
+          combined_periode_ini: combinedPeriodeIni,
+          rpd_update_payload_count: incomingRpdUpdates.length,
+          rpd_update_deduped_count: allRpdUpdates.length,
+          unmatched_by_kegiatan: unmatchedByKegiatan,
+          top_unmatched_items: topUnmatchedItems,
+        },
       };
 
       // No more background async operations - everything is complete now
