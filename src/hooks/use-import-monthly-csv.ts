@@ -269,12 +269,32 @@ export const useImportMonthlyCSV = ({
           return;
         }
         
+        // RPD updates for MATCHED items
         const rpdUpdateData = matchResult.matched_items.map((match) => {
           return {
             item: match.budgetItem,
             bulan: parsedData.bulan,
             bulanColumn: bulanColumn,
-            periodeIni: match.item.periodeIni,  // Column 24: Monthly realization (Periode Ini)
+            periodeIni: match.item.periodeIni,
+          };
+        });
+
+        // RPD updates for UNMATCHED items too - so their periodeIni is not lost
+        const rpdUnmatchedData = matchResult.not_matched_items.map((unmatch) => {
+          return {
+            item: {
+              id: unmatch.item.id,
+              program_pembebanan: unmatch.item.program,
+              kegiatan: unmatch.item.kegiatan,
+              rincian_output: unmatch.item.rincianOutput,
+              komponen_output: unmatch.item.komponenOutput,
+              sub_komponen: unmatch.item.subKomponen,
+              akun: unmatch.item.akun,
+              uraian: unmatch.item.uraian,
+            },
+            bulan: parsedData.bulan,
+            bulanColumn: bulanColumn,
+            periodeIni: unmatch.item.periodeIni,
           };
         });
 
@@ -344,7 +364,7 @@ export const useImportMonthlyCSV = ({
               spreadsheetId: sheetId,
               operation: 'update-sisa-anggaran',
               values: updateData,
-              rpdUpdates: rpdUpdateData,
+              rpdUpdates: [...rpdUpdateData, ...rpdUnmatchedData],
               unmatchedItems: unmatchedData,
               bulan: parsedData.bulan,
               tahun: parsedData.tahun,
