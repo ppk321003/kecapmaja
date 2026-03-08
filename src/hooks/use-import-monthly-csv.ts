@@ -287,9 +287,9 @@ export const useImportMonthlyCSV = ({
 
         // Prepare unmatched items untuk insert ke versioned sheet
         const unmatchedData = matchResult.not_matched_items.map((item) => {
-          // Create a budget item structure untuk unmatched items
+          // Use deterministic ID dari parsed item (bukan random ID)
           return {
-            id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: item.item.id,  // ← Use deterministic ID dari parser
             program_pembebanan: item.item.program,
             kegiatan: item.item.kegiatan,
             rincian_output: item.item.rincianOutput,
