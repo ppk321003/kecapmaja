@@ -127,16 +127,27 @@ export const useImportMonthlyCSV = ({
         return ratio >= 0.8;
       };
 
-      // Merge duplicate parsed rows by ID (split-line protection)
+      // Merge duplicate parsed rows by ID with fingerprint-safe aggregation
+      // - exact duplicate line -> ignored
+      // - same ID but different numeric fragment -> periodeIni is accumulated
       const parsedById = new Map<string, ParsedMonthlyItem>();
-      parsedData.items.forEach((item) => {
+      const seenFingerprintsById = new Map<string, Set<string>>();
+      let duplicateCollapsed = 0;
+
+      dedupedParsedItems: for (const item of parsedData.items) {
         const normalizedId = normalizeToken(item.id);
-        if (!normalizedId) return;
+        if (!normalizedId) continue;
+
+        const itemPeriodeIni = Number(item.periodeIni) || 0;
+        const itemSisaAnggaran = Number(item.sisaAnggaran) || 0;
+        const uraianFingerprint = normalizeTextToken(item.uraian);
+        const fingerprint = `${uraianFingerprint}|${itemPeriodeIni}|${itemSisaAnggaran}`;
 
         const existing = parsedById.get(normalizedId);
         if (!existing) {
           parsedById.set(normalizedId, { ...item });
-          return;
+          seenFingerprintsById.set(normalizedId, new Set([fingerprint]));
+          continue dedupedParsedItems;
         }
 
         // Merge description fragment safely (avoid duplicate words)
@@ -146,19 +157,26 @@ export const useImportMonthlyCSV = ({
           existing.uraian = `${existing.uraian} ${item.uraian}`.replace(/\s+/g, ' ').trim();
         }
 
-        // Never sum here to avoid inflated values, only fill missing values
-        if ((existing.periodeIni ?? 0) === 0 && (item.periodeIni ?? 0) > 0) {
-          existing.periodeIni = item.periodeIni;
+        const seenFingerprints = seenFingerprintsById.get(normalizedId) ?? new Set<string>();
+        if (seenFingerprints.has(fingerprint)) {
+          duplicateCollapsed++;
+          continue dedupedParsedItems;
         }
-        if ((existing.sisaAnggaran ?? 0) === 0 && (item.sisaAnggaran ?? 0) > 0) {
-          existing.sisaAnggaran = item.sisaAnggaran;
+
+        existing.periodeIni = (Number(existing.periodeIni) || 0) + itemPeriodeIni;
+
+        // Keep latest non-zero sisa_anggaran snapshot
+        if (itemSisaAnggaran > 0) {
+          existing.sisaAnggaran = itemSisaAnggaran;
         }
-      });
+
+        seenFingerprints.add(fingerprint);
+        seenFingerprintsById.set(normalizedId, seenFingerprints);
+      }
 
       const dedupedParsedItems = Array.from(parsedById.values());
-      const duplicateCollapsed = parsedData.items.length - dedupedParsedItems.length;
       if (duplicateCollapsed > 0) {
-        console.warn(`[useImportMonthlyCSV] Collapsed ${duplicateCollapsed} duplicate/split parsed rows by ID`);
+        console.warn(`[useImportMonthlyCSV] Collapsed ${duplicateCollapsed} exact duplicate parsed rows by ID`);
       }
 
       const result: MatchResult = {
