@@ -23,7 +23,7 @@ import { KegiatanSelect } from "@/components/KegiatanSelect";
 import { KROSelect } from "@/components/KROSelect";
 import { ROSelect } from "@/components/ROSelect";
 import { PersonSingleSelect, Person } from "@/components/PersonMultiSelect";
-import { AkunSelect as AkunSelectComponent } from "@/components/AkunSelect";
+// AkunSelect is defined locally below
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
