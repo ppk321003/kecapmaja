@@ -208,6 +208,13 @@ export const useImportMonthlyCSV = ({
           }
         }
 
+        const trioKey = buildTrioKey(item as any);
+        if (trioKey) {
+          const existing = budgetItemTrioMap.get(trioKey) || [];
+          existing.push(item);
+          budgetItemTrioMap.set(trioKey, existing);
+        }
+
         if (idx < 3) {
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
             id: item.id,
