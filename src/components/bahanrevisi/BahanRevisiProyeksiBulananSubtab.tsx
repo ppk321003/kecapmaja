@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useCallback } from 'react';
+import BahanRevisiUploadBulanan from './BahanRevisiUploadBulanan';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
@@ -51,6 +52,7 @@ interface Props {
   akuns?: Akun[];
   sheetId?: string | null;
   onUploadRPD?: () => Promise<void>;
+  onRefresh?: () => void;
 }
 
 const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
@@ -64,6 +66,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   akuns = [],
   sheetId,
   onUploadRPD,
+  onRefresh,
 }) => {
   const { user } = useAuth();
   const [summaryView, setSummaryView] = useState<SummaryViewType>('realisasi');
@@ -592,16 +595,24 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
       {user?.role && user.role.toLowerCase().includes('pejabat pembuat komitmen') && (
         <div className="flex justify-end items-center gap-1 bg-transparent">
           {sheetId && (
-            <BahanRevisiUploadRPD
-              existingRPDItems={items}
-              onUploadSuccess={async (newItems, updatedItems) => {
-                // Call parent's refresh callback if available
-                if (onUploadRPD) {
-                  await onUploadRPD();
-                }
-              }}
-              sheetId={sheetId}
-            />
+            <>
+              <BahanRevisiUploadBulanan
+                sheetId={sheetId}
+                budgetItems={budgetItems as any}
+                onImportSuccess={() => {
+                  if (onRefresh) onRefresh();
+                }}
+              />
+              <BahanRevisiUploadRPD
+                existingRPDItems={items}
+                onUploadSuccess={async (newItems, updatedItems) => {
+                  if (onUploadRPD) {
+                    await onUploadRPD();
+                  }
+                }}
+                sheetId={sheetId}
+              />
+            </>
           )}
           <Button size="sm" variant="ghost" onClick={() => runQaCompare()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">QA Compare</Button>
           <Button size="sm" variant="ghost" onClick={() => downloadJPEG()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Export JPEG</Button>
