@@ -447,7 +447,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                 Total pagu anggaran sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalBudget)}</strong>.
               </p>
               <p className="text-sm text-blue-900 leading-relaxed mt-2">
-                Sampai dengan periode berjalan, total realisasi pengeluaran dana (RPD) tercatat sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalYear)}</strong> atau <strong className="text-blue-700">{persentaseSerapan.toFixed(2)}%</strong> dari total pagu.
+                Sampai dengan periode berjalan, total realisasi pengeluaran dana tercatat sebesar <strong className="text-blue-700">{formatCurrencyNoRp(totalYear)}</strong> atau <strong className="text-blue-700">{persentaseSerapan.toFixed(2)}%</strong> dari total pagu.
               </p>
               <p className="text-sm text-blue-900 leading-relaxed mt-2">
                 Sisa anggaran yang belum direalisasikan sebesar <strong className="text-blue-700">{formatCurrencyNoRp(sisaAnggaran)}</strong>.
