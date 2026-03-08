@@ -251,7 +251,7 @@ export const useRPDData = ({ sheetId, enabled = true }: UseRPDDataProps): RPDDat
             
             // Update month values
             Object.entries(monthValues).forEach(([key, value]) => {
-              const numValue = typeof value === 'string' ? parseFloat(value) || 0 : value || 0;
+              const numValue = typeof value === 'string' ? parseIndonesianNumber(value) : value || 0;
               const roundedValue = roundToThousands(numValue);
               
               switch (key) {
