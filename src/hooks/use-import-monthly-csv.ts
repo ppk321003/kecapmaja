@@ -833,6 +833,12 @@ export const useImportMonthlyCSV = ({
               unmatchedItems: unmatchedData,
               bulan: parsedData.bulan,
               tahun: parsedData.tahun,
+              auditSummary: {
+                totalPeriodeIniCSV,
+                totalPeriodeIniMatched,
+                totalPeriodeIniUnmatched,
+                gap: totalPeriodeIniCSV - totalPeriodeIniMatched,
+              },
             },
           });
           
