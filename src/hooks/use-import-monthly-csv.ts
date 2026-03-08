@@ -186,6 +186,8 @@ export const useImportMonthlyCSV = ({
       console.log('[useImportMonthlyCSV] Budget lookup maps created:', {
         byKey: budgetItemMap.size,
         byId: budgetItemIdMap.size,
+        byTextKey: budgetItemTextMap.size,
+        ambiguousTextKey: budgetItemTextDuplicates.size,
         byLooseKey: budgetItemLooseMap.size,
         ambiguousLooseKey: budgetItemLooseDuplicates.size,
       });
