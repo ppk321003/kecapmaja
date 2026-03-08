@@ -543,7 +543,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                       <li>Serapan anggaran masih sangat rendah ({persentaseSerapan.toFixed(2)}%). Disarankan agar unit terkait segera meninjau dan mempercepat realisasi anggaran.</li>
                     )}
                     {hasManyZeroMonths && (
-                      <li>Sebagian besar alokasi anggaran belum memiliki rencana penarikan dana. Disarankan agar unit terkait segera menyusun rencana realisasi untuk menghindari penumpukan realisasi di akhir tahun.</li>
+                      <li>Sebagian besar alokasi anggaran belum terealisasi. Disarankan agar unit terkait segera mempercepat pelaksanaan kegiatan untuk menghindari penumpukan realisasi di akhir tahun.</li>
                     )}
                   </ul>
                 </div>
