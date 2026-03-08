@@ -33,6 +33,8 @@ interface ParsedRPDFile {
 interface MatchResult {
   matched: Partial<RPDItem>[];
   unmatched: Partial<RPDItem>[];
+  changed: Partial<RPDItem>[];
+  unchanged: Partial<RPDItem>[];
 }
 
 interface UploadState {
@@ -350,20 +352,37 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
 
   const performMatching = (newItems: Partial<RPDItem>[]): MatchResult => {
     const normalizeToken = (v: unknown) => String(v ?? '').trim().replace(/^'+/, '').toLowerCase();
+    const monthFields: Array<keyof RPDItem> = ['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
-    const existingKeys = new Set(existingRPDItems.map(createRPDKey));
-    const existingIds = new Set(existingRPDItems.map(item => normalizeToken(item.id)));
+    const existingById = new Map(existingRPDItems.map(item => [normalizeToken(item.id), item]));
+    const existingByKey = new Map(existingRPDItems.map(item => [createRPDKey(item), item]));
 
     const matched: Partial<RPDItem>[] = [];
     const unmatched: Partial<RPDItem>[] = [];
+    const changed: Partial<RPDItem>[] = [];
+    const unchanged: Partial<RPDItem>[] = [];
 
     newItems.forEach(item => {
-      const key = createRPDKey(item);
       const id = normalizeToken(item.id);
-      if ((id && existingIds.has(id)) || existingKeys.has(key)) {
-        matched.push(item);
-      } else {
+      const key = createRPDKey(item);
+      const existing = (id ? existingById.get(id) : undefined) || existingByKey.get(key);
+
+      if (!existing) {
         unmatched.push(item);
+        return;
+      }
+
+      matched.push(item);
+
+      const hasChanged =
+        Number(item.total_pagu || 0) !== Number(existing.total_pagu || 0) ||
+        Number(item.blokir || 0) !== Number(existing.blokir || 0) ||
+        monthFields.some(month => Number((item as any)[month] || 0) !== Number((existing as any)[month] || 0));
+
+      if (hasChanged) {
+        changed.push(item);
+      } else {
+        unchanged.push(item);
       }
     });
 
@@ -371,9 +390,11 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       total: newItems.length,
       matched: matched.length,
       unmatched: unmatched.length,
+      changed: changed.length,
+      unchanged: unchanged.length,
     });
 
-    return { matched, unmatched };
+    return { matched, unmatched, changed, unchanged };
   };
 
   const triggerFileInput = () => {
@@ -385,7 +406,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
 
     setIsUploading(true);
     try {
-      const { matched, unmatched } = uploadState.matchResult;
+      const { unmatched, changed } = uploadState.matchResult;
 
       // Past-month protection: determine which months should be preserved
       const currentMonthIdx = new Date().getMonth(); // 0=Jan, 1=Feb, 2=Mar (March 2026 → 2)
@@ -414,7 +435,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       // Prepare items to update (matched) with past-month protection
       const normalizeId = (value: unknown) => String(value ?? '').trim().replace(/^'+/, '');
 
-      const itemsToUpdate = matched.map(newItem => {
+      const itemsToUpdate = changed.map(newItem => {
         const newItemId = normalizeId(newItem.id);
         const existing = existingRPDItems.find(e => normalizeId(e.id) === newItemId)
           || existingRPDItems.find(e => createRPDKey(e) === createRPDKey(newItem));
@@ -707,9 +728,9 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
                     <Card className="bg-amber-50">
                       <CardContent className="pt-6">
                         <div className="text-3xl font-bold text-amber-700">
-                          {uploadState.matchResult.matched.length}
+                          {uploadState.matchResult.changed.length}
                         </div>
-                        <div className="text-sm text-slate-600">Item Update</div>
+                        <div className="text-sm text-slate-600">Item Berubah</div>
                       </CardContent>
                     </Card>
                   </div>
@@ -717,7 +738,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
                   <Alert>
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <AlertDescription>
-                      <strong>{uploadState.matchResult.unmatched.length}</strong> item baru akan ditambahkan dan <strong>{uploadState.matchResult.matched.length}</strong> item akan diperbarui
+                      <strong>{uploadState.matchResult.unmatched.length}</strong> item baru akan ditambahkan, <strong>{uploadState.matchResult.changed.length}</strong> item berubah akan diperbarui, dan <strong>{uploadState.matchResult.unchanged.length}</strong> item tidak berubah akan dilewati
                     </AlertDescription>
                   </Alert>
                 </CardContent>
