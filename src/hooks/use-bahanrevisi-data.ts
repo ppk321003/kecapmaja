@@ -753,7 +753,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
 
   // Get dropdown options with "code - name" format
   // Maps codes to their display format using master sheets
-  // Returns SelectOption[] for direct use in filter dropdowns
+  interface SelectOption { value: string; label: string; }
 
   const programsOptions = useMemo<SelectOption[]>(() => {
     if (!budgetItemsQuery.data || !programsQuery.data) return [];
@@ -918,7 +918,7 @@ export const useBahanRevisiData = ({ sheetId, filters, enabled = true }: UseBaha
       const matchingBudgetItem = budgetItemsQuery.data?.find(b => b.id === rpdItem.id);
       return {
         ...rpdItem,
-        rincian_output: matchingBudgetItem?.rincian_output || rpdItem.rincian_output || '',
+        rincian_output: matchingBudgetItem?.rincian_output || (rpdItem as any).rincian_output || '',
         blokir: matchingBudgetItem?.blokir || 0
       };
     });

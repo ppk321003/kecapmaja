@@ -25,6 +25,7 @@ interface Karyawan {
   unitKerja: string;
   tmtJabatan: string;
   tmtPangkat: string;
+  tmtPns?: string;
   pendidikan: string;
   tanggalLahir: string;
   jenisKelamin: 'Laki-laki' | 'Perempuan' | 'L' | 'P';

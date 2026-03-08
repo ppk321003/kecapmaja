@@ -18,6 +18,7 @@ const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Ag
 
 type SummaryViewType =
   | 'realisasi'
+  | 'proyeksi'
   | 'program_pembebanan'
   | 'kegiatan'
   | 'rincian_output'
