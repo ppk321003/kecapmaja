@@ -1253,18 +1253,9 @@ serve(async (req: Request) => {
         // 1) Start from explicit rpdUpdates sent by frontend
         incomingRpdUpdates.forEach((update: any) => upsertRpdUpdate(update));
 
-        // 2) Backward-compat fallback: add unmatchedItems only if not already present
-        if (unmatchedItemsArg.length > 0) {
-          console.log(`📋 Reconciling ${unmatchedItemsArg.length} unmatched items into RPD updates...`);
-          unmatchedItemsArg.forEach((unmatchedItem: any) => {
-            upsertRpdUpdate({
-              item: unmatchedItem,
-              bulanColumn: bulanColumnMap[bulan],
-              periodeIni: Number(unmatchedItem?.periodeIni ?? 0),
-              bulan,
-            });
-          });
-        }
+        // 2) REMOVED - No longer adding unmatched items to RPD
+        // Unmatched items should NOT create new rpd_items rows (prevents pagu inflation)
+        console.log(`ℹ️ Skipping ${unmatchedItemsArg.length} unmatched items for RPD (inflation prevention)`);
 
         const allRpdUpdates = Array.from(rpdUpdateMap.values());
       
