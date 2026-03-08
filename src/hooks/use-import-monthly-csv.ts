@@ -157,10 +157,12 @@ export const useImportMonthlyCSV = ({
       dedupedParsedItems.forEach((parsedItem, idx) => {
         const normalizedParsedId = normalizeToken(parsedItem.id);
         const key = createUniqueKey(parsedItem);
+        const looseKey = buildLooseMatchKey(parsedItem as any);
 
         const byId = normalizedParsedId ? budgetItemIdMap.get(normalizedParsedId) : undefined;
         const byKey = budgetItemMap.get(key);
-        const budgetItem = byId || byKey;
+        const byLoose = looseKey ? budgetItemLooseMap.get(looseKey) : undefined;
+        const budgetItem = byId || byKey || byLoose;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
