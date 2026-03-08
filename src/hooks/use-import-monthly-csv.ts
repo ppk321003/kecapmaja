@@ -391,7 +391,7 @@ export const useImportMonthlyCSV = ({
           return;
         }
 
-        console.log(`[useImportMonthlyCSV] Successfully updated ${uploadData.updated} out of ${uploadData.matched} matched items`);
+        console.log(`[useImportMonthlyCSV] Successfully appended ${uploadData.matched_appended} matched + ${uploadData.unmatched_appended} unmatched items (total: ${uploadData.total_appended})`);
 
         setParseProgress('');
 
