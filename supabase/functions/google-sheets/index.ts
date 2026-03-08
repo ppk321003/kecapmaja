@@ -1209,9 +1209,36 @@ serve(async (req: Request) => {
         // 1) Start from explicit rpdUpdates sent by frontend
         incomingRpdUpdates.forEach((update: any) => upsertRpdUpdate(update));
 
-        // 2) REMOVED - No longer adding unmatched items to RPD
-        // Unmatched items should NOT create new rpd_items rows (prevents pagu inflation)
-        console.log(`ℹ️ Skipping ${unmatchedItemsArg.length} unmatched items for RPD (inflation prevention)`);
+        // 2) Also add unmatched items to RPD so their realization values are recorded
+        console.log(`📦 Adding ${unmatchedItemsArg.length} unmatched items to RPD updates...`);
+        unmatchedItemsArg.forEach((unmatchedItem: any) => {
+          const itemId = unmatchedItem.id || [
+            unmatchedItem.program_pembebanan || unmatchedItem.program || '',
+            unmatchedItem.kegiatan || '',
+            unmatchedItem.rincian_output || '',
+            unmatchedItem.komponen_output || '',
+            unmatchedItem.sub_komponen || '',
+            unmatchedItem.akun || '',
+            unmatchedItem.uraian || '',
+          ].join('|');
+
+          upsertRpdUpdate({
+            item: {
+              id: itemId,
+              program_pembebanan: unmatchedItem.program_pembebanan || unmatchedItem.program || '',
+              kegiatan: unmatchedItem.kegiatan || '',
+              komponen_output: unmatchedItem.komponen_output || '',
+              sub_komponen: unmatchedItem.sub_komponen || '',
+              akun: unmatchedItem.akun || '',
+              uraian: unmatchedItem.uraian || '',
+              jumlah_menjadi: unmatchedItem.jumlah_menjadi ?? unmatchedItem.pagu ?? 0,
+            },
+            bulanColumn: bulanColumnMap[bulan],
+            periodeIni: Number(unmatchedItem.periodeIni ?? 0),
+            bulan,
+          });
+        });
+        console.log(`✅ RPD update map now has ${rpdUpdateMap.size} entries (matched + unmatched)`);
 
         const allRpdUpdates = Array.from(rpdUpdateMap.values());
       
