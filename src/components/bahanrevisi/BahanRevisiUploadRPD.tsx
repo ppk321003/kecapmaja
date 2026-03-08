@@ -349,17 +349,28 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
   };
 
   const performMatching = (newItems: Partial<RPDItem>[]): MatchResult => {
+    const normalizeToken = (v: unknown) => String(v ?? '').trim().replace(/^'+/, '').toLowerCase();
+
     const existingKeys = new Set(existingRPDItems.map(createRPDKey));
+    const existingIds = new Set(existingRPDItems.map(item => normalizeToken(item.id)));
+
     const matched: Partial<RPDItem>[] = [];
     const unmatched: Partial<RPDItem>[] = [];
 
     newItems.forEach(item => {
       const key = createRPDKey(item);
-      if (existingKeys.has(key)) {
+      const id = normalizeToken(item.id);
+      if ((id && existingIds.has(id)) || existingKeys.has(key)) {
         matched.push(item);
       } else {
         unmatched.push(item);
       }
+    });
+
+    console.log('[BahanRevisiUploadRPD] Matching result:', {
+      total: newItems.length,
+      matched: matched.length,
+      unmatched: unmatched.length,
     });
 
     return { matched, unmatched };
