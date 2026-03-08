@@ -364,7 +364,7 @@ export const useImportMonthlyCSV = ({
               spreadsheetId: sheetId,
               operation: 'update-sisa-anggaran',
               values: updateData,
-              rpdUpdates: rpdUpdateData,
+              rpdUpdates: [...rpdUpdateData, ...rpdUnmatchedData],
               unmatchedItems: unmatchedData,
               bulan: parsedData.bulan,
               tahun: parsedData.tahun,
