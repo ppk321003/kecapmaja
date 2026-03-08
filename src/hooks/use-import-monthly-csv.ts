@@ -334,6 +334,8 @@ export const useImportMonthlyCSV = ({
       });
 
       // Match priority: ID first, then composite key fallback
+      const matchedBudgetIds = new Set<string>();
+
       dedupedParsedItems.forEach((parsedItem, idx) => {
         const normalizedParsedId = normalizeToken(parsedItem.id);
         const key = createUniqueKey(parsedItem);
@@ -350,7 +352,10 @@ export const useImportMonthlyCSV = ({
 
         let byHeuristic: BudgetItem | undefined;
         if (!byId && !byKey && !byText && !byHierarchy && !byLoose && trioKey) {
-          const trioCandidates = budgetItemTrioMap.get(trioKey) || [];
+          const trioCandidates = budgetItemTrioMap
+            .get(trioKey)
+            ?.filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id))) || [];
+
           const closeCandidates = trioCandidates.filter((candidate) =>
             isCloseUraian(candidate.uraian, parsedItem.uraian)
           );
@@ -362,7 +367,8 @@ export const useImportMonthlyCSV = ({
         let byIdPrefix6: BudgetItem | undefined;
         if (!byId && !byKey && !byText && !byHierarchy && !byLoose && !byHeuristic) {
           const parsedPrefix6 = getIdPrefix6(parsedItem.id);
-          const prefixCandidates = parsedPrefix6 ? budgetItemIdPrefixMap.get(parsedPrefix6) || [] : [];
+          const prefixCandidates = (parsedPrefix6 ? budgetItemIdPrefixMap.get(parsedPrefix6) || [] : [])
+            .filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id)));
 
           if (prefixCandidates.length === 1) {
             byIdPrefix6 = prefixCandidates[0];
@@ -398,6 +404,11 @@ export const useImportMonthlyCSV = ({
                 byIdPrefix6 = scored[0].candidate;
               }
             }
+
+            // Deterministic fallback: if only one candidate remains after previous matched IDs filter
+            if (!byIdPrefix6 && scored.length === 1) {
+              byIdPrefix6 = scored[0].candidate;
+            }
           }
         }
 
@@ -429,6 +440,7 @@ export const useImportMonthlyCSV = ({
 
         if (budgetItem) {
           result.matched++;
+          matchedBudgetIds.add(normalizeToken(budgetItem.id));
           result.matched_items.push({
             item: parsedItem,
             budgetItem,
