@@ -882,6 +882,11 @@ export const useImportMonthlyCSV = ({
           return;
         }
 
+        if (uploadData?.audit) {
+          setLastImportAudit(uploadData.audit as ImportAuditSummary);
+          console.log('[useImportMonthlyCSV] Import audit:', uploadData.audit);
+        }
+
         console.log(`[useImportMonthlyCSV] Successfully appended ${uploadData.matched_appended} matched + ${uploadData.unmatched_appended} unmatched items (total: ${uploadData.total_appended})`);
 
         setParseProgress('');
