@@ -627,7 +627,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
         </Card>
       )}
 
-      {summaryView === 'proyeksi' ? (
+      {summaryView === 'realisasi' ? (
         renderProyeksiSummary()
       ) : (
         <div className="space-y-4">
