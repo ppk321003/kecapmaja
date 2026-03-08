@@ -313,7 +313,15 @@ export const processBahanRevisiRows = (
     .filter((row) => row && row[columnIndices.uraian] && String(row[columnIndices.uraian]).trim())
     .forEach((row, rowIndex) => {
       try {
-        const id = `${Date.now()}-${rowIndex}-${Math.random().toString(36).substr(2, 9)}`;
+        // Build deterministic ID from hierarchy fields
+        const programVal = columnIndices.programPembebanan !== undefined ? String(row[columnIndices.programPembebanan] || '') : '';
+        const kegiatanVal = columnIndices.kegiatan !== undefined ? String(row[columnIndices.kegiatan] || '') : '';
+        const rincianVal = columnIndices.rincianOutput !== undefined ? String(row[columnIndices.rincianOutput] || '') : '';
+        const komponenVal = columnIndices.komponenOutput !== undefined ? String(row[columnIndices.komponenOutput] || '') : komponenOutput || '';
+        const subKomponenVal = columnIndices.subKomponen !== undefined ? String(row[columnIndices.subKomponen] || '') : subKomponen || '';
+        const akunVal = columnIndices.akun !== undefined ? String(row[columnIndices.akun] || '') : akun || '';
+        const uraianVal = String(row[columnIndices.uraian] || '');
+        const id = [programVal.trim(), kegiatanVal.trim(), rincianVal.trim(), komponenVal.trim(), subKomponenVal.trim(), akunVal.trim(), uraianVal.trim()].join('|');
 
         // Parse budget data
         const volumeSemula = parseFloat(row[columnIndices.volumeSemula]) || 0;

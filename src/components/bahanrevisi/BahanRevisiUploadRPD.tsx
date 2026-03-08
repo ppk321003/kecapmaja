@@ -320,7 +320,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       // Create item jika: ada akun, ada uraian, dan nilai > 0
       if (lastAkun && detailUraian && totalRPD > 0) {
         const item: Partial<RPDItem> = {
-          id: `rpd_${Date.now()}_${i}_${Math.random()}`,
+          id: [currentProgram, currentKegiatan, '', currentKomponen, currentSubKomponen, lastAkun, detailUraian].map(s => (s || '').trim()).join('|'),
           program_pembebanan: currentProgram,
           kegiatan: currentKegiatan,
           komponen_output: currentKomponen,
@@ -377,7 +377,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       // Prepare items to add (unmatched)
       const itemsToAdd = unmatched.map(item => ({
         ...item,
-        id: `rpd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: [item.program_pembebanan, item.kegiatan, '', item.komponen_output, item.sub_komponen, item.akun, item.uraian].map(s => (s || '').trim()).join('|'),
         modified_by: 'system',
         modified_date: new Date().toISOString(),
       })) as RPDItem[];
@@ -395,7 +395,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
             modified_date: new Date().toISOString(),
           };
         }
-        return { ...newItem, id: `rpd_${Date.now()}` } as RPDItem;
+        return { ...newItem, id: [newItem.program_pembebanan, newItem.kegiatan, '', newItem.komponen_output, newItem.sub_komponen, newItem.akun, newItem.uraian].map(s => (s || '').trim()).join('|') } as RPDItem;
       }) as RPDItem[];
 
       // Upload new items (append to sheet)

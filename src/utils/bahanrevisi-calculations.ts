@@ -316,7 +316,32 @@ export const formatDate = (dateString?: string): string => {
 };
 
 /**
- * Generate unique ID (timestamp-based)
+ * Generate deterministic ID from budget item hierarchy fields.
+ * Gabungan dari (program_pembebanan, kegiatan, rincian_output, komponen_output, sub_komponen, akun, uraian)
+ */
+export const generateDeterministicId = (fields: {
+  program_pembebanan?: string;
+  kegiatan?: string;
+  rincian_output?: string;
+  komponen_output?: string;
+  sub_komponen?: string;
+  akun?: string;
+  uraian?: string;
+}): string => {
+  const parts = [
+    (fields.program_pembebanan || '').trim(),
+    (fields.kegiatan || '').trim(),
+    (fields.rincian_output || '').trim(),
+    (fields.komponen_output || '').trim(),
+    (fields.sub_komponen || '').trim(),
+    (fields.akun || '').trim(),
+    (fields.uraian || '').trim(),
+  ];
+  return parts.join('|');
+};
+
+/**
+ * Generate unique ID (timestamp-based) - DEPRECATED, use generateDeterministicId
  */
 export const generateId = (): string => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

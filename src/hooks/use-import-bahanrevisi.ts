@@ -408,7 +408,7 @@ export const generateAutoRPDItems = (
   budgetItems: Partial<BudgetItem>[]
 ): Partial<RPDItem>[] => {
   return budgetItems.map((item) => ({
-    id: item.id,
+    id: [item.program_pembebanan, item.kegiatan, item.rincian_output || '', item.komponen_output, item.sub_komponen, item.akun, item.uraian].map(s => (s || '').trim()).join('|'),
     program_pembebanan: item.program_pembebanan,
     kegiatan: item.kegiatan,
     komponen_output: item.komponen_output,
