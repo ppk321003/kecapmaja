@@ -166,6 +166,20 @@ export const useImportMonthlyCSV = ({
         return overlap / Math.min(leftWords.size, rightWords.size);
       };
 
+      const hasStrongContainment = (left: unknown, right: unknown) => {
+        const leftText = normalizeTextToken(left);
+        const rightText = normalizeTextToken(right);
+        if (!leftText || !rightText) return false;
+
+        const shorter = leftText.length <= rightText.length ? leftText : rightText;
+        const longer = leftText.length > rightText.length ? leftText : rightText;
+
+        // Guard: avoid matching very short generic fragments
+        if (shorter.length < 12) return false;
+
+        return longer.includes(shorter);
+      };
+
       // Merge duplicate parsed rows by ID with fingerprint-safe aggregation
       // - exact duplicate line -> ignored
       // - same ID but different numeric fragment -> periodeIni is accumulated
