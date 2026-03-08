@@ -108,7 +108,11 @@ const BahanRevisiAnggaran: React.FC<BahanRevisiAnggaranProps> = () => {
         if (filters.rincian_output && String(item.rincian_output || '').trim() !== String(filters.rincian_output).trim()) return false;
         if (filters.akun && String(item.akun || '').trim() !== String(filters.akun).trim()) return false;
         if (hideZeroPagu) {
-          return (Number(item.total_pagu) || 0) !== 0;
+          const hasPagu = (Number(item.total_pagu) || 0) !== 0;
+          // Keep items with non-zero realization even if pagu is 0
+          const hasRealization = ['jan','feb','mar','apr','mei','jun','jul','aug','sep','oct','nov','dec']
+            .some(m => (Number((item as any)[m]) || 0) !== 0);
+          return hasPagu || hasRealization;
         }
         return true;
       });
