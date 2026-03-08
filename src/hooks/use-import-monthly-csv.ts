@@ -147,6 +147,18 @@ export const useImportMonthlyCSV = ({
         const normalizedId = normalizeToken(item.id);
         if (normalizedId) budgetItemIdMap.set(normalizedId, item);
 
+        const textKey = buildTextMatchKey(item as any);
+        if (textKey && textKey !== '||||') {
+          if (budgetItemTextDuplicates.has(textKey)) {
+            // already marked ambiguous
+          } else if (budgetItemTextMap.has(textKey)) {
+            budgetItemTextMap.delete(textKey);
+            budgetItemTextDuplicates.add(textKey);
+          } else {
+            budgetItemTextMap.set(textKey, item);
+          }
+        }
+
         const looseKey = buildLooseMatchKey(item as any);
         if (looseKey && looseKey !== '|||') {
           if (budgetItemLooseDuplicates.has(looseKey)) {
