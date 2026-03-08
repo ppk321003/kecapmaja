@@ -51,6 +51,43 @@ export const useImportMonthlyCSV = ({
         budgetItems: budgetItems.length,
       });
 
+      const normalizeToken = (value: unknown) =>
+        String(value ?? '').trim().replace(/^'+/, '').toLowerCase();
+
+      // Merge duplicate parsed rows by ID (split-line protection)
+      const parsedById = new Map<string, ParsedMonthlyItem>();
+      parsedData.items.forEach((item) => {
+        const normalizedId = normalizeToken(item.id);
+        if (!normalizedId) return;
+
+        const existing = parsedById.get(normalizedId);
+        if (!existing) {
+          parsedById.set(normalizedId, { ...item });
+          return;
+        }
+
+        // Merge description fragment safely (avoid duplicate words)
+        const existingUraian = normalizeToken(existing.uraian);
+        const incomingUraian = normalizeToken(item.uraian);
+        if (incomingUraian && !existingUraian.includes(incomingUraian)) {
+          existing.uraian = `${existing.uraian} ${item.uraian}`.replace(/\s+/g, ' ').trim();
+        }
+
+        // Never sum here to avoid inflated values, only fill missing values
+        if ((existing.periodeIni ?? 0) === 0 && (item.periodeIni ?? 0) > 0) {
+          existing.periodeIni = item.periodeIni;
+        }
+        if ((existing.sisaAnggaran ?? 0) === 0 && (item.sisaAnggaran ?? 0) > 0) {
+          existing.sisaAnggaran = item.sisaAnggaran;
+        }
+      });
+
+      const dedupedParsedItems = Array.from(parsedById.values());
+      const duplicateCollapsed = parsedData.items.length - dedupedParsedItems.length;
+      if (duplicateCollapsed > 0) {
+        console.warn(`[useImportMonthlyCSV] Collapsed ${duplicateCollapsed} duplicate/split parsed rows by ID`);
+      }
+
       const result: MatchResult = {
         matched: 0,
         notMatched: 0,
@@ -58,15 +95,20 @@ export const useImportMonthlyCSV = ({
         not_matched_items: [],
       };
 
-      // Create map dari budget items untuk faster lookup
+      // Build lookup maps
       const budgetItemMap = new Map<string, BudgetItem>();
+      const budgetItemIdMap = new Map<string, BudgetItem>();
+
       budgetItems.forEach((item, idx) => {
         const key = createUniqueKey(item);
         budgetItemMap.set(key, item);
-        
-        // Log first 3 items untuk debug
+
+        const normalizedId = normalizeToken(item.id);
+        if (normalizedId) budgetItemIdMap.set(normalizedId, item);
+
         if (idx < 3) {
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
+            id: item.id,
             program_pembebanan: item.program_pembebanan,
             kegiatan: item.kegiatan,
             akun: item.akun,
@@ -76,22 +118,27 @@ export const useImportMonthlyCSV = ({
         }
       });
 
-      console.log('[useImportMonthlyCSV] Budget item map created:', budgetItemMap.size);
+      console.log('[useImportMonthlyCSV] Budget lookup maps created:', {
+        byKey: budgetItemMap.size,
+        byId: budgetItemIdMap.size,
+      });
 
-      // Match parsed items dengan budget items
-      parsedData.items.forEach((parsedItem, idx) => {
+      // Match priority: ID first, then composite key fallback
+      dedupedParsedItems.forEach((parsedItem, idx) => {
+        const normalizedParsedId = normalizeToken(parsedItem.id);
         const key = createUniqueKey(parsedItem);
-        const budgetItem = budgetItemMap.get(key);
 
-        // Log first 5 parsed items dan any WA.2886 items untuk debug
-        if (idx < 5 || parsedItem.kegiatan === '2886') {
+        const byId = normalizedParsedId ? budgetItemIdMap.get(normalizedParsedId) : undefined;
+        const byKey = budgetItemMap.get(key);
+        const budgetItem = byId || byKey;
+
+        if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
-            program: parsedItem.program,
+            id: parsedItem.id,
             kegiatan: parsedItem.kegiatan,
             akun: parsedItem.akun,
-            uraian: parsedItem.uraian.substring(0, 30),
-            key: key.substring(0, 80),
-            found: !!budgetItem,
+            uraian: parsedItem.uraian.substring(0, 40),
+            matchedBy: byId ? 'id' : byKey ? 'key' : 'none',
           });
         }
 
@@ -99,51 +146,48 @@ export const useImportMonthlyCSV = ({
           result.matched++;
           result.matched_items.push({
             item: parsedItem,
-            budgetItem: budgetItem,
+            budgetItem,
           });
         } else {
           result.notMatched++;
           result.not_matched_items.push({
             item: parsedItem,
-            reason: `Tidak ditemukan di BudgetItem (key: ${key.substring(0, 50)}...)`,
+            reason: `Tidak ditemukan (id: ${parsedItem.id || '-'}, key: ${key.substring(0, 45)}...)`,
           });
         }
 
-        // Log progress every 100 items
         if ((idx + 1) % 100 === 0) {
-          console.log(`[useImportMonthlyCSV] Matching progress: ${idx + 1}/${parsedData.items.length}, Matched so far: ${result.matched}`);
+          console.log(`[useImportMonthlyCSV] Matching progress: ${idx + 1}/${dedupedParsedItems.length}, Matched so far: ${result.matched}`);
         }
       });
 
       console.log('[useImportMonthlyCSV] Matching complete:', {
+        parsedOriginal: parsedData.items.length,
+        parsedAfterDedup: dedupedParsedItems.length,
         matched: result.matched,
         notMatched: result.notMatched,
         total: result.matched + result.notMatched,
       });
-      
-      // Log summary by program
-      const programCounts = {};
+
+      const programCounts: Record<string, { matched?: number; unmatched?: number; kegiatan: Set<string> }> = {};
       result.matched_items.forEach(item => {
         const prog = item.item.program || 'UNKNOWN';
         if (!programCounts[prog]) programCounts[prog] = { matched: 0, kegiatan: new Set() };
-        programCounts[prog].matched++;
+        programCounts[prog].matched = (programCounts[prog].matched || 0) + 1;
         programCounts[prog].kegiatan.add(item.item.kegiatan);
       });
       result.not_matched_items.forEach(item => {
         const prog = item.item.program || 'UNKNOWN';
         if (!programCounts[prog]) programCounts[prog] = { unmatched: 0, kegiatan: new Set() };
-        if (!programCounts[prog].unmatched) programCounts[prog].unmatched = 0;
         programCounts[prog].unmatched = (programCounts[prog].unmatched || 0) + 1;
         programCounts[prog].kegiatan.add(item.item.kegiatan);
       });
-      
+
       console.log('[useImportMonthlyCSV] Items by Program:', programCounts);
 
-      // Log detailed unmatched items untuk debug
       if (result.not_matched_items.length > 0) {
         console.log(`[useImportMonthlyCSV] WARNING: ${result.not_matched_items.length} unmatched items`);
-        // Show summary of unmatched by kegiatan
-        const unmatchedByKeg = {};
+        const unmatchedByKeg: Record<string, number> = {};
         result.not_matched_items.forEach(item => {
           const keg = item.item.kegiatan;
           if (!unmatchedByKeg[keg]) unmatchedByKeg[keg] = 0;
