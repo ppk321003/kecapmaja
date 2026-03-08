@@ -116,7 +116,8 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   const aggregateBy = (field: keyof RPDItem) => {
     const map = new Map<string, GroupedRow>();
     items.forEach(item => {
-      const key = String(item[field] || 'Unknown');
+      const rawKey = String(item[field] || 'Unknown');
+      const key = cleanCode(rawKey);
       if (!map.has(key)) {
         map.set(key, {
           id: key,
