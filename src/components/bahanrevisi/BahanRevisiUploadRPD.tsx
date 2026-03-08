@@ -376,29 +376,44 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
     try {
       const { matched, unmatched } = uploadState.matchResult;
 
+      // Past-month protection: determine which months should be preserved
+      const currentMonthIdx = new Date().getMonth(); // 0=Jan, 1=Feb, 2=Mar (March 2026 → 2)
+      const monthFields = ['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const pastMonthFields = monthFields.slice(0, currentMonthIdx);
+      console.log('[BahanRevisiUploadRPD] Past months protected:', pastMonthFields);
+
       // Prepare items to add (unmatched)
       const itemsToAdd = unmatched.map(item => ({
         ...item,
-        id: [item.program_pembebanan, item.kegiatan, '', item.komponen_output, item.sub_komponen, item.akun, item.uraian].map(s => (s || '').trim()).join('|'),
+        id: item.id || [item.program_pembebanan, item.kegiatan, '', item.komponen_output, item.sub_komponen, item.akun, item.uraian].map(s => (s || '').trim()).join('|'),
         modified_by: 'system',
         modified_date: new Date().toISOString(),
       })) as RPDItem[];
 
-      // Prepare items to update (matched)
+      // Prepare items to update (matched) with past-month protection
       const itemsToUpdate = matched.map(newItem => {
         const existing = existingRPDItems.find(
           e => createRPDKey(e) === createRPDKey(newItem)
         );
         if (existing) {
-          return {
+          const merged: any = {
             ...existing,
             ...newItem,
+            id: existing.id, // IMPORTANT: keep existing ID for sheet row matching
             modified_by: 'system',
             modified_date: new Date().toISOString(),
           };
+          // Preserve past month values from existing data
+          for (const field of pastMonthFields) {
+            merged[field] = (existing as any)[field];
+          }
+          // Recalculate total_rpd after preserving past months
+          merged.total_rpd = monthFields.reduce((sum, m) => sum + (merged[m] || 0), 0);
+          merged.sisa_anggaran = (merged.total_pagu || 0) - merged.total_rpd;
+          return merged as RPDItem;
         }
-        return { ...newItem, id: [newItem.program_pembebanan, newItem.kegiatan, '', newItem.komponen_output, newItem.sub_komponen, newItem.akun, newItem.uraian].map(s => (s || '').trim()).join('|') } as RPDItem;
-      }) as RPDItem[];
+        return { ...newItem, id: newItem.id } as RPDItem;
+      });
 
       // Upload new items (append to sheet)
       if (itemsToAdd.length > 0) {
