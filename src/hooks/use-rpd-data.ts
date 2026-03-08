@@ -155,7 +155,7 @@ const updateRPDItemInSheet = async (
     
     Object.entries(monthValues).forEach(([key, value]) => {
       if (typeof value === 'string') {
-        updates[key as keyof RPDMonthValues] = roundToThousands(parseFloat(value) || 0);
+        updates[key as keyof RPDMonthValues] = roundToThousands(parseIndonesianNumber(value));
       } else {
         updates[key as keyof RPDMonthValues] = roundToThousands(value || 0);
       }
