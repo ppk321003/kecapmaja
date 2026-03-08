@@ -414,9 +414,9 @@ export const useImportMonthlyCSV = ({
               .sort((a, b) => b.score - a.score);
 
             // High confidence pick
-            if (scored[0] && scored[0].score >= 0.75) {
+            if (scored[0] && scored[0].score >= 0.68) {
               const gapWithSecond = scored[1] ? scored[0].score - scored[1].score : scored[0].score;
-              if (gapWithSecond >= 0.1) {
+              if (gapWithSecond >= 0.06) {
                 byIdPrefix6 = scored[0].candidate;
               }
             }
@@ -429,10 +429,10 @@ export const useImportMonthlyCSV = ({
               }
             }
 
-            // Last safe fallback: relaxed similarity with larger confidence gap
-            if (!byIdPrefix6 && scored[0] && scored[0].score >= 0.58) {
+            // Relaxed fallback: still require a clear winner
+            if (!byIdPrefix6 && scored[0] && scored[0].score >= 0.5) {
               const gapWithSecond = scored[1] ? scored[0].score - scored[1].score : scored[0].score;
-              if (gapWithSecond >= 0.2) {
+              if (gapWithSecond >= 0.12) {
                 byIdPrefix6 = scored[0].candidate;
               }
             }
