@@ -188,10 +188,59 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
         items = parseExcelRPD(data);
       } else if (file.name.endsWith('.csv')) {
         const text = await file.text();
-        // Auto-detect delimiter: check first line for semicolon vs comma
-        const firstLine = text.split('\n')[0];
-        const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
-        const data = text.split('\n').map(line => line.split(delimiter));
+
+        // Robust CSV parser with quote + multiline support
+        const parseCSV = (content: string): string[][] => {
+          const rows: string[][] = [];
+          let currentRow: string[] = [];
+          let currentCell = '';
+          let inQuotes = false;
+
+          for (let i = 0; i < content.length; i++) {
+            const ch = content[i];
+            const next = content[i + 1];
+
+            if (ch === '"') {
+              if (inQuotes && next === '"') {
+                currentCell += '"';
+                i++;
+              } else {
+                inQuotes = !inQuotes;
+              }
+              continue;
+            }
+
+            if (ch === ';' && !inQuotes) {
+              currentRow.push(currentCell.trim());
+              currentCell = '';
+              continue;
+            }
+
+            if ((ch === '\n' || ch === '\r') && !inQuotes) {
+              if (ch === '\r' && next === '\n') i++;
+              currentRow.push(currentCell.trim());
+              currentCell = '';
+              if (currentRow.some(cell => cell !== '')) {
+                rows.push(currentRow);
+              }
+              currentRow = [];
+              continue;
+            }
+
+            currentCell += ch;
+          }
+
+          if (currentCell.length > 0 || currentRow.length > 0) {
+            currentRow.push(currentCell.trim());
+            if (currentRow.some(cell => cell !== '')) {
+              rows.push(currentRow);
+            }
+          }
+
+          return rows;
+        };
+
+        const data = parseCSV(text);
         items = parseExcelRPD(data);
       } else {
         throw new Error('Format file tidak didukung. Gunakan Excel (.xlsx) atau CSV (.csv)');
