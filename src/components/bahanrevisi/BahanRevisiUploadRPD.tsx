@@ -63,15 +63,53 @@ const normalizeKomponenOutputForMatch = (value: unknown): string => {
   return raw;
 };
 
+const normalizeSubKomponenForMatch = (value: unknown): string => {
+  const raw = String(value ?? '').trim().replace(/^'+/, '').toLowerCase();
+  if (!raw) return '';
+
+  // 051_GG -> 051, 51 -> 051
+  const withOptionalSuffix = raw.match(/^(\d{1,3})(?:_[a-z]{1,5})?$/);
+  if (withOptionalSuffix) {
+    return withOptionalSuffix[1].replace(/^0+/, '').padStart(3, '0');
+  }
+
+  // Keep letter-based grouping as-is (A/B/C etc.)
+  if (/^[a-z]$/.test(raw)) return raw;
+
+  return raw;
+};
+
+const normalizeTextForMatch = (value: unknown): string => {
+  return String(value ?? '')
+    .trim()
+    .replace(/^'+/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 // Helper function to create a unique key for matching RPD items
 const createRPDKey = (item: Partial<RPDItem>): string => {
   return [
     item.program_pembebanan || '',
     item.kegiatan || '',
     normalizeKomponenOutputForMatch(item.komponen_output),
-    item.sub_komponen || '',
+    normalizeSubKomponenForMatch(item.sub_komponen),
     item.akun || '',
-    item.uraian || '',
+    normalizeTextForMatch(item.uraian),
+  ]
+    .map(v => String(v).trim().replace(/^'+/, '').toLowerCase())
+    .join('|');
+};
+
+const createRPDLooseKey = (item: Partial<RPDItem>): string => {
+  return [
+    item.program_pembebanan || '',
+    item.kegiatan || '',
+    normalizeKomponenOutputForMatch(item.komponen_output),
+    item.akun || '',
+    normalizeTextForMatch(item.uraian),
   ]
     .map(v => String(v).trim().replace(/^'+/, '').toLowerCase())
     .join('|');
@@ -150,10 +188,59 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
         items = parseExcelRPD(data);
       } else if (file.name.endsWith('.csv')) {
         const text = await file.text();
-        // Auto-detect delimiter: check first line for semicolon vs comma
-        const firstLine = text.split('\n')[0];
-        const delimiter = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
-        const data = text.split('\n').map(line => line.split(delimiter));
+
+        // Robust CSV parser with quote + multiline support
+        const parseCSV = (content: string): string[][] => {
+          const rows: string[][] = [];
+          let currentRow: string[] = [];
+          let currentCell = '';
+          let inQuotes = false;
+
+          for (let i = 0; i < content.length; i++) {
+            const ch = content[i];
+            const next = content[i + 1];
+
+            if (ch === '"') {
+              if (inQuotes && next === '"') {
+                currentCell += '"';
+                i++;
+              } else {
+                inQuotes = !inQuotes;
+              }
+              continue;
+            }
+
+            if (ch === ';' && !inQuotes) {
+              currentRow.push(currentCell.trim());
+              currentCell = '';
+              continue;
+            }
+
+            if ((ch === '\n' || ch === '\r') && !inQuotes) {
+              if (ch === '\r' && next === '\n') i++;
+              currentRow.push(currentCell.trim());
+              currentCell = '';
+              if (currentRow.some(cell => cell !== '')) {
+                rows.push(currentRow);
+              }
+              currentRow = [];
+              continue;
+            }
+
+            currentCell += ch;
+          }
+
+          if (currentCell.length > 0 || currentRow.length > 0) {
+            currentRow.push(currentCell.trim());
+            if (currentRow.some(cell => cell !== '')) {
+              rows.push(currentRow);
+            }
+          }
+
+          return rows;
+        };
+
+        const data = parseCSV(text);
         items = parseExcelRPD(data);
       } else {
         throw new Error('Format file tidak didukung. Gunakan Excel (.xlsx) atau CSV (.csv)');
@@ -411,6 +498,14 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
 
     const existingById = new Map(existingRPDItems.map(item => [normalizeToken(item.id), item]));
     const existingByKey = new Map(existingRPDItems.map(item => [createRPDKey(item), item]));
+    const existingByLooseKey = new Map<string, RPDItem[]>();
+
+    existingRPDItems.forEach(item => {
+      const looseKey = createRPDLooseKey(item);
+      const arr = existingByLooseKey.get(looseKey) || [];
+      arr.push(item);
+      existingByLooseKey.set(looseKey, arr);
+    });
 
     const matched: Partial<RPDItem>[] = [];
     const unmatched: Partial<RPDItem>[] = [];
@@ -420,7 +515,20 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
     newItems.forEach(item => {
       const id = normalizeToken(item.id);
       const key = createRPDKey(item);
-      const existing = (id ? existingById.get(id) : undefined) || existingByKey.get(key);
+      const looseKey = createRPDLooseKey(item);
+
+      let existing = (id ? existingById.get(id) : undefined) || existingByKey.get(key);
+
+      // Fallback matching to prevent false "Unknown/New" due minor sub_komponen variants
+      if (!existing) {
+        const looseCandidates = existingByLooseKey.get(looseKey) || [];
+        if (looseCandidates.length === 1) {
+          existing = looseCandidates[0];
+        } else if (looseCandidates.length > 1) {
+          const targetPagu = Number(item.total_pagu || 0);
+          existing = looseCandidates.find(c => Number(c.total_pagu || 0) === targetPagu) || looseCandidates[0];
+        }
+      }
 
       if (!existing) {
         unmatched.push(item);
