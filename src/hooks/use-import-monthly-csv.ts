@@ -54,6 +54,20 @@ export const useImportMonthlyCSV = ({
       const normalizeToken = (value: unknown) =>
         String(value ?? '').trim().replace(/^'+/, '').toLowerCase();
 
+      const buildLooseMatchKey = (item: {
+        program?: string;
+        program_pembebanan?: string;
+        kegiatan?: string;
+        akun?: string;
+        uraian?: string;
+      }) => {
+        const program = normalizeToken(item.program ?? item.program_pembebanan);
+        const kegiatan = normalizeToken(item.kegiatan);
+        const akun = normalizeToken(item.akun);
+        const uraian = normalizeToken(item.uraian).replace(/\s+/g, ' ');
+        return [program, kegiatan, akun, uraian].join('|');
+      };
+
       // Merge duplicate parsed rows by ID (split-line protection)
       const parsedById = new Map<string, ParsedMonthlyItem>();
       parsedData.items.forEach((item) => {
