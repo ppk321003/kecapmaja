@@ -250,7 +250,6 @@ function generateDeterministicId(
 }
 
 // Normalize sub_komponen value to 3-digit format with text prefix
-function normalizeSubKomponenValue(value: any): string {
 // Handles both plain numbers (051) and with program suffix (051_GG)
 function normalizeSubKomponenValue(value: any): string {
   if (!value) return '';
