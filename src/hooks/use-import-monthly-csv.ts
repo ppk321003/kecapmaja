@@ -196,12 +196,14 @@ export const useImportMonthlyCSV = ({
       dedupedParsedItems.forEach((parsedItem, idx) => {
         const normalizedParsedId = normalizeToken(parsedItem.id);
         const key = createUniqueKey(parsedItem);
+        const textKey = buildTextMatchKey(parsedItem as any);
         const looseKey = buildLooseMatchKey(parsedItem as any);
 
         const byId = normalizedParsedId ? budgetItemIdMap.get(normalizedParsedId) : undefined;
         const byKey = budgetItemMap.get(key);
+        const byText = textKey ? budgetItemTextMap.get(textKey) : undefined;
         const byLoose = looseKey ? budgetItemLooseMap.get(looseKey) : undefined;
-        const budgetItem = byId || byKey || byLoose;
+        const budgetItem = byId || byKey || byText || byLoose;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
@@ -209,7 +211,7 @@ export const useImportMonthlyCSV = ({
             kegiatan: parsedItem.kegiatan,
             akun: parsedItem.akun,
             uraian: parsedItem.uraian.substring(0, 40),
-            matchedBy: byId ? 'id' : byKey ? 'key' : byLoose ? 'loose-key' : 'none',
+            matchedBy: byId ? 'id' : byKey ? 'key' : byText ? 'text-key' : byLoose ? 'loose-key' : 'none',
           });
         }
 
