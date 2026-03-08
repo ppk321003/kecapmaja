@@ -471,29 +471,30 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
           <CardContent className="pt-6">
             <h3 className="text-sm font-semibold text-green-900 mb-4">Bulan dengan Realisasi Tertinggi (Semua 12 Bulan)</h3>
             
-            <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-4">
               {(() => {
                 // Sort semua 12 bulan dari tertinggi ke terendah
                 const allMonthsSorted = monthTotals.slice().sort((a, b) => b.total - a.total);
                 
-                // Group into 3 baris × 4 kolom
-                const rows = [];
-                for (let i = 0; i < allMonthsSorted.length; i += 4) {
-                  rows.push(allMonthsSorted.slice(i, i + 4));
-                }
+                // Split into 3 columns vertically: col1=[1-4], col2=[5-8], col3=[9-12]
+                const itemsPerCol = 4;
+                const columns = [
+                  allMonthsSorted.slice(0, itemsPerCol),
+                  allMonthsSorted.slice(itemsPerCol, itemsPerCol * 2),
+                  allMonthsSorted.slice(itemsPerCol * 2, itemsPerCol * 3),
+                ];
 
-                // Format currency dengan titik pemisah ribuan Indonesia
                 const formatCurrencyIndonesia = (value: number) => {
                   return 'Rp ' + Math.round(value).toLocaleString('id-ID').replace(/,/g, '.');
                 };
 
-                return rows.map((row, rowIdx) => (
-                  <div key={rowIdx} className="grid grid-cols-2 gap-4">
-                    {row.map((month, idx) => {
-                      const globalIndex = rowIdx * 4 + idx;
-                      const percentage = totalYear > 0 
-                        ? ((month.total / totalYear) * 100).toFixed(1) 
-                        : '0';
+                return columns.map((col, colIdx) => (
+                  <div key={colIdx} className="space-y-3">
+                    {col.map((month, idx) => {
+                      const globalIndex = colIdx * itemsPerCol + idx;
+                      const percentage = totalBudget > 0 
+                        ? ((month.total / totalBudget) * 100).toFixed(1) 
+                        : '0.0';
                       
                       return (
                         <div 
