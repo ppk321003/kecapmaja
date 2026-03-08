@@ -246,8 +246,15 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                 // Extract kegiatan number
                 const match = firstFieldAfterSemicolons.match(/^[A-Z]{2}\.(\d{4})$/);
                 hierarchy.kegiatan = match ? match[1] : '';
-                // DEBUG: Log all kegiatan including WA
-                console.log(`[parseMonthlyCSV] Kegiatan level (ANY program): ${hierarchy.kegiatanFull}, programFull=${hierarchy.programFull}, kegiatan=${hierarchy.kegiatan}`);
+                // Also RESET rincian/komponen output when new kegiatan is encountered
+                hierarchy.rincianOutput = '';
+                hierarchy.rincianOutputCode = '';
+                hierarchy.komponenOutput = '';
+                hierarchy.komponenOutputCode = '';
+                hierarchy.subKomponen = '';
+                hierarchy.akun = '';
+                // DEBUG: Log all kegiatan including WA with reset info
+                console.log(`[parseMonthlyCSV] Kegiatan level (ANY program): ${hierarchy.kegiatanFull}, programFull=${hierarchy.programFull}, kegiatan=${hierarchy.kegiatan}, hierarchy.reset`);
               }
             } else if (leadingSemicolons === 2) {
               // Level 2: ;;BMA; or ;;BMA.004; → Output/Rincian Output level
@@ -370,15 +377,13 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                 stats.itemsByProgram[programName]++;
 
                 if (items.length <= 5 || hierarchy.kegiatan === '2886') {
-                  console.log(`[parseMonthlyCSV] Item ${items.length}:`, {
+                  console.log(`[parseMonthlyCSV] Item ${items.length}: Keg=${hierarchy.kegiatan}, RincOut=${hierarchy.rincianOutput}, KompOut=${hierarchy.komponenOutput}, Uraian=${uraian.substring(0, 40)}, PeriodeIni=${periodeIni}`, {
                     program: item.program,
                     kegiatan: item.kegiatan,
                     rincianOutput: item.rincianOutput,
                     komponenOutput: item.komponenOutput,
                     subKomponen: item.subKomponen,
                     akun: item.akun,
-                    uraian: item.uraian.substring(0, 40),
-                    sisaAnggaran: item.sisaAnggaran,
                   });
                 }
               } else if (uraian) {
@@ -401,16 +406,17 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         }
         
         // DEBUG: Log summary statistics
+        const wa2886Items = items.filter(it => it.kegiatan === '2886' && it.program === 'WA');
+        const ggItems = items.filter(it => it.program && it.program.includes('GG'));
         console.log('[parseMonthlyCSV] SUMMARY:', {
           totalItems: items.length,
           itemsByProgram: stats.itemsByProgram || {},
+          ggItems_count: ggItems.length,
+          ggItems_total: ggItems.reduce((s, it) => s + (it.periodeIni || 0), 0),
+          wa2886Items_count: wa2886Items.length,
+          wa2886Items_total: wa2886Items.reduce((s, it) => s + (it.periodeIni || 0), 0),
           periode: `${periodeInfo.bulan}/${periodeInfo.tahun}`,
           satker: satkerIdFormatted,
-          stats: {
-            itemsParsed: stats.itemsParsed,
-            skippedRows: stats.skippedRows,
-            rowsProcessed: stats.rowsProcessed
-          }
         });
 
         resolve({
