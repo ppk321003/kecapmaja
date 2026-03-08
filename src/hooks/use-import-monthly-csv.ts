@@ -378,7 +378,7 @@ export const useImportMonthlyCSV = ({
         ambiguousLooseKey: budgetItemLooseDuplicates.size,
         trioBuckets: budgetItemTrioMap.size,
         idPrefix6Buckets: budgetItemIdPrefixMap.size,
-      });
+        idPrefixNoSubBuckets: budgetItemIdPrefixNoSubMap.size,
 
       // Match priority: ID first, then composite key fallback
       // IMPORTANT: process non-zero period rows first so meaningful monthly values
