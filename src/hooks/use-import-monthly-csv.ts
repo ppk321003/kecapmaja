@@ -122,6 +122,18 @@ export const useImportMonthlyCSV = ({
         const normalizedId = normalizeToken(item.id);
         if (normalizedId) budgetItemIdMap.set(normalizedId, item);
 
+        const looseKey = buildLooseMatchKey(item as any);
+        if (looseKey && looseKey !== '|||') {
+          if (budgetItemLooseDuplicates.has(looseKey)) {
+            // already marked ambiguous
+          } else if (budgetItemLooseMap.has(looseKey)) {
+            budgetItemLooseMap.delete(looseKey);
+            budgetItemLooseDuplicates.add(looseKey);
+          } else {
+            budgetItemLooseMap.set(looseKey, item);
+          }
+        }
+
         if (idx < 3) {
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
             id: item.id,
