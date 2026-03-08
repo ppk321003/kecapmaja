@@ -447,6 +447,33 @@ const BahanRevisiUploadBulanan: React.FC<BahanRevisiUploadBulananProps> = ({
                       </div>
                     </div>
 
+                    {lastImportAudit && (
+                      <Card className="bg-background border-border">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm">Audit Import</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-xs">
+                          <div className="grid grid-cols-2 gap-2">
+                            <p><span className="text-muted-foreground">Matched nilai:</span> {Number(lastImportAudit.matched_periode_ini || 0).toLocaleString('id-ID')}</p>
+                            <p><span className="text-muted-foreground">Unmatched nilai:</span> {Number(lastImportAudit.unmatched_periode_ini || 0).toLocaleString('id-ID')}</p>
+                            <p><span className="text-muted-foreground">Total payload:</span> {Number(lastImportAudit.combined_periode_ini || 0).toLocaleString('id-ID')}</p>
+                            <p><span className="text-muted-foreground">RPD deduped:</span> {lastImportAudit.rpd_update_deduped_count || 0}</p>
+                          </div>
+
+                          {lastImportAudit.unmatched_by_kegiatan && Object.keys(lastImportAudit.unmatched_by_kegiatan).length > 0 && (
+                            <div>
+                              <p className="font-semibold">Unmatched per Kegiatan:</p>
+                              <ul className="ml-4 list-disc">
+                                {Object.entries(lastImportAudit.unmatched_by_kegiatan).slice(0, 5).map(([kegiatan, count]) => (
+                                  <li key={kegiatan}>{kegiatan}: {count} item</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {uploadState.matchResult.notMatched > 0 && (
                       <Alert className="bg-amber-50 border-amber-200">
                         <AlertCircle className="h-4 w-4" />
