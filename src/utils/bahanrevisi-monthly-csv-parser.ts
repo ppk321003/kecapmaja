@@ -5,6 +5,7 @@
  */
 
 export interface ParsedMonthlyItem {
+  id: string;              // Deterministic ID from 7-field key: program|kegiatan|rincian|komponen|subkomp|akun|uraian
   program: string;
   kegiatan: string;
   rincianOutput: string;
@@ -28,6 +29,7 @@ export interface ParsedMonthlyData {
     itemsParsed: number;
     skippedRows: number;
     continuationsMerged: number;
+    itemsByProgram?: { [key: string]: number };
   };
 }
 
@@ -108,11 +110,12 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         const errors: string[] = [];
         const warnings: string[] = [];
         const items: ParsedMonthlyItem[] = [];
-        const stats = {
+        const stats: any = {
           totalRows: lines.length,
           itemsParsed: 0,
           skippedRows: 0,
           continuationsMerged: 0,
+          itemsByProgram: {},
         };
 
         // Extract periode (bulan/tahun) and satker info from first 20 lines
@@ -356,6 +359,15 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                 }
 
                 const item: ParsedMonthlyItem = {
+                  id: generateDeterministicId(
+                    hierarchy.programFull,
+                    hierarchy.kegiatan,
+                    hierarchy.rincianOutput,
+                    hierarchy.komponenOutput,
+                    normalizedSubKomponen,
+                    hierarchy.akun,
+                    uraian
+                  ),
                   program: hierarchy.programFull,
                   kegiatan: hierarchy.kegiatan,
                   rincianOutput: hierarchy.rincianOutput,
@@ -475,6 +487,41 @@ function normalizeForMatching(value: any): string {
   
   return withoutPrefix.trim();
 }
+
+/**
+ * Generate deterministic ID dari 7-field composite key
+ * Digunakan untuk budget_items.id, rpd_items.id, dan unmatched items
+ * Format: "054.01.GG_2886_2886.EBA_2886.EBA.994_051_WA_524111_PERJALANAN_DAN_ADMINISTRASI_BMN"
+ * PENTING: Gunakan RAW values (bukan normalized) untuk ID generation agar konsisten
+ */
+export const generateDeterministicId = (
+  program: string,
+  kegiatan: string,
+  rincian: string,
+  komponen: string,
+  subkomp: string,
+  akun: string,
+  uraian: string
+): string => {
+  // Clean uraian: uppercase, keep only alphanumeric + space, replace space with underscore
+  const cleanedUraian = (uraian || '')
+    .substring(0, 100) // Limit to 100 chars
+    .replace(/[^\w\s]/g, '') // Remove special chars
+    .replace(/\s+/g, '_') // Replace spaces with underscore
+    .toUpperCase();
+  
+  const id = [
+    program || 'UNKNOWN',
+    kegiatan || 'UNKNOWN',
+    rincian || 'UNKNOWN',
+    komponen || 'UNKNOWN',
+    subkomp || 'UNKNOWN',
+    akun || 'UNKNOWN',
+    cleanedUraian || 'UNKNOWN',
+  ].join('_');
+  
+  return id;
+};
 
 /**
  * Create unique key dari item untuk matching

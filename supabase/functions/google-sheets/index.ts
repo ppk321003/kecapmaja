@@ -217,7 +217,40 @@ function normalizeForMatching(value: any): string {
   return withoutPrefix.trim();
 }
 
+// Generate deterministic ID dari 7-field composite key
+// Format: "054.01.GG_2886_2886.EBA_2886.EBA.994_051_WA_524111_PERJALANAN_ADMINISTRASI_BMN"
+// PENTING: Gunakan RAW values (bukan normalized) untuk ID generation
+function generateDeterministicId(
+  program: string,
+  kegiatan: string,
+  rincian: string,
+  komponen: string,
+  subkomp: string,
+  akun: string,
+  uraian: string
+): string {
+  // Clean uraian: uppercase, keep only alphanumeric + space, replace space with underscore
+  const cleanedUraian = (uraian || '')
+    .substring(0, 100) // Limit to 100 chars
+    .replace(/[^\w\s]/g, '') // Remove special chars
+    .replace(/\s+/g, '_') // Replace spaces with underscore
+    .toUpperCase();
+  
+  const id = [
+    program || 'UNKNOWN',
+    kegiatan || 'UNKNOWN',
+    rincian || 'UNKNOWN',
+    komponen || 'UNKNOWN',
+    subkomp || 'UNKNOWN',
+    akun || 'UNKNOWN',
+    cleanedUraian || 'UNKNOWN',
+  ].join('_');
+  
+  return id;
+}
+
 // Normalize sub_komponen value to 3-digit format with text prefix
+function normalizeSubKomponenValue(value: any): string {
 // Handles both plain numbers (051) and with program suffix (051_GG)
 function normalizeSubKomponenValue(value: any): string {
   if (!value) return '';
