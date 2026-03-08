@@ -45,12 +45,30 @@ interface UploadState {
   error: string | null;
 }
 
+// Normalize komponen_output token for tolerant matching (handles OCR-like confusion: 0↔O, 1↔I)
+const normalizeKomponenOutputForMatch = (value: unknown): string => {
+  const raw = String(value ?? '').trim().replace(/^'+/, '').toLowerCase();
+  const parts = raw.split('.');
+
+  // Expected: kegiatan.ro.komponen (e.g., 2902.fan.zzi)
+  if (parts.length === 3) {
+    const detail = parts[2];
+    // Only apply ambiguity normalization on non-pure-numeric suffixes
+    if (!/^\d+$/.test(detail)) {
+      parts[2] = detail.replace(/0/g, 'o').replace(/1/g, 'i');
+    }
+    return parts.join('.');
+  }
+
+  return raw;
+};
+
 // Helper function to create a unique key for matching RPD items
 const createRPDKey = (item: Partial<RPDItem>): string => {
   return [
     item.program_pembebanan || '',
     item.kegiatan || '',
-    item.komponen_output || '',
+    normalizeKomponenOutputForMatch(item.komponen_output),
     item.sub_komponen || '',
     item.akun || '',
     item.uraian || '',
