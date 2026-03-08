@@ -53,7 +53,7 @@ const createRPDKey = (item: Partial<RPDItem>): string => {
     item.akun || '',
     item.uraian || '',
   ]
-    .map(v => String(v).trim().toLowerCase())
+    .map(v => String(v).trim().replace(/^'+/, '').toLowerCase())
     .join('|');
 };
 
