@@ -538,24 +538,18 @@ export const generateDeterministicId = (
   akun: string,
   uraian: string
 ): string => {
-  // Clean uraian: uppercase, keep only alphanumeric + space, replace space with underscore
-  const cleanedUraian = (uraian || '')
-    .substring(0, 100) // Limit to 100 chars
-    .replace(/[^\w\s]/g, '') // Remove special chars
-    .replace(/\s+/g, '_') // Replace spaces with underscore
-    .toUpperCase();
-  
-  const id = [
-    program || 'UNKNOWN',
-    kegiatan || 'UNKNOWN',
-    rincian || 'UNKNOWN',
-    komponen || 'UNKNOWN',
-    subkomp || 'UNKNOWN',
-    akun || 'UNKNOWN',
-    cleanedUraian || 'UNKNOWN',
-  ].join('_');
-  
-  return id;
+  // Keep raw hierarchy values (pipe-separated) so ID is compatible with budget_items/rpd_items
+  const idParts = [
+    String(program || '').trim(),
+    String(kegiatan || '').trim(),
+    String(rincian || '').trim(),
+    String(komponen || '').trim(),
+    String(subkomp || '').trim(),
+    String(akun || '').trim(),
+    String(uraian || '').trim(),
+  ];
+
+  return idParts.join('|');
 };
 
 /**

@@ -1505,7 +1505,7 @@ serve(async (req: Request) => {
                 `'${normalizedSubKomponen}`, // Force sub_komponen as text with single quote
                 budgetItem.akun || '',
                 budgetItem.uraian || '',
-                budgetItem.jumlah_menjadi || budgetItem.sisa_anggaran || 0, // total_pagu
+                Number(budgetItem.jumlah_menjadi ?? budgetItem.total_pagu ?? 0), // total_pagu must not come from sisa_anggaran
               ];
               
               // Add 12 month columns (initially 0, filling in the one with data)
