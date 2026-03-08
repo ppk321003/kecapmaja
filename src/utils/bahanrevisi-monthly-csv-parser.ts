@@ -526,7 +526,7 @@ function normalizeForMatching(value: any): string {
 /**
  * Generate deterministic ID dari 7-field composite key
  * Digunakan untuk budget_items.id, rpd_items.id, dan unmatched items
- * Format: "054.01.GG_2886_2886.EBA_2886.EBA.994_051_WA_524111_PERJALANAN_DAN_ADMINISTRASI_BMN"
+ * Format: "054.01.GG|2886|2886.EBA|2886.EBA.994|051_WA|524111|PERJALANAN DAN ADMINISTRASI BMN"
  * PENTING: Gunakan RAW values (bukan normalized) untuk ID generation agar konsisten
  */
 export const generateDeterministicId = (
