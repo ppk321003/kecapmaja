@@ -377,7 +377,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
       // Prepare items to add (unmatched)
       const itemsToAdd = unmatched.map(item => ({
         ...item,
-        id: `rpd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: [item.program_pembebanan, item.kegiatan, '', item.komponen_output, item.sub_komponen, item.akun, item.uraian].map(s => (s || '').trim()).join('|'),
         modified_by: 'system',
         modified_date: new Date().toISOString(),
       })) as RPDItem[];
