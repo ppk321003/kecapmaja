@@ -352,7 +352,7 @@ export const useImportMonthlyCSV = ({
           result.notMatched++;
           result.not_matched_items.push({
             item: parsedItem,
-            reason: `Tidak ditemukan (id: ${parsedItem.id || '-'}, key: ${key.substring(0, 35)}..., text: ${textKey.substring(0, 35)}..., hierarchy: ${hierarchyKey.substring(0, 35)}..., loose: ${looseKey.substring(0, 35)}...)`,
+            reason: `Tidak ditemukan (id: ${parsedItem.id || '-'}, key: ${key.substring(0, 35)}..., text: ${textKey.substring(0, 35)}..., hierarchy: ${(hierarchyKey || '').substring(0, 35)}..., loose: ${looseKey.substring(0, 35)}...)`,
           });
         }
 
