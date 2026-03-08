@@ -77,13 +77,13 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   const [detailsModalCurrentPage, setDetailsModalCurrentPage] = useState(0);
   const itemsPerPage = 20;
 
-  // Name maps to match Ringkasan behavior
-  const programNameMap = useMemo(() => Object.fromEntries(programs.map(p => [p.id, `${p.id} - ${p.name}`])), [programs]);
-  const kegiatanNameMap = useMemo(() => Object.fromEntries(kegiatans.map(k => [k.id, `${k.id} - ${k.name}`])), [kegiatans]);
-  const rincianNameMap = useMemo(() => Object.fromEntries(rincianOutputs.map(r => [r.id, `${r.id} - ${r.name}`])), [rincianOutputs]);
-  const komponenNameMap = useMemo(() => Object.fromEntries(komponenOutputs.map(k => [k.id, `${k.id} - ${k.name}`])), [komponenOutputs]);
-  const subKomponenNameMap = useMemo(() => Object.fromEntries(subKomponen.map(s => [s.id, `${s.id} - ${s.name}`])), [subKomponen]);
-  const akunNameMap = useMemo(() => Object.fromEntries(akuns.map(a => [a.id, `${a.id} - ${a.name}`])), [akuns]);
+  // Name maps to match Ringkasan behavior - map by both id and code for robust matching
+  const programNameMap = useMemo(() => Object.fromEntries(programs.flatMap(p => [[p.id, `${p.id} - ${p.name}`], [p.code, `${p.code} - ${p.name}`]])), [programs]);
+  const kegiatanNameMap = useMemo(() => Object.fromEntries(kegiatans.flatMap(k => [[k.id, `${k.id} - ${k.name}`], [k.code, `${k.code} - ${k.name}`]])), [kegiatans]);
+  const rincianNameMap = useMemo(() => Object.fromEntries(rincianOutputs.flatMap(r => [[r.id, `${r.id} - ${r.name}`], [r.code, `${r.code} - ${r.name}`]])), [rincianOutputs]);
+  const komponenNameMap = useMemo(() => Object.fromEntries(komponenOutputs.flatMap(k => [[k.id, `${k.id} - ${k.name}`], [k.code, `${k.code} - ${k.name}`]])), [komponenOutputs]);
+  const subKomponenNameMap = useMemo(() => Object.fromEntries(subKomponen.flatMap(s => [[s.id, `${s.code} - ${s.name}`], [s.code, `${s.code} - ${s.name}`]])), [subKomponen]);
+  const akunNameMap = useMemo(() => Object.fromEntries(akuns.flatMap(a => [[a.id, `${a.id} - ${a.name}`], [a.code, `${a.code} - ${a.name}`]])), [akuns]);
 
   const formatName = (code: string | undefined, type: string) => {
     if (!code) return 'Unknown';
