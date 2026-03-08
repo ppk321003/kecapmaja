@@ -237,7 +237,7 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                 hierarchy.kegiatanFull = '';
                 console.log(`[parseMonthlyCSV] Program level: ${hierarchy.programFull}`);
               } else if (/^[A-Z]{2}\.\d{4}$/.test(firstFieldAfterSemicolons)) {
-                // Kegiatan code like GG.2897
+                // Kegiatan code like GG.2897 or WA.2886
                 hierarchy.kegiatanFull = firstFieldAfterSemicolons;
                 hierarchy.program = firstFieldAfterSemicolons.split('.')[0];
                 // Build full program code with satker prefix if available
@@ -246,6 +246,8 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
                 // Extract kegiatan number
                 const match = firstFieldAfterSemicolons.match(/^[A-Z]{2}\.(\d{4})$/);
                 hierarchy.kegiatan = match ? match[1] : '';
+                // DEBUG: Log all kegiatan including WA
+                console.log(`[parseMonthlyCSV] Kegiatan level (ANY program): ${hierarchy.kegiatanFull}, programFull=${hierarchy.programFull}, kegiatan=${hierarchy.kegiatan}`);
               }
             } else if (leadingSemicolons === 2) {
               // Level 2: ;;BMA; or ;;BMA.004; → Output/Rincian Output level
@@ -360,8 +362,14 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
 
                 items.push(item);
                 stats.itemsParsed++;
+                
+                // DEBUG: Track items by program
+                const programName = hierarchy.program || 'UNKNOWN';
+                if (!stats.itemsByProgram) stats.itemsByProgram = {};
+                if (!stats.itemsByProgram[programName]) stats.itemsByProgram[programName] = 0;
+                stats.itemsByProgram[programName]++;
 
-                if (items.length <= 3) {
+                if (items.length <= 5 || hierarchy.kegiatan === '2886') {
                   console.log(`[parseMonthlyCSV] Item ${items.length}:`, {
                     program: item.program,
                     kegiatan: item.kegiatan,
@@ -391,6 +399,19 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         if (items.length === 0) {
           errors.push('Tidak ada items yang berhasil di-parse dari CSV');
         }
+        
+        // DEBUG: Log summary statistics
+        console.log('[parseMonthlyCSV] SUMMARY:', {
+          totalItems: items.length,
+          itemsByProgram: stats.itemsByProgram || {},
+          periode: `${periodeInfo.bulan}/${periodeInfo.tahun}`,
+          satker: satkerIdFormatted,
+          stats: {
+            itemsParsed: stats.itemsParsed,
+            skippedRows: stats.skippedRows,
+            rowsProcessed: stats.rowsProcessed
+          }
+        });
 
         resolve({
           items,

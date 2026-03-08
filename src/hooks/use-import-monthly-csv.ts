@@ -83,8 +83,8 @@ export const useImportMonthlyCSV = ({
         const key = createUniqueKey(parsedItem);
         const budgetItem = budgetItemMap.get(key);
 
-        // Log first 3 parsed items untuk debug
-        if (idx < 3) {
+        // Log first 5 parsed items dan any WA.2886 items untuk debug
+        if (idx < 5 || parsedItem.kegiatan === '2886') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
             program: parsedItem.program,
             kegiatan: parsedItem.kegiatan,
@@ -120,15 +120,36 @@ export const useImportMonthlyCSV = ({
         notMatched: result.notMatched,
         total: result.matched + result.notMatched,
       });
+      
+      // Log summary by program
+      const programCounts = {};
+      result.matched_items.forEach(item => {
+        const prog = item.item.program || 'UNKNOWN';
+        if (!programCounts[prog]) programCounts[prog] = { matched: 0, kegiatan: new Set() };
+        programCounts[prog].matched++;
+        programCounts[prog].kegiatan.add(item.item.kegiatan);
+      });
+      result.not_matched_items.forEach(item => {
+        const prog = item.item.program || 'UNKNOWN';
+        if (!programCounts[prog]) programCounts[prog] = { unmatched: 0, kegiatan: new Set() };
+        if (!programCounts[prog].unmatched) programCounts[prog].unmatched = 0;
+        programCounts[prog].unmatched = (programCounts[prog].unmatched || 0) + 1;
+        programCounts[prog].kegiatan.add(item.item.kegiatan);
+      });
+      
+      console.log('[useImportMonthlyCSV] Items by Program:', programCounts);
 
       // Log detailed unmatched items untuk debug
       if (result.not_matched_items.length > 0) {
-        console.log(`[useImportMonthlyCSV] ⚠️ ${result.not_matched_items.length} unmatched items:`);
-        result.not_matched_items.forEach((item, idx) => {
-          console.log(`  ${idx + 1}. Program: ${item.item.program}, Kegiatan: ${item.item.kegiatan}, RincianOutput: ${item.item.rincianOutput}, KomponenOutput: ${item.item.komponenOutput}, SubKomponen: ${item.item.subKomponen}, Akun: ${item.item.akun}`);
-          console.log(`     Uraian: ${item.item.uraian}`);
-          console.log(`     SisaAnggaran: ${item.item.sisaAnggaran}, Reason: ${item.reason}`);
+        console.log(`[useImportMonthlyCSV] WARNING: ${result.not_matched_items.length} unmatched items`);
+        // Show summary of unmatched by kegiatan
+        const unmatchedByKeg = {};
+        result.not_matched_items.forEach(item => {
+          const keg = item.item.kegiatan;
+          if (!unmatchedByKeg[keg]) unmatchedByKeg[keg] = 0;
+          unmatchedByKeg[keg]++;
         });
+        console.log('[useImportMonthlyCSV] Unmatched by Kegiatan:', unmatchedByKeg);
       }
 
       return result;
