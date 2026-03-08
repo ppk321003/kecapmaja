@@ -153,6 +153,28 @@ export const useImportMonthlyCSV = ({
         return parts.length >= 6 ? parts.slice(0, 6).join('|') : '';
       };
 
+      const getLevenshteinDistance = (left: string, right: string) => {
+        const a = left;
+        const b = right;
+        const matrix: number[][] = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+
+        for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+        for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+        for (let i = 1; i <= a.length; i++) {
+          for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j] + 1,
+              matrix[i][j - 1] + 1,
+              matrix[i - 1][j - 1] + cost
+            );
+          }
+        }
+
+        return matrix[a.length][b.length];
+      };
+
       const getUraianSimilarity = (left: unknown, right: unknown) => {
         const leftWords = new Set(normalizeWords(left));
         const rightWords = new Set(normalizeWords(right));
@@ -163,7 +185,17 @@ export const useImportMonthlyCSV = ({
           if (rightWords.has(w)) overlap++;
         });
 
-        return overlap / Math.min(leftWords.size, rightWords.size);
+        const wordScore = overlap / Math.min(leftWords.size, rightWords.size);
+
+        const leftText = normalizeTextToken(left);
+        const rightText = normalizeTextToken(right);
+        const maxLen = Math.max(leftText.length, rightText.length);
+        const charScore = maxLen > 0
+          ? 1 - getLevenshteinDistance(leftText, rightText) / maxLen
+          : 0;
+
+        // Weighted score: prioritize token overlap but use char similarity to break ties
+        return (wordScore * 0.7) + (Math.max(0, charScore) * 0.3);
       };
 
       const hasStrongContainment = (left: unknown, right: unknown) => {
