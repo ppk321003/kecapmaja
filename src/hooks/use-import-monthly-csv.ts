@@ -616,6 +616,7 @@ export const useImportMonthlyCSV = ({
       try {
         setIsImporting(true);
         setImportErrors([]);
+        setLastImportAudit(null);
         setParseProgress('Parsing CSV...');
 
         // Parse CSV
