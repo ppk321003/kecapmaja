@@ -53,7 +53,7 @@ const createRPDKey = (item: Partial<RPDItem>): string => {
     item.akun || '',
     item.uraian || '',
   ]
-    .map(v => String(v).trim().toLowerCase())
+    .map(v => String(v).trim().replace(/^'+/, '').toLowerCase())
     .join('|');
 };
 
@@ -177,172 +177,174 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
 
   const parseExcelRPD = (data: any[][]): Partial<RPDItem>[] => {
     const items: Partial<RPDItem>[] = [];
-    
-    const monthPatterns: { [key: string]: string } = {
-      'jan': 'jan', 'janu': 'jan', 'januari': 'jan',
-      'feb': 'feb', 'febr': 'feb', 'februari': 'feb',
-      'mar': 'mar', 'maret': 'mar', 'mrt': 'mar',
-      'apr': 'apr', 'april': 'apr',
-      'mei': 'mei', 'may': 'mei',
-      'jun': 'jun', 'juni': 'jun',
-      'jul': 'jul', 'juli': 'jul',
-      'aug': 'aug', 'agust': 'aug', 'agustus': 'aug',
-      'sep': 'sep', 'sept': 'sep', 'september': 'sep',
-      'oct': 'oct', 'okt': 'oct', 'oktober': 'oct',
-      'nov': 'nov', 'nop': 'nov', 'november': 'nov',
-      'dec': 'dec', 'dez': 'dec', 'des': 'dec', 'desember': 'dec',
+
+    // Fixed POK month column indices (0-based after semicolon split)
+    const POK_MONTH_COLS: Record<string, number> = {
+      jan: 17, feb: 18, mar: 19, apr: 20, mei: 21, jun: 22,
+      jul: 24, aug: 26, sep: 27, oct: 28, nov: 29, dec: 31,
     };
+    const JUMLAH_BIAYA_COL = 11;
+    const BLOKIR_COL = 38;
 
-    const months = ['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-
-    if (data.length < 2) {
-      throw new Error('File harus memiliki minimal header dan 1 baris data');
-    }
-
-    // Find header row dengan deteksi bulan
-    let headerRowIdx = -1;
-    let monthColumnMap = new Map<string, number>();
-    
-    for (let i = 0; i < Math.min(30, data.length); i++) {
-      const row = data[i];
-      if (!row || row.length < 15) continue;
-      
-      const tempMonthMap = new Map<string, number>();
-      row.forEach((cell: any, idx: number) => {
-        const normalized = String(cell || '').toLowerCase().trim();
-        for (const [pattern, monthName] of Object.entries(monthPatterns)) {
-          if (normalized === pattern || normalized.startsWith(pattern)) {
-            tempMonthMap.set(monthName, idx);
-          }
-        }
-      });
-      
-      // Jika found >= 5 bulan, ini adalah header row
-      if (tempMonthMap.size >= 5) {
-        headerRowIdx = i;
-        monthColumnMap = tempMonthMap;
-        console.debug('[BahanRevisiUploadRPD] Found header at row', i, 'with months:', Array.from(monthColumnMap.keys()));
-        break;
-      }
-    }
-
-    if (headerRowIdx === -1) {
-      throw new Error('Tidak menemukan header dengan bulan. Pastikan file mengandung kolom JAN, FEB, MRT, APRIL, MEI, JUNI, JULI, AGUST, SEPT, OKT, NOP, DES');
-    }
-
-    const dataStartIdx = headerRowIdx + 1;
-
-    // Helper function to safely parse number dengan berbagai format
-    const parseNumber = (value: any): number => {
+    // Parse Indonesian number (dots as thousand separators)
+    const parseNum = (value: any): number => {
       if (!value) return 0;
       const str = String(value).trim();
-      if (!str || str === '-' || str === '') return 0;
-      // Remove spaces and thousands separators, keep decimal point
+      if (!str || str === '-') return 0;
       const cleaned = str.replace(/[.\s]/g, '').replace(',', '.');
       const num = parseFloat(cleaned);
       return isNaN(num) ? 0 : Math.max(0, num);
     };
 
-    // Find first month column index untuk menentukan uraian column
-    const monthColIndices = Array.from(monthColumnMap.values());
-    const firstMonthColIdx = monthColIndices.length > 0 ? Math.min(...monthColIndices) : 100;
+    // Normalize sub_komponen to 3-digit padded
+    const normalizeSubKomp = (code: string): string => {
+      if (!code) return '';
+      const cleaned = code.split('.')[0].trim();
+      const numPart = cleaned.replace(/^0+/, '') || '0';
+      return numPart.padStart(3, '0');
+    };
 
-    // Parse POK/hierarchical data dengan context tracking
+    // Check if row is a page header (repeating headers in POK format)
+    const isPageHeader = (row: any[]): boolean => {
+      const col0 = String(row[0] || '').trim();
+      const col1 = String(row[1] || '').trim();
+      const col2 = String(row[2] || '').trim();
+      if (col1.includes('PETUNJUK OPERASIONAL')) return true;
+      if (col0.includes('Satuan Kerja')) return true;
+      if (col1 === 'KODE') return true;
+      // Column number row: ;1;2;;;3;;...
+      if (col1 === '1' && col2 === '2') return true;
+      // "(Dalam" keyword
+      if (row.some((v: any) => String(v || '').includes('(Dalam'))) return true;
+      // Header sub-rows with keywords
+      const rowText = row.slice(0, 20).map((v: any) => String(v || '')).join(' ');
+      if (rowText.includes('Kontraktual') || rowText.includes('Harga Satuan') ||
+          (rowText.includes('Volume') && rowText.includes('Jumlah Biaya'))) return true;
+      // Multiline quoted garbage
+      if (col1.includes('"') || col0.includes('"')) return true;
+      return false;
+    };
+
+    // Month name check (skip header month labels)
+    const monthNames = new Set(['JAN', 'FEB', 'MRT', 'APRIL', 'MEI', 'JUNI', 'JULI', 'AGUST', 'SEPT', 'OKT', 'NOP', 'DES']);
+
+    // Hierarchy tracking
     let currentProgram = '';
     let currentKegiatan = '';
-    let currentKomponen = '';
+    let currentROCode = '';        // e.g., 'BMA'
+    let currentRincianOutput = ''; // e.g., '2896.BMA'
+    let currentKomponen = '';      // e.g., '2896.BMA.004'
     let currentSubKomponen = '';
-    let lastAkun = '';
-    
-    for (let i = dataStartIdx; i < data.length; i++) {
+    let currentAkun = '';
+
+    for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      
-      // Skip empty rows
-      if (!row || row.length === 0) continue;
-      
-      // Ensure row has enough columns
-      if (row.length < Math.max(...monthColumnMap.values())) {
-        continue;
-      }
+      if (!row || row.length < 10) continue;
 
-      // Get code dari kolom 1 (bukan kolom 0)
-      const codeInCol1 = String(row[1] || '').trim();
-      
-      // Detect what's in column 1
-      const isProgram = /^[0-9]{3}\.[0-9]{2}\.[A-Z]{2}$/.test(codeInCol1); // 054.01.GG
-      const isKegiatan = /^[0-9]{4}$/.test(codeInCol1); // 2896
-      const isKomponen = /^[0-9]{4}\.[A-Z]{3}/.test(codeInCol1); // 2896.BMA
-      const isSubKomponen = /^[A-Z]{3}$/.test(codeInCol1) && codeInCol1 !== 'NON' && codeInCol1 !== 'JAN' && codeInCol1 !== 'KD'; 
-      const isAkun = /^[0-9]{5,6}$/.test(codeInCol1); // 521213
+      // Skip page headers
+      if (isPageHeader(row)) continue;
 
-      // Update hierarchy context
-      if (codeInCol1) {
+      const code = String(row[1] || '').trim();
+      const name = String(row[2] || '').trim();
+
+      // Skip TOTAL rows
+      if (name.toUpperCase().startsWith('TOTAL') || code.toUpperCase() === 'TOTAL') continue;
+
+      // Skip month name header fragments
+      if (code && monthNames.has(code.toUpperCase())) continue;
+
+      if (code) {
+        // Hierarchy detection
+        const isProgram = /^\d{3}\.\d{2}\.[A-Z]{2}$/.test(code);      // 054.01.GG
+        const isKegiatan = /^\d{4}$/.test(code);                        // 2896
+        const isRO = /^\d{4}\.[A-Z]{2,3}$/.test(code);                 // 2896.BMA
+        const isKomponen = /^[A-Z]{2,3}\.\d{3}$/.test(code);           // BMA.004
+        const isSubKomp = /^\d{1,3}$/.test(code) && code.length <= 3;  // 052, 005
+        const isSkipLevel = /^[A-Z]$/.test(code) && name.toUpperCase().includes('TANPA SUB KOMPONEN');
+        const isAkun = /^\d{5,6}$/.test(code);                          // 524113
+
         if (isProgram) {
-          currentProgram = codeInCol1;
-          currentKegiatan = '';
-          currentKomponen = '';
-          currentSubKomponen = '';
-          lastAkun = '';
+          currentProgram = code;
+          currentKegiatan = ''; currentROCode = ''; currentRincianOutput = '';
+          currentKomponen = ''; currentSubKomponen = ''; currentAkun = '';
         } else if (isKegiatan) {
-          currentKegiatan = codeInCol1;
-          currentKomponen = '';
-          currentSubKomponen = '';
-          lastAkun = '';
+          currentKegiatan = code;
+          currentROCode = ''; currentRincianOutput = '';
+          currentKomponen = ''; currentSubKomponen = ''; currentAkun = '';
+        } else if (isRO) {
+          // e.g., 2896.BMA → ROCode = BMA
+          currentROCode = code.split('.').slice(1).join('.');
+          currentRincianOutput = code;
+          currentKomponen = ''; currentSubKomponen = ''; currentAkun = '';
         } else if (isKomponen) {
-          currentKomponen = codeInCol1;
-          currentSubKomponen = '';
-          lastAkun = '';
-        } else if (isSubKomponen) {
-          currentSubKomponen = codeInCol1;
-          lastAkun = '';
+          // e.g., BMA.004 → full komponen: 2896.BMA.004
+          const kompDetailCode = code.split('.')[1]; // '004'
+          currentKomponen = `${currentKegiatan}.${currentROCode}.${kompDetailCode}`;
+          currentSubKomponen = ''; currentAkun = '';
+        } else if (isSkipLevel) {
+          // A - TANPA SUB KOMPONEN: skip, don't change context
+        } else if (isSubKomp) {
+          currentSubKomponen = normalizeSubKomp(code);
+          // Apply _programSuffix for special codes (051, 053, 054)
+          if (['051', '053', '054'].includes(currentSubKomponen) && currentProgram) {
+            const programSuffix = currentProgram.split('.').pop(); // 'GG' from '054.01.GG'
+            currentSubKomponen = `${currentSubKomponen}_${programSuffix}`;
+          }
+          currentAkun = '';
         } else if (isAkun) {
-          lastAkun = codeInCol1;
+          currentAkun = code;
         }
-        // Don't create items for hierarchy headers, just update context
+        // Hierarchy rows are not data items
         continue;
       }
 
-      // Jika column[1] kosong, ini adalah detail item row
-      // Ambil uraian dari column[2]
-      const detailUraian = String(row[2] || '').trim();
-      
-      // Parse monthly values dengan proper number handling
-      // Nilai di CSV sudah dalam ribuan, kalikan 1000 untuk nilai sebenarnya
-      const monthValues: { [key: string]: number } = {};
+      // Detail item row: col[1] is empty, uraian in col[2]
+      const uraian = name;
+      if (!uraian || !currentAkun) continue;
+
+      // Parse monthly values (in ribuan → multiply by 1000)
+      const monthValues: Record<string, number> = {};
       let totalRPD = 0;
-      
-      for (const [month, colIdx] of monthColumnMap.entries()) {
-        const value = parseNumber(row[colIdx]) * 1000;
-        monthValues[month] = value;
-        totalRPD += value;
+      for (const [month, colIdx] of Object.entries(POK_MONTH_COLS)) {
+        const val = parseNum(row[colIdx]) * 1000;
+        monthValues[month] = val;
+        totalRPD += val;
       }
 
-      // Create item jika: ada akun, ada uraian, dan nilai > 0
-      if (lastAkun && detailUraian && totalRPD > 0) {
-        const item: Partial<RPDItem> = {
-          id: [currentProgram, currentKegiatan, '', currentKomponen, currentSubKomponen, lastAkun, detailUraian].map(s => (s || '').trim()).join('|'),
-          program_pembebanan: currentProgram,
-          kegiatan: currentKegiatan,
-          komponen_output: currentKomponen,
-          sub_komponen: currentSubKomponen,
-          akun: lastAkun,
-          uraian: detailUraian,
-          total_pagu: totalRPD, // Sum of january to december (in actual values)
-          total_rpd: totalRPD,
-          sisa_anggaran: 0, // No sisa since total_pagu = total_rpd
-          status: 'active',
-          ...monthValues,
-        };
+      const totalPagu = parseNum(row[JUMLAH_BIAYA_COL]) * 1000;
+      const blokir = parseNum(row[BLOKIR_COL]) * 1000;
 
-        items.push(item);
-      }
+      // Skip items with no values at all
+      if (totalPagu === 0 && totalRPD === 0) continue;
+
+      // Generate ID using pipe separator (matching generateDeterministicId from bahanrevisi-calculations)
+      const id = [
+        currentProgram, currentKegiatan, currentRincianOutput,
+        currentKomponen, currentSubKomponen, currentAkun, uraian,
+      ].map(s => (s || '').trim()).join('|');
+
+      items.push({
+        id,
+        program_pembebanan: currentProgram,
+        kegiatan: currentKegiatan,
+        komponen_output: currentKomponen,
+        sub_komponen: currentSubKomponen,
+        akun: currentAkun,
+        uraian,
+        total_pagu: totalPagu,
+        total_rpd: totalRPD,
+        sisa_anggaran: totalPagu - totalRPD,
+        status: 'active',
+        blokir,
+        ...monthValues,
+      });
     }
 
     if (items.length === 0) {
-      throw new Error('Tidak ada data RPD (dengan Akun dan nilai > 0) ditemukan. Pastikan file POK sudah benar.');
+      throw new Error('Tidak ada data RPD ditemukan dalam file POK. Pastikan format file sudah benar.');
     }
 
-    console.debug('[BahanRevisiUploadRPD] Parsed', items.length, 'RPD items');
+    console.debug('[BahanRevisiUploadRPD] Parsed', items.length, 'RPD items from POK CSV');
     return items;
   };
 
@@ -374,29 +376,44 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
     try {
       const { matched, unmatched } = uploadState.matchResult;
 
+      // Past-month protection: determine which months should be preserved
+      const currentMonthIdx = new Date().getMonth(); // 0=Jan, 1=Feb, 2=Mar (March 2026 → 2)
+      const monthFields = ['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const pastMonthFields = monthFields.slice(0, currentMonthIdx);
+      console.log('[BahanRevisiUploadRPD] Past months protected:', pastMonthFields);
+
       // Prepare items to add (unmatched)
       const itemsToAdd = unmatched.map(item => ({
         ...item,
-        id: [item.program_pembebanan, item.kegiatan, '', item.komponen_output, item.sub_komponen, item.akun, item.uraian].map(s => (s || '').trim()).join('|'),
+        id: item.id || [item.program_pembebanan, item.kegiatan, '', item.komponen_output, item.sub_komponen, item.akun, item.uraian].map(s => (s || '').trim()).join('|'),
         modified_by: 'system',
         modified_date: new Date().toISOString(),
       })) as RPDItem[];
 
-      // Prepare items to update (matched)
+      // Prepare items to update (matched) with past-month protection
       const itemsToUpdate = matched.map(newItem => {
         const existing = existingRPDItems.find(
           e => createRPDKey(e) === createRPDKey(newItem)
         );
         if (existing) {
-          return {
+          const merged: any = {
             ...existing,
             ...newItem,
+            id: existing.id, // IMPORTANT: keep existing ID for sheet row matching
             modified_by: 'system',
             modified_date: new Date().toISOString(),
           };
+          // Preserve past month values from existing data
+          for (const field of pastMonthFields) {
+            merged[field] = (existing as any)[field];
+          }
+          // Recalculate total_rpd after preserving past months
+          merged.total_rpd = monthFields.reduce((sum, m) => sum + (merged[m] || 0), 0);
+          merged.sisa_anggaran = (merged.total_pagu || 0) - merged.total_rpd;
+          return merged as RPDItem;
         }
-        return { ...newItem, id: [newItem.program_pembebanan, newItem.kegiatan, '', newItem.komponen_output, newItem.sub_komponen, newItem.akun, newItem.uraian].map(s => (s || '').trim()).join('|') } as RPDItem;
-      }) as RPDItem[];
+        return { ...newItem, id: newItem.id } as RPDItem;
+      });
 
       // Upload new items (append to sheet)
       if (itemsToAdd.length > 0) {
