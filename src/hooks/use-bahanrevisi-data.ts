@@ -17,6 +17,7 @@ import {
   BahanRevisiFilters
 } from '@/types/bahanrevisi';
 import { filterBudgetItems, getFilteredDropdownValues, roundToThousands, formatDateIndonesia } from '@/utils/bahanrevisi-calculations';
+import { parseIndonesianNumber } from '@/lib/parseNumber';
 
 /**
  * Normalize sub_komponen to 3-digit format
@@ -97,17 +98,17 @@ const fetchBudgetItems = async (sheetId: string): Promise<BudgetItem[]> => {
         sub_komponen: row[5]?.trim() || '',
         akun: row[6]?.trim() || '',
         uraian: row[7]?.trim() || '',
-        volume_semula: parseFloat(row[8]) || 0,
+        volume_semula: parseIndonesianNumber(row[8]),
         satuan_semula: row[9]?.trim() || '',
-        harga_satuan_semula: parseFloat(row[10]) || 0,
-        jumlah_semula: parseFloat(row[11]) || 0,
-        volume_menjadi: parseFloat(row[12]) || 0,
+        harga_satuan_semula: parseIndonesianNumber(row[10]),
+        jumlah_semula: parseIndonesianNumber(row[11]),
+        volume_menjadi: parseIndonesianNumber(row[12]),
         satuan_menjadi: row[13]?.trim() || '',
-        harga_satuan_menjadi: parseFloat(row[14]) || 0,
-        jumlah_menjadi: parseFloat(row[15]) || 0,
-        selisih: parseFloat(row[16]) || 0,
-        sisa_anggaran: parseFloat(row[17]) || 0,
-        blokir: parseFloat(row[18]) || 0,
+        harga_satuan_menjadi: parseIndonesianNumber(row[14]),
+        jumlah_menjadi: parseIndonesianNumber(row[15]),
+        selisih: parseIndonesianNumber(row[16]),
+        sisa_anggaran: parseIndonesianNumber(row[17]),
+        blokir: parseIndonesianNumber(row[18]),
         status: (row[19]?.trim() as any) || 'unchanged',
         approved_by: row[20]?.trim(),
         approved_date: row[21]?.trim(),
@@ -167,9 +168,9 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
   const items: RPDItem[] = rows.slice(1)
     .filter((row: string[]) => row[0]?.trim())
     .map((row: string[], idx: number) => {
-      const totalPagu = parseFloat(row[7]) || 0;
-      const totalRpd = parseFloat(row[20]) || 0;
-      const blokir = parseFloat(row[25]) || 0;
+      const totalPagu = parseIndonesianNumber(row[7]);
+      const totalRpd = parseIndonesianNumber(row[20]);
+      const blokir = parseIndonesianNumber(row[25]);
       const sisaAnggaran = roundToThousands(totalPagu - totalRpd - blokir);
       
       const item = {
@@ -181,18 +182,18 @@ const fetchRPDItems = async (sheetId: string): Promise<RPDItem[]> => {
         akun: row[5]?.trim() || '',
         uraian: row[6]?.trim() || '',
         total_pagu: totalPagu,
-        jan: parseFloat(row[8]) || 0,
-        feb: parseFloat(row[9]) || 0,
-        mar: parseFloat(row[10]) || 0,
-        apr: parseFloat(row[11]) || 0,
-        mei: parseFloat(row[12]) || 0,
-        jun: parseFloat(row[13]) || 0,
-        jul: parseFloat(row[14]) || 0,
-        aug: parseFloat(row[15]) || 0,
-        sep: parseFloat(row[16]) || 0,
-        oct: parseFloat(row[17]) || 0,
-        nov: parseFloat(row[18]) || 0,
-        dec: parseFloat(row[19]) || 0,
+        jan: parseIndonesianNumber(row[8]),
+        feb: parseIndonesianNumber(row[9]),
+        mar: parseIndonesianNumber(row[10]),
+        apr: parseIndonesianNumber(row[11]),
+        mei: parseIndonesianNumber(row[12]),
+        jun: parseIndonesianNumber(row[13]),
+        jul: parseIndonesianNumber(row[14]),
+        aug: parseIndonesianNumber(row[15]),
+        sep: parseIndonesianNumber(row[16]),
+        oct: parseIndonesianNumber(row[17]),
+        nov: parseIndonesianNumber(row[18]),
+        dec: parseIndonesianNumber(row[19]),
         total_rpd: totalRpd,
         sisa_anggaran: sisaAnggaran,
         status: row[22]?.trim() || '',
