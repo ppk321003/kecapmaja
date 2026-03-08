@@ -413,13 +413,13 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
             modified_by: 'system',
             modified_date: new Date().toISOString(),
           };
-          // Preserve past month values from existing data
+          // Preserve past month values from existing data (use numeric conversion)
           for (const field of pastMonthFields) {
-            merged[field] = (existing as any)[field];
+            merged[field] = Number((existing as any)[field]) || 0;
           }
           // Recalculate total_rpd after preserving past months
-          merged.total_rpd = monthFields.reduce((sum, m) => sum + (merged[m] || 0), 0);
-          merged.sisa_anggaran = (merged.total_pagu || 0) - merged.total_rpd;
+          merged.total_rpd = monthFields.reduce((sum, m) => sum + (Number(merged[m]) || 0), 0);
+          merged.sisa_anggaran = (Number(merged.total_pagu) || 0) - merged.total_rpd;
           return merged as RPDItem;
         }
         return { ...newItem, id: newItem.id } as RPDItem;
