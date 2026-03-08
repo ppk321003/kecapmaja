@@ -239,12 +239,19 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
     let currentSubKomponen = '';
     let currentAkun = '';
 
+    // Page-break continuation tracking
+    let lastItemKonstanta = '';  // konstanta (col[5]) of last pushed item
+    let justPassedPageHeader = false;
+
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
       if (!row || row.length < 10) continue;
 
-      // Skip page headers
-      if (isPageHeader(row)) continue;
+      // Skip page headers and track when we pass through them
+      if (isPageHeader(row)) {
+        justPassedPageHeader = true;
+        continue;
+      }
 
       const code = String(row[1] || '').trim();
       const name = String(row[2] || '').trim();
@@ -260,9 +267,9 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
         const isProgram = /^\d{3}\.\d{2}\.[A-Z]{2}$/.test(code);      // 054.01.GG
         const isKegiatan = /^\d{4}$/.test(code);                        // 2896
         const isRO = /^\d{4}\.[A-Z]{2,3}$/.test(code);                 // 2896.BMA
-        const isKomponen = /^[A-Z]{2,3}\.[A-Z0-9]{3}$/.test(code);     // BMA.004, FAN.ZZI
+        const isKomponen = /^[A-Z]{2,3}\.[A-Z0-9]{3}$/.test(code);     // BMA.004, FAN.ZZ1
         const isSubKomp = /^\d{1,3}$/.test(code) && code.length <= 3;  // 052, 005
-        const isSkipLevel = /^[A-Z]$/.test(code) && name.toUpperCase().includes('TANPA SUB KOMPONEN');
+        const isSkipLevel = /^[A-Z]$/.test(code);                       // A, B, C — sub-komponen grouping labels
         const isAkun = /^\d{5,6}$/.test(code);                          // 524113
 
         if (isProgram) {
@@ -284,7 +291,8 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
           currentKomponen = `${currentKegiatan}.${currentROCode}.${kompDetailCode}`;
           currentSubKomponen = ''; currentAkun = '';
         } else if (isSkipLevel) {
-          // A - TANPA SUB KOMPONEN: skip, don't change context
+          // A/B/C - sub-komponen grouping labels (TANPA SUB KOMPONEN, named groups, etc.)
+          // Don't change hierarchy context — items inherit parent sub_komponen
         } else if (isSubKomp) {
           currentSubKomponen = normalizeSubKomp(code);
           // Apply _programSuffix for special codes (051, 053, 054)
@@ -297,12 +305,39 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
           currentAkun = code;
         }
         // Hierarchy rows are not data items
+        justPassedPageHeader = false;
         continue;
       }
 
       // Detail item row: col[1] is empty, uraian in col[2]
       const uraian = name;
       if (!uraian || !currentAkun) continue;
+
+      // Get konstanta value (col[5]) for continuation detection
+      const konstanta = String(row[5] || '').trim();
+
+      // Detect continuation lines after page breaks:
+      // If we just passed a page header and the konstanta matches the last item,
+      // this is a continuation of that item (description was split by page break)
+      if (justPassedPageHeader && lastItemKonstanta && konstanta === lastItemKonstanta && items.length > 0) {
+        // Merge: append uraian to last item's description
+        const lastItem = items[items.length - 1];
+        const prevUraian = String(lastItem.uraian || '');
+        // Only append if continuation adds new text (avoid exact duplicates)
+        if (!prevUraian.toLowerCase().includes(uraian.toLowerCase())) {
+          lastItem.uraian = `${prevUraian} ${uraian}`.trim();
+          // Update the ID to reflect the merged uraian
+          lastItem.id = [
+            lastItem.program_pembebanan, lastItem.kegiatan, currentRincianOutput,
+            lastItem.komponen_output, lastItem.sub_komponen, lastItem.akun, lastItem.uraian,
+          ].map(s => (s || '').trim()).join('|');
+        }
+        console.debug(`[parseExcelRPD] Merged continuation line (konstanta=${konstanta}): "${uraian}" → "${lastItem.uraian}"`);
+        justPassedPageHeader = false;
+        continue;
+      }
+
+      justPassedPageHeader = false;
 
       // Parse monthly values (in ribuan → multiply by 1000)
       const monthValues: Record<string, number> = {};
@@ -324,6 +359,8 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
         currentProgram, currentKegiatan, currentRincianOutput,
         currentKomponen, currentSubKomponen, currentAkun, uraian,
       ].map(s => (s || '').trim()).join('|');
+
+      lastItemKonstanta = konstanta;
 
       items.push({
         id,
