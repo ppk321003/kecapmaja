@@ -148,6 +148,24 @@ export const useImportMonthlyCSV = ({
         return ratio >= 0.8;
       };
 
+      const getIdPrefix6 = (id: unknown) => {
+        const parts = String(id ?? '').split('|').map((part) => normalizeToken(part));
+        return parts.length >= 6 ? parts.slice(0, 6).join('|') : '';
+      };
+
+      const getUraianSimilarity = (left: unknown, right: unknown) => {
+        const leftWords = new Set(normalizeWords(left));
+        const rightWords = new Set(normalizeWords(right));
+        if (leftWords.size === 0 || rightWords.size === 0) return 0;
+
+        let overlap = 0;
+        leftWords.forEach((w) => {
+          if (rightWords.has(w)) overlap++;
+        });
+
+        return overlap / Math.min(leftWords.size, rightWords.size);
+      };
+
       // Merge duplicate parsed rows by ID with fingerprint-safe aggregation
       // - exact duplicate line -> ignored
       // - same ID but different numeric fragment -> periodeIni is accumulated
@@ -217,6 +235,7 @@ export const useImportMonthlyCSV = ({
       const budgetItemLooseMap = new Map<string, BudgetItem>();
       const budgetItemLooseDuplicates = new Set<string>();
       const budgetItemTrioMap = new Map<string, BudgetItem[]>();
+      const budgetItemIdPrefixMap = new Map<string, BudgetItem[]>();
 
       budgetItems.forEach((item, idx) => {
         const key = createUniqueKey(item);
@@ -268,6 +287,13 @@ export const useImportMonthlyCSV = ({
           budgetItemTrioMap.set(trioKey, existing);
         }
 
+        const idPrefix6 = getIdPrefix6(item.id);
+        if (idPrefix6) {
+          const existingByPrefix = budgetItemIdPrefixMap.get(idPrefix6) || [];
+          existingByPrefix.push(item);
+          budgetItemIdPrefixMap.set(idPrefix6, existingByPrefix);
+        }
+
         if (idx < 3) {
           console.log(`[useImportMonthlyCSV] BudgetItem ${idx + 1}:`, {
             id: item.id,
@@ -290,6 +316,7 @@ export const useImportMonthlyCSV = ({
         byLooseKey: budgetItemLooseMap.size,
         ambiguousLooseKey: budgetItemLooseDuplicates.size,
         trioBuckets: budgetItemTrioMap.size,
+        idPrefix6Buckets: budgetItemIdPrefixMap.size,
       });
 
       // Match priority: ID first, then composite key fallback
@@ -318,7 +345,31 @@ export const useImportMonthlyCSV = ({
           }
         }
 
-        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic;
+        let byIdPrefix6: BudgetItem | undefined;
+        if (!byId && !byKey && !byText && !byHierarchy && !byLoose && !byHeuristic) {
+          const parsedPrefix6 = getIdPrefix6(parsedItem.id);
+          const prefixCandidates = parsedPrefix6 ? budgetItemIdPrefixMap.get(parsedPrefix6) || [] : [];
+
+          if (prefixCandidates.length === 1) {
+            byIdPrefix6 = prefixCandidates[0];
+          } else if (prefixCandidates.length > 1) {
+            const scored = prefixCandidates
+              .map((candidate) => ({
+                candidate,
+                score: getUraianSimilarity(candidate.uraian, parsedItem.uraian),
+              }))
+              .sort((a, b) => b.score - a.score);
+
+            if (scored[0] && scored[0].score >= 0.75) {
+              const gapWithSecond = scored[1] ? scored[0].score - scored[1].score : scored[0].score;
+              if (gapWithSecond >= 0.1) {
+                byIdPrefix6 = scored[0].candidate;
+              }
+            }
+          }
+        }
+
+        const budgetItem = byId || byKey || byText || byHierarchy || byLoose || byHeuristic || byIdPrefix6;
 
         if (idx < 5 || parsedItem.kegiatan === '2886' || parsedItem.kegiatan === '2907') {
           console.log(`[useImportMonthlyCSV] ParsedItem ${idx + 1}:`, {
@@ -338,6 +389,8 @@ export const useImportMonthlyCSV = ({
               ? 'loose-key'
               : byHeuristic
               ? 'heuristic-uraian'
+              : byIdPrefix6
+              ? 'id-prefix6'
               : 'none',
           });
         }
