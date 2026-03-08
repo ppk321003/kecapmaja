@@ -518,7 +518,8 @@ export const useImportMonthlyCSV = ({
 
         if (budgetItem) {
           result.matched++;
-          matchedBudgetIds.add(normalizeToken(budgetItem.id));
+          const normalizedBudgetId = normalizeToken(budgetItem.id);
+          matchedBudgetUsage.set(normalizedBudgetId, (matchedBudgetUsage.get(normalizedBudgetId) || 0) + 1);
           result.matched_items.push({
             item: parsedItem,
             budgetItem,
