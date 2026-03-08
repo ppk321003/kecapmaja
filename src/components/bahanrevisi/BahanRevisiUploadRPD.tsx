@@ -33,6 +33,8 @@ interface ParsedRPDFile {
 interface MatchResult {
   matched: Partial<RPDItem>[];
   unmatched: Partial<RPDItem>[];
+  changed: Partial<RPDItem>[];
+  unchanged: Partial<RPDItem>[];
 }
 
 interface UploadState {
