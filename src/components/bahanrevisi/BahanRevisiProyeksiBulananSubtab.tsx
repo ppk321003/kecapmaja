@@ -689,7 +689,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
                           <YAxis dataKey="name" type="category" width={295} tick={{ fontSize: 10 }} />
                           <Tooltip formatter={(value) => formatCurrencyNoRp(Number(value))} />
                           <Legend />
-                          <Bar dataKey="total" fill="#10b981" name="Total RPD" radius={[0, 8, 8, 0]} />
+                          <Bar dataKey="total" fill="#10b981" name="Total Realisasi" radius={[0, 8, 8, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
