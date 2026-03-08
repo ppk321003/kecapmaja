@@ -383,8 +383,8 @@ export const useImportMonthlyCSV = ({
 
       // Match priority: ID first, then composite key fallback
       // IMPORTANT: process non-zero period rows first so meaningful monthly values
-      // don't lose candidates to zero-value rows when matchedBudgetIds is enforced.
-      const matchedBudgetIds = new Set<string>();
+      // are matched first.
+      const matchedBudgetUsage = new Map<string, number>();
       const parsedItemsForMatching = [...dedupedParsedItems].sort((a, b) => {
         const bVal = Number(b.periodeIni) || 0;
         const aVal = Number(a.periodeIni) || 0;
@@ -407,9 +407,7 @@ export const useImportMonthlyCSV = ({
 
         let byHeuristic: BudgetItem | undefined;
         if (!byId && !byKey && !byText && !byHierarchy && !byLoose && trioKey) {
-          const trioCandidates = budgetItemTrioMap
-            .get(trioKey)
-            ?.filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id))) || [];
+          const trioCandidates = budgetItemTrioMap.get(trioKey) || [];
 
           const closeCandidates = trioCandidates.filter((candidate) =>
             isCloseUraian(candidate.uraian, parsedItem.uraian)
@@ -422,8 +420,7 @@ export const useImportMonthlyCSV = ({
         let byIdPrefix6: BudgetItem | undefined;
         if (!byId && !byKey && !byText && !byHierarchy && !byLoose && !byHeuristic) {
           const parsedPrefix6 = getIdPrefix6(parsedItem.id);
-          const prefixCandidates = (parsedPrefix6 ? budgetItemIdPrefixMap.get(parsedPrefix6) || [] : [])
-            .filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id)));
+          const prefixCandidates = parsedPrefix6 ? budgetItemIdPrefixMap.get(parsedPrefix6) || [] : [];
 
           if (prefixCandidates.length === 1) {
             byIdPrefix6 = prefixCandidates[0];
@@ -470,8 +467,7 @@ export const useImportMonthlyCSV = ({
         let byIdPrefixNoSub: BudgetItem | undefined;
         if (!byId && !byKey && !byText && !byHierarchy && !byLoose && !byHeuristic && !byIdPrefix6) {
           const parsedPrefixNoSub = getIdPrefixWithoutSubKomponen(parsedItem.id);
-          const noSubCandidates = (parsedPrefixNoSub ? budgetItemIdPrefixNoSubMap.get(parsedPrefixNoSub) || [] : [])
-            .filter((candidate) => !matchedBudgetIds.has(normalizeToken(candidate.id)));
+          const noSubCandidates = parsedPrefixNoSub ? budgetItemIdPrefixNoSubMap.get(parsedPrefixNoSub) || [] : [];
 
           if (noSubCandidates.length === 1) {
             byIdPrefixNoSub = noSubCandidates[0];
@@ -522,7 +518,8 @@ export const useImportMonthlyCSV = ({
 
         if (budgetItem) {
           result.matched++;
-          matchedBudgetIds.add(normalizeToken(budgetItem.id));
+          const normalizedBudgetId = normalizeToken(budgetItem.id);
+          matchedBudgetUsage.set(normalizedBudgetId, (matchedBudgetUsage.get(normalizedBudgetId) || 0) + 1);
           result.matched_items.push({
             item: parsedItem,
             budgetItem,
@@ -540,13 +537,22 @@ export const useImportMonthlyCSV = ({
         }
       });
 
+      const multiMappedBudgetItems = Array.from(matchedBudgetUsage.entries())
+        .filter(([, count]) => count > 1)
+        .sort((a, b) => b[1] - a[1]);
+
       console.log('[useImportMonthlyCSV] Matching complete:', {
         parsedOriginal: parsedData.items.length,
         parsedAfterDedup: dedupedParsedItems.length,
         matched: result.matched,
         notMatched: result.notMatched,
         total: result.matched + result.notMatched,
+        multiMappedBudgetItems: multiMappedBudgetItems.length,
       });
+
+      if (multiMappedBudgetItems.length > 0) {
+        console.log('[useImportMonthlyCSV] Budget IDs matched by multiple parsed rows:', multiMappedBudgetItems.slice(0, 10));
+      }
 
       const programCounts: Record<string, { matched?: number; unmatched?: number; kegiatan: Set<string> }> = {};
       result.matched_items.forEach(item => {
@@ -664,23 +670,29 @@ export const useImportMonthlyCSV = ({
 
         setParseProgress('Upload ke Google Sheets...');
 
-        // Prepare data untuk update budget_items - COPY ALL COLUMNS from CSV, not just sisa_anggaran
-        const updateData = matchResult.matched_items.map((match) => {
-          const updated = { ...match.budgetItem };
-          // Update with ALL columns from CSV (periodeIni is for RPD, but other fields go here)
+        // Prepare data untuk update budget_items - dedupe by budget item ID
+        const updateDataMap = new Map<string, BudgetItem>();
+        matchResult.matched_items.forEach((match) => {
+          const budgetId = String(match.budgetItem.id || '').trim();
+          if (!budgetId) return;
+
+          const existing = updateDataMap.get(budgetId);
+          const updated = { ...(existing || match.budgetItem) };
           updated.sub_komponen = match.item.subKomponen;
-          updated.sisa_anggaran = match.item.sisaAnggaran;
+          if ((Number(match.item.sisaAnggaran) || 0) > 0) {
+            updated.sisa_anggaran = match.item.sisaAnggaran;
+          }
           updated.updated_date = formatDateIndonesia(new Date().toISOString());
-          // No need to set periodeIni here - it's only for RPD items
-          
-          // Clean up undefined values to avoid serialization issues
-          Object.keys(updated).forEach(key => {
+
+          Object.keys(updated).forEach((key) => {
             if (updated[key as keyof typeof updated] === undefined) {
               delete updated[key as keyof typeof updated];
             }
           });
-          return updated;
+
+          updateDataMap.set(budgetId, updated);
         });
+        const updateData = Array.from(updateDataMap.values());
 
         // Prepare data untuk update rpd_items (kolom bulan sesuai periode, plus total_rpd & sisa_anggaran auto-calc)
         // Mapping bulan ke kolom: Jan=I(8), Feb=J(9), ..., Dec=T(19)
@@ -705,16 +717,29 @@ export const useImportMonthlyCSV = ({
           setIsImporting(false);
           return;
         }
-        
-        // RPD updates for MATCHED items
-        const rpdUpdateData = matchResult.matched_items.map((match) => {
-          return {
-            item: match.budgetItem,
-            bulan: parsedData.bulan,
-            bulanColumn: bulanColumn,
-            periodeIni: match.item.periodeIni,
-          };
+
+        // RPD updates for MATCHED items - aggregate duplicate mapping to same budget item
+        const rpdUpdateMap = new Map<string, { item: BudgetItem; bulan: number; bulanColumn: string; periodeIni: number }>();
+        matchResult.matched_items.forEach((match) => {
+          const budgetId = String(match.budgetItem.id || '').trim();
+          if (!budgetId) return;
+
+          const key = `${budgetId}|${parsedData.bulan}`;
+          const existing = rpdUpdateMap.get(key);
+          const periodeIniValue = Number(match.item.periodeIni) || 0;
+
+          if (existing) {
+            existing.periodeIni += periodeIniValue;
+          } else {
+            rpdUpdateMap.set(key, {
+              item: match.budgetItem,
+              bulan: parsedData.bulan,
+              bulanColumn,
+              periodeIni: periodeIniValue,
+            });
+          }
         });
+        const rpdUpdateData = Array.from(rpdUpdateMap.values());
 
         // DO NOT send unmatched items to rpd_items or budget_items main sheet
         // Unmatched items go ONLY to the versioned sheet and separate unmatched sheet
