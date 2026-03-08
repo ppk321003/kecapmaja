@@ -728,7 +728,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
                     <Card className="bg-amber-50">
                       <CardContent className="pt-6">
                         <div className="text-3xl font-bold text-amber-700">
-                          {uploadState.matchResult.changed.length}
+                          {uploadState.matchResult.changed?.length ?? 0}
                         </div>
                         <div className="text-sm text-slate-600">Item Berubah</div>
                       </CardContent>
@@ -738,7 +738,7 @@ const BahanRevisiUploadRPD: React.FC<UploadRPDProps> = ({
                   <Alert>
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <AlertDescription>
-                      <strong>{uploadState.matchResult.unmatched.length}</strong> item baru akan ditambahkan, <strong>{uploadState.matchResult.changed.length}</strong> item berubah akan diperbarui, dan <strong>{uploadState.matchResult.unchanged.length}</strong> item tidak berubah akan dilewati
+                      <strong>{uploadState.matchResult.unmatched?.length ?? 0}</strong> item baru akan ditambahkan, <strong>{uploadState.matchResult.changed?.length ?? 0}</strong> item berubah akan diperbarui, dan <strong>{uploadState.matchResult.unchanged?.length ?? 0}</strong> item tidak berubah akan dilewati
                     </AlertDescription>
                   </Alert>
                 </CardContent>
