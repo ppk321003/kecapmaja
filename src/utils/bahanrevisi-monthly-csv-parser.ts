@@ -105,7 +105,37 @@ export const parseMonthlyCSV = (file: File): Promise<ParsedMonthlyData> => {
         if (!data) throw new Error('File kosong');
 
         const text = typeof data === 'string' ? data : new TextDecoder().decode(data as ArrayBuffer);
-        const lines = text.split('\n');
+        
+        // Pre-process: merge multi-line quoted fields (e.g. *Lock Pagu blocks that span 2+ lines)
+        const rawLines = text.split('\n');
+        const lines: string[] = [];
+        let pendingQuotedLine = '';
+        
+        for (const rawLine of rawLines) {
+          if (pendingQuotedLine) {
+            // We're inside a multi-line quoted field - append and check for closing quote
+            pendingQuotedLine += ' ' + rawLine;
+            // Count quotes - if now balanced, emit the merged line
+            const quoteCount = (pendingQuotedLine.match(/"/g) || []).length;
+            if (quoteCount % 2 === 0) {
+              lines.push(pendingQuotedLine);
+              pendingQuotedLine = '';
+            }
+            // else keep accumulating
+          } else {
+            // Check if this line has an unbalanced quote (starts a multi-line field)
+            const quoteCount = (rawLine.match(/"/g) || []).length;
+            if (quoteCount % 2 !== 0) {
+              pendingQuotedLine = rawLine;
+            } else {
+              lines.push(rawLine);
+            }
+          }
+        }
+        // Flush any remaining
+        if (pendingQuotedLine) {
+          lines.push(pendingQuotedLine);
+        }
 
         const errors: string[] = [];
         const warnings: string[] = [];
