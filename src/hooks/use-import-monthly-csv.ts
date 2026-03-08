@@ -74,6 +74,27 @@ export const useImportMonthlyCSV = ({
         return [program, kegiatan, akun, uraian].join('|');
       };
 
+      const buildHierarchyMatchKey = (item: {
+        program?: string;
+        program_pembebanan?: string;
+        kegiatan?: string;
+        rincianOutput?: string;
+        rincian_output?: string;
+        komponenOutput?: string;
+        komponen_output?: string;
+        subKomponen?: string;
+        sub_komponen?: string;
+        akun?: string;
+      }) => {
+        const program = normalizeToken(item.program ?? item.program_pembebanan);
+        const kegiatan = normalizeToken(item.kegiatan);
+        const rincian = normalizeToken(item.rincianOutput ?? item.rincian_output);
+        const komponen = normalizeToken(item.komponenOutput ?? item.komponen_output);
+        const subKomponen = normalizeToken(item.subKomponen ?? item.sub_komponen);
+        const akun = normalizeToken(item.akun);
+        return [program, kegiatan, rincian, komponen, subKomponen, akun].join('|');
+      };
+
       const buildTextMatchKey = (item: {
         program?: string;
         program_pembebanan?: string;
