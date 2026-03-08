@@ -23,6 +23,28 @@ export interface MatchResult {
   }>;
 }
 
+export interface ImportAuditSummary {
+  bulan?: number;
+  tahun?: number;
+  versioned_sheet?: string;
+  unmatched_sheet?: string;
+  matched_count?: number;
+  unmatched_count?: number;
+  matched_periode_ini?: number;
+  unmatched_periode_ini?: number;
+  combined_periode_ini?: number;
+  rpd_update_payload_count?: number;
+  rpd_update_deduped_count?: number;
+  unmatched_by_kegiatan?: Record<string, number>;
+  top_unmatched_items?: Array<{
+    program_pembebanan?: string;
+    kegiatan?: string;
+    akun?: string;
+    uraian?: string;
+    periode_ini?: number;
+  }>;
+}
+
 interface UseImportMonthlyCSVProps {
   sheetId: string | null;
   budgetItems: BudgetItem[];
