@@ -415,34 +415,49 @@ export const useSikostikData = () => {
         return -1;
       };
 
-      // Pilih baris TERBARU per anggota untuk perhitungan limit (hindari tertimpa baris lama/invalid)
-      const latestRowMap = new Map<string, { row: any; period: number; ts: number }>();
+      const getRowTs = (row: any) => Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+
+      const hasMonthlyDeductions = (row: any) => {
+        const sum =
+          parseNum(row?.simpananPokok) +
+          parseNum(row?.simpananWajib) +
+          parseNum(row?.simpananSukarela) +
+          parseNum(row?.simpananLebaran) +
+          parseNum(row?.simpananLainnya) +
+          parseNum(row?.cicilanPokok) +
+          parseNum(row?.biayaOperasional);
+        return sum > 0;
+      };
+
+      const pickNewer = (existing: { row: any; period: number; ts: number } | undefined, candidate: { row: any; period: number; ts: number }) => {
+        if (!existing) return candidate;
+        const isBetterPeriod = candidate.period > existing.period || (existing.period < 0 && candidate.period >= 0);
+        const isSamePeriodNewer = candidate.period === existing.period && candidate.ts > existing.ts;
+        return (isBetterPeriod || isSamePeriodNewer) ? candidate : existing;
+      };
+
+      // latestAny: untuk saldo piutang & saldo akhir bulan (Z:AD)
+      const latestAny = new Map<string, { row: any; period: number; ts: number }>();
+      // latestWithDeductions: untuk cicilan saat ini (kolom R) agar tidak tertimpa baris template semua 0
+      const latestWithDeductions = new Map<string, { row: any; period: number; ts: number }>();
 
       data.forEach((row: any) => {
         const anggotaId = normalizeId(row?.anggotaId || row?.kodeAnggota || row?.id);
         if (!anggotaId) return;
 
         const period = getRowPeriod(row);
-        const ts = Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+        const ts = getRowTs(row);
+        const candidate = { row, period, ts };
 
-        const existing = latestRowMap.get(anggotaId);
-        if (!existing) {
-          latestRowMap.set(anggotaId, { row, period, ts });
-          return;
-        }
-
-        const existingPeriod = existing.period;
-        const isBetterPeriod = period > existingPeriod || (existingPeriod < 0 && period >= 0);
-        const isSamePeriodNewer = period === existingPeriod && ts > existing.ts;
-
-        if (isBetterPeriod || isSamePeriodNewer) {
-          latestRowMap.set(anggotaId, { row, period, ts });
+        latestAny.set(anggotaId, pickNewer(latestAny.get(anggotaId), candidate));
+        if (hasMonthlyDeductions(row)) {
+          latestWithDeductions.set(anggotaId, pickNewer(latestWithDeductions.get(anggotaId), candidate));
         }
       });
 
       const limitMap = new Map<string, LimitAnggota>();
 
-      latestRowMap.forEach(({ row }, anggotaId) => {
+      latestAny.forEach(({ row }, anggotaId) => {
         // Total Simpanan = sum(Z:AD) = saldo_akhirbulan_pokok + wajib + sukarela + lebaran + lainlain
         const totalSimpanan =
           parseNum(row.saldoAkhirbulanPokok) +
@@ -454,10 +469,14 @@ export const useSikostikData = () => {
         // Saldo Piutang dari kolom J
         const saldoPiutang = parseNum(row.saldoPiutang);
 
-        // Limit Pinjaman = Total Simpanan × 1.3 (updated policy)
-        const limitPinjaman = Math.max(0, totalSimpanan * 1.3);
-        // Sisa Limit = (Total Simpanan × 1.3) - Saldo Piutang
+        // Limit Pinjaman = Total Simpanan × 1.5 (sesuai aturan Sikostik28)
+        const limitPinjaman = Math.max(0, totalSimpanan * 1.5);
+        // Sisa Limit = (Total Simpanan × 1.5) - Saldo Piutang
         const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
+
+        // Cicilan Saat Ini dari kolom R (cicilan_pokok) — ambil dari baris yang punya potongan bulanan jika tersedia
+        const rowForCicilan = latestWithDeductions.get(anggotaId)?.row ?? row;
+        const cicilanPokok = parseNum(rowForCicilan.cicilanPokok);
 
         limitMap.set(anggotaId, {
           anggotaId,
@@ -468,8 +487,7 @@ export const useSikostikData = () => {
           saldoPiutang,
           limitPinjaman,
           sisaLimit,
-          // Cicilan Saat Ini dari kolom R (cicilan_pokok)
-          cicilanPokok: parseNum(row.cicilanPokok),
+          cicilanPokok,
         });
       });
 
