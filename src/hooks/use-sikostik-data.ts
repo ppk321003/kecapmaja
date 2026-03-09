@@ -319,15 +319,6 @@ export const useSikostikData = () => {
     try {
       const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
 
-      // DEBUG: log raw keys and first row values to diagnose header mapping issues
-      if (data.length > 0) {
-        const firstRow = data[0];
-        console.log('[DEBUG fetchLatestRekap] ALL KEYS:', JSON.stringify(Object.keys(firstRow)));
-        console.log('[DEBUG fetchLatestRekap] FIRST ROW VALUES:', JSON.stringify(firstRow));
-        // Log specific fields we care about
-        console.log('[DEBUG fetchLatestRekap] simpananPokok=', firstRow.simpananPokok, 'simpananWajib=', firstRow.simpananWajib, 'simpananSukarela=', firstRow.simpananSukarela, 'simpananLebaran=', firstRow.simpananLebaran, 'simpananLainnya=', firstRow.simpananLainnya, 'cicilanPokok=', firstRow.cicilanPokok);
-      }
-
       const normalizeId = (v: unknown) => String(v ?? '').trim();
       const getRowPeriod = (row: any) => {
         const bulan = Number.parseInt(row?.periodeBulan ?? row?.bulan ?? '', 10);
@@ -345,34 +336,54 @@ export const useSikostikData = () => {
         return -1;
       };
 
-      // Group by anggotaId, keep the row with the latest (periode_tahun/periode_bulan),
-      // and ignore "template"/invalid rows that often cause all values to become 0.
-      const latestMap = new Map<string, { row: any; period: number; ts: number }>();
+      const getRowTs = (row: any) => Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+
+      // Anggap baris "bermakna" untuk potongan bulanan jika ada nilai di K-O, R, atau biaya operasional.
+      // Ini mencegah baris template/periode baru (semua 0) menimpa nilai real sehingga UI tampil 0.
+      const hasMonthlyDeductions = (row: any) => {
+        const sum =
+          parseNum(row?.simpananPokok) +
+          parseNum(row?.simpananWajib) +
+          parseNum(row?.simpananSukarela) +
+          parseNum(row?.simpananLebaran) +
+          parseNum(row?.simpananLainnya) +
+          parseNum(row?.cicilanPokok) +
+          parseNum(row?.biayaOperasional);
+        return sum > 0;
+      };
+
+      const pickNewer = (existing: { row: any; period: number; ts: number } | undefined, candidate: { row: any; period: number; ts: number }) => {
+        if (!existing) return candidate;
+        const isBetterPeriod = candidate.period > existing.period || (existing.period < 0 && candidate.period >= 0);
+        const isSamePeriodNewer = candidate.period === existing.period && candidate.ts > existing.ts;
+        return (isBetterPeriod || isSamePeriodNewer) ? candidate : existing;
+      };
+
+      // Simpan 2 versi:
+      // 1) latestAny: baris terbaru secara periode (untuk fallback)
+      // 2) latestWithDeductions: baris terbaru yang punya potongan bulanan (untuk Nilai Saat Ini/Total Potongan)
+      const latestAny = new Map<string, { row: any; period: number; ts: number }>();
+      const latestWithDeductions = new Map<string, { row: any; period: number; ts: number }>();
 
       data.forEach((row: any) => {
         const anggotaId = normalizeId(row?.anggotaId || row?.kodeAnggota || row?.id);
         if (!anggotaId) return;
 
         const period = getRowPeriod(row);
-        const ts = Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+        const ts = getRowTs(row);
+        const candidate = { row, period, ts };
 
-        const existing = latestMap.get(anggotaId);
-        if (!existing) {
-          latestMap.set(anggotaId, { row, period, ts });
-          return;
-        }
-
-        // Prefer valid period rows; if both valid, take the latest; tie-breaker: updated_at/created_at
-        const existingPeriod = existing.period;
-        const isBetterPeriod = period > existingPeriod || (existingPeriod < 0 && period >= 0);
-        const isSamePeriodNewer = period === existingPeriod && ts > existing.ts;
-
-        if (isBetterPeriod || isSamePeriodNewer) {
-          latestMap.set(anggotaId, { row, period, ts });
+        latestAny.set(anggotaId, pickNewer(latestAny.get(anggotaId), candidate));
+        if (hasMonthlyDeductions(row)) {
+          latestWithDeductions.set(anggotaId, pickNewer(latestWithDeductions.get(anggotaId), candidate));
         }
       });
 
-      return Array.from(latestMap.values()).map(({ row }, index) => mapRowToRekap(row, index));
+      const anggotaIds = Array.from(latestAny.keys());
+      return anggotaIds.map((anggotaId, index) => {
+        const chosen = latestWithDeductions.get(anggotaId) ?? latestAny.get(anggotaId)!;
+        return mapRowToRekap(chosen.row, index);
+      });
     } catch (err: any) {
       setError(err.message);
       return [];
