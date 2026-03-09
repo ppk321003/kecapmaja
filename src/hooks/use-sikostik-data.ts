@@ -341,7 +341,7 @@ export const useSikostikData = () => {
       const latestMap = new Map<string, { row: any; period: number; ts: number }>();
 
       data.forEach((row: any) => {
-        const anggotaId = normalizeId(row?.anggotaId || row?.id);
+        const anggotaId = normalizeId(row?.anggotaId || row?.kodeAnggota || row?.id);
         if (!anggotaId) return;
 
         const period = getRowPeriod(row);
