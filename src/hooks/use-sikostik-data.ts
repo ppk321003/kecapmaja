@@ -797,6 +797,7 @@ export const useSikostikData = () => {
     error,
     fetchAnggotaMaster,
     fetchRekapDashboard,
+    fetchLatestRekapPerAnggota,
     fetchLimitAnggota,
     fetchUsulPinjaman,
     fetchUsulPerubahan,
