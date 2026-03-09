@@ -316,21 +316,51 @@ export const useSikostikData = () => {
     setError(null);
     try {
       const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
-      // Group by anggotaId, keep the row with the latest (tahun*12 + bulan)
-      const latestMap = new Map<string, any>();
+
+      const normalizeId = (v: unknown) => String(v ?? '').trim();
+      const getRowPeriod = (row: any) => {
+        const bulan = Number.parseInt(row?.periodeBulan ?? row?.bulan ?? '', 10);
+        const tahun = Number.parseInt(row?.periodeTahun ?? row?.tahun ?? '', 10);
+        if (Number.isFinite(bulan) && bulan >= 1 && bulan <= 12 && Number.isFinite(tahun) && tahun >= 2000) {
+          return tahun * 12 + bulan;
+        }
+
+        const ts = Date.parse(row?.updatedAt || row?.createdAt || '');
+        if (!Number.isNaN(ts)) {
+          const d = new Date(ts);
+          return d.getFullYear() * 12 + (d.getMonth() + 1);
+        }
+
+        return -1;
+      };
+
+      // Group by anggotaId, keep the row with the latest (periode_tahun/periode_bulan),
+      // and ignore "template"/invalid rows that often cause all values to become 0.
+      const latestMap = new Map<string, { row: any; period: number; ts: number }>();
+
       data.forEach((row: any) => {
-        const anggotaId = row.anggotaId || row.id || '';
+        const anggotaId = normalizeId(row?.anggotaId || row?.id);
         if (!anggotaId) return;
-        const rowBulan = parseInt(row.periodeBulan || row.bulan || 0);
-        const rowTahun = parseInt(row.periodeTahun || row.tahun || 0);
-        const rowPeriod = rowTahun * 12 + rowBulan;
+
+        const period = getRowPeriod(row);
+        const ts = Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+
         const existing = latestMap.get(anggotaId);
         if (!existing) {
-          latestMap.set(anggotaId, { row, period: rowPeriod });
-        } else if (rowPeriod > existing.period) {
-          latestMap.set(anggotaId, { row, period: rowPeriod });
+          latestMap.set(anggotaId, { row, period, ts });
+          return;
+        }
+
+        // Prefer valid period rows; if both valid, take the latest; tie-breaker: updated_at/created_at
+        const existingPeriod = existing.period;
+        const isBetterPeriod = period > existingPeriod || (existingPeriod < 0 && period >= 0);
+        const isSamePeriodNewer = period === existingPeriod && ts > existing.ts;
+
+        if (isBetterPeriod || isSamePeriodNewer) {
+          latestMap.set(anggotaId, { row, period, ts });
         }
       });
+
       return Array.from(latestMap.values()).map(({ row }, index) => mapRowToRekap(row, index));
     } catch (err: any) {
       setError(err.message);
