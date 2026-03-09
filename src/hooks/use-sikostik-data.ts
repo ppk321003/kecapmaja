@@ -228,81 +228,110 @@ export const useSikostikData = () => {
     }
   }, [fetchSheet]);
 
+  // Helper to map a raw sheet row to a RekapDashboard object
+  const mapRowToRekap = useCallback((row: any, index: number): RekapDashboard => ({
+    no: index + 1,
+    anggotaId: row.anggotaId || row.id || '',
+    kodeAnggota: row.kodeAnggota || '',
+    nama: row.nama || '',
+    nip: row.nip || '',
+    status: row.status === 'Aktif' ? 'Aktif' : 'Tidak Aktif',
+    periodeBulan: parseInt(row.periodeBulan || row.bulan || 0),
+    periodeTahun: parseInt(row.periodeTahun || row.tahun || 0),
+    saldoPiutang: parseNum(row.saldoPiutang),
+    // Simpanan BULANAN dari kolom K-O
+    simpananPokok: parseNum(row.simpananPokok),
+    simpananWajib: parseNum(row.simpananWajib),
+    simpananSukarela: parseNum(row.simpananSukarela),
+    simpananLebaran: parseNum(row.simpananLebaran),
+    simpananLainnya: parseNum(row.simpananLainnya),
+    // Total Simpanan KUMULATIF = sum(Z:AD)
+    saldoAkhirbulanPokok: parseNum(row.saldoAkhirbulanPokok),
+    saldoAkhirbulanWajib: parseNum(row.saldoAkhirbulanWajib),
+    saldoAkhirbulanSukarela: parseNum(row.saldoAkhirbulanSukarela),
+    saldoAkhirbulanLebaran: parseNum(row.saldoAkhirbulanLebaran),
+    saldoAkhirbulanLainlain: parseNum(row.saldoAkhirbulanLainlain),
+    totalSimpanan: parseNum(row.saldoAkhirbulanPokok) +
+                   parseNum(row.saldoAkhirbulanWajib) +
+                   parseNum(row.saldoAkhirbulanSukarela) +
+                   parseNum(row.saldoAkhirbulanLebaran) +
+                   parseNum(row.saldoAkhirbulanLainlain),
+    totalSimpananBulanan: parseNum(row.simpananPokok) +
+                          parseNum(row.simpananWajib) +
+                          parseNum(row.simpananSukarela) +
+                          parseNum(row.simpananLebaran) +
+                          parseNum(row.simpananLainnya),
+    pinjamanBulanIni: parseNum(row.pinjamanBulanIni),
+    pengambilanPokok: parseNum(row.pengambilanPokok),
+    pengambilanWajib: parseNum(row.pengambilanWajib),
+    pengambilanSukarela: parseNum(row.pengambilanSukarela),
+    pengambilanLebaran: parseNum(row.pengambilanLebaran),
+    pengambilanLainnya: parseNum(row.pengambilanLainnya),
+    totalPengambilan: parseNum(row.totalPengambilan),
+    biayaOperasional: parseNum(row.biayaOperasional),
+    cicilanPokok: parseNum(row.cicilanPokok),
+    createdAt: row.createdAt || '',
+    updatedAt: row.updatedAt || ''
+  }), []);
+
   const fetchRekapDashboard = useCallback(async (bulan?: number, tahun?: number): Promise<RekapDashboard[]> => {
     setLoading(true);
     setError(null);
     try {
       const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
-      // Debug: log data summary to help troubleshoot missing RekapIndividu data
       try {
-        console.log(`fetchRekapDashboard: fetched ${data.length} rows for sheet rekap_dashboard (bulan=${bulan}, tahun=${tahun})`);
-        if (data.length > 0) {
-          console.log('fetchRekapDashboard: sample row keys ->', Object.keys(data[0]).slice(0, 20));
-        }
-      } catch (e) {
-        /* ignore logging errors */
-      }
+        console.log(`fetchRekapDashboard: fetched ${data.length} rows (bulan=${bulan}, tahun=${tahun})`);
+        if (data.length > 0) console.log('sample keys ->', Object.keys(data[0]).slice(0, 20));
+      } catch (e) { /* ignore */ }
       const period = { bulan: bulan || getCurrentPeriod().bulan, tahun: tahun || getCurrentPeriod().tahun };
-      
       return data
         .filter((row: any) => {
           const rowBulan = parseInt(row.periodeBulan || row.bulan || 0);
           const rowTahun = parseInt(row.periodeTahun || row.tahun || 0);
           return rowBulan === period.bulan && rowTahun === period.tahun;
         })
-        .map((row: any, index: number) => ({
-          no: index + 1,
-          anggotaId: row.anggotaId || row.id || '',
-          kodeAnggota: row.kodeAnggota || '',
-          nama: row.nama || '',
-          nip: row.nip || '',
-          status: row.status === 'Aktif' ? 'Aktif' : 'Tidak Aktif',
-          periodeBulan: parseInt(row.periodeBulan || row.bulan || 0),
-          periodeTahun: parseInt(row.periodeTahun || row.tahun || 0),
-          saldoPiutang: parseNum(row.saldoPiutang),
-          // Simpanan BULANAN dari kolom K-O (simpanan_pokok, simpanan_wajib, etc.) - potongan per bulan
-          simpananPokok: parseNum(row.simpananPokok),
-          simpananWajib: parseNum(row.simpananWajib),
-          simpananSukarela: parseNum(row.simpananSukarela),
-          simpananLebaran: parseNum(row.simpananLebaran),
-          simpananLainnya: parseNum(row.simpananLainnya),
-          // Total Simpanan KUMULATIF = sum(Z:AD) = saldo_akhirbulan_pokok + wajib + sukarela + lebaran + lainlain
-          saldoAkhirbulanPokok: parseNum(row.saldoAkhirbulanPokok),
-          saldoAkhirbulanWajib: parseNum(row.saldoAkhirbulanWajib),
-          saldoAkhirbulanSukarela: parseNum(row.saldoAkhirbulanSukarela),
-          saldoAkhirbulanLebaran: parseNum(row.saldoAkhirbulanLebaran),
-          saldoAkhirbulanLainlain: parseNum(row.saldoAkhirbulanLainlain),
-          totalSimpanan: parseNum(row.saldoAkhirbulanPokok) +
-                         parseNum(row.saldoAkhirbulanWajib) +
-                         parseNum(row.saldoAkhirbulanSukarela) +
-                         parseNum(row.saldoAkhirbulanLebaran) +
-                         parseNum(row.saldoAkhirbulanLainlain),
-          // Total Simpanan Bulanan = sum(K:O) - potongan simpanan per bulan
-          totalSimpananBulanan: parseNum(row.simpananPokok) +
-                                parseNum(row.simpananWajib) +
-                                parseNum(row.simpananSukarela) +
-                                parseNum(row.simpananLebaran) +
-                                parseNum(row.simpananLainnya),
-          pinjamanBulanIni: parseNum(row.pinjamanBulanIni),
-          pengambilanPokok: parseNum(row.pengambilanPokok),
-          pengambilanWajib: parseNum(row.pengambilanWajib),
-          pengambilanSukarela: parseNum(row.pengambilanSukarela),
-          pengambilanLebaran: parseNum(row.pengambilanLebaran),
-          pengambilanLainnya: parseNum(row.pengambilanLainnya),
-          totalPengambilan: parseNum(row.totalPengambilan),
-          biayaOperasional: parseNum(row.biayaOperasional),
-          // Cicilan Pokok dari kolom R (cicilan_pokok)
-          cicilanPokok: parseNum(row.cicilanPokok),
-          createdAt: row.createdAt || '',
-          updatedAt: row.updatedAt || ''
-        }));
+        .map((row: any, index: number) => mapRowToRekap(row, index));
     } catch (err: any) {
       setError(err.message);
       return [];
     } finally {
       setLoading(false);
     }
-  }, [fetchSheet]);
+  }, [fetchSheet, mapRowToRekap]);
+
+  /**
+   * Ambil rekap TERBARU per anggota dari semua periode yang tersedia.
+   * Dipakai di FormPengajuanPerubahan agar Nilai Saat Ini tidak 0
+   * meskipun rekap bulan ini belum di-input.
+   */
+  const fetchLatestRekapPerAnggota = useCallback(async (): Promise<RekapDashboard[]> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
+      // Group by anggotaId, keep the row with the latest (tahun*12 + bulan)
+      const latestMap = new Map<string, any>();
+      data.forEach((row: any) => {
+        const anggotaId = row.anggotaId || row.id || '';
+        if (!anggotaId) return;
+        const rowBulan = parseInt(row.periodeBulan || row.bulan || 0);
+        const rowTahun = parseInt(row.periodeTahun || row.tahun || 0);
+        const rowPeriod = rowTahun * 12 + rowBulan;
+        const existing = latestMap.get(anggotaId);
+        if (!existing) {
+          latestMap.set(anggotaId, { row, period: rowPeriod });
+        } else if (rowPeriod > existing.period) {
+          latestMap.set(anggotaId, { row, period: rowPeriod });
+        }
+      });
+      return Array.from(latestMap.values()).map(({ row }, index) => mapRowToRekap(row, index));
+    } catch (err: any) {
+      setError(err.message);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchSheet, mapRowToRekap]);
 
   const fetchLimitAnggota = useCallback(async (): Promise<LimitAnggota[]> => {
     setLoading(true);
@@ -768,6 +797,7 @@ export const useSikostikData = () => {
     error,
     fetchAnggotaMaster,
     fetchRekapDashboard,
+    fetchLatestRekapPerAnggota,
     fetchLimitAnggota,
     fetchUsulPinjaman,
     fetchUsulPerubahan,
