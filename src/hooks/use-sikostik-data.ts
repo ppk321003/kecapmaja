@@ -238,7 +238,9 @@ export const useSikostikData = () => {
   // Helper to map a raw sheet row to a RekapDashboard object
   const mapRowToRekap = useCallback((row: any, index: number): RekapDashboard => ({
     no: index + 1,
-    anggotaId: String(row.anggotaId || row.id || '').trim(),
+    // IMPORTANT: beberapa baris rekap_dashboard kadang kosong di `anggota_id` tapi terisi di `kode_anggota`.
+    // Kalau kita fallback ke `id` (RD001, RD002, ...) maka pencocokan anggota gagal dan nilai jadi 0.
+    anggotaId: String(row.anggotaId || row.kodeAnggota || row.id || '').trim(),
     kodeAnggota: String(row.kodeAnggota || '').trim(),
     nama: String(row.nama || '').trim(),
     nip: String(row.nip || '').trim(),
@@ -339,7 +341,7 @@ export const useSikostikData = () => {
       const latestMap = new Map<string, { row: any; period: number; ts: number }>();
 
       data.forEach((row: any) => {
-        const anggotaId = normalizeId(row?.anggotaId || row?.id);
+        const anggotaId = normalizeId(row?.anggotaId || row?.kodeAnggota || row?.id);
         if (!anggotaId) return;
 
         const period = getRowPeriod(row);
@@ -397,7 +399,7 @@ export const useSikostikData = () => {
       const latestRowMap = new Map<string, { row: any; period: number; ts: number }>();
 
       data.forEach((row: any) => {
-        const anggotaId = normalizeId(row?.anggotaId || row?.id);
+        const anggotaId = normalizeId(row?.anggotaId || row?.kodeAnggota || row?.id);
         if (!anggotaId) return;
 
         const period = getRowPeriod(row);
