@@ -319,15 +319,6 @@ export const useSikostikData = () => {
     try {
       const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
 
-      // DEBUG: log raw keys and first row values to diagnose header mapping issues
-      if (data.length > 0) {
-        const firstRow = data[0];
-        console.log('[DEBUG fetchLatestRekap] ALL KEYS:', JSON.stringify(Object.keys(firstRow)));
-        console.log('[DEBUG fetchLatestRekap] FIRST ROW VALUES:', JSON.stringify(firstRow));
-        // Log specific fields we care about
-        console.log('[DEBUG fetchLatestRekap] simpananPokok=', firstRow.simpananPokok, 'simpananWajib=', firstRow.simpananWajib, 'simpananSukarela=', firstRow.simpananSukarela, 'simpananLebaran=', firstRow.simpananLebaran, 'simpananLainnya=', firstRow.simpananLainnya, 'cicilanPokok=', firstRow.cicilanPokok);
-      }
-
       const normalizeId = (v: unknown) => String(v ?? '').trim();
       const getRowPeriod = (row: any) => {
         const bulan = Number.parseInt(row?.periodeBulan ?? row?.bulan ?? '', 10);
@@ -345,34 +336,54 @@ export const useSikostikData = () => {
         return -1;
       };
 
-      // Group by anggotaId, keep the row with the latest (periode_tahun/periode_bulan),
-      // and ignore "template"/invalid rows that often cause all values to become 0.
-      const latestMap = new Map<string, { row: any; period: number; ts: number }>();
+      const getRowTs = (row: any) => Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+
+      // Anggap baris "bermakna" untuk potongan bulanan jika ada nilai di K-O, R, atau biaya operasional.
+      // Ini mencegah baris template/periode baru (semua 0) menimpa nilai real sehingga UI tampil 0.
+      const hasMonthlyDeductions = (row: any) => {
+        const sum =
+          parseNum(row?.simpananPokok) +
+          parseNum(row?.simpananWajib) +
+          parseNum(row?.simpananSukarela) +
+          parseNum(row?.simpananLebaran) +
+          parseNum(row?.simpananLainnya) +
+          parseNum(row?.cicilanPokok) +
+          parseNum(row?.biayaOperasional);
+        return sum > 0;
+      };
+
+      const pickNewer = (existing: { row: any; period: number; ts: number } | undefined, candidate: { row: any; period: number; ts: number }) => {
+        if (!existing) return candidate;
+        const isBetterPeriod = candidate.period > existing.period || (existing.period < 0 && candidate.period >= 0);
+        const isSamePeriodNewer = candidate.period === existing.period && candidate.ts > existing.ts;
+        return (isBetterPeriod || isSamePeriodNewer) ? candidate : existing;
+      };
+
+      // Simpan 2 versi:
+      // 1) latestAny: baris terbaru secara periode (untuk fallback)
+      // 2) latestWithDeductions: baris terbaru yang punya potongan bulanan (untuk Nilai Saat Ini/Total Potongan)
+      const latestAny = new Map<string, { row: any; period: number; ts: number }>();
+      const latestWithDeductions = new Map<string, { row: any; period: number; ts: number }>();
 
       data.forEach((row: any) => {
         const anggotaId = normalizeId(row?.anggotaId || row?.kodeAnggota || row?.id);
         if (!anggotaId) return;
 
         const period = getRowPeriod(row);
-        const ts = Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+        const ts = getRowTs(row);
+        const candidate = { row, period, ts };
 
-        const existing = latestMap.get(anggotaId);
-        if (!existing) {
-          latestMap.set(anggotaId, { row, period, ts });
-          return;
-        }
-
-        // Prefer valid period rows; if both valid, take the latest; tie-breaker: updated_at/created_at
-        const existingPeriod = existing.period;
-        const isBetterPeriod = period > existingPeriod || (existingPeriod < 0 && period >= 0);
-        const isSamePeriodNewer = period === existingPeriod && ts > existing.ts;
-
-        if (isBetterPeriod || isSamePeriodNewer) {
-          latestMap.set(anggotaId, { row, period, ts });
+        latestAny.set(anggotaId, pickNewer(latestAny.get(anggotaId), candidate));
+        if (hasMonthlyDeductions(row)) {
+          latestWithDeductions.set(anggotaId, pickNewer(latestWithDeductions.get(anggotaId), candidate));
         }
       });
 
-      return Array.from(latestMap.values()).map(({ row }, index) => mapRowToRekap(row, index));
+      const anggotaIds = Array.from(latestAny.keys());
+      return anggotaIds.map((anggotaId, index) => {
+        const chosen = latestWithDeductions.get(anggotaId) ?? latestAny.get(anggotaId)!;
+        return mapRowToRekap(chosen.row, index);
+      });
     } catch (err: any) {
       setError(err.message);
       return [];
@@ -404,34 +415,49 @@ export const useSikostikData = () => {
         return -1;
       };
 
-      // Pilih baris TERBARU per anggota untuk perhitungan limit (hindari tertimpa baris lama/invalid)
-      const latestRowMap = new Map<string, { row: any; period: number; ts: number }>();
+      const getRowTs = (row: any) => Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+
+      const hasMonthlyDeductions = (row: any) => {
+        const sum =
+          parseNum(row?.simpananPokok) +
+          parseNum(row?.simpananWajib) +
+          parseNum(row?.simpananSukarela) +
+          parseNum(row?.simpananLebaran) +
+          parseNum(row?.simpananLainnya) +
+          parseNum(row?.cicilanPokok) +
+          parseNum(row?.biayaOperasional);
+        return sum > 0;
+      };
+
+      const pickNewer = (existing: { row: any; period: number; ts: number } | undefined, candidate: { row: any; period: number; ts: number }) => {
+        if (!existing) return candidate;
+        const isBetterPeriod = candidate.period > existing.period || (existing.period < 0 && candidate.period >= 0);
+        const isSamePeriodNewer = candidate.period === existing.period && candidate.ts > existing.ts;
+        return (isBetterPeriod || isSamePeriodNewer) ? candidate : existing;
+      };
+
+      // latestAny: untuk saldo piutang & saldo akhir bulan (Z:AD)
+      const latestAny = new Map<string, { row: any; period: number; ts: number }>();
+      // latestWithDeductions: untuk cicilan saat ini (kolom R) agar tidak tertimpa baris template semua 0
+      const latestWithDeductions = new Map<string, { row: any; period: number; ts: number }>();
 
       data.forEach((row: any) => {
         const anggotaId = normalizeId(row?.anggotaId || row?.kodeAnggota || row?.id);
         if (!anggotaId) return;
 
         const period = getRowPeriod(row);
-        const ts = Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+        const ts = getRowTs(row);
+        const candidate = { row, period, ts };
 
-        const existing = latestRowMap.get(anggotaId);
-        if (!existing) {
-          latestRowMap.set(anggotaId, { row, period, ts });
-          return;
-        }
-
-        const existingPeriod = existing.period;
-        const isBetterPeriod = period > existingPeriod || (existingPeriod < 0 && period >= 0);
-        const isSamePeriodNewer = period === existingPeriod && ts > existing.ts;
-
-        if (isBetterPeriod || isSamePeriodNewer) {
-          latestRowMap.set(anggotaId, { row, period, ts });
+        latestAny.set(anggotaId, pickNewer(latestAny.get(anggotaId), candidate));
+        if (hasMonthlyDeductions(row)) {
+          latestWithDeductions.set(anggotaId, pickNewer(latestWithDeductions.get(anggotaId), candidate));
         }
       });
 
       const limitMap = new Map<string, LimitAnggota>();
 
-      latestRowMap.forEach(({ row }, anggotaId) => {
+      latestAny.forEach(({ row }, anggotaId) => {
         // Total Simpanan = sum(Z:AD) = saldo_akhirbulan_pokok + wajib + sukarela + lebaran + lainlain
         const totalSimpanan =
           parseNum(row.saldoAkhirbulanPokok) +
@@ -443,10 +469,14 @@ export const useSikostikData = () => {
         // Saldo Piutang dari kolom J
         const saldoPiutang = parseNum(row.saldoPiutang);
 
-        // Limit Pinjaman = Total Simpanan × 1.3 (updated policy)
-        const limitPinjaman = Math.max(0, totalSimpanan * 1.3);
-        // Sisa Limit = (Total Simpanan × 1.3) - Saldo Piutang
+        // Limit Pinjaman = Total Simpanan × 1.5 (sesuai aturan Sikostik28)
+        const limitPinjaman = Math.max(0, totalSimpanan * 1.5);
+        // Sisa Limit = (Total Simpanan × 1.5) - Saldo Piutang
         const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
+
+        // Cicilan Saat Ini dari kolom R (cicilan_pokok) — ambil dari baris yang punya potongan bulanan jika tersedia
+        const rowForCicilan = latestWithDeductions.get(anggotaId)?.row ?? row;
+        const cicilanPokok = parseNum(rowForCicilan.cicilanPokok);
 
         limitMap.set(anggotaId, {
           anggotaId,
@@ -457,8 +487,7 @@ export const useSikostikData = () => {
           saldoPiutang,
           limitPinjaman,
           sisaLimit,
-          // Cicilan Saat Ini dari kolom R (cicilan_pokok)
-          cicilanPokok: parseNum(row.cicilanPokok),
+          cicilanPokok,
         });
       });
 
