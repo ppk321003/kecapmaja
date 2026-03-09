@@ -375,28 +375,68 @@ export const useSikostikData = () => {
     setError(null);
     try {
       const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
-      
-      // Group by anggotaId and calculate limit
-      const limitMap = new Map<string, LimitAnggota>();
-      
+
+      const normalizeId = (v: unknown) => String(v ?? '').trim();
+      const getRowPeriod = (row: any) => {
+        const bulan = Number.parseInt(row?.periodeBulan ?? row?.bulan ?? '', 10);
+        const tahun = Number.parseInt(row?.periodeTahun ?? row?.tahun ?? '', 10);
+        if (Number.isFinite(bulan) && bulan >= 1 && bulan <= 12 && Number.isFinite(tahun) && tahun >= 2000) {
+          return tahun * 12 + bulan;
+        }
+
+        const ts = Date.parse(row?.updatedAt || row?.createdAt || '');
+        if (!Number.isNaN(ts)) {
+          const d = new Date(ts);
+          return d.getFullYear() * 12 + (d.getMonth() + 1);
+        }
+
+        return -1;
+      };
+
+      // Pilih baris TERBARU per anggota untuk perhitungan limit (hindari tertimpa baris lama/invalid)
+      const latestRowMap = new Map<string, { row: any; period: number; ts: number }>();
+
       data.forEach((row: any) => {
-        const anggotaId = row.anggotaId || row.id || '';
+        const anggotaId = normalizeId(row?.anggotaId || row?.id);
         if (!anggotaId) return;
-        
+
+        const period = getRowPeriod(row);
+        const ts = Date.parse(row?.updatedAt || row?.createdAt || '') || 0;
+
+        const existing = latestRowMap.get(anggotaId);
+        if (!existing) {
+          latestRowMap.set(anggotaId, { row, period, ts });
+          return;
+        }
+
+        const existingPeriod = existing.period;
+        const isBetterPeriod = period > existingPeriod || (existingPeriod < 0 && period >= 0);
+        const isSamePeriodNewer = period === existingPeriod && ts > existing.ts;
+
+        if (isBetterPeriod || isSamePeriodNewer) {
+          latestRowMap.set(anggotaId, { row, period, ts });
+        }
+      });
+
+      const limitMap = new Map<string, LimitAnggota>();
+
+      latestRowMap.forEach(({ row }, anggotaId) => {
         // Total Simpanan = sum(Z:AD) = saldo_akhirbulan_pokok + wajib + sukarela + lebaran + lainlain
-        const totalSimpanan = parseNum(row.saldoAkhirbulanPokok) +
-                              parseNum(row.saldoAkhirbulanWajib) +
-                              parseNum(row.saldoAkhirbulanSukarela) +
-                              parseNum(row.saldoAkhirbulanLebaran) +
-                              parseNum(row.saldoAkhirbulanLainlain);
+        const totalSimpanan =
+          parseNum(row.saldoAkhirbulanPokok) +
+          parseNum(row.saldoAkhirbulanWajib) +
+          parseNum(row.saldoAkhirbulanSukarela) +
+          parseNum(row.saldoAkhirbulanLebaran) +
+          parseNum(row.saldoAkhirbulanLainlain);
+
         // Saldo Piutang dari kolom J
         const saldoPiutang = parseNum(row.saldoPiutang);
-        
+
         // Limit Pinjaman = Total Simpanan × 1.3 (updated policy)
         const limitPinjaman = Math.max(0, totalSimpanan * 1.3);
         // Sisa Limit = (Total Simpanan × 1.3) - Saldo Piutang
         const sisaLimit = Math.max(0, limitPinjaman - saldoPiutang);
-        
+
         limitMap.set(anggotaId, {
           anggotaId,
           nama: row.nama || '',
@@ -407,10 +447,10 @@ export const useSikostikData = () => {
           limitPinjaman,
           sisaLimit,
           // Cicilan Saat Ini dari kolom R (cicilan_pokok)
-          cicilanPokok: parseNum(row.cicilanPokok)
+          cicilanPokok: parseNum(row.cicilanPokok),
         });
       });
-      
+
       return Array.from(limitMap.values());
     } catch (err: any) {
       setError(err.message);
