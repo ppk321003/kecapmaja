@@ -84,12 +84,14 @@ export function FormPengajuanPerubahan({ open, onOpenChange, onSubmit }: Props) 
   const [pendingSubmit, setPendingSubmit] = useState<FormValues | null>(null);
 
   // Fetch data when dialog opens
+  // Gunakan fetchLatestRekapPerAnggota agar Nilai Saat Ini menampilkan nilai terbaru
+  // meskipun rekap bulan ini belum di-input.
   useEffect(() => {
     if (open && !dataLoaded) {
       Promise.all([
         fetchAnggotaMaster(),
         fetchLimitAnggota(),
-        fetchRekapDashboard()
+        fetchLatestRekapPerAnggota()
       ]).then(([anggota, limit, rekap]) => {
         setAnggotaList(anggota);
         setLimitList(limit);
@@ -97,7 +99,7 @@ export function FormPengajuanPerubahan({ open, onOpenChange, onSubmit }: Props) 
         setDataLoaded(true);
       });
     }
-  }, [open, dataLoaded, fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard]);
+  }, [open, dataLoaded, fetchAnggotaMaster, fetchLimitAnggota, fetchLatestRekapPerAnggota]);
 
   // Filter active members
   const activeMembers = useMemo(() => {
