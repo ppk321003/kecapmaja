@@ -84,23 +84,33 @@ export function FormPengajuanPerubahan({ open, onOpenChange, onSubmit }: Props) 
   const [pendingSubmit, setPendingSubmit] = useState<FormValues | null>(null);
 
   // Fetch data when dialog opens
-  // Gunakan fetchLatestRekapPerAnggota agar Nilai Saat Ini menampilkan nilai terbaru
-  // meskipun rekap bulan ini belum di-input.
+  // Selalu refetch rekap & limit saat dialog dibuka agar "Nilai Saat Ini" mengikuti data terbaru
+  // dan perubahan parsing header spreadsheet langsung terpakai tanpa perlu hard refresh.
   useEffect(() => {
-    const shouldLoad = open && (!dataLoaded || anggotaList.length === 0 || limitList.length === 0 || rekapList.length === 0);
-    if (shouldLoad) {
-      Promise.all([
-        fetchAnggotaMaster(),
+    if (!open) return;
+
+    let cancelled = false;
+
+    (async () => {
+      const [anggota, limit, rekap] = await Promise.all([
+        anggotaList.length ? Promise.resolve(anggotaList) : fetchAnggotaMaster(),
         fetchLimitAnggota(),
-        fetchLatestRekapPerAnggota()
-      ]).then(([anggota, limit, rekap]) => {
-        setAnggotaList(anggota);
-        setLimitList(limit);
-        setRekapList(rekap);
-        setDataLoaded(true);
-      });
-    }
-  }, [open, dataLoaded, anggotaList.length, limitList.length, rekapList.length, fetchAnggotaMaster, fetchLimitAnggota, fetchLatestRekapPerAnggota]);
+        fetchLatestRekapPerAnggota(),
+      ]);
+
+      if (cancelled) return;
+
+      if (!anggotaList.length) setAnggotaList(anggota);
+      setLimitList(limit);
+      setRekapList(rekap);
+      setDataLoaded(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, fetchAnggotaMaster, fetchLimitAnggota, fetchLatestRekapPerAnggota, anggotaList.length]);
 
   // Filter active members
   const activeMembers = useMemo(() => {
