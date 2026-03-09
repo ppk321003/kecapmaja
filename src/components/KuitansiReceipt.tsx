@@ -108,7 +108,7 @@ const KuitansiReceipt: React.FC<KuitansiReceiptProps> = ({
           <img
             src={`/lovable-uploads/${store.storeLogoId}.png`}
             alt="Logo"
-            className="h-24 w-24 object-contain opacity-80"
+            className="h-30 w-30 object-contain opacity-80"
             crossOrigin="anonymous"
           />
         </div>
