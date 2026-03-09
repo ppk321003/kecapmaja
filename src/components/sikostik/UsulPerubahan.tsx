@@ -74,7 +74,9 @@ export const UsulPerubahan = () => {
       );
     }
     
-    return result;
+    return result.sort((a, b) => 
+      new Date(b.tanggalUsul).getTime() - new Date(a.tanggalUsul).getTime()
+    );
   }, [usulData, searchQuery, statusFilter]);
 
   const stats = useMemo(() => {
