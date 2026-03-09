@@ -186,7 +186,6 @@ const DetailKuitansiPage: React.FC = () => {
           } else {
             img.addEventListener("load", () => resolve());
             img.addEventListener("error", () => resolve());
-            // Set timeout in case image fails to load
             setTimeout(resolve, 2000);
           }
         });
@@ -194,12 +193,29 @@ const DetailKuitansiPage: React.FC = () => {
 
       await Promise.all(imageLoadPromises);
 
+      // Temporarily shrink logos for PDF capture
+      const logoImgs = element.querySelectorAll("img[alt='Logo']");
+      const originalStyles: { el: HTMLElement; width: string; height: string }[] = [];
+      logoImgs.forEach((img) => {
+        const el = img as HTMLElement;
+        originalStyles.push({ el, width: el.style.width, height: el.style.height });
+        // Cap logo to 80px for clean PDF output
+        el.style.width = "80px";
+        el.style.height = "80px";
+      });
+
       const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
         allowTaint: true,
         logging: false,
+      });
+
+      // Restore original logo sizes
+      originalStyles.forEach(({ el, width, height }) => {
+        el.style.width = width;
+        el.style.height = height;
       });
 
       const imgData = canvas.toDataURL("image/png");
