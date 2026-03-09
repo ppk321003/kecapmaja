@@ -87,7 +87,8 @@ export function FormPengajuanPerubahan({ open, onOpenChange, onSubmit }: Props) 
   // Gunakan fetchLatestRekapPerAnggota agar Nilai Saat Ini menampilkan nilai terbaru
   // meskipun rekap bulan ini belum di-input.
   useEffect(() => {
-    if (open && !dataLoaded) {
+    const shouldLoad = open && (!dataLoaded || anggotaList.length === 0 || limitList.length === 0 || rekapList.length === 0);
+    if (shouldLoad) {
       Promise.all([
         fetchAnggotaMaster(),
         fetchLimitAnggota(),
@@ -99,7 +100,7 @@ export function FormPengajuanPerubahan({ open, onOpenChange, onSubmit }: Props) 
         setDataLoaded(true);
       });
     }
-  }, [open, dataLoaded, fetchAnggotaMaster, fetchLimitAnggota, fetchLatestRekapPerAnggota]);
+  }, [open, dataLoaded, anggotaList.length, limitList.length, rekapList.length, fetchAnggotaMaster, fetchLimitAnggota, fetchLatestRekapPerAnggota]);
 
   // Filter active members
   const activeMembers = useMemo(() => {
