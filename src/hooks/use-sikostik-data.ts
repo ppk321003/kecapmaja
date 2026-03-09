@@ -231,10 +231,10 @@ export const useSikostikData = () => {
   // Helper to map a raw sheet row to a RekapDashboard object
   const mapRowToRekap = useCallback((row: any, index: number): RekapDashboard => ({
     no: index + 1,
-    anggotaId: row.anggotaId || row.id || '',
-    kodeAnggota: row.kodeAnggota || '',
-    nama: row.nama || '',
-    nip: row.nip || '',
+    anggotaId: String(row.anggotaId || row.id || '').trim(),
+    kodeAnggota: String(row.kodeAnggota || '').trim(),
+    nama: String(row.nama || '').trim(),
+    nip: String(row.nip || '').trim(),
     status: row.status === 'Aktif' ? 'Aktif' : 'Tidak Aktif',
     periodeBulan: parseInt(row.periodeBulan || row.bulan || 0),
     periodeTahun: parseInt(row.periodeTahun || row.tahun || 0),
