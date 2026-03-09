@@ -74,7 +74,7 @@ interface Props {
 
 export function FormPengajuanPerubahan({ open, onOpenChange, onSubmit }: Props) {
   const { user } = useAuth();
-  const { fetchAnggotaMaster, fetchLimitAnggota, fetchRekapDashboard, submitUsulPerubahan } = useSikostikData();
+  const { fetchAnggotaMaster, fetchLimitAnggota, fetchLatestRekapPerAnggota, submitUsulPerubahan } = useSikostikData();
   
   const [anggotaList, setAnggotaList] = useState<AnggotaMaster[]>([]);
   const [limitList, setLimitList] = useState<LimitAnggota[]>([]);
