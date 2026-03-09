@@ -123,27 +123,37 @@ export function FormPengajuanPerubahan({ open, onOpenChange, onSubmit }: Props) 
 
   // Get member info
   const memberInfo = useMemo(() => {
-    if (!watchAnggotaId) return null;
-    
-    const member = anggotaList.find(m => 
-      m.id === watchAnggotaId || 
-      m.kodeAnggota === watchAnggotaId
+    const normalizeId = (v: unknown) => String(v ?? '').trim();
+    const normalizeNip = (v: unknown) => normalizeId(v).replace(/\s+/g, '');
+
+    const selectedId = normalizeId(watchAnggotaId);
+    if (!selectedId) return null;
+
+    const member = anggotaList.find(m =>
+      normalizeId(m.id) === selectedId ||
+      normalizeId(m.kodeAnggota) === selectedId
     );
     if (!member) return null;
-    
-    const memberId = member.id || member.kodeAnggota;
-    
-    const rekap = rekapList.find(r => 
-      r.anggotaId === memberId || 
-      r.anggotaId === watchAnggotaId
+
+    const candidateIds = new Set(
+      [member.id, member.kodeAnggota, selectedId]
+        .map(normalizeId)
+        .filter(Boolean)
     );
-    const limit = limitList.find(l => 
-      l.anggotaId === memberId || 
-      l.anggotaId === watchAnggotaId
+
+    const rekap = rekapList.find(r =>
+      candidateIds.has(normalizeId(r.anggotaId)) ||
+      candidateIds.has(normalizeId(r.kodeAnggota)) ||
+      (normalizeNip(r.nip) && normalizeNip(r.nip) === normalizeNip(member.nip))
     );
-    
+
+    const limit = limitList.find(l =>
+      candidateIds.has(normalizeId(l.anggotaId)) ||
+      (normalizeNip(l.nip) && normalizeNip(l.nip) === normalizeNip(member.nip))
+    );
+
     const nipInfo = parseNIP(member.nip);
-    
+
     return {
       member,
       rekap,
