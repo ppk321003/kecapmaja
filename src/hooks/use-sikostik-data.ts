@@ -319,6 +319,15 @@ export const useSikostikData = () => {
     try {
       const data = await fetchSheet('rekap_dashboard', SIKOSTIK_SPREADSHEET_ID);
 
+      // DEBUG: log raw keys and first row values to diagnose header mapping issues
+      if (data.length > 0) {
+        const firstRow = data[0];
+        console.log('[DEBUG fetchLatestRekap] ALL KEYS:', JSON.stringify(Object.keys(firstRow)));
+        console.log('[DEBUG fetchLatestRekap] FIRST ROW VALUES:', JSON.stringify(firstRow));
+        // Log specific fields we care about
+        console.log('[DEBUG fetchLatestRekap] simpananPokok=', firstRow.simpananPokok, 'simpananWajib=', firstRow.simpananWajib, 'simpananSukarela=', firstRow.simpananSukarela, 'simpananLebaran=', firstRow.simpananLebaran, 'simpananLainnya=', firstRow.simpananLainnya, 'cicilanPokok=', firstRow.cicilanPokok);
+      }
+
       const normalizeId = (v: unknown) => String(v ?? '').trim();
       const getRowPeriod = (row: any) => {
         const bulan = Number.parseInt(row?.periodeBulan ?? row?.bulan ?? '', 10);
