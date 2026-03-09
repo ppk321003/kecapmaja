@@ -152,8 +152,15 @@ export const useSikostikData = () => {
       return rows.slice(1).map((row: any[]) => {
         const obj: any = {};
         headers.forEach((header: string, index: number) => {
-          // Normalize header to camelCase
-          const key = header.toLowerCase().replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+          // Normalize header to camelCase (supports: snake_case, "Title Case", kebab-case, and existing camelCase)
+          const raw = String(header ?? '').trim();
+          const underscored = raw
+            .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+            .replace(/[^a-zA-Z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .toLowerCase();
+          const key = underscored.replace(/_([a-z0-9])/g, (_, ch) => String(ch).toUpperCase());
+
           obj[key] = row[index] ?? '';
         });
         return obj;
