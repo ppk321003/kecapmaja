@@ -264,6 +264,7 @@ serve(async (req: Request) => {
     const existingPembayaran = currentRow.length > 18 ? currentRow[18] || '' : ''; // S: Pembayaran (index 18)
     const existingNomorSPM = currentRow.length > 19 ? currentRow[19] || '' : '';   // T: Nomor SPM (index 19)
     const existingNomorSPPD = currentRow.length > 20 ? currentRow[20] || '' : '';  // U: Nomor SPPD (index 20)
+    const existingNominal = currentRow.length > 21 ? currentRow[21] || '' : '';    // V: Nominal (index 21)
 
     // Handle edit action from SM
     if (actor === 'sm' && action === 'edit') {
