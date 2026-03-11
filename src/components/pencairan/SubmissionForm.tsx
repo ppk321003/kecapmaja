@@ -92,6 +92,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
   const [jenisBelanja, setJenisBelanja] = useState(editData?.jenisBelanja || '');
   const [subJenisBelanja, setSubJenisBelanja] = useState(editData?.subJenisBelanja || '');
   const [notes, setNotes] = useState(editData?.notes || '');
+  const [nominal, setNominal] = useState(editData?.nominal ? formatNumberWithSeparator(editData.nominal) : '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [documents, setDocuments] = useState<Document[]>(editData?.documents || []);
   const [showDraftConfirmation, setShowDraftConfirmation] = useState(false);
