@@ -433,6 +433,19 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             />
           </div>
           <div className="space-y-2">
+            <Label>Total Nilai</Label>
+            <Input
+              placeholder="Contoh: 1.000.000"
+              value={nominal}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^\d]/g, '');
+                setNominal(raw ? formatNumberWithSeparator(raw) : '');
+              }}
+              className="h-11 rounded-xl"
+              inputMode="numeric"
+            />
+          </div>
+          <div className="space-y-2">
             <Label>Nama Pengaju *</Label>
             <Select value={submitterName} onValueChange={setSubmitterName}>
               <SelectTrigger className="h-11 rounded-xl">
@@ -553,19 +566,6 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               <p className="text-xs text-muted-foreground">* Dokumen wajib harus dilengkapi</p>
             </div>
           )}
-          <div className="space-y-2">
-            <Label>Total Nilai</Label>
-            <Input
-              placeholder="Contoh: 1.000.000"
-              value={nominal}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/[^\d]/g, '');
-                setNominal(raw ? formatNumberWithSeparator(raw) : '');
-              }}
-              className="h-11 rounded-xl"
-              inputMode="numeric"
-            />
-          </div>
           <div className="space-y-2">
             <Label>Catatan (Opsional)</Label>
             <Textarea
