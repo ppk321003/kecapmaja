@@ -65,7 +65,7 @@ const LayananKarirABK: React.FC = () => {
           body: {
             spreadsheetId: spreadsheetId,
             operation: 'read',
-            range: 'ABK!A:C'
+            range: 'ABK!A:D'
           }
         });
 
@@ -88,22 +88,14 @@ const LayananKarirABK: React.FC = () => {
         }
 
         // Parse ABK data (skip header row)
+        // Sheet structure: A=No, B=Nama Jabatan, C=Formasi Jabatan, D=Grade/Kelas Jabatan
         const abkRows = abkResponse.data.values.slice(1) || [];
-        
-        // Debug: log structure
-        console.log('[LayananKarirABK] ABK Raw Data:', {
-          totalRows: abkRows.length,
-          headerRow: abkResponse.data.values[0],
-          firstDataRow: abkRows[0],
-          secondDataRow: abkRows[1]
-        });
-        
         const abkParsed: ABKData[] = abkRows
           .map((row: any[], index: number) => ({
             no: index + 1,
-            jabatan: row[0]?.toString().trim() || '',
-            formasi: parseInt(row[1]?.toString() || '0') || 0,
-            grade: row[2]?.toString().trim() || ''
+            jabatan: row[1]?.toString().trim() || '',  // Kolom B
+            formasi: parseInt(row[2]?.toString() || '0') || 0,  // Kolom C
+            grade: row[3]?.toString().trim() || ''  // Kolom D
           }))
           .filter(item => item.jabatan); // Filter empty rows
 
