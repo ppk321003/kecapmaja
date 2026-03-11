@@ -9,6 +9,7 @@ import { AlertCircle, Loader2, X } from 'lucide-react';
 interface ABKData {
   no: number;
   jabatan: string;
+  grade: string;
   formasi: number;
 }
 
@@ -64,7 +65,7 @@ const LayananKarirABK: React.FC = () => {
           body: {
             spreadsheetId: spreadsheetId,
             operation: 'read',
-            range: 'ABK!A:C'
+            range: 'ABK!A:D'
           }
         });
 
@@ -92,7 +93,8 @@ const LayananKarirABK: React.FC = () => {
           .map((row: any[], index: number) => ({
             no: index + 1,
             jabatan: row[1]?.toString().trim() || '',
-            formasi: parseInt(row[2]?.toString() || '0') || 0
+            grade: row[2]?.toString().trim() || '',
+            formasi: parseInt(row[3]?.toString() || '0') || 0
           }))
           .filter(item => item.jabatan); // Filter empty rows
 
@@ -202,6 +204,7 @@ const LayananKarirABK: React.FC = () => {
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-semibold text-foreground bg-muted/50">No</th>
                   <th className="text-left py-3 px-4 font-semibold text-foreground bg-muted/50 min-w-64">Nama Jabatan</th>
+                  <th className="text-center py-3 px-4 font-semibold text-foreground bg-muted/50">Grade / Kelas Jabatan</th>
                   <th className="text-center py-3 px-4 font-semibold text-foreground bg-muted/50">Formasi Jabatan</th>
                   <th className="text-center py-3 px-4 font-semibold text-foreground bg-muted/50">Existing</th>
                   <th className="text-left py-3 px-4 font-semibold text-foreground bg-muted/50 min-w-56">Keterangan</th>
@@ -210,7 +213,7 @@ const LayananKarirABK: React.FC = () => {
               <tbody>
                 {abkData.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={6} className="text-center py-8 text-muted-foreground">
                       Tidak ada data jabatan
                     </td>
                   </tr>
@@ -240,6 +243,7 @@ const LayananKarirABK: React.FC = () => {
                         <tr key={index} className="border-b hover:bg-muted/50 transition-colors">
                           <td className="py-3 px-4 text-foreground">{item.no}</td>
                           <td className="py-3 px-4 text-foreground font-medium">{item.jabatan}</td>
+                          <td className="py-3 px-4 text-center text-foreground">{item.grade || '-'}</td>
                           <td className="py-3 px-4 text-center">
                             <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg font-semibold bg-blue-100 text-blue-700">
                               {item.formasi}
@@ -261,7 +265,7 @@ const LayananKarirABK: React.FC = () => {
                     })}
                     {/* Row Total */}
                     <tr className="border-t-2 border-gray-400 font-semibold bg-gray-100">
-                      <td colSpan={2} className="py-3 px-4 text-foreground text-right">TOTAL</td>
+                      <td colSpan={3} className="py-3 px-4 text-foreground text-right">TOTAL</td>
                       <td className="py-3 px-4 text-center">
                         <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg font-semibold bg-blue-100 text-blue-700">
                           {abkData.reduce((sum, item) => sum + item.formasi, 0)}
