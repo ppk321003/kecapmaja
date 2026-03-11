@@ -193,7 +193,7 @@ serve(async (req: Request) => {
     const body = await req.json();
     console.log('Request body:', JSON.stringify(body));
     
-    const { id, status, notes, actor, action, uraianPengajuan, namaPengaju, jenisPengajuan, kelengkapan, satker, pembayaran, nomorSPM, nomorSPPD } = body;
+    const { id, status, notes, actor, action, uraianPengajuan, namaPengaju, jenisPengajuan, kelengkapan, satker, pembayaran, nomorSPM, nomorSPPD, nominal } = body;
     
     console.log(`[Request-Parsed] id=${id}, actor=${actor}, action=${action}, status=${status}, pembayaran=${pembayaran}, nomorSPM=${nomorSPM}`);
     
