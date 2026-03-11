@@ -360,11 +360,8 @@ serve(async (req: Request) => {
       }
     }
 
-    // Build updated row sesuai struktur: A-U (21 kolom)
-    // A: ID, B: Uraian, C: Nama, D: Jenis, E: Kelengkapan, F: Catatan, G: Status
-    // H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK, K: Waktu PPSPM, L: Waktu Arsip
-    // M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip, Q: Update terakhir
-    // R: User, S: Pembayaran (UP/LS), T: Nomor SPM, U: Nomor SPPD
+    // Build updated row sesuai struktur: A-V (22 kolom)
+    // A-U sama, V: Nominal
     
     console.log(`[Before updatedRow] id=${id}, newStatus=${newStatus}, updatedPembayaran=${updatedPembayaran}, updatedNomorSPM=${updatedNomorSPM}`);
     
@@ -390,10 +387,11 @@ serve(async (req: Request) => {
       updatedPembayaran,   // S: Pembayaran (UP/LS)
       updatedNomorSPM,     // T: Nomor SPM
       updatedNomorSPPD,    // U: Nomor SPPD
+      updatedNominal,      // V: Nominal
     ];
 
     console.log(`[After-updatedRow] updatedRow[6]=${updatedRow[6]} (should be newStatus=${newStatus})`);
-    console.log(`[After-updatedRow] updatedRow[18]=${updatedRow[18]} (pembayaran), updatedRow[19]=${updatedRow[19]} (SPM), updatedRow[20]=${updatedRow[20]} (SPPD)`);
+    console.log(`[After-updatedRow] updatedRow[18]=${updatedRow[18]} (pembayaran), updatedRow[19]=${updatedRow[19]} (SPM), updatedRow[20]=${updatedRow[20]} (SPPD), updatedRow[21]=${updatedRow[21]} (nominal)`);
     console.log(`[After-updatedRow-StatusCols] M=${updatedRow[12]}, N=${updatedRow[13]}, O=${updatedRow[14]}, P=${updatedRow[15]}`);
     console.log(`Updating row ${rowIndex}:`, updatedRow);
     console.log('Row length:', updatedRow.length);
