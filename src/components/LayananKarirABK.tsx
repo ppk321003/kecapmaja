@@ -9,8 +9,8 @@ import { AlertCircle, Loader2, X } from 'lucide-react';
 interface ABKData {
   no: number;
   jabatan: string;
-  grade: string;
   formasi: number;
+  grade: string;
 }
 
 interface EmployeeMatch {
@@ -65,7 +65,7 @@ const LayananKarirABK: React.FC = () => {
           body: {
             spreadsheetId: spreadsheetId,
             operation: 'read',
-            range: 'ABK!A:D'
+            range: 'ABK!A:C'
           }
         });
 
@@ -92,9 +92,9 @@ const LayananKarirABK: React.FC = () => {
         const abkParsed: ABKData[] = abkRows
           .map((row: any[], index: number) => ({
             no: index + 1,
-            jabatan: row[1]?.toString().trim() || '',
-            grade: row[2]?.toString().trim() || '',
-            formasi: parseInt(row[3]?.toString() || '0') || 0
+            jabatan: row[0]?.toString().trim() || '',
+            formasi: parseInt(row[1]?.toString() || '0') || 0,
+            grade: row[2]?.toString().trim() || ''
           }))
           .filter(item => item.jabatan); // Filter empty rows
 
