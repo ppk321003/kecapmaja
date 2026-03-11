@@ -391,6 +391,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
     setJenisBelanja(editData?.jenisBelanja || '');
     setSubJenisBelanja(editData?.subJenisBelanja || '');
     setNotes(editData?.notes || '');
+    setNominal(editData?.nominal ? formatNumberWithSeparator(editData.nominal) : '');
     setDocuments(editData?.documents || []);
     onClose();
   };
