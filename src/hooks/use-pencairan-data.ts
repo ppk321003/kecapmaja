@@ -161,7 +161,7 @@ export function usePencairanData() {
         body: {
           spreadsheetId: spreadsheetId,
           operation: 'read',
-          range: `${SHEET_NAME}!A:U`, // 21 kolom (A-U: S=pembayaran, T=nomorSPM, U=nomorSPPD)
+          range: `${SHEET_NAME}!A:V`, // 22 kolom (A-V: V=Nominal)
         },
       });
 
