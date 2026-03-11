@@ -262,6 +262,7 @@ export function usePencairanData() {
             pembayaran: row[18] || '', // 🆕 Kolom S - LS atau UP
             nomorSPM: row[19] || '', // 🆕 Kolom T - nomor SPM untuk LS
             nomorSPPD: row[20] || '', // 🆕 Kolom U - nomor SPPD untuk Arsip
+            nominal: row[21] || '', // 🆕 Kolom V - Total Nilai / Nominal
           };
         }
         

@@ -147,6 +147,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         setJenisBelanja('');
         setSubJenisBelanja('');
         setNotes('');
+        setNominal('');
         setDocuments([]);
       }
     }
