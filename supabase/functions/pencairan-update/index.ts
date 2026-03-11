@@ -212,8 +212,8 @@ serve(async (req: Request) => {
     
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
     
-    // Baca 21 kolom (A:U) - dengan Pembayaran, SPM, SPPD
-    const readResponse = await fetch(`${baseUrl}/values/${SHEET_NAME}!A:U`, {
+    // Baca 22 kolom (A:V) - dengan Pembayaran, SPM, SPPD, Nominal
+    const readResponse = await fetch(`${baseUrl}/values/${SHEET_NAME}!A:V`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const readData = await readResponse.json();
