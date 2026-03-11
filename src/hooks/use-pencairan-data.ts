@@ -34,6 +34,7 @@ export interface PencairanRawData {
   pembayaran?: string; // 🆕 Kolom S - LS atau UP
   nomorSPM?: string; // 🆕 Kolom T - nomor SPM untuk LS
   nomorSPPD?: string; // 🆕 Kolom U - nomor SPPD untuk Arsip
+  nominal?: string; // 🆕 Kolom V - Total Nilai / Nominal
 }
 
 export interface OrganikData {
@@ -127,6 +128,7 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
     pembayaran: (raw.pembayaran === 'UP' || raw.pembayaran === 'LS') ? raw.pembayaran : undefined, // 🆕 Kolom S - LS atau UP
     nomorSPM: raw.nomorSPM, // 🆕 Kolom T - nomor SPM untuk LS
     nomorSPPD: raw.nomorSPPD, // 🆕 Kolom U - nomor SPPD untuk Arsip
+    nominal: raw.nominal ? parseFloat(raw.nominal.replace(/[^\d]/g, '')) || 0 : undefined, // 🆕 Kolom V - Nominal
   };
 }
 
@@ -159,7 +161,7 @@ export function usePencairanData() {
         body: {
           spreadsheetId: spreadsheetId,
           operation: 'read',
-          range: `${SHEET_NAME}!A:U`, // 21 kolom (A-U: S=pembayaran, T=nomorSPM, U=nomorSPPD)
+          range: `${SHEET_NAME}!A:V`, // 22 kolom (A-V: V=Nominal)
         },
       });
 
@@ -260,6 +262,7 @@ export function usePencairanData() {
             pembayaran: row[18] || '', // 🆕 Kolom S - LS atau UP
             nomorSPM: row[19] || '', // 🆕 Kolom T - nomor SPM untuk LS
             nomorSPPD: row[20] || '', // 🆕 Kolom U - nomor SPPD untuk Arsip
+            nominal: row[21] || '', // 🆕 Kolom V - Total Nilai / Nominal
           };
         }
         

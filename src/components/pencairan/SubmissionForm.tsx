@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -43,6 +43,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganikPencairan, usePencairanData } from '@/hooks/use-pencairan-data';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatNumberWithSeparator, parseFormattedNumber } from '@/lib/formatNumber';
 
 interface SubmissionFormProps {
   open: boolean;
@@ -88,6 +89,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
   const [jenisBelanja, setJenisBelanja] = useState(editData?.jenisBelanja || '');
   const [subJenisBelanja, setSubJenisBelanja] = useState(editData?.subJenisBelanja || '');
   const [notes, setNotes] = useState(editData?.notes || '');
+  const [nominal, setNominal] = useState(editData?.nominal ? formatNumberWithSeparator(editData.nominal) : '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [documents, setDocuments] = useState<Document[]>(editData?.documents || []);
   const [showDraftConfirmation, setShowDraftConfirmation] = useState(false);
@@ -124,6 +126,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         setJenisBelanja(editData.jenisBelanja);
         setSubJenisBelanja(editData.subJenisBelanja || '');
         setNotes(editData.notes || '');
+        setNominal(editData.nominal ? formatNumberWithSeparator(editData.nominal) : '');
         const defaultDocs = getDocumentsByJenisBelanja(editData.jenisBelanja, editData.subJenisBelanja || '');
         if (editData.documents && editData.documents.length > 0) {
           const checkedTypes = editData.documents.filter(d => d.isChecked).map(d => d.type);
@@ -141,6 +144,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         setJenisBelanja('');
         setSubJenisBelanja('');
         setNotes('');
+        setNominal('');
         setDocuments([]);
       }
     }
@@ -205,6 +209,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             namaPengaju: submitterName.trim(),
             jenisPengajuan: jenisPengajuan,
             kelengkapan: kelengkapan,
+            nominal: parseFormattedNumber(nominal) || '',
             satker: user?.satker,
           },
         });
@@ -231,7 +236,8 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             waktuBendahara: '',
             statusKppn: '',
             satker: user?.satker,
-            user: user?.role || '', // 🆕 Kolom R - role login pembuat
+            user: user?.role || '',
+            nominal: parseFormattedNumber(nominal) || '',
           },
         });
         
@@ -337,7 +343,8 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             waktuBendahara: '',
             statusKppn: '',
             satker: user?.satker,
-            user: user?.role || '', // 🆕 Kolom R - role login pembuat
+            user: user?.role || '',
+            nominal: parseFormattedNumber(nominal) || '',
           },
         });
         
@@ -384,6 +391,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
     setJenisBelanja(editData?.jenisBelanja || '');
     setSubJenisBelanja(editData?.subJenisBelanja || '');
     setNotes(editData?.notes || '');
+    setNominal(editData?.nominal ? formatNumberWithSeparator(editData.nominal) : '');
     setDocuments(editData?.documents || []);
     onClose();
   };
@@ -545,6 +553,19 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
               <p className="text-xs text-muted-foreground">* Dokumen wajib harus dilengkapi</p>
             </div>
           )}
+          <div className="space-y-2">
+            <Label>Total Nilai</Label>
+            <Input
+              placeholder="Contoh: 1.000.000"
+              value={nominal}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^\d]/g, '');
+                setNominal(raw ? formatNumberWithSeparator(raw) : '');
+              }}
+              className="h-11 rounded-xl"
+              inputMode="numeric"
+            />
+          </div>
           <div className="space-y-2">
             <Label>Catatan (Opsional)</Label>
             <Textarea

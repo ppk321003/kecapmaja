@@ -85,8 +85,14 @@ export function SubmissionDetail({
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'approve' | 'reject' | 'return' | null }>({ open: false, action: null });
   const { toast } = useToast();
 
+  // Track which submission ID we've initialized for - only reset form on ID change
+  const [initializedForId, setInitializedForId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (submission) {
+    if (submission && submission.id !== initializedForId) {
+      // Only initialize form state when viewing a NEW submission (different ID)
+      setInitializedForId(submission.id);
+      
       // Rebuild documents berdasarkan jenisBelanja dan subJenisBelanja
       const defaultDocs = getDocumentsByJenisBelanja(
         submission.jenisBelanja, 
@@ -94,7 +100,6 @@ export function SubmissionDetail({
       );
       
       if (defaultDocs.length > 0 && submission.documents && submission.documents.length > 0) {
-        // Map checked status dari submission.documents ke defaultDocs
         const checkedTypes = submission.documents
           .filter(d => d.isChecked)
           .map(d => d.type);
@@ -124,7 +129,12 @@ export function SubmissionDetail({
         setPembayaran('');
       }
     }
-  }, [submission]);
+    
+    // Reset initializedForId when dialog closes
+    if (!submission) {
+      setInitializedForId(null);
+    }
+  }, [submission, initializedForId]);
 
   if (!submission) return null;
 
