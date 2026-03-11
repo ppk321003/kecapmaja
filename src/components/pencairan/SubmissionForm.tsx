@@ -43,6 +43,10 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganikPencairan, usePencairanData } from '@/hooks/use-pencairan-data';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatNumberWithSeparator, parseFormattedNumber } from '@/lib/formatNumber';
+import { supabase } from '@/integrations/supabase/client';
+import { useOrganikPencairan, usePencairanData } from '@/hooks/use-pencairan-data';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SubmissionFormProps {
   open: boolean;
