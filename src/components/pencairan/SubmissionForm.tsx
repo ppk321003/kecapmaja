@@ -129,6 +129,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
         setJenisBelanja(editData.jenisBelanja);
         setSubJenisBelanja(editData.subJenisBelanja || '');
         setNotes(editData.notes || '');
+        setNominal(editData.nominal ? formatNumberWithSeparator(editData.nominal) : '');
         const defaultDocs = getDocumentsByJenisBelanja(editData.jenisBelanja, editData.subJenisBelanja || '');
         if (editData.documents && editData.documents.length > 0) {
           const checkedTypes = editData.documents.filter(d => d.isChecked).map(d => d.type);
