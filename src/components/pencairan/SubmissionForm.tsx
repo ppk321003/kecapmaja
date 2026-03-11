@@ -437,7 +437,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             />
           </div>
           <div className="space-y-2">
-            <Label>Total Nilai</Label>
+            <Label>Total Nilai *</Label>
             <Input
               placeholder="Contoh: 1.000.000"
               value={nominal}
