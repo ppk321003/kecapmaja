@@ -163,6 +163,10 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
       toast({ title: 'Error', description: 'Uraian pengajuan harus diisi', variant: 'destructive' });
       return false;
     }
+    if (!nominal || !parseFormattedNumber(nominal)) {
+      toast({ title: 'Error', description: 'Total nilai harus diisi', variant: 'destructive' });
+      return false;
+    }
     if (!submitterName.trim()) {
       toast({ title: 'Error', description: 'Nama pengaju harus dipilih', variant: 'destructive' });
       return false;
