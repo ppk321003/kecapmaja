@@ -248,10 +248,10 @@ serve(async (req) => {
       nominal || '',                                  // V: Nominal (Total Nilai)
     ];
 
-    console.log('Appending row with 21 columns:', rowData);
+    console.log('Appending row with 22 columns:', rowData);
     console.log('Row length:', rowData.length);
 
-    // Append dengan range A:U untuk 21 kolom
+    // Append dengan range A:V untuk 22 kolom
     const response = await fetch(
       `${baseUrl}/values/${SHEET_NAME}!A:U:append?valueInputOption=USER_ENTERED`,
       {
