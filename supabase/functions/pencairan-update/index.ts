@@ -288,6 +288,7 @@ serve(async (req: Request) => {
     let updatedPembayaran = existingPembayaran;
     let updatedNomorSPM = existingNomorSPM;
     let updatedNomorSPPD = existingNomorSPPD;
+    let updatedNominal = nominal !== undefined ? nominal : existingNominal;
     
     console.log(`[Start] Initial newStatus=${newStatus}, currentRow[6]=${currentRow[6]}, status param=${status}`);
     
