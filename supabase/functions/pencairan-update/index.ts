@@ -272,6 +272,7 @@ serve(async (req: Request) => {
       if (namaPengaju) newSubmitterName = namaPengaju;
       if (jenisPengajuan) newJenisBelanja = jenisPengajuan;
       if (kelengkapan !== undefined) newDocuments = kelengkapan;
+      if (nominal !== undefined) updatedNominal = nominal;
       if (status) newStatus = status;
     }
     
