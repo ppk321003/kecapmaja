@@ -34,6 +34,7 @@ export interface PencairanRawData {
   pembayaran?: string; // 🆕 Kolom S - LS atau UP
   nomorSPM?: string; // 🆕 Kolom T - nomor SPM untuk LS
   nomorSPPD?: string; // 🆕 Kolom U - nomor SPPD untuk Arsip
+  nominal?: string; // 🆕 Kolom V - Total Nilai / Nominal
 }
 
 export interface OrganikData {
