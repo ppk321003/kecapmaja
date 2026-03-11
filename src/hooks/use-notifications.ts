@@ -15,7 +15,7 @@ export function useNotifications() {
   const lastFetchRef = useRef<number>(0);
   const quotaExceededRef = useRef<boolean>(false);
   const hasInitialFetchRef = useRef<boolean>(false);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Get current user data
   const currentUser = user ? user : null;
