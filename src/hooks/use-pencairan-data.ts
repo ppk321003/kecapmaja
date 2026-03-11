@@ -128,6 +128,7 @@ function mapRawToSubmission(raw: PencairanRawData): Submission {
     pembayaran: (raw.pembayaran === 'UP' || raw.pembayaran === 'LS') ? raw.pembayaran : undefined, // 🆕 Kolom S - LS atau UP
     nomorSPM: raw.nomorSPM, // 🆕 Kolom T - nomor SPM untuk LS
     nomorSPPD: raw.nomorSPPD, // 🆕 Kolom U - nomor SPPD untuk Arsip
+    nominal: raw.nominal ? parseFloat(raw.nominal.replace(/[^\d]/g, '')) || 0 : undefined, // 🆕 Kolom V - Nominal
   };
 }
 
