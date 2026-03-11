@@ -191,16 +191,15 @@ serve(async (req) => {
     // Support both naming conventions from frontend
     const {
       id,
-      // New naming from frontend
       uraianPengajuan,
       namaPengaju,
       jenisPengajuan,
       kelengkapan,
       catatan,
       statusPengajuan,
-      satker, // Tambahan: satker dari frontend
-      user, // 🆕 User role yang membuat pengajuan (Kolom R)
-      // Legacy naming
+      satker,
+      user,
+      nominal,
       title,
       submitterName,
       jenisBelanja,
@@ -213,7 +212,6 @@ serve(async (req) => {
     
     const accessToken = await getAccessToken();
     
-    // Dapatkan correct spreadsheet ID berdasarkan satker
     const spreadsheetId = satker 
       ? await getPencairanSheetIdBySatker(accessToken, satker)
       : DEFAULT_SPREADSHEET_ID;
@@ -223,11 +221,8 @@ serve(async (req) => {
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
     const waktuPengajuan = formatDateTime();
 
-    // Struktur kolom sesuai request (21 kolom A:U):
-    // A: ID, B: Uraian Pengajuan, C: Nama Pengaju, D: Jenis Pengajuan, E: Kelengkapan
-    // F: Catatan, G: Status Pengajuan, H: Waktu Pengajuan, I: Waktu Bendahara, J: Waktu PPK
-    // K: Waktu PPSPM, L: Waktu Arsip, M: Status Bendahara, N: Status PPK, O: Status PPSPM, P: Status Arsip
-    // Q: Update terakhir, R: User (role login pembuat), S: Pembayaran (UP/LS), T: Nomor SPM, U: Nomor SPPD
+    // Struktur kolom sesuai request (22 kolom A:V):
+    // A-U sama seperti sebelumnya, V: Nominal
     const rowData = [
       id || '',                                        // A: ID
       uraianPengajuan || title || '',                 // B: Uraian Pengajuan
@@ -235,7 +230,7 @@ serve(async (req) => {
       jenisPengajuan || jenisBelanja || '',           // D: Jenis Pengajuan
       kelengkapan || documents || '',                 // E: Kelengkapan
       catatan || notes || '',                         // F: Catatan
-      statusPengajuan || status || 'draft',          // G: Status Pengajuan (draft for new submissions)
+      statusPengajuan || status || 'draft',          // G: Status Pengajuan
       waktuPengajuan,                                 // H: Waktu Pengajuan dari SM
       '',                                             // I: Waktu Bendahara
       '',                                             // J: Waktu PPK
@@ -250,6 +245,7 @@ serve(async (req) => {
       '',                                             // S: Pembayaran (kosong untuk baru)
       '',                                             // T: Nomor SPM (kosong untuk baru)
       '',                                             // U: Nomor SPPD (kosong untuk baru)
+      nominal || '',                                  // V: Nominal (Total Nilai)
     ];
 
     console.log('Appending row with 21 columns:', rowData);
