@@ -89,6 +89,15 @@ const LayananKarirABK: React.FC = () => {
 
         // Parse ABK data (skip header row)
         const abkRows = abkResponse.data.values.slice(1) || [];
+        
+        // Debug: log structure
+        console.log('[LayananKarirABK] ABK Raw Data:', {
+          totalRows: abkRows.length,
+          headerRow: abkResponse.data.values[0],
+          firstDataRow: abkRows[0],
+          secondDataRow: abkRows[1]
+        });
+        
         const abkParsed: ABKData[] = abkRows
           .map((row: any[], index: number) => ({
             no: index + 1,
