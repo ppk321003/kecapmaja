@@ -236,7 +236,8 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             waktuBendahara: '',
             statusKppn: '',
             satker: user?.satker,
-            user: user?.role || '', // 🆕 Kolom R - role login pembuat
+            user: user?.role || '',
+            nominal: parseFormattedNumber(nominal) || '',
           },
         });
         
