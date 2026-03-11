@@ -253,7 +253,7 @@ serve(async (req) => {
 
     // Append dengan range A:V untuk 22 kolom
     const response = await fetch(
-      `${baseUrl}/values/${SHEET_NAME}!A:U:append?valueInputOption=USER_ENTERED`,
+      `${baseUrl}/values/${SHEET_NAME}!A:V:append?valueInputOption=USER_ENTERED`,
       {
         method: 'POST',
         headers: {
