@@ -564,32 +564,24 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
 
-          {/* MENU TAMBAHAN (Download Raw Data & Pedoman) */}
-          <SidebarGroup className="px-3 py-2">
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {additionalMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {/* Pedoman */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/pedoman"
+                      end
+                      className={({ isActive }) =>
+                      isActive
+                        ? "text-white font-semibold transition-all duration-200"
+                        : "text-white/90 hover:text-white transition-all duration-200"
+                      }
+                    >
+                      <BookOpen className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                      {open && <span className="font-medium">Pedoman</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
