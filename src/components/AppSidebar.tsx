@@ -63,9 +63,6 @@ const afterEDokumenItems = [
 
 const sikostikMenuItem = { title: "Sikostik 28", url: "/sikostik28", icon: PiggyBank };
 
-const additionalMenuItems = [
-  { title: "Pedoman", url: "/pedoman", icon: BookOpen },
-];
 
 const eDokumenSubItems: { title: string; url: string; icon: typeof FilePlus; external?: boolean }[] = [
   { title: "Buat e-Dokumen", url: "/e-dokumen/buat", icon: FilePlus },
