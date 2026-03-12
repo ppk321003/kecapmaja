@@ -42,18 +42,23 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
-const baseMenuItems = [
+// Items before e-Dokumen
+const beforeEDokumenItems = [
   { title: "Beranda", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Sigap SPJ", url: "/usulan-pencairan", icon: DollarSign },
-  { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
-  { title: "Bahan Revisi Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3 },
-  { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
+  { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
+];
+
+// Items after e-Dokumen
+const afterEDokumenItems = [
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
+  { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
+  { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
+  { title: "Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3 },
+  { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Linkers", url: "/linkers", icon: Link2 },
-  { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
 ];
 
 const sikostikMenuItem = { title: "Sikostik 28", url: "/sikostik28", icon: PiggyBank };
