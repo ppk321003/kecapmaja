@@ -405,15 +405,8 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
-                {mainMenuItems
-                  .filter((item) => {
-                    // Show Bahan Revisi Anggaran for ALL roles (previously limited to PPK/Fungsi)
-                    if (item.title === "Bahan Revisi Anggaran") {
-                      return true;
-                    }
-                    return true;
-                  })
-                  .map((item) => (
+                {/* Before e-Dokumen: Beranda, Dashboard, Sigap SPJ, SPK dan BAST */}
+                {beforeEDokumenItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink
@@ -431,46 +424,6 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-
-                {/* MENU SIKOSTIK 28 - Only visible for Satker 3210 */}
-                {isSatker3210 && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={sikostikMenuItem.url}
-                        end
-                        className={({ isActive }) =>
-                          isActive
-                            ? "text-white font-semibold transition-all duration-200"
-                            : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <sikostikMenuItem.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">{sikostikMenuItem.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-
-                {/* MENU CETAK KUITANSI - Only visible for PPK Satker 3210 */}
-                {isSatker3210 && user?.role === "Pejabat Pembuat Komitmen" && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/cetak-kuitansi"
-                        end
-                        className={({ isActive }) =>
-                          isActive
-                            ? "text-white font-semibold transition-all duration-200"
-                            : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <Receipt className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">Cetak Kuitansi</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
 
                 {/* MENU E-DOKUMEN */}
                 <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
@@ -531,6 +484,66 @@ export function AppSidebar() {
                     </CollapsibleContent>
                   </SidebarMenuItem>
                 </Collapsible>
+
+                {/* After e-Dokumen: KarierKu, Padamel, Block Tanggal, Anggaran, Kecap, Pengadaan, Linkers */}
+                {computedAfterEDokumenItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={({ isActive }) =>
+                        isActive
+                          ? "text-white font-semibold transition-all duration-200"
+                          : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+
+                {/* MENU SIKOSTIK 28 - Only visible for Satker 3210 */}
+                {isSatker3210 && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={sikostikMenuItem.url}
+                        end
+                        className={({ isActive }) =>
+                          isActive
+                            ? "text-white font-semibold transition-all duration-200"
+                            : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <sikostikMenuItem.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">{sikostikMenuItem.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+
+                {/* MENU CETAK KUITANSI - Only visible for PPK Satker 3210 */}
+                {isSatker3210 && user?.role === "Pejabat Pembuat Komitmen" && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/cetak-kuitansi"
+                        end
+                        className={({ isActive }) =>
+                          isActive
+                            ? "text-white font-semibold transition-all duration-200"
+                            : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <Receipt className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">Cetak Kuitansi</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
 
                 {/* User Management - Only visible for PPK */}
                 {isPPK && (
