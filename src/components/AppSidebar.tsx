@@ -83,11 +83,10 @@ export function AppSidebar() {
   // Check if user is PPK for User Management menu
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
   
-  // Check if user has Fungsi role for Bahan Revisi Anggaran menu
-  // Supports roles like: "Fungsi PEJABAT_PEMBUAT_KOMITMEN", "Fungsi KUASA_PENGGUNA", etc.
+  // Check if user has Fungsi role for Anggaran menu
   const hasFungsiRole = user?.role?.startsWith("Fungsi") === true;
   
-  // Show Bahan Revisi Anggaran menu for PPK OR Fungsi role
+  // Show Anggaran menu for PPK OR Fungsi role
   const showBahanRevisiAnggaran = isPPK || hasFungsiRole;
   
   // Check if user is satker 3210 for Sikostik 28 menu
@@ -98,15 +97,12 @@ export function AppSidebar() {
     return satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS';
   }, [satkerContext]);
   
-  // Conditionally build main menu items based on satker
-  const mainMenuItems = useMemo(() => {
-    return baseMenuItems.map((item) => {
+  // Conditionally update Padamel title in afterEDokumenItems
+  const computedAfterEDokumenItems = useMemo(() => {
+    return afterEDokumenItems.map((item) => {
       if (item.title.startsWith("Padamel-3210")) {
         const satkerId = satkerContext?.getUserSatkerConfig()?.satker_id || "3210";
-        return {
-          ...item,
-          title: `Padamel-${satkerId} | Mitra Kepka`,
-        };
+        return { ...item, title: `Padamel-${satkerId} | Mitra Kepka` };
       }
       return item;
     });
