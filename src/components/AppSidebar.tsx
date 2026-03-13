@@ -42,25 +42,27 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
-const baseMenuItems = [
+// Items before e-Dokumen
+const beforeEDokumenItems = [
   { title: "Beranda", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Sigap SPJ", url: "/usulan-pencairan", icon: DollarSign },
-  { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
-  { title: "Bahan Revisi Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3 },
-  { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
+  { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
+];
+
+// Items after e-Dokumen
+const afterEDokumenItems = [
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
+  { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
+  { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
+  { title: "Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3 },
+  { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Linkers", url: "/linkers", icon: Link2 },
-  { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
 ];
 
 const sikostikMenuItem = { title: "Sikostik 28", url: "/sikostik28", icon: PiggyBank };
 
-const additionalMenuItems = [
-  { title: "Pedoman", url: "/pedoman", icon: BookOpen },
-];
 
 const eDokumenSubItems: { title: string; url: string; icon: typeof FilePlus; external?: boolean }[] = [
   { title: "Buat e-Dokumen", url: "/e-dokumen/buat", icon: FilePlus },
@@ -78,11 +80,10 @@ export function AppSidebar() {
   // Check if user is PPK for User Management menu
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
   
-  // Check if user has Fungsi role for Bahan Revisi Anggaran menu
-  // Supports roles like: "Fungsi PEJABAT_PEMBUAT_KOMITMEN", "Fungsi KUASA_PENGGUNA", etc.
+  // Check if user has Fungsi role for Anggaran menu
   const hasFungsiRole = user?.role?.startsWith("Fungsi") === true;
   
-  // Show Bahan Revisi Anggaran menu for PPK OR Fungsi role
+  // Show Anggaran menu for PPK OR Fungsi role
   const showBahanRevisiAnggaran = isPPK || hasFungsiRole;
   
   // Check if user is satker 3210 for Sikostik 28 menu
@@ -93,15 +94,12 @@ export function AppSidebar() {
     return satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS';
   }, [satkerContext]);
   
-  // Conditionally build main menu items based on satker
-  const mainMenuItems = useMemo(() => {
-    return baseMenuItems.map((item) => {
+  // Conditionally update Padamel title in afterEDokumenItems
+  const computedAfterEDokumenItems = useMemo(() => {
+    return afterEDokumenItems.map((item) => {
       if (item.title.startsWith("Padamel-3210")) {
         const satkerId = satkerContext?.getUserSatkerConfig()?.satker_id || "3210";
-        return {
-          ...item,
-          title: `Padamel-${satkerId} | Mitra Kepka`,
-        };
+        return { ...item, title: `Padamel-${satkerId} | Mitra Kepka` };
       }
       return item;
     });
@@ -404,15 +402,8 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
-                {mainMenuItems
-                  .filter((item) => {
-                    // Show Bahan Revisi Anggaran for ALL roles (previously limited to PPK/Fungsi)
-                    if (item.title === "Bahan Revisi Anggaran") {
-                      return true;
-                    }
-                    return true;
-                  })
-                  .map((item) => (
+                {/* Before e-Dokumen: Beranda, Dashboard, Sigap SPJ, SPK dan BAST */}
+                {beforeEDokumenItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink
@@ -430,46 +421,6 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-
-                {/* MENU SIKOSTIK 28 - Only visible for Satker 3210 */}
-                {isSatker3210 && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={sikostikMenuItem.url}
-                        end
-                        className={({ isActive }) =>
-                          isActive
-                            ? "text-white font-semibold transition-all duration-200"
-                            : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <sikostikMenuItem.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">{sikostikMenuItem.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-
-                {/* MENU CETAK KUITANSI - Only visible for PPK Satker 3210 */}
-                {isSatker3210 && user?.role === "Pejabat Pembuat Komitmen" && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/cetak-kuitansi"
-                        end
-                        className={({ isActive }) =>
-                          isActive
-                            ? "text-white font-semibold transition-all duration-200"
-                            : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <Receipt className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">Cetak Kuitansi</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
 
                 {/* MENU E-DOKUMEN */}
                 <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
@@ -531,6 +482,66 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 </Collapsible>
 
+                {/* After e-Dokumen: KarierKu, Padamel, Block Tanggal, Anggaran, Kecap, Pengadaan, Linkers */}
+                {computedAfterEDokumenItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={({ isActive }) =>
+                        isActive
+                          ? "text-white font-semibold transition-all duration-200"
+                          : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+
+                {/* MENU SIKOSTIK 28 - Only visible for Satker 3210 */}
+                {isSatker3210 && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={sikostikMenuItem.url}
+                        end
+                        className={({ isActive }) =>
+                          isActive
+                            ? "text-white font-semibold transition-all duration-200"
+                            : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <sikostikMenuItem.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">{sikostikMenuItem.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+
+                {/* MENU CETAK KUITANSI - Only visible for PPK Satker 3210 */}
+                {isSatker3210 && user?.role === "Pejabat Pembuat Komitmen" && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/cetak-kuitansi"
+                        end
+                        className={({ isActive }) =>
+                          isActive
+                            ? "text-white font-semibold transition-all duration-200"
+                            : "text-white/90 hover:text-white transition-all duration-200"
+                        }
+                      >
+                        <Receipt className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                        {open && <span className="font-medium">Cetak Kuitansi</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+
                 {/* User Management - Only visible for PPK */}
                 {isPPK && (
                   <SidebarMenuItem>
@@ -550,32 +561,24 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
 
-          {/* MENU TAMBAHAN (Download Raw Data & Pedoman) */}
-          <SidebarGroup className="px-3 py-2">
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {additionalMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {/* Pedoman */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/pedoman"
+                      end
+                      className={({ isActive }) =>
+                      isActive
+                        ? "text-white font-semibold transition-all duration-200"
+                        : "text-white/90 hover:text-white transition-all duration-200"
+                      }
+                    >
+                      <BookOpen className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                      {open && <span className="font-medium">Pedoman</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
