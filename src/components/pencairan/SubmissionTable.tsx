@@ -383,7 +383,7 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
                   <SortIcon field="updatedAt" />
                 </button>
               </TableHead>
-              <TableHead>No SPM / SPPD</TableHead>
+              <TableHead>No SPM / SP2D</TableHead>
               <TableHead className="text-right w-[100px]">Aksi</TableHead>
             </TableRow>
           </TableHeader>
