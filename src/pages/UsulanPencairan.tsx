@@ -439,7 +439,7 @@ export default function UsulanPencairan() {
                         size="sm"
                         onClick={() => handlePageChange(1)}
                         disabled={currentPage === 1}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1 text-primary hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <ChevronsLeft className="h-4 w-4" />
                         Awal
@@ -449,13 +449,13 @@ export default function UsulanPencairan() {
                         size="sm"
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1 text-primary hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <ChevronLeft className="h-4 w-4" />
                         Sebelumnya
                       </Button>
                       
-                      <span className="text-sm text-muted-foreground px-3 py-1 rounded">
+                      <span className="text-sm text-foreground px-3 py-1 rounded font-semibold">
                         Halaman {currentPage} dari {totalPages}
                       </span>
                       
@@ -464,7 +464,7 @@ export default function UsulanPencairan() {
                         size="sm"
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1 text-primary hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Selanjutnya
                         <ChevronRight className="h-4 w-4" />
@@ -474,7 +474,7 @@ export default function UsulanPencairan() {
                         size="sm"
                         onClick={() => handlePageChange(totalPages)}
                         disabled={currentPage === totalPages}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1 text-primary hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Akhir
                         <ChevronsRight className="h-4 w-4" />
