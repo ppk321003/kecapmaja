@@ -433,58 +433,52 @@ export default function UsulanPencairan() {
                   
                   {/* Pagination Controls */}
                   {pageSize > 0 && filteredSubmissions.length > 0 && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t mt-4">
-                      <div className="text-sm text-muted-foreground">
-                        Menampilkan {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, filteredSubmissions.length)} dari {filteredSubmissions.length} data
-                      </div>
+                    <div className="flex items-center justify-center gap-3 pt-4 border-t mt-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePageChange(1)}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronsLeft className="h-4 w-4" />
+                        Awal
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Sebelumnya
+                      </Button>
                       
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(1)}
-                          disabled={currentPage === 1}
-                          className="flex items-center gap-1"
-                        >
-                          <ChevronsLeft className="h-4 w-4" />
-                          Awal
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className="flex items-center gap-1"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Sebelumnya
-                        </Button>
-                        
-                        <span className="text-sm text-muted-foreground mx-2">
-                          Halaman {currentPage} dari {totalPages}
-                        </span>
-                        
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          className="flex items-center gap-1"
-                        >
-                          Selanjutnya
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(totalPages)}
-                          disabled={currentPage === totalPages}
-                          className="flex items-center gap-1"
-                        >
-                          Akhir
-                          <ChevronsRight className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <span className="text-sm text-muted-foreground px-3 py-1 rounded">
+                        Halaman {currentPage} dari {totalPages}
+                      </span>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Selanjutnya
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Akhir
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
                     </div>
                   )}
                 </>
