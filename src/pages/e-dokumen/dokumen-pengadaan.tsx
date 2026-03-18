@@ -17,26 +17,62 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { formatNumberWithSeparator, parseFormattedNumber } from "@/lib/formatNumber";
 
-const metodePengadaanOptions = ["Pengadaan Langsung", "Penunjukan Langsung", "E-Purchasing"];
-const bentukKontrakOptions = ["Kuitansi", "SPK", "Surat Perjanjian", "Bukti Pembelian", "Dokumen Lainnya"];
+const metodePengadaanOptions = ["E Purchasing", "Pengadaan Langsung", "Penunjukan Langsung", "Tender Cepat", "Tender", "Seleksi", "Dikecualikan"];
+const bentukKontrakOptions = ["Bukti Pembelian/Pembayaran", "Kuitansi", "Surat Perintah Kerja (SPK)", "Surat Perjanjian", "Surat Pesanan"];
 const jenisKontrakOptions = ["Lumpsum", "Harga Satuan", "Gabungan Lumpsum dan Harga Satuan", "Terima Jadi (Turnkey)", "Kontrak Payung"];
 const caraPembayaranOptions = ["Sekaligus", "Bertahap", "Sesuai Progress"];
+const jenisPengadaanOptions = ["Barang", "Konstruksi", "Jasa Lainnya", "Konsultansi"];
+
+// Mapping untuk auto-select bentuk kontrak berdasarkan jenis pengadaan dan nilai harga
+const getBentukKontrakDefault = (jenisPengadaan: string, hargaSatuanSetelahNego: string): string => {
+  const harga = parseInt((hargaSatuanSetelahNego || "").replace(/[^\d]/g, "") || "0");
+  
+  switch(jenisPengadaan) {
+    case "Barang":
+      if (harga <= 10000000) return "Bukti Pembelian/Pembayaran";
+      if (harga <= 50000000) return "Kuitansi";
+      if (harga <= 200000000) return "Surat Perintah Kerja (SPK)";
+      return "Surat Perjanjian";
+    
+    case "Konstruksi":
+      if (harga <= 200000000) return "Surat Perintah Kerja (SPK)";
+      return "Surat Perjanjian";
+    
+    case "Jasa Lainnya":
+      if (harga <= 10000000) return "Bukti Pembelian/Pembayaran";
+      if (harga <= 50000000) return "Kuitansi";
+      if (harga <= 200000000) return "Surat Perintah Kerja (SPK)";
+      return "Surat Perjanjian";
+    
+    case "Konsultansi":
+      if (harga <= 100000000) return "Surat Perintah Kerja (SPK)";
+      return "Surat Perjanjian";
+    
+    default:
+      return "";
+  }
+};
 
 const defaultValues = {
   namaPaket: "",
   kodeKegiatan: "",
+  jenisPengadaan: "",
   tanggalMulai: null as Date | null,
   tanggalSelesai: null as Date | null,
   spesifikasiTeknis: "",
   volume: "",
   satuan: "",
+  nilaiPaguAnggaran: "",
   hargaSatuanAwal: "",
+  hargaPenawaranPenyedia: "",
   hargaSatuanSetelahNego: "",
   metodePengadaan: "",
   bentukKontrak: "",
   jenisKontrak: "",
   caraPembayaran: "",
   uangMuka: "",
+  pphPersentase: "",
+  ppnPersentase: "",
   nomorFormulirPermintaan: "",
   tanggalFormulirPermintaan: null as Date | null,
   tanggalKak: null as Date | null,
@@ -73,7 +109,7 @@ const useSubmitPengadaanToSheets = (targetSheetId: string) => {
         body: {
           spreadsheetId: targetSheetId,
           operation: "append",
-          range: `${SHEET_NAME}!A:AD`,
+          range: `${SHEET_NAME}!A:AJ`,
           values: [data]
         }
       });
@@ -154,7 +190,7 @@ const generatePengadaanId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET
       body: {
         spreadsheetId: targetId,
         operation: "read",
-        range: `${SHEET_NAME}!A:A`
+        range: `${SHEET_NAME}!B:B`
       }
     });
 
@@ -169,11 +205,11 @@ const generatePengadaanId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET
       return `${prefix}001`;
     }
 
-    // Filter ID yang sesuai dengan prefix bulan ini
+    // Filter ID yang sesuai dengan prefix bulan ini (baca dari kolom B (row[1]))
     const currentMonthIds = values
       .slice(1)
       .map((row: any[]) => {
-        const id = row[0];
+        const id = row[0]; // Kolom B adalah ID pengadaan (row[0] karena read hanya kolom B)
         if (!id || typeof id !== 'string') return null;
         return id;
       })
@@ -245,35 +281,40 @@ const DokumenPengadaan = () => {
       const rowData = [
         sequenceNumber, // Kolom 1: No
         pengadaanId, // Kolom 2: Id (pbj-yymmxxx)
-        formValues.kodeKegiatan, // Kolom 4: Kode Kegiatan
-        formValues.namaPaket, // Kolom 5: Nama Paket Pengadaan
+        formValues.kodeKegiatan, // Kolom 3: Kode Kegiatan
+        formValues.namaPaket, // Kolom 4: Nama Paket Pengadaan
+        formValues.jenisPengadaan, // Kolom 5: Jenis Pengadaan
         formatTanggalIndonesia(formValues.tanggalMulai), // Kolom 6: Tanggal Mulai Pelaksanaan
         formatTanggalIndonesia(formValues.tanggalSelesai), // Kolom 7: Tanggal Selesai Pelaksanaan
         formValues.spesifikasiTeknis, // Kolom 8: Spesifikasi Teknis
         formValues.volume, // Kolom 9: Volume
         formValues.satuan, // Kolom 10: Satuan
-        formatCurrency(formValues.hargaSatuanAwal), // Kolom 11: Harga Satuan Awal
-        formatCurrency(formValues.hargaSatuanSetelahNego), // Kolom 12: Harga Satuan Setelah Nego
-        formValues.metodePengadaan, // Kolom 13: Metode Pengadaan
-        formValues.bentukKontrak, // Kolom 14: Bentuk/Bukti Kontrak
-        formValues.jenisKontrak, // Kolom 15: Jenis Kontrak
-        formValues.caraPembayaran, // Kolom 16: Cara Pembayaran
-        formValues.uangMuka, // Kolom 17: Uang Muka
-        formValues.nomorFormulirPermintaan, // Kolom 18: Nomor Formulir Permintaan
-        formatTanggalIndonesia(formValues.tanggalFormulirPermintaan), // Kolom 19: Tanggal Formulir Permintaan
-        formatTanggalIndonesia(formValues.tanggalKak), // Kolom 20: Tanggal Kerangka Acuan Kerja (KAK)
-        formValues.nomorKertasKerjaHPS, // Kolom 21: Nomor Kertas Kerja Penyusunan HPS
-        formValues.namaPenyedia, // Kolom 22: Penyedia Barang/Jasa
-        formValues.namaPerwakilan, // Kolom 23: Nama Perwakilan Penyedia
-        formValues.jabatan, // Kolom 24: Jabatan
-        formValues.alamatPenyedia, // Kolom 25: Alamat Penyedia
-        formValues.namaBank, // Kolom 26: Bank Penyedia
-        formValues.nomorRekening, // Kolom 27: No Rek Penyedia
-        formValues.atasNamaRekening, // Kolom 28: Atas Nama Rekening
-        formValues.npwpPenyedia, // Kolom 29: NPWP Penyedia
-        formValues.nomorSuratPenawaranHarga, // Kolom 30: Nomor Surat Penawaran
-        formValues.nomorSuratPermintaanPembayaran, // Kolom 31: Nomor Surat Permohonan Pembayaran
-        formValues.nomorInvoice // Kolom 32: Nomor Invoice Pembayaran
+        formatCurrency(formValues.nilaiPaguAnggaran), // Kolom 11: Nilai Pagu Anggaran
+        formatCurrency(formValues.hargaSatuanAwal), // Kolom 12: Harga Perkiraan Sendiri (HPS) (PPK)
+        formatCurrency(formValues.hargaPenawaranPenyedia), // Kolom 13: Harga Penawaran (Penyedia)
+        formatCurrency(formValues.hargaSatuanSetelahNego), // Kolom 14: Harga Satuan Setelah Nego (PBJ / PPK)
+        formValues.metodePengadaan, // Kolom 15: Metode Pengadaan
+        formValues.bentukKontrak, // Kolom 16: Bentuk/Bukti Kontrak
+        formValues.jenisKontrak, // Kolom 17: Jenis Kontrak
+        formValues.caraPembayaran, // Kolom 18: Cara Pembayaran
+        formValues.uangMuka, // Kolom 19: Uang Muka
+        formValues.pphPersentase, // Kolom 20: PPh (Pajak Penghasilan) (%)
+        formValues.ppnPersentase, // Kolom 21: PPN (Pajak Pertambahan Nilai) (%)
+        formValues.nomorFormulirPermintaan, // Kolom 21: Nomor Formulir Permintaan
+        formatTanggalIndonesia(formValues.tanggalFormulirPermintaan), // Kolom 22: Tanggal Formulir Permintaan
+        formatTanggalIndonesia(formValues.tanggalKak), // Kolom 23: Tanggal Kerangka Acuan Kerja (KAK)
+        formValues.nomorKertasKerjaHPS, // Kolom 24: Nomor Kertas Kerja Penyusunan HPS
+        formValues.namaPenyedia, // Kolom 25: Penyedia Barang/Jasa
+        formValues.namaPerwakilan, // Kolom 26: Nama Perwakilan Penyedia
+        formValues.jabatan, // Kolom 27: Jabatan
+        formValues.alamatPenyedia, // Kolom 28: Alamat Penyedia
+        formValues.namaBank, // Kolom 29: Bank Penyedia
+        `'${formValues.nomorRekening}`, // Kolom 30: No Rek Penyedia (dengan apostrophe untuk format text di Sheets)
+        formValues.atasNamaRekening, // Kolom 31: Atas Nama Rekening
+        formValues.npwpPenyedia, // Kolom 32: NPWP Penyedia
+        formValues.nomorSuratPenawaranHarga, // Kolom 33: Nomor Surat Penawaran
+        formValues.nomorSuratPermintaanPembayaran, // Kolom 34: Nomor Surat Permohonan Pembayaran
+        formValues.nomorInvoice // Kolom 35: Nomor Invoice Pembayaran
       ];
 
       console.log('📋 Final pengadaan data array:', rowData);
@@ -321,7 +362,7 @@ const DokumenPengadaan = () => {
                 <h2 className="text-xl font-semibold mb-4 text-inherit">Data Umum</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="namaPaket">Nama Paket Pengadaan</Label>
+                    <Label htmlFor="namaPaket">Nama Paket Pengadaan <span className="text-red-500">*</span></Label>
                     <Input 
                       id="namaPaket" 
                       value={formValues.namaPaket} 
@@ -332,17 +373,41 @@ const DokumenPengadaan = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="kodeKegiatan">Kode Kegiatan (cth: 054.01.GG.2910.QMA.010.051.A.524114)</Label>
+                    <Label htmlFor="kodeKegiatan">Kode Kegiatan <span className="text-red-500">*</span></Label>
                     <Input 
                       id="kodeKegiatan" 
                       value={formValues.kodeKegiatan} 
                       onChange={e => handleChange("kodeKegiatan", e.target.value)} 
-                      placeholder="Masukkan kode kegiatan" 
+                      placeholder="Cth: 054.01.GG.2910.QMA.010.051.A.524114" 
+                      required
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>Tanggal Mulai Pelaksanaan</Label>
+                    <Label htmlFor="jenisPengadaan">Jenis Pengadaan <span className="text-red-500">*</span></Label>
+                    <Select value={formValues.jenisPengadaan} onValueChange={value => {
+                      handleChange("jenisPengadaan", value);
+                      // Auto-select bentuk kontrak dynamically saat jenis pengadaan berubah
+                      const defaultBentuk = getBentukKontrakDefault(value, formValues.hargaSatuanSetelahNego);
+                      if (defaultBentuk) {
+                        handleChange("bentukKontrak", defaultBentuk);
+                      }
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih jenis pengadaan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {jenisPengadaanOptions.map(option => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Tanggal Mulai Pelaksanaan <span className="text-red-500">*</span></Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalMulai && "text-muted-foreground")}>
@@ -363,7 +428,7 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Tanggal Selesai Pelaksanaan</Label>
+                    <Label>Tanggal Selesai Pelaksanaan <span className="text-red-500">*</span></Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalSelesai && "text-muted-foreground")}>
@@ -384,13 +449,14 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="spesifikasiTeknis">Spesifikasi Teknis</Label>
+                    <Label htmlFor="spesifikasiTeknis">Spesifikasi Teknis <span className="text-red-500">*</span></Label>
                     <Textarea 
                       id="spesifikasiTeknis" 
                       value={formValues.spesifikasiTeknis} 
                       onChange={e => handleChange("spesifikasiTeknis", e.target.value)} 
                       placeholder="Masukkan spesifikasi teknis" 
-                      rows={3} 
+                      rows={3}
+                      required 
                     />
                   </div>
                 </div>
@@ -401,29 +467,49 @@ const DokumenPengadaan = () => {
             <Card>
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4 text-lime-700">Data Penawaran</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Baris 1: Volume, Satuan, Nilai Pagu */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   <div className="space-y-2">
-                    <Label htmlFor="volume">Volume</Label>
+                    <Label htmlFor="volume">Volume <span className="text-red-500">*</span></Label>
                     <Input 
                       id="volume" 
                       value={formValues.volume} 
                       onChange={e => handleChange("volume", e.target.value)} 
                       placeholder="Masukkan volume" 
+                      required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="satuan">Satuan</Label>
+                    <Label htmlFor="satuan">Satuan <span className="text-red-500">*</span></Label>
                     <Input 
                       id="satuan" 
                       value={formValues.satuan} 
                       onChange={e => handleChange("satuan", e.target.value)} 
-                      placeholder="Masukkan satuan" 
+                      placeholder="Masukkan satuan"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="hargaSatuanAwal">Harga Satuan Awal (Rp)</Label>
+                    <Label htmlFor="nilaiPaguAnggaran">Nilai Pagu Anggaran (Rp) <span className="text-red-500">*</span></Label>
+                    <Input 
+                      id="nilaiPaguAnggaran" 
+                      type="text" 
+                      value={formatNumberWithSeparator(formValues.nilaiPaguAnggaran)} 
+                      onChange={e => handleChange("nilaiPaguAnggaran", parseFormattedNumber(e.target.value))} 
+                      placeholder="0" 
+                      className="text-right"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Baris 2: Harga */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="hargaSatuanAwal">Harga Perkiraan Sendiri (HPS) (PPK) (Rp) <span className="text-red-500">*</span></Label>
                     <Input 
                       id="hargaSatuanAwal" 
                       type="text" 
@@ -431,24 +517,51 @@ const DokumenPengadaan = () => {
                       onChange={e => handleChange("hargaSatuanAwal", parseFormattedNumber(e.target.value))} 
                       placeholder="0" 
                       className="text-right"
+                      required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="hargaSatuanSetelahNego">Harga Satuan Setelah Nego (Rp)</Label>
+                    <Label htmlFor="hargaPenawaranPenyedia">Harga Penawaran (Penyedia) (Rp) <span className="text-red-500">*</span></Label>
+                    <Input 
+                      id="hargaPenawaranPenyedia" 
+                      type="text" 
+                      value={formatNumberWithSeparator(formValues.hargaPenawaranPenyedia)} 
+                      onChange={e => handleChange("hargaPenawaranPenyedia", parseFormattedNumber(e.target.value))} 
+                      placeholder="0" 
+                      className="text-right"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="hargaSatuanSetelahNego">Harga Satuan Setelah Nego (PBJ / PPK) (Rp) <span className="text-red-500">*</span></Label>
                     <Input 
                       id="hargaSatuanSetelahNego" 
                       type="text" 
                       value={formatNumberWithSeparator(formValues.hargaSatuanSetelahNego)} 
-                      onChange={e => handleChange("hargaSatuanSetelahNego", parseFormattedNumber(e.target.value))} 
+                      onChange={e => {
+                        const newValue = parseFormattedNumber(e.target.value);
+                        handleChange("hargaSatuanSetelahNego", newValue);
+                        // Auto-select bentuk kontrak dynamically saat harga berubah
+                        const defaultBentuk = getBentukKontrakDefault(formValues.jenisPengadaan, newValue);
+                        if (defaultBentuk) {
+                          handleChange("bentukKontrak", defaultBentuk);
+                        }
+                      }} 
                       placeholder="0" 
                       className="text-right"
+                      required
                     />
                   </div>
+                </div>
+
+                {/* Baris 3: Metode, Bentuk, Jenis */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
 
                   <div className="space-y-2">
-                    <Label htmlFor="metodePengadaan">Metode Pengadaan</Label>
-                    <Select value={formValues.metodePengadaan} onValueChange={value => handleChange("metodePengadaan", value)}>
+                    <Label htmlFor="metodePengadaan">Metode Pengadaan <span className="text-red-500">*</span></Label>
+                    <Select value={formValues.metodePengadaan} onValueChange={value => handleChange("metodePengadaan", value)} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih metode" />
                       </SelectTrigger>
@@ -463,8 +576,8 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="bentukKontrak">Bentuk/Bukti Kontrak</Label>
-                    <Select value={formValues.bentukKontrak} onValueChange={value => handleChange("bentukKontrak", value)}>
+                    <Label htmlFor="bentukKontrak">Bentuk/Bukti Kontrak <span className="text-red-500">*</span></Label>
+                    <Select value={formValues.bentukKontrak} onValueChange={value => handleChange("bentukKontrak", value)} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih bentuk kontrak" />
                       </SelectTrigger>
@@ -479,8 +592,8 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="jenisKontrak">Jenis Kontrak</Label>
-                    <Select value={formValues.jenisKontrak} onValueChange={value => handleChange("jenisKontrak", value)}>
+                    <Label htmlFor="jenisKontrak">Jenis Kontrak <span className="text-red-500">*</span></Label>
+                    <Select value={formValues.jenisKontrak} onValueChange={value => handleChange("jenisKontrak", value)} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih jenis kontrak" />
                       </SelectTrigger>
@@ -493,10 +606,13 @@ const DokumenPengadaan = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
 
+                {/* Baris 4: Cara Pembayaran, Uang Muka, PPh, PPN (1 baris) */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="caraPembayaran">Cara Pembayaran</Label>
-                    <Select value={formValues.caraPembayaran} onValueChange={value => handleChange("caraPembayaran", value)}>
+                    <Label htmlFor="caraPembayaran">Cara Pembayaran <span className="text-red-500">*</span></Label>
+                    <Select value={formValues.caraPembayaran} onValueChange={value => handleChange("caraPembayaran", value)} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih cara pembayaran" />
                       </SelectTrigger>
@@ -511,7 +627,7 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="uangMuka">Uang Muka (%)</Label>
+                    <Label htmlFor="uangMuka">Uang Muka (%) <span className="text-red-500">*</span></Label>
                     <Input 
                       id="uangMuka" 
                       type="number" 
@@ -519,7 +635,36 @@ const DokumenPengadaan = () => {
                       onChange={e => handleChange("uangMuka", e.target.value)} 
                       placeholder="0" 
                       min="0" 
-                      max="100" 
+                      max="100"
+                      required 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pphPersentase">PPh (Pajak Penghasilan) (%) <span className="text-red-500">*</span></Label>
+                    <Input 
+                      id="pphPersentase" 
+                      type="number" 
+                      value={formValues.pphPersentase} 
+                      onChange={e => handleChange("pphPersentase", e.target.value)} 
+                      placeholder="0" 
+                      min="0"
+                      required
+                      step="0.01"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ppnPersentase">PPN (Pajak Pertambahan Nilai) (%) <span className="text-red-500">*</span></Label>
+                    <Input 
+                      id="ppnPersentase" 
+                      type="number" 
+                      value={formValues.ppnPersentase} 
+                      onChange={e => handleChange("ppnPersentase", e.target.value)} 
+                      placeholder="0" 
+                      min="0"
+                      required
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -532,17 +677,18 @@ const DokumenPengadaan = () => {
                 <h2 className="text-xl font-semibold mb-4 text-sky-700">Data Dokumen</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="nomorFormulirPermintaan">Nomor Formulir Permintaan</Label>
+                    <Label htmlFor="nomorFormulirPermintaan">Nomor Formulir Permintaan <span className="text-red-500">*</span></Label>
                     <Input 
                       id="nomorFormulirPermintaan" 
                       value={formValues.nomorFormulirPermintaan} 
                       onChange={e => handleChange("nomorFormulirPermintaan", e.target.value)} 
-                      placeholder="Masukkan nomor formulir" 
+                      placeholder="Masukkan nomor formulir"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Tanggal Formulir Permintaan</Label>
+                    <Label>Tanggal Formulir Permintaan <span className="text-red-500">*</span></Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalFormulirPermintaan && "text-muted-foreground")}>
@@ -563,7 +709,7 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Tanggal Kerangka Acuan Kerja (KAK)</Label>
+                    <Label>Tanggal Kerangka Acuan Kerja (KAK) <span className="text-red-500">*</span></Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formValues.tanggalKak && "text-muted-foreground")}>
@@ -584,42 +730,49 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorKertasKerjaHPS">Nomor Kertas Kerja Penyusunan HPS (cth: 001/PPK/3210/PL.300/SSN03/01/2025)</Label>
+                    <Label htmlFor="nomorKertasKerjaHPS">Nomor Kertas Kerja Penyusunan HPS <span className="text-red-500">*</span></Label>
                     <Input 
                       id="nomorKertasKerjaHPS" 
                       value={formValues.nomorKertasKerjaHPS} 
                       onChange={e => handleChange("nomorKertasKerjaHPS", e.target.value)} 
-                      placeholder="Masukkan nomor kertas kerja" 
+                      placeholder="Cth: 001/PPK/3210/PL.300/SSN03/01/2025"
+                      required 
                     />
                   </div>
+                </div>
 
+                {/* Baris 3 Nomor Surat (1 baris) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                   <div className="space-y-2">
-                    <Label htmlFor="nomorSuratPenawaranHarga">Nomor Surat Penawaran Harga (Penyedia)</Label>
+                    <Label htmlFor="nomorSuratPenawaranHarga">Nomor Surat Penawaran Harga (Penyedia) <span className="text-red-500">*</span></Label>
                     <Input 
                       id="nomorSuratPenawaranHarga" 
                       value={formValues.nomorSuratPenawaranHarga} 
                       onChange={e => handleChange("nomorSuratPenawaranHarga", e.target.value)} 
-                      placeholder="Masukkan nomor surat" 
+                      placeholder="Masukkan nomor surat"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorSuratPermintaanPembayaran">Nomor Surat Permohonan Pembayaran (Penyedia)</Label>
+                    <Label htmlFor="nomorSuratPermintaanPembayaran">Nomor Surat Permohonan Pembayaran (Penyedia) <span className="text-red-500">*</span></Label>
                     <Input 
                       id="nomorSuratPermintaanPembayaran" 
                       value={formValues.nomorSuratPermintaanPembayaran} 
                       onChange={e => handleChange("nomorSuratPermintaanPembayaran", e.target.value)} 
-                      placeholder="Masukkan nomor surat" 
+                      placeholder="Masukkan nomor surat"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorInvoice">Nomor Invoice Pembayaran (Penyedia)</Label>
+                    <Label htmlFor="nomorInvoice">Nomor Invoice Pembayaran (Penyedia) <span className="text-red-500">*</span></Label>
                     <Input 
                       id="nomorInvoice" 
                       value={formValues.nomorInvoice} 
                       onChange={e => handleChange("nomorInvoice", e.target.value)} 
-                      placeholder="Masukkan nomor invoice" 
+                      placeholder="Masukkan nomor invoice"
+                      required 
                     />
                   </div>
                 </div>
@@ -632,83 +785,90 @@ const DokumenPengadaan = () => {
                 <h2 className="text-xl font-semibold mb-4 text-orange-800">Data Penyedia</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="namaPenyedia">Nama Penyedia Barang/Jasa</Label>
+                    <Label htmlFor="namaPenyedia">Nama Penyedia Barang/Jasa <span className="text-red-500">*</span></Label>
                     <Input 
                       id="namaPenyedia" 
                       value={formValues.namaPenyedia} 
                       onChange={e => handleChange("namaPenyedia", e.target.value)} 
-                      placeholder="Masukkan nama penyedia" 
+                      placeholder="Masukkan nama penyedia"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="namaPerwakilan">Nama Perwakilan Penyedia</Label>
+                    <Label htmlFor="namaPerwakilan">Nama Perwakilan Penyedia <span className="text-red-500">*</span></Label>
                     <Input 
                       id="namaPerwakilan" 
                       value={formValues.namaPerwakilan} 
                       onChange={e => handleChange("namaPerwakilan", e.target.value)} 
-                      placeholder="Masukkan nama perwakilan" 
+                      placeholder="Masukkan nama perwakilan"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="jabatan">Jabatan</Label>
+                    <Label htmlFor="jabatan">Jabatan <span className="text-red-500">*</span></Label>
                     <Input 
                       id="jabatan" 
                       value={formValues.jabatan} 
                       onChange={e => handleChange("jabatan", e.target.value)} 
-                      placeholder="Masukkan jabatan" 
-                    />
-                  </div>
-
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="alamatPenyedia">Alamat Penyedia</Label>
-                    <Textarea 
-                      id="alamatPenyedia" 
-                      value={formValues.alamatPenyedia} 
-                      onChange={e => handleChange("alamatPenyedia", e.target.value)} 
-                      placeholder="Masukkan alamat penyedia" 
-                      rows={2} 
+                      placeholder="Masukkan jabatan"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="namaBank">Nama Bank</Label>
+                    <Label htmlFor="alamatPenyedia">Alamat Penyedia <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="alamatPenyedia" 
+                      value={formValues.alamatPenyedia} 
+                      onChange={e => handleChange("alamatPenyedia", e.target.value)} 
+                      placeholder="Masukkan alamat penyedia"
+                      required 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="namaBank">Nama Bank <span className="text-red-500">*</span></Label>
                     <Input 
                       id="namaBank" 
                       value={formValues.namaBank} 
                       onChange={e => handleChange("namaBank", e.target.value)} 
-                      placeholder="Masukkan nama bank" 
+                      placeholder="Masukkan nama bank"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nomorRekening">Nomor Rekening</Label>
+                    <Label htmlFor="nomorRekening">Nomor Rekening <span className="text-red-500">*</span></Label>
                     <Input 
                       id="nomorRekening" 
                       value={formValues.nomorRekening} 
                       onChange={e => handleChange("nomorRekening", e.target.value)} 
-                      placeholder="Masukkan nomor rekening" 
+                      placeholder="Masukkan nomor rekening"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="atasNamaRekening">Atas Nama Rekening</Label>
+                    <Label htmlFor="atasNamaRekening">Atas Nama Rekening <span className="text-red-500">*</span></Label>
                     <Input 
                       id="atasNamaRekening" 
                       value={formValues.atasNamaRekening} 
                       onChange={e => handleChange("atasNamaRekening", e.target.value)} 
-                      placeholder="Masukkan nama pemilik rekening" 
+                      placeholder="Masukkan nama pemilik rekening"
+                      required 
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="npwpPenyedia">NPWP Penyedia</Label>
+                    <Label htmlFor="npwpPenyedia">NPWP Penyedia <span className="text-red-500">*</span></Label>
                     <Input 
                       id="npwpPenyedia" 
                       value={formValues.npwpPenyedia} 
                       onChange={e => handleChange("npwpPenyedia", e.target.value)} 
-                      placeholder="Masukkan NPWP penyedia" 
+                      placeholder="Masukkan NPWP penyedia"
+                      required 
                     />
                   </div>
                 </div>
