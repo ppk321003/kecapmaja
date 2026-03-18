@@ -8,7 +8,7 @@ import { SubmissionForm } from '@/components/pencairan/SubmissionForm';
 import { SPByGrouping } from '@/components/pencairan/SPByGrouping';
 import { usePencairanData } from '@/hooks/use-pencairan-data';
 import { Submission, SubmissionStatus, UserRole, canCreateSubmission, generateSubmissionId, getDocumentsByJenisBelanja, shouldShowSubmission } from '@/types/pencairan';
-import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileEdit, AlertCircle, Send, Archive, Package } from 'lucide-react';
+import { FileText, Clock, CheckCircle2, XCircle, Plus, RefreshCw, Loader2, FileEdit, AlertCircle, Send, Archive, Package, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -421,7 +421,7 @@ export default function UsulanPencairan() {
                 <>
                   <div className="w-full overflow-x-auto rounded-lg border bg-white dark:bg-slate-950">
                     <SubmissionTable 
-                    submissions={filteredSubmissions} 
+                    submissions={paginatedSubmissions} 
                     onView={setSelectedSubmission} 
                     onEdit={(sub) => { 
                       setEditingSubmission(sub); 
@@ -430,6 +430,63 @@ export default function UsulanPencairan() {
                     userRole={userRole} 
                   />
                   </div>
+                  
+                  {/* Pagination Controls */}
+                  {pageSize > 0 && filteredSubmissions.length > 0 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t mt-4">
+                      <div className="text-sm text-muted-foreground">
+                        Menampilkan {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, filteredSubmissions.length)} dari {filteredSubmissions.length} data
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(1)}
+                          disabled={currentPage === 1}
+                          className="flex items-center gap-1"
+                        >
+                          <ChevronsLeft className="h-4 w-4" />
+                          Awal
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="flex items-center gap-1"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Sebelumnya
+                        </Button>
+                        
+                        <span className="text-sm text-muted-foreground mx-2">
+                          Halaman {currentPage} dari {totalPages}
+                        </span>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="flex items-center gap-1"
+                        >
+                          Selanjutnya
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(totalPages)}
+                          disabled={currentPage === totalPages}
+                          className="flex items-center gap-1"
+                        >
+                          Akhir
+                          <ChevronsRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>
