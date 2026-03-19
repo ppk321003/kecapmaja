@@ -23,9 +23,9 @@ const jenisKontrakOptions = ["Lumpsum", "Harga Satuan", "Gabungan Lumpsum dan Ha
 const caraPembayaranOptions = ["Sekaligus", "Bertahap", "Sesuai Progress"];
 const jenisPengadaanOptions = ["Barang", "Konstruksi", "Jasa Lainnya", "Konsultansi"];
 
-// Mapping untuk auto-select bentuk kontrak berdasarkan jenis pengadaan dan nilai harga
-const getBentukKontrakDefault = (jenisPengadaan: string, hargaSatuanSetelahNego: string): string => {
-  const harga = parseInt((hargaSatuanSetelahNego || "").replace(/[^\d]/g, "") || "0");
+// Mapping untuk auto-select bentuk kontrak berdasarkan jenis pengadaan dan nilai harga (menggunakan subtotal)
+const getBentukKontrakDefault = (jenisPengadaan: string, subtotalNegosiasi: string): string => {
+  const harga = parseInt((subtotalNegosiasi || "").replace(/[^\d]/g, "") || "0");
   
   switch(jenisPengadaan) {
     case "Barang":
@@ -65,7 +65,10 @@ const defaultValues = {
   nilaiPaguAnggaran: "",
   hargaSatuanAwal: "",
   hargaPenawaranPenyedia: "",
+  subtotalPenawaran: "",
   hargaSatuanSetelahNego: "",
+  subtotalNegosiasi: "",
+  selisihNegosiasi: "",
   metodePengadaan: "",
   bentukKontrak: "",
   jenisKontrak: "",
@@ -109,7 +112,7 @@ const useSubmitPengadaanToSheets = (targetSheetId: string) => {
         body: {
           spreadsheetId: targetSheetId,
           operation: "append",
-          range: `${SHEET_NAME}!A:AJ`,
+          range: `${SHEET_NAME}!A:AM`,
           values: [data]
         }
       });
@@ -130,6 +133,57 @@ const useSubmitPengadaanToSheets = (targetSheetId: string) => {
   };
 
   return { submitData, isSubmitting };
+};
+
+// Fungsi untuk memastikan headers ada di sheet
+const ensureSheetHeaders = async (targetSheetId: string): Promise<void> => {
+  try {
+    const headers = [
+      "No", "Id", "Kode Kegiatan", "Nama Paket Pengadaan", "Jenis Pengadaan",
+      "Tanggal Mulai Pelaksanaan", "Tanggal Selesai Pelaksanaan", "Spesifikasi Teknis",
+      "Volume", "Satuan", "Nilai Pagu Anggaran", "Harga Perkiraan Sendiri",
+      "Harga Penawaran", "Total Harga Penawaran", "Harga Satuan Setelah Nego",
+      "Total Harga Satuan Setelah Nego", "Selisih", "Metode Pengadaan",
+      "Bentuk/Bukti Kontrak", "Jenis Kontrak", "Cara Pembayaran", "Uang Muka",
+      "PPh", "PPN", "Nomor Formulir Permintaan", "Tanggal Formulir Permintaan",
+      "Tanggal Kerangka Acuan Kerja (KAK)", "Nomor Kertas Kerja Penyusunan HPS",
+      "Penyedia Barang/Jasa", "Nama Perwakilan Penyedia", "Jabatan", "Alamat Penyedia",
+      "Bank Penyedia", "No Rek Penyedia", "Atas Nama Rekening", "NPWP Penyedia",
+      "Nomor Surat Penawaran", "Nomor Surat Permohonan Pembayaran", "Nomor Invoice Pembayaran"
+    ];
+
+    const { data, error } = await supabase.functions.invoke("google-sheets", {
+      body: {
+        spreadsheetId: targetSheetId,
+        operation: "read",
+        range: `${SHEET_NAME}!A1:AM1`
+      }
+    });
+
+    if (error) {
+      console.error("Error checking headers:", error);
+      return;
+    }
+
+    const existingHeaders = data?.values?.[0] || [];
+    
+    // Jika header belum ada atau tidak lengkap, buat header baru
+    if (existingHeaders.length === 0) {
+      console.log('📝 Creating new sheet headers...');
+      await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: targetSheetId,
+          operation: "update",
+          range: `${SHEET_NAME}!A1:AM1`,
+          values: [headers]
+        }
+      });
+      console.log('✅ Headers created successfully');
+    }
+  } catch (error) {
+    console.error("Error ensuring headers:", error);
+    // Tidak throw error, hanya log (jangan block submission jika header setup gagal)
+  }
 };
 
 // Fungsi untuk mendapatkan nomor urut berikutnya
@@ -269,6 +323,55 @@ const DokumenPengadaan = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      // Ensure headers ada di sheet DokumenPengadaan
+      await ensureSheetHeaders(targetSheetId);
+
+      // Validasi semua field required
+      const requiredFields = {
+        namaPaket: "Nama Paket Pengadaan",
+        kodeKegiatan: "Kode Kegiatan",
+        jenisPengadaan: "Jenis Pengadaan",
+        tanggalMulai: "Tanggal Mulai Pelaksanaan",
+        tanggalSelesai: "Tanggal Selesai Pelaksanaan",
+        volume: "Volume",
+        satuan: "Satuan",
+        nilaiPaguAnggaran: "Nilai Pagu Anggaran",
+        hargaSatuanAwal: "Harga Perkiraan Sendiri",
+        hargaPenawaranPenyedia: "Harga Penawaran",
+        hargaSatuanSetelahNego: "Harga Satuan Setelah Nego",
+        metodePengadaan: "Metode Pengadaan",
+        bentukKontrak: "Bentuk/Bukti Kontrak",
+        jenisKontrak: "Jenis Kontrak",
+        caraPembayaran: "Cara Pembayaran"
+      };
+
+      for (const [field, label] of Object.entries(requiredFields)) {
+        const value = formValues[field as keyof typeof defaultValues];
+        if (!value || value === "" || (field.includes("tanggal") && value === null)) {
+          toast({
+            variant: "destructive",
+            title: "Field Wajib Diisi",
+            description: `${label} tidak boleh kosong. Silakan isi terlebih dahulu.`
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Validasi: Subtotal Negosiasi tidak boleh melebihi Nilai Pagu Anggaran
+      const subtotalNego = parseFloat((formValues.subtotalNegosiasi || "").replace(/[^\d]/g, "") || "0");
+      const nilaiPagu = parseFloat((formValues.nilaiPaguAnggaran || "").replace(/[^\d]/g, "") || "0");
+      
+      if (subtotalNego > nilaiPagu) {
+        toast({
+          variant: "destructive",
+          title: "Validasi Gagal",
+          description: "Subtotal Negosiasi (Rp) tidak boleh melebihi Nilai Pagu Anggaran (Rp). Silakan periksa kembali nilai-nilai Anda."
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       console.log("Submitting form data:", formValues);
 
       // Generate nomor urut baru dan ID pengadaan
@@ -292,29 +395,32 @@ const DokumenPengadaan = () => {
         formatCurrency(formValues.nilaiPaguAnggaran), // Kolom 11: Nilai Pagu Anggaran
         formatCurrency(formValues.hargaSatuanAwal), // Kolom 12: Harga Perkiraan Sendiri (HPS) (PPK)
         formatCurrency(formValues.hargaPenawaranPenyedia), // Kolom 13: Harga Penawaran (Penyedia)
-        formatCurrency(formValues.hargaSatuanSetelahNego), // Kolom 14: Harga Satuan Setelah Nego (PBJ / PPK)
-        formValues.metodePengadaan, // Kolom 15: Metode Pengadaan
-        formValues.bentukKontrak, // Kolom 16: Bentuk/Bukti Kontrak
-        formValues.jenisKontrak, // Kolom 17: Jenis Kontrak
-        formValues.caraPembayaran, // Kolom 18: Cara Pembayaran
-        formValues.uangMuka, // Kolom 19: Uang Muka
-        formValues.pphPersentase, // Kolom 20: PPh (Pajak Penghasilan) (%)
-        formValues.ppnPersentase, // Kolom 21: PPN (Pajak Pertambahan Nilai) (%)
-        formValues.nomorFormulirPermintaan, // Kolom 21: Nomor Formulir Permintaan
-        formatTanggalIndonesia(formValues.tanggalFormulirPermintaan), // Kolom 22: Tanggal Formulir Permintaan
-        formatTanggalIndonesia(formValues.tanggalKak), // Kolom 23: Tanggal Kerangka Acuan Kerja (KAK)
-        formValues.nomorKertasKerjaHPS, // Kolom 24: Nomor Kertas Kerja Penyusunan HPS
-        formValues.namaPenyedia, // Kolom 25: Penyedia Barang/Jasa
-        formValues.namaPerwakilan, // Kolom 26: Nama Perwakilan Penyedia
-        formValues.jabatan, // Kolom 27: Jabatan
-        formValues.alamatPenyedia, // Kolom 28: Alamat Penyedia
-        formValues.namaBank, // Kolom 29: Bank Penyedia
-        `'${formValues.nomorRekening}`, // Kolom 30: No Rek Penyedia (dengan apostrophe untuk format text di Sheets)
-        formValues.atasNamaRekening, // Kolom 31: Atas Nama Rekening
-        formValues.npwpPenyedia, // Kolom 32: NPWP Penyedia
-        formValues.nomorSuratPenawaranHarga, // Kolom 33: Nomor Surat Penawaran
-        formValues.nomorSuratPermintaanPembayaran, // Kolom 34: Nomor Surat Permohonan Pembayaran
-        formValues.nomorInvoice // Kolom 35: Nomor Invoice Pembayaran
+        formatCurrency(formValues.subtotalPenawaran), // Kolom 14: Subtotal Penawaran
+        formatCurrency(formValues.hargaSatuanSetelahNego), // Kolom 15: Harga Satuan Setelah Nego (PBJ / PPK)
+        formatCurrency(formValues.subtotalNegosiasi), // Kolom 16: Subtotal Negosiasi
+        formatCurrency(formValues.selisihNegosiasi), // Kolom 17: Selisih Negosiasi
+        formValues.metodePengadaan, // Kolom 18: Metode Pengadaan
+        formValues.bentukKontrak, // Kolom 19: Bentuk/Bukti Kontrak
+        formValues.jenisKontrak, // Kolom 20: Jenis Kontrak
+        formValues.caraPembayaran, // Kolom 20: Cara Pembayaran
+        formValues.uangMuka, // Kolom 21: Uang Muka
+        formValues.pphPersentase, // Kolom 22: PPh (Pajak Penghasilan) (%)
+        formValues.ppnPersentase, // Kolom 23: PPN (Pajak Pertambahan Nilai) (%)
+        formValues.nomorFormulirPermintaan, // Kolom 24: Nomor Formulir Permintaan
+        formatTanggalIndonesia(formValues.tanggalFormulirPermintaan), // Kolom 25: Tanggal Formulir Permintaan
+        formatTanggalIndonesia(formValues.tanggalKak), // Kolom 26: Tanggal Kerangka Acuan Kerja (KAK)
+        formValues.nomorKertasKerjaHPS, // Kolom 27: Nomor Kertas Kerja Penyusunan HPS
+        formValues.namaPenyedia, // Kolom 28: Penyedia Barang/Jasa
+        formValues.namaPerwakilan, // Kolom 29: Nama Perwakilan Penyedia
+        formValues.jabatan, // Kolom 30: Jabatan
+        formValues.alamatPenyedia, // Kolom 31: Alamat Penyedia
+        formValues.namaBank, // Kolom 32: Bank Penyedia
+        `'${formValues.nomorRekening}`, // Kolom 33: No Rek Penyedia (dengan apostrophe untuk format text di Sheets)
+        formValues.atasNamaRekening, // Kolom 34: Atas Nama Rekening
+        formValues.npwpPenyedia, // Kolom 35: NPWP Penyedia
+        formValues.nomorSuratPenawaranHarga, // Kolom 36: Nomor Surat Penawaran
+        formValues.nomorSuratPermintaanPembayaran, // Kolom 37: Nomor Surat Permohonan Pembayaran
+        formValues.nomorInvoice // Kolom 38: Nomor Invoice Pembayaran
       ];
 
       console.log('📋 Final pengadaan data array:', rowData);
@@ -361,7 +467,7 @@ const DokumenPengadaan = () => {
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4 text-inherit">Data Umum</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2">
                     <Label htmlFor="namaPaket">Nama Paket Pengadaan <span className="text-red-500">*</span></Label>
                     <Input 
                       id="namaPaket" 
@@ -369,6 +475,19 @@ const DokumenPengadaan = () => {
                       onChange={e => handleChange("namaPaket", e.target.value)} 
                       placeholder="Masukkan nama paket pengadaan" 
                       required 
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="nilaiPaguAnggaran">Nilai Pagu Anggaran (Rp) <span className="text-red-500">*</span></Label>
+                    <Input 
+                      id="nilaiPaguAnggaran" 
+                      type="text" 
+                      value={formatNumberWithSeparator(formValues.nilaiPaguAnggaran)} 
+                      onChange={e => handleChange("nilaiPaguAnggaran", parseFormattedNumber(e.target.value))} 
+                      placeholder="0" 
+                      className="text-right"
+                      required
                     />
                   </div>
                   
@@ -388,7 +507,7 @@ const DokumenPengadaan = () => {
                     <Select value={formValues.jenisPengadaan} onValueChange={value => {
                       handleChange("jenisPengadaan", value);
                       // Auto-select bentuk kontrak dynamically saat jenis pengadaan berubah
-                      const defaultBentuk = getBentukKontrakDefault(value, formValues.hargaSatuanSetelahNego);
+                      const defaultBentuk = getBentukKontrakDefault(value, formValues.subtotalNegosiasi);
                       if (defaultBentuk) {
                         handleChange("bentukKontrak", defaultBentuk);
                       }
@@ -468,14 +587,33 @@ const DokumenPengadaan = () => {
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4 text-lime-700">Data Penawaran</h2>
                 
-                {/* Baris 1: Volume, Satuan, Nilai Pagu */}
+                {/* Baris 1: Volume, Satuan, Harga Penawaran */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   <div className="space-y-2">
                     <Label htmlFor="volume">Volume <span className="text-red-500">*</span></Label>
                     <Input 
                       id="volume" 
                       value={formValues.volume} 
-                      onChange={e => handleChange("volume", e.target.value)} 
+                      onChange={e => {
+                        handleChange("volume", e.target.value);
+                        // Update subtotal penawaran
+                        const vol = parseFloat(e.target.value) || 0;
+                        const harga = parseFloat((formValues.hargaPenawaranPenyedia || "").replace(/[^\d]/g, "")) || 0;
+                        const newSubtotalPenawaran = (vol * harga).toString();
+                        handleChange("subtotalPenawaran", newSubtotalPenawaran);
+                        // Update subtotal negosiasi
+                        const hargaNego = parseFloat((formValues.hargaSatuanSetelahNego || "").replace(/[^\d]/g, "")) || 0;
+                        const newSubtotalNego = (vol * hargaNego).toString();
+                        handleChange("subtotalNegosiasi", newSubtotalNego);
+                        // Calculate selisih negosiasi
+                        const selisih = (parseFloat(newSubtotalPenawaran) - parseFloat(newSubtotalNego)).toString();
+                        handleChange("selisihNegosiasi", selisih);
+                        // Auto-select bentuk kontrak based on new subtotal
+                        const defaultBentuk = getBentukKontrakDefault(formValues.jenisPengadaan, newSubtotalNego);
+                        if (defaultBentuk) {
+                          handleChange("bentukKontrak", defaultBentuk);
+                        }
+                      }} 
                       placeholder="Masukkan volume" 
                       required
                     />
@@ -493,12 +631,24 @@ const DokumenPengadaan = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nilaiPaguAnggaran">Nilai Pagu Anggaran (Rp) <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="hargaPenawaranPenyedia">Harga Penawaran (Penyedia) (Rp) <span className="text-red-500">*</span></Label>
                     <Input 
-                      id="nilaiPaguAnggaran" 
+                      id="hargaPenawaranPenyedia" 
                       type="text" 
-                      value={formatNumberWithSeparator(formValues.nilaiPaguAnggaran)} 
-                      onChange={e => handleChange("nilaiPaguAnggaran", parseFormattedNumber(e.target.value))} 
+                      value={formatNumberWithSeparator(formValues.hargaPenawaranPenyedia)} 
+                      onChange={e => {
+                        const newValue = parseFormattedNumber(e.target.value);
+                        handleChange("hargaPenawaranPenyedia", newValue);
+                        // Update subtotal penawaran
+                        const vol = parseFloat(formValues.volume) || 0;
+                        const harga = parseFloat(newValue) || 0;
+                        const newSubtotalPenawaran = (vol * harga).toString();
+                        handleChange("subtotalPenawaran", newSubtotalPenawaran);
+                        // Calculate selisih negosiasi
+                        const subtotalNego = parseFloat((formValues.subtotalNegosiasi || "").replace(/[^\d]/g, "")) || 0;
+                        const selisih = (parseFloat(newSubtotalPenawaran) - subtotalNego).toString();
+                        handleChange("selisihNegosiasi", selisih);
+                      }} 
                       placeholder="0" 
                       className="text-right"
                       required
@@ -506,8 +656,8 @@ const DokumenPengadaan = () => {
                   </div>
                 </div>
 
-                {/* Baris 2: Harga */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                {/* Baris 2: HPS, Harga Setelah Nego */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                   <div className="space-y-2">
                     <Label htmlFor="hargaSatuanAwal">Harga Perkiraan Sendiri (HPS) (PPK) (Rp) <span className="text-red-500">*</span></Label>
                     <Input 
@@ -515,19 +665,6 @@ const DokumenPengadaan = () => {
                       type="text" 
                       value={formatNumberWithSeparator(formValues.hargaSatuanAwal)} 
                       onChange={e => handleChange("hargaSatuanAwal", parseFormattedNumber(e.target.value))} 
-                      placeholder="0" 
-                      className="text-right"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="hargaPenawaranPenyedia">Harga Penawaran (Penyedia) (Rp) <span className="text-red-500">*</span></Label>
-                    <Input 
-                      id="hargaPenawaranPenyedia" 
-                      type="text" 
-                      value={formatNumberWithSeparator(formValues.hargaPenawaranPenyedia)} 
-                      onChange={e => handleChange("hargaPenawaranPenyedia", parseFormattedNumber(e.target.value))} 
                       placeholder="0" 
                       className="text-right"
                       required
@@ -543,8 +680,17 @@ const DokumenPengadaan = () => {
                       onChange={e => {
                         const newValue = parseFormattedNumber(e.target.value);
                         handleChange("hargaSatuanSetelahNego", newValue);
-                        // Auto-select bentuk kontrak dynamically saat harga berubah
-                        const defaultBentuk = getBentukKontrakDefault(formValues.jenisPengadaan, newValue);
+                        // Update subtotal negosiasi
+                        const vol = parseFloat(formValues.volume) || 0;
+                        const harga = parseFloat(newValue) || 0;
+                        const newSubtotal = (vol * harga).toString();
+                        handleChange("subtotalNegosiasi", newSubtotal);
+                        // Calculate selisih negosiasi = subtotalPenawaran - subtotalNegosiasi
+                        const subtotalPenawaran = parseFloat((formValues.subtotalPenawaran || "").replace(/[^\d]/g, "") || "0");
+                        const selisih = (subtotalPenawaran - parseFloat(newSubtotal)).toString();
+                        handleChange("selisihNegosiasi", selisih);
+                        // Auto-select bentuk kontrak dynamically saat harga berubah (menggunakan subtotal baru)
+                        const defaultBentuk = getBentukKontrakDefault(formValues.jenisPengadaan, newSubtotal);
                         if (defaultBentuk) {
                           handleChange("bentukKontrak", defaultBentuk);
                         }
@@ -555,6 +701,69 @@ const DokumenPengadaan = () => {
                     />
                   </div>
                 </div>
+
+                {/* Summary Cards: Subtotal Penawaran, Subtotal Negosiasi, Selisih Negosiasi */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                  {/* Subtotal Penawaran */}
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded p-3 shadow-xs hover:shadow-sm transition-shadow">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-lg">📊</span>
+                      <p className="text-xs font-semibold text-amber-700">PENAWARAN</p>
+                    </div>
+                    <p className="text-lg font-bold text-amber-900">Rp {formatNumberWithSeparator(formValues.subtotalPenawaran)}</p>
+                  </div>
+
+                  {/* Subtotal Negosiasi */}
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded p-3 shadow-xs hover:shadow-sm transition-shadow">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-lg">✓</span>
+                      <p className="text-xs font-semibold text-green-700">NEGOSIASI</p>
+                    </div>
+                    <p className="text-lg font-bold text-green-900">Rp {formatNumberWithSeparator(formValues.subtotalNegosiasi)}</p>
+                  </div>
+
+                  {/* Selisih Negosiasi */}
+                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded p-3 shadow-xs hover:shadow-sm transition-shadow">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-lg">⚡</span>
+                      <p className="text-xs font-semibold text-blue-700">SELISIH</p>
+                    </div>
+                    <p className="text-lg font-bold text-blue-900">Rp {formatNumberWithSeparator(formValues.selisihNegosiasi)}</p>
+                  </div>
+                </div>
+
+                {/* Validasi & Warning Messages - Compact */}
+                {(() => {
+                  const subtotalNego = parseFloat((formValues.subtotalNegosiasi || "").replace(/[^\d]/g, "") || "0");
+                  const subtotalPenawaran = parseFloat((formValues.subtotalPenawaran || "").replace(/[^\d]/g, "") || "0");
+                  const nilaiPagu = parseFloat((formValues.nilaiPaguAnggaran || "").replace(/[^\d]/g, "") || "0");
+                  
+                  if (subtotalNego > nilaiPagu) {
+                    return (
+                      <div className="flex items-start gap-3 p-3 bg-red-50 border-l-4 border-red-500 rounded">
+                        <span className="text-red-600 font-bold text-lg mt-0.5">✕</span>
+                        <div>
+                          <p className="text-sm font-semibold text-red-800">Subtotal Negosiasi melebihi Nilai Pagu</p>
+                          <p className="text-xs text-red-700 mt-0.5">Rp {formatNumberWithSeparator(subtotalNego.toString())} lebih dari Rp {formatNumberWithSeparator(nilaiPagu.toString())}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  if (subtotalPenawaran > nilaiPagu) {
+                    return (
+                      <div className="flex items-start gap-3 p-3 bg-amber-50 border-l-4 border-amber-400 rounded">
+                        <span className="text-amber-600 font-bold text-lg mt-0.5">!</span>
+                        <div>
+                          <p className="text-sm font-semibold text-amber-800\">Subtotal Penawaran melebihi Nilai Pagu</p>
+                          <p className="text-xs text-amber-700 mt-0.5\">Rp {formatNumberWithSeparator(subtotalPenawaran.toString())} lebih dari Rp {formatNumberWithSeparator(nilaiPagu.toString())} - Silakan negosiasi</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  return null;
+                })()}
 
                 {/* Baris 3: Metode, Bentuk, Jenis */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
