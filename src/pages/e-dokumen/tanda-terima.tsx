@@ -135,7 +135,7 @@ const TandaTerima = () => {
         body: {
           spreadsheetId: targetSheetId,
           operation: "read",
-          range: `${SHEET_NAME}!A:A`
+          range: `${SHEET_NAME}!B:B`
         }
       });
 
