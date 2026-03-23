@@ -14,6 +14,11 @@ verify_jwt = false
 
 [functions.send-karir-notifications]
 verify_jwt = false
+# Cron trigger: 1st of month at 01:00 UTC (08:00 WIB)
+schedule = "0 1 1 * *"
 
 [functions.send-kebijakan-notifications]
 verify_jwt = false
+# Cron trigger: 16th of month at 13:00 UTC (20:00 WIB)
+# Note: 20:00 WIB on 16th → checks if 17th is holiday before sending
+schedule = "0 13 16 * *"

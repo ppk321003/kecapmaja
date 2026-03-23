@@ -400,10 +400,14 @@ serve(async (req: Request) => {
     
     let karyawanList: Karyawan[] = [];
     try {
+      // Default spreadsheetId untuk MASTER.ORGANIK (BPS Pusat)
+      const DEFAULT_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+      
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          action: 'fetch',
-          sheet: 'MASTER.ORGANIK'
+          operation: 'read',
+          spreadsheetId: DEFAULT_ORGANIK_SHEET_ID,
+          range: 'MASTER.ORGANIK'
         }
       });
       
@@ -411,21 +415,38 @@ serve(async (req: Request) => {
         console.error('[Sheets] Fetch error:', error);
       } else {
         // Transform Google Sheets data to Karyawan interface
-        karyawanList = (data || []).map((row: any) => ({
-          nip: row.NIP || '',
-          nama: row.NAMA || '',
-          no_hp: row['NO_HP'] || row['TELEPON'] || '', // Kolom I: Telepon
-          pangkat: row.PANGKAT || '',
-          golongan: row.GOLONGAN || '',
-          jabatan: row.JABATAN || '',
-          kategori: row.KATEGORI || 'Reguler',
-          tglPenghitunganAkTerakhir: row.TGL_PENGHITUNGAN_AK_TERAKHIR || new Date().toISOString().split('T')[0],
-          akKumulatif: parseFloat(row.AK_KUMULATIF) || 0,
-          tmtPns: row.TMT_PNS || '',
-          tmtPangkat: row.TMT_PANGKAT || ''
-        }));
+        // Assuming data returns rows where each row is an array [col0, col1, col2, ...]
+        const headerRow = rows[0] || [];
+        const dataRows = rows.slice(1) || [];
         
-        console.log(`[Sheets] Fetched ${karyawanList.length} employees`);
+        // Build header index map for flexible column lookup
+        const headerMap: Record<string, number> = {};
+        headerRow.forEach((header: any, idx: number) => {
+          if (header) {
+            headerMap[String(header).toUpperCase().trim()] = idx;
+          }
+        });
+        
+        console.log(`[Sheets] Header columns found: ${Object.keys(headerMap).join(', ')}`);
+        
+        karyawanList = dataRows
+          .filter((row: any) => row && row.length > 2 && row[headerMap['NIP'] || 0])
+          .map((row: any) => ({
+            nip: row[headerMap['NIP'] || 0]?.toString() || '',
+            nama: row[headerMap['NAMA'] || 1]?.toString() || '',
+            no_hp: (row[headerMap['NO_HP'] || headerMap['TELEPON'] || 8]?.toString() || '').trim(),
+            pangkat: row[headerMap['PANGKAT'] || 6]?.toString() || '',
+            golongan: row[headerMap['GOLONGAN'] || 7]?.toString() || '',
+            jabatan: row[headerMap['JABATAN'] || 4]?.toString() || '',
+            kategori: (row[headerMap['KATEGORI'] || 9]?.toString() || 'Reguler') as any,
+            tglPenghitunganAkTerakhir: row[headerMap['TGL_PENGHITUNGAN_AK_TERAKHIR'] || 10]?.toString() || new Date().toISOString().split('T')[0],
+            akKumulatif: parseFloat(row[headerMap['AK_KUMULATIF'] || 11] || 0),
+            tmtPns: row[headerMap['TMT_PNS'] || 12]?.toString() || '',
+            tmtPangkat: row[headerMap['TMT_PANGKAT'] || 13]?.toString() || ''
+          }))
+          .filter(emp => emp.nip && emp.nama && emp.no_hp);
+        
+        console.log(`[Sheets] Fetched ${karyawanList.length} employees from ${dataRows.length} data rows`);
       }
     } catch (fetchError) {
       console.error('[Sheets] Invoke error:', fetchError);

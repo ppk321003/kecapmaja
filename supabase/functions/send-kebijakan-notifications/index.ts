@@ -342,12 +342,15 @@ serve(async (req: Request) => {
 
     console.log("[Kebijakan Notifications] Fetching MASTER.ORGANIK data...");
     
-    // Fetch all active employees from Google Sheets (MASTER.ORGANIK) - SESUAI HOME.TSX
+    // Default spreadsheetId untuk MASTER.ORGANIK (BPS Pusat) - consistent with Home.tsx
+    const DEFAULT_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
+    
+    // Fetch all active employees from Google Sheets (MASTER.ORGANIK)
     const { data: sheetsData, error: sheetsError } = await supabase.functions.invoke("google-sheets", {
       body: {
         operation: "read",
-        spreadsheetId: "1rw_Ly0rI2RXCf4rPfEn1ryP7fV5YZqKvjhH6J_KYtKk", // MASTER.ORGANIK
-        range: "MASTER.ORGANIK" // Full sheet (include header like Home.tsx)
+        spreadsheetId: DEFAULT_ORGANIK_SHEET_ID,
+        range: "MASTER.ORGANIK"
       },
     });
 
@@ -355,7 +358,7 @@ serve(async (req: Request) => {
       throw new Error(`Failed to fetch data: ${sheetsError?.message || "Unknown error"}`);
     }
 
-    // Parse employee data - SESUAI HOME.TSX INDEXING
+    // Parse employee data
     const karyawanList: Karyawan[] = [];
     const karyawanUltah: Karyawan[] = [];
     
@@ -368,36 +371,40 @@ serve(async (req: Request) => {
       );
     }
 
-    // Skip header row (slice dari index 1)
+    // Build header index map for flexible column lookup
+    const headerRow = rows[0] || [];
+    const headerMap: Record<string, number> = {};
+    headerRow.forEach((header: any, idx: number) => {
+      if (header) {
+        headerMap[String(header).toUpperCase().trim()] = idx;
+      }
+    });
+    
+    console.log("[Kebijakan Notifications] Header columns found:", Object.keys(headerMap).join(', '));
+
+    // Skip header row and process data
     const pegawaiData = rows.slice(1);
     
     for (const row of pegawaiData) {
-      if (!row || row.length < 9) continue;
+      if (!row || row.length < 3) continue;
       
-      // Column indices sesuai Home.tsx:
-      // row[1] atau row[2] = NIP (Column B atau C)
-      // row[3] = Nama (Column D)
-      // row[4] = Jabatan (Column E)
-      // row[5] = Unit/Satker (Column F)
-      // row[7] = Golongan/Pangkat (Column H)
-      // row[8] = No. HP (Column I)
-      
-      const nip = row[2] || row[1]; // Kolom NIP (index 2) atau NIP BPS (index 1)
-      const nama = row[3] || "";
-      const jabatan = row[4] || "";
-      const satker = row[5]?.toString().trim() || "";
-      const golongan = row[7]?.toString().trim() || ""; // PANGKAT/GOLONGAN (Column H)
-      const no_hp = row[8]?.toString().trim();
+      // Use header map for flexible column lookup with fallback indices
+      const nip = row[headerMap['NIP'] || headerMap['NIP_BPS'] || 2] || row[1];
+      const nama = row[headerMap['NAMA'] || 3];
+      const jabatan = row[headerMap['JABATAN'] || 4];
+      const satker = row[headerMap['SATKER'] || headerMap['UNIT'] || 5];
+      const golongan = row[headerMap['GOLONGAN'] || headerMap['PANGKAT'] || 7];
+      const no_hp = row[headerMap['NO_HP'] || headerMap['TELEPON'] || 8];
       
       if (!nip || !nama || !no_hp) continue;
       
       const karyawan: Karyawan = {
         nip: nip.toString(),
         nama: nama.toString(),
-        no_hp: normalizePhoneNumber(no_hp),
-        jabatan: jabatan.toString(),
-        golongan: golongan,
-        satker: satker,
+        no_hp: normalizePhoneNumber(no_hp.toString()),
+        jabatan: jabatan?.toString() || "",
+        golongan: golongan?.toString().trim() || "",
+        satker: satker?.toString().trim() || "",
       };
       
       // Extract birth date from NIP and check birthday
