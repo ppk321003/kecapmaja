@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.send-manual-wa-notifications]
 verify_jwt = false
 
+[functions.send-birthday-notifications]
+verify_jwt = false
+
 [functions.send-karir-notifications]
 verify_jwt = false
 
