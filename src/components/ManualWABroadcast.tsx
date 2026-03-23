@@ -151,6 +151,8 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
             golongan: testEmployee.golongan || '',
             pangkat: testEmployee.pangkat || '',
             kategori: testEmployee.kategori || 'Reguler',
+            akKumulatif: testEmployee.akKumulatif ?? 0,
+            tglPenghitunganAkTerakhir: testEmployee.tglPenghitunganAkTerakhir || new Date().toISOString().split('T')[0],
             satker: testEmployee.satker || testEmployee.unitKerja || '',
           }
         }

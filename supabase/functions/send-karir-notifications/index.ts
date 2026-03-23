@@ -347,19 +347,25 @@ function selectBestDevice(): DeviceToken | null {
 
   if (candidates.length === 0) return null;
 
-  // Simple weighted random: device with fewer usages has higher probability
-  let selected = candidates[0];
-  let minUsage = deviceStats.get(candidates[0].name)?.usageCount || 0;
-
-  for (const device of candidates) {
+  // True random selection with weighted distribution (prefer less-used devices)
+  // Calculate weight: less usage = higher probability
+  const weights = candidates.map(device => {
     const usage = deviceStats.get(device.name)?.usageCount || 0;
-    if (usage < minUsage) {
-      minUsage = usage;
-      selected = device;
+    return Math.max(1, 10 - usage); // Weight: 10 = unused, 1 = heavily used
+  });
+  
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+  let random = Math.random() * totalWeight;
+  
+  for (let i = 0; i < candidates.length; i++) {
+    random -= weights[i];
+    if (random <= 0) {
+      return candidates[i];
     }
   }
-
-  return selected;
+  
+  // Fallback (should never reach here)
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 async function sendWAViaFonnte(
@@ -557,6 +563,12 @@ function buildMessage(karyawan: Karyawan, estimasi: any): string {
     message += `  • Bukti AK Kumulatif\n\n`;
   }
 
+  // Fallback jika tipe kenaikan tidak match (tidak seharusnya terjadi jika bisaUsul=true)
+  if (!estimasi.type) {
+    message += `⚠️ Anda saat ini belum memenuhi syarat kenaikan dalam 6 bulan ke depan.\n`;
+    message += `Terus kembangkan pencapaian Anda untuk meraih target karier!\n\n`;
+  }
+
   message += `📱 Pantau progress lengkap di:\n${appLink}\n\n`;
   message += `Pertanyaan? Hubungi PPK di satuan kerja Anda.\n`;
   message += `\n_Pesan otomatis dari Sistem Karir_`;
@@ -612,16 +624,19 @@ serve(async (req: Request) => {
         return createCorsResponse({ error: "No available Fonnte devices" }, 503);
       }
 
-      // Create test message
+      // Create test message - use real data from frontend with sensible defaults
       const testEmployee = {
         ...testRecipient,
-        akKumulatif: 35,
-        kategori: 'Keterampilan' as any,
-        tmtPns: '',
-        tmtPangkat: ''
+        akKumulatif: testRecipient.akKumulatif ?? 35,
+        kategori: testRecipient.kategori ?? 'Reguler',
+        tglPenghitunganAkTerakhir: testRecipient.tglPenghitunganAkTerakhir ?? new Date().toISOString().split('T')[0],
+        tmtPns: testRecipient.tmtPns ?? '',
+        tmtPangkat: testRecipient.tmtPangkat ?? ''
       };
       
+      console.log(`[Test Mode] Data: kategori=${testEmployee.kategori}, ak=${testEmployee.akKumulatif}, jabatan=${testEmployee.jabatan}`);
       const estimasi = cekKaryawanBisaUsul(testEmployee);
+      console.log(`[Test Mode] Result: bisaUsul=${estimasi.bisaUsul}, type=${estimasi.type}, bulan=${estimasi.bulanDibutuhkan}`);
       const message = buildMessage(testEmployee, estimasi);
       
       const result = await sendWAViaFonnte(testEmployee.no_hp, message);
