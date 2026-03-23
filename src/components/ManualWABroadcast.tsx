@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, CheckCircle2, Send, X, Search } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Send, X, Search, Beaker } from 'lucide-react';
 import { broadcastTemplates, renderMessage } from '@/lib/karir/broadcastTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +50,13 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   const [selectedNips, setSelectedNips] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Test state
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testType, setTestType] = useState<'kebijakan' | 'pakaian-dinas' | null>(null);
+  const [testRecipientNip, setTestRecipientNip] = useState('');
+  const [isTestLoading, setIsTestLoading] = useState(false);
+  const [testSearchQuery, setTestSearchQuery] = useState('');
+
   // Message state
   const [selectedTemplate, setSelectedTemplate] = useState('informasi-penting');
   const [customDetail, setCustomDetail] = useState('');
@@ -80,6 +87,20 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
   const recipients = Array.from(selectedNips).map((nip) => allEmployees.find((e) => e.nip === nip)).filter(Boolean) as Karyawan[];
 
+  // Test modal filtered employees
+  const testFilteredEmployees = useMemo(() => {
+    return allEmployees.filter((emp) => {
+      if (
+        testSearchQuery &&
+        !emp.nama.toLowerCase().includes(testSearchQuery.toLowerCase()) &&
+        !emp.nip.includes(testSearchQuery)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [testSearchQuery, allEmployees]);
+
   // Template rendering
   const template = broadcastTemplates[selectedTemplate];
   const basePreviewMessage = template
@@ -97,6 +118,64 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   const previewMessage = editablePreview || basePreviewMessage;
 
   // Handle send
+  const handleTestSend = async () => {
+    if (!testRecipientNip) {
+      toast({
+        title: 'Peringatan',
+        description: 'Pilih 1 karyawan untuk test',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsTestLoading(true);
+    try {
+      const testEmployee = allEmployees.find(e => e.nip === testRecipientNip);
+      if (!testEmployee) {
+        throw new Error('Karyawan tidak ditemukan');
+      }
+
+      // Call appropriate function based on testType
+      const functionName = 'send-kebijakan-notifications';
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: {
+          testMode: true,
+          testPhase: testType === 'pakaian-dinas' ? 'kebijakan' : 'kebijakan',
+          testRecipient: {
+            nip: testEmployee.nip,
+            nama: testEmployee.nama,
+            no_hp: testEmployee.no_hp,
+            jabatan: testEmployee.jabatan,
+            satker: testEmployee.satker,
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: '✅ Test Berhasil',
+        description: `Pesan test ${testType === 'pakaian-dinas' ? 'Pakaian Dinas' : 'Kebijakan'} dikirim ke ${testEmployee.nama}. Cek WhatsApp dalam 10 detik.`,
+      });
+
+      // Reset modal
+      setShowTestModal(false);
+      setTestType(null);
+      setTestRecipientNip('');
+      setTestSearchQuery('');
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: `Gagal mengirim test: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        variant: 'destructive'
+      });
+    } finally {
+      setIsTestLoading(false);
+    }
+  };
+
   const handleSend = async () => {
     if (recipients.length === 0) {
       toast({
@@ -165,6 +244,44 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* SECTION 0: Testing Buttons */}
+      <Card className="border-purple-200 bg-purple-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-purple-900">
+            <Beaker className="w-5 h-5" />
+            🧪 Test Notifikasi
+          </CardTitle>
+          <CardDescription>Test fitur broadcast dengan mengirim ke 1 orang terlebih dahulu</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Button
+              onClick={() => {
+                setTestType('kebijakan');
+                setShowTestModal(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Beaker className="w-4 h-4 mr-2" />
+              Test Kebijakan
+            </Button>
+            <Button
+              onClick={() => {
+                setTestType('pakaian-dinas');
+                setShowTestModal(true);
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              <Beaker className="w-4 h-4 mr-2" />
+              Test Pakaian Dinas
+            </Button>
+          </div>
+          <p className="text-xs text-gray-600 mt-3">
+            💡 Gunakan test untuk verifikasi sebelum broadcast ke banyak orang
+          </p>
+        </CardContent>
+      </Card>
+
       {allEmployees.length === 0 && (
         <div className="flex items-center justify-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
           <AlertCircle className="w-5 h-5 text-yellow-600 mr-2" />
@@ -416,6 +533,103 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           </p>
         </CardContent>
       </Card>
+
+      {/* Test Modal */}
+      {showTestModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Beaker className="w-5 h-5 text-purple-600" />
+                {testType === 'pakaian-dinas' ? 'Test Pakaian Dinas' : 'Test Kebijakan'}
+              </CardTitle>
+              <p className="text-sm text-gray-600 font-normal">Pilih 1 karyawan untuk menerima test notifikasi</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Search */}
+              <Input
+                placeholder="Cari nama atau NIP..."
+                value={testSearchQuery}
+                onChange={(e) => setTestSearchQuery(e.target.value)}
+                className="w-full"
+              />
+
+              {/* Employee List */}
+              <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-2">
+                {testFilteredEmployees.length === 0 ? (
+                  <p className="text-gray-500 text-sm">Tidak ada karyawan ditemukan</p>
+                ) : (
+                  testFilteredEmployees.map((emp) => (
+                    <label
+                      key={emp.nip}
+                      className={`flex items-center gap-3 p-2 rounded cursor-pointer transition ${
+                        testRecipientNip === emp.nip
+                          ? 'bg-purple-100 border border-purple-300'
+                          : 'hover:bg-gray-50 border border-transparent'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="test-recipient"
+                        value={emp.nip}
+                        checked={testRecipientNip === emp.nip}
+                        onChange={(e) => setTestRecipientNip(e.target.value)}
+                        className="w-4 h-4"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{emp.nama}</div>
+                        <div className="text-xs text-gray-500">{emp.nip} • {emp.jabatan}</div>
+                      </div>
+                      <div className="text-xs text-gray-600">{emp.golongan}</div>
+                    </label>
+                  ))
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                <p className="text-xs text-blue-800">
+                  ℹ️ Pesan test akan dikirim ke WhatsApp 1 orang. Gunakan ini untuk verifikasi sebelum broadcast massal.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowTestModal(false);
+                    setTestType(null);
+                    setTestRecipientNip('');
+                    setTestSearchQuery('');
+                  }}
+                  disabled={isTestLoading}
+                  className="flex-1"
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleTestSend}
+                  disabled={isTestLoading || !testRecipientNip}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                >
+                  {isTestLoading ? (
+                    <>
+                      <span className="animate-spin mr-2">⏳</span>
+                      Mengirim...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Kirim Test
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Custom Confirmation Modal */}
       {showConfirm && (

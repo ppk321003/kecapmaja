@@ -315,6 +315,16 @@ _Maju Aman Jeung Amanah_`;
 // ==================== MAIN FUNCTION ====================
 serve(async (req: Request) => {
   try {
+    // Parse request body
+    let body = {};
+    try {
+      body = await req.json();
+    } catch (e) {
+      // No body is ok
+    }
+
+    const { testMode, testPhase, testRecipient } = body as any;
+
     // Initialize device tokens
     initializeDeviceTokens();
     
@@ -326,7 +336,51 @@ serve(async (req: Request) => {
     }
 
     console.log("[Kebijakan Notifications] Starting execution...");
+    
+    // TEST MODE: Send only to specific recipient
+    if (testMode && testRecipient) {
+      console.log("[Test Mode] Sending test message to:", testRecipient.nama);
+      
+      const device = selectBestDevice();
+      if (!device) {
+        return new Response(
+          JSON.stringify({ error: "No available Fonnte devices" }),
+          { status: 503 }
+        );
+      }
 
+      const message = buildKebijakanMessage(testRecipient.nama);
+      const success = await sendViaFonnte(testRecipient.no_hp, message, device);
+
+      if (success) {
+        console.log(`[Test Mode] ✅ Message sent to ${testRecipient.nama}`);
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            testMode: true,
+            sent: 1,
+            recipient: testRecipient.nama,
+            phone: testRecipient.no_hp,
+            device: device.name,
+            timestamp: new Date().toISOString()
+          }),
+          { status: 200 }
+        );
+      } else {
+        return new Response(
+          JSON.stringify({
+            status: "failed",
+            testMode: true,
+            error: "Failed to send via Fonnte",
+            recipient: testRecipient.nama,
+            phone: testRecipient.no_hp
+          }),
+          { status: 500 }
+        );
+      }
+    }
+
+    // NORMAL MODE: Continue with regular processing
     // Check if tanggal 17 is a holiday
     if (isTanggal17Holiday()) {
       console.log("[Kebijakan Notifications] ⚠️ Tanggal 17 adalah hari libur/akhir pekan. Notifikasi TIDAK dikirim.");

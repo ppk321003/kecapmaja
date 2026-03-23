@@ -389,9 +389,74 @@ serve(async (req: Request) => {
   try {
     console.log('[Karir Notifications] Starting execution...');
     
+    // Parse request body
+    let body = {};
+    try {
+      body = await req.json();
+    } catch (e) {
+      // No body is ok
+    }
+
+    const { testMode, testRecipient } = body as any;
+    
     // Initialize Fonnte device tokens
     initializeDeviceTokens();
 
+    // TEST MODE: Send only to specific recipient
+    if (testMode && testRecipient) {
+      console.log('[Test Mode] Sending test message to:', testRecipient.nama);
+      
+      const device = selectBestDevice();
+      if (!device) {
+        return new Response(
+          JSON.stringify({ error: "No available Fonnte devices" }),
+          { status: 503 }
+        );
+      }
+
+      // Create test message
+      const testEmployee = {
+        ...testRecipient,
+        akKumulatif: 35,
+        kategori: 'Keterampilan' as any,
+        tmtPns: '',
+        tmtPangkat: ''
+      };
+      
+      const estimasi = cekKaryawanBisaUsul(testEmployee);
+      const message = buildMessage(testEmployee, estimasi);
+      
+      const result = await sendWAViaFonnte(testEmployee.no_hp, message);
+
+      if (result.success) {
+        console.log(`[Test Mode] ✅ Message sent to ${testEmployee.nama}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            testMode: true,
+            sent: 1,
+            recipient: testEmployee.nama,
+            phone: testEmployee.no_hp,
+            device: result.device,
+            timestamp: new Date().toISOString()
+          }),
+          { status: 200 }
+        );
+      } else {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            testMode: true,
+            error: "Failed to send via Fonnte",
+            recipient: testEmployee.nama,
+            phone: testEmployee.no_hp
+          }),
+          { status: 500 }
+        );
+      }
+    }
+
+    // NORMAL MODE: Continue with regular processing
     const results: any[] = [];
     const now = new Date();
 
