@@ -383,9 +383,29 @@ function buildMessage(karyawan: Karyawan, estimasi: any): string {
   return message;
 }
 
+// ==================== CORS HEADERS ====================
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json',
+};
+
+// ==================== RESPONSE HELPER ====================
+function createCorsResponse(body: any, status: number = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: corsHeaders,
+  });
+}
+
 // ==================== MAIN FUNCTION ====================
 
 serve(async (req: Request) => {
+  // Handle CORS preflight request
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
   try {
     console.log('[Karir Notifications] Starting execution...');
     
@@ -408,10 +428,7 @@ serve(async (req: Request) => {
       
       const device = selectBestDevice();
       if (!device) {
-        return new Response(
-          JSON.stringify({ error: "No available Fonnte devices" }),
-          { status: 503 }
-        );
+        return createCorsResponse({ error: "No available Fonnte devices" }, 503);
       }
 
       // Create test message
@@ -430,29 +447,23 @@ serve(async (req: Request) => {
 
       if (result.success) {
         console.log(`[Test Mode] ✅ Message sent to ${testEmployee.nama}`);
-        return new Response(
-          JSON.stringify({
-            success: true,
-            testMode: true,
-            sent: 1,
-            recipient: testEmployee.nama,
-            phone: testEmployee.no_hp,
-            device: result.device,
-            timestamp: new Date().toISOString()
-          }),
-          { status: 200 }
-        );
+        return createCorsResponse({
+          success: true,
+          testMode: true,
+          sent: 1,
+          recipient: testEmployee.nama,
+          phone: testEmployee.no_hp,
+          device: result.device,
+          timestamp: new Date().toISOString()
+        }, 200);
       } else {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            testMode: true,
-            error: "Failed to send via Fonnte",
-            recipient: testEmployee.nama,
-            phone: testEmployee.no_hp
-          }),
-          { status: 500 }
-        );
+        return createCorsResponse({
+          success: false,
+          testMode: true,
+          error: "Failed to send via Fonnte",
+          recipient: testEmployee.nama,
+          phone: testEmployee.no_hp
+        }, 500);
       }
     }
 
@@ -582,27 +593,21 @@ serve(async (req: Request) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        timestamp: now.toISOString(),
-        totalEmployees: karyawanList.length,
-        totalCandidates: results.length,
-        totalSent: sentCount,
-        results: results
-      }),
-      { headers: { 'Content-Type': 'application/json' } }
-    );
+    return createCorsResponse({
+      success: true,
+      timestamp: now.toISOString(),
+      totalEmployees: karyawanList.length,
+      totalCandidates: results.length,
+      totalSent: sentCount,
+      results: results
+    }, 200);
 
   } catch (error) {
     console.error('[Karir Notifications Error]', error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: String(error),
-        timestamp: new Date().toISOString()
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return createCorsResponse({ 
+      success: false, 
+      error: String(error),
+      timestamp: new Date().toISOString()
+    }, 500);
   }
 });

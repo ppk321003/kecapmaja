@@ -312,8 +312,28 @@ _Kerja Efisien, Cepat, Akurat, Profesional_
 _Maju Aman Jeung Amanah_`;
 }
 
+// ==================== CORS HEADERS ====================
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json',
+};
+
+// ==================== RESPONSE HELPER ====================
+function createCorsResponse(body: any, status: number = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: corsHeaders,
+  });
+}
+
 // ==================== MAIN FUNCTION ====================
 serve(async (req: Request) => {
+  // Handle CORS preflight request
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
   try {
     // Parse request body
     let body = {};
@@ -329,10 +349,7 @@ serve(async (req: Request) => {
     initializeDeviceTokens();
     
     if (deviceTokens.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No Fonnte devices available" }),
-        { status: 503 }
-      );
+      return createCorsResponse({ error: "No Fonnte devices available" }, 503);
     }
 
     console.log("[Kebijakan Notifications] Starting execution...");
@@ -343,10 +360,7 @@ serve(async (req: Request) => {
       
       const device = selectBestDevice();
       if (!device) {
-        return new Response(
-          JSON.stringify({ error: "No available Fonnte devices" }),
-          { status: 503 }
-        );
+        return createCorsResponse({ error: "No available Fonnte devices" }, 503);
       }
 
       const message = buildKebijakanMessage(testRecipient.nama);
@@ -354,29 +368,23 @@ serve(async (req: Request) => {
 
       if (success) {
         console.log(`[Test Mode] ✅ Message sent to ${testRecipient.nama}`);
-        return new Response(
-          JSON.stringify({
-            status: "success",
-            testMode: true,
-            sent: 1,
-            recipient: testRecipient.nama,
-            phone: testRecipient.no_hp,
-            device: device.name,
-            timestamp: new Date().toISOString()
-          }),
-          { status: 200 }
-        );
+        return createCorsResponse({
+          status: "success",
+          testMode: true,
+          sent: 1,
+          recipient: testRecipient.nama,
+          phone: testRecipient.no_hp,
+          device: device.name,
+          timestamp: new Date().toISOString()
+        }, 200);
       } else {
-        return new Response(
-          JSON.stringify({
-            status: "failed",
-            testMode: true,
-            error: "Failed to send via Fonnte",
-            recipient: testRecipient.nama,
-            phone: testRecipient.no_hp
-          }),
-          { status: 500 }
-        );
+        return createCorsResponse({
+          status: "failed",
+          testMode: true,
+          error: "Failed to send via Fonnte",
+          recipient: testRecipient.nama,
+          phone: testRecipient.no_hp
+        }, 500);
       }
     }
 
@@ -384,14 +392,11 @@ serve(async (req: Request) => {
     // Check if tanggal 17 is a holiday
     if (isTanggal17Holiday()) {
       console.log("[Kebijakan Notifications] ⚠️ Tanggal 17 adalah hari libur/akhir pekan. Notifikasi TIDAK dikirim.");
-      return new Response(
-        JSON.stringify({ 
-          status: "skipped",
-          reason: "Tanggal 17 adalah hari libur atau akhir pekan",
-          sent: 0
-        }),
-        { status: 200 }
-      );
+      return createCorsResponse({ 
+        status: "skipped",
+        reason: "Tanggal 17 adalah hari libur atau akhir pekan",
+        sent: 0
+      }, 200);
     }
 
     console.log("[Kebijakan Notifications] Fetching MASTER.ORGANIK data...");
@@ -419,10 +424,7 @@ serve(async (req: Request) => {
     const rows = sheetsData.data || [];
     if (rows.length <= 1) {
       console.log("[Kebijakan Notifications] No data found in MASTER.ORGANIK");
-      return new Response(
-        JSON.stringify({ error: "No employees found", sent: 0 }),
-        { status: 400 }
-      );
+      return createCorsResponse({ error: "No employees found", sent: 0 }, 400);
     }
 
     // Build header index map for flexible column lookup
@@ -481,10 +483,7 @@ serve(async (req: Request) => {
     console.log(`[Kebijakan Notifications] Karyawan yang berulang tahun hari ini: ${karyawanUltah.length}`);
 
     if (karyawanList.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No employees found", sent: 0 }),
-        { status: 400 }
-      );
+      return createCorsResponse({ error: "No employees found", sent: 0 }, 400);
     }
 
     // Send notifications in two phases
@@ -612,35 +611,29 @@ serve(async (req: Request) => {
     const birthdaySent = birthdayResults.filter(r => r.status === 'sent').length;
     const kebijakanSent = kebijakanResults.filter(r => r.status === 'sent').length;
 
-    return new Response(
-      JSON.stringify({
-        status: "success",
-        sent: sentCount,
-        failed: failedCount,
-        total: karyawanList.length,
-        breakdown: {
-          birthday: {
-            count: karyawanUltah.length,
-            sent: birthdaySent,
-            failed: karyawanUltah.length - birthdaySent
-          },
-          kebijakan: {
-            total: karyawanList.length,
-            sent: kebijakanSent,
-            failed: karyawanList.length - kebijakanSent
-          }
+    return createCorsResponse({
+      status: "success",
+      sent: sentCount,
+      failed: failedCount,
+      total: karyawanList.length,
+      breakdown: {
+        birthday: {
+          count: karyawanUltah.length,
+          sent: birthdaySent,
+          failed: karyawanUltah.length - birthdaySent
         },
-        results: results.slice(0, 20), // Return first 20 for logging
-      }),
-      { status: 200 }
-    );
+        kebijakan: {
+          total: karyawanList.length,
+          sent: kebijakanSent,
+          failed: karyawanList.length - kebijakanSent
+        }
+      },
+      results: results.slice(0, 20), // Return first 20 for logging
+    }, 200);
   } catch (error) {
     console.error("[Kebijakan Notifications Error]", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      { status: 500 }
-    );
+    return createCorsResponse({
+      error: error instanceof Error ? error.message : "Unknown error",
+    }, 500);
   }
 });
