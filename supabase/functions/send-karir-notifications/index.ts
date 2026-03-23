@@ -128,6 +128,35 @@ function normalizeTanggal(tanggal: string): string {
 }
 
 /**
+ * Get koefisien AK berdasarkan jabatan
+ * Sesuai dengan Peraturan BKN tentang perhitungan Angka Kredit
+ */
+function getKoefisien(jabatan: string): number {
+  const koefisienMap: Record<string, number> = {
+    'Ahli Pertama': 12.5,
+    'Ahli Muda': 25.0,
+    'Ahli Madya': 37.5,
+    'Ahli Utama': 50.0,
+    'Terampil': 5.0,
+    'Mahir': 12.5,
+    'Penyelia': 25.0,
+    'Fungsional Umum': 5.0
+  };
+  
+  for (const [key, value] of Object.entries(koefisienMap)) {
+    if (jabatan.includes(key)) return value;
+  }
+  
+  // Default fallback
+  if (jabatan.includes('Ahli')) return 12.5;
+  if (jabatan.includes('Penyelia')) return 25.0;
+  if (jabatan.includes('Mahir')) return 12.5;
+  if (jabatan.includes('Terampil')) return 5.0;
+  
+  return 12.5;
+}
+
+/**
  * Get kebutuhan pangkat berdasarkan golongan saat ini dan kategori
  */
 function getKebutuhanPangkat(golongan: string, kategori: string): number {
@@ -196,7 +225,7 @@ function hitungAKTambahan(karyawan: Karyawan, predikatAsumsi: number = 1.0): num
   const selisihBulan = hitungSelisihBulan(tglPenghitunganTerakhir, hariIni);
   if (selisihBulan <= 0) return 0;
 
-  const koefisien = 5.0; // Terampil
+  const koefisien = getKoefisien(karyawan.jabatan);
   const akPerBulan = predikatAsumsi * koefisien / 12;
   const akTambahan = selisihBulan * akPerBulan;
 
@@ -211,7 +240,7 @@ function cekKaryawanBisaUsul(karyawan: Karyawan, predikatAsumsi: number = 1.0) {
   // Hitung AK real saat ini
   const akTambahan = hitungAKTambahan(karyawan, predikatAsumsi);
   const akRealSaatIni = karyawan.akKumulatif + akTambahan;
-  const koefisien = 5.0; // Terampil
+  const koefisien = getKoefisien(karyawan.jabatan);
   const akPerBulan = predikatAsumsi * koefisien / 12;
 
   // CEK 1: KENAIKAN JABATAN
@@ -483,14 +512,19 @@ function formatEstimasiWaktu(bulan: number): string {
 
 function buildMessage(karyawan: Karyawan, estimasi: any): string {
   const appLink = 'https://kecapmaja.app/KarierKu';
-  const jabatanBerikutnya = getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
-  const golonganBerikutnya = getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
+  
+  // Handle undefined values - use safe defaults
+  const golonganSaat = karyawan.golongan || 'Tidak tersedia';
+  const kategoriSaat = karyawan.kategori || 'Reguler';
+  
+  const jabatanBerikutnya = getJabatanBerikutnya(karyawan.jabatan, kategoriSaat);
+  const golonganBerikutnya = getGolonganBerikutnya(golonganSaat, kategoriSaat);
 
   let message = `Halo ${karyawan.nama.split(' ')[0]}, 👋\n\n`;
   message += `Kabar baik! Status kenaikan karir Anda:\n\n`;
   message += `📊 *Posisi Saat Ini*\n`;
   message += `Jabatan: ${karyawan.jabatan}\n`;
-  message += `Pangkat: ${karyawan.golongan}\n\n`;
+  message += `Pangkat: ${golonganSaat}\n\n`;
 
   if (estimasi.type === 'jabatan_pangkat') {
     // Kedua-duanya akan memenuhi syarat dalam waktu sama
@@ -506,7 +540,7 @@ function buildMessage(karyawan: Karyawan, estimasi: any): string {
   } else if (estimasi.type === 'jabatan') {
     message += `📊 *Posisi yang akan diperoleh dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*:\n`;
     message += `Jabatan: ${jabatanBerikutnya}\n`;
-    message += `Pangkat: ${karyawan.golongan}\n\n`;
+    message += `Pangkat: ${golonganSaat}\n\n`;
     message += `🎯 *Syarat yang diperlukan:*\n`;
     message += `  • Kenaikan Jabatan: ${estimasi.kebutuhanJabatan} AK\n\n`;
     message += `📋 *Siapkan dokumen usulan kenaikan jabatan*\n`;

@@ -148,6 +148,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
             nama: testEmployee.nama,
             no_hp: testEmployee.no_hp || '',
             jabatan: testEmployee.jabatan,
+            golongan: testEmployee.golongan || '',
+            pangkat: testEmployee.pangkat || '',
+            kategori: testEmployee.kategori || 'Reguler',
             satker: testEmployee.satker || testEmployee.unitKerja || '',
           }
         }
