@@ -138,13 +138,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
       // Call appropriate function based on testType
       const functionName = 'send-kebijakan-notifications';
       
-      // Get current session for auth header
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('No active session. Please login first.');
-      }
-
+      // Invoke function (JWT verification is disabled for this function)
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: {
           testMode: true,
@@ -156,10 +150,6 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
             jabatan: testEmployee.jabatan,
             satker: testEmployee.satker,
           }
-        },
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
         }
       });
 
@@ -208,13 +198,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
     setIsLoading(true);
 
     try {
-      // Get current session for auth header
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('No active session. Please login first.');
-      }
-
+      // Invoke function (JWT verification is disabled for this function)
       const { data, error } = await supabase.functions.invoke('send-manual-wa-notifications', {
         body: {
           nips: recipients.map((r) => r.nip),
@@ -226,10 +210,6 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           tanggal,
           previewMessage: editablePreview || basePreviewMessage,
           ppkName,
-        },
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
         }
       });
 
