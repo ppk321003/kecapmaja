@@ -532,6 +532,7 @@ function buildMessage(karyawan: Karyawan, estimasi: any): string {
   message += `Jabatan: ${karyawan.jabatan}\n`;
   message += `Pangkat: ${golonganSaat}\n\n`;
 
+  // Check if karyawan qualifies for advancement in next 6 months
   if (estimasi.type === 'jabatan_pangkat') {
     // Kedua-duanya akan memenuhi syarat dalam waktu sama
     message += `📊 *Posisi yang akan diperoleh dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*:\n`;
@@ -561,12 +562,12 @@ function buildMessage(karyawan: Karyawan, estimasi: any): string {
     message += `📋 *Siapkan dokumen usulan kenaikan pangkat*\n`;
     message += `  • SK Kenaikan Pangkat\n`;
     message += `  • Bukti AK Kumulatif\n\n`;
-  }
-
-  // Fallback jika tipe kenaikan tidak match (tidak seharusnya terjadi jika bisaUsul=true)
-  if (!estimasi.type) {
-    message += `⚠️ Anda saat ini belum memenuhi syarat kenaikan dalam 6 bulan ke depan.\n`;
-    message += `Terus kembangkan pencapaian Anda untuk meraih target karier!\n\n`;
+  } else {
+    // Fallback: karyawan belum memenuhi syarat dalam 6 bulan ke depan
+    message += `⚠️ *Status Kenaikan*\n`;
+    message += `Anda saat ini belum memenuhi syarat kenaikan dalam 6 bulan ke depan.\n\n`;
+    message += `💪 *Tips Pengembangan Karir*\n`;
+    message += `Terus tingkatkan pencapaian dan kinerja Anda untuk meraih target karier. Pantau perkembangan AK Anda secara berkala.\n\n`;
   }
 
   message += `📱 Pantau progress lengkap di:\n${appLink}\n\n`;
