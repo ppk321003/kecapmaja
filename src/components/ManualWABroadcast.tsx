@@ -52,7 +52,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
   // Test state
   const [showTestModal, setShowTestModal] = useState(false);
-  const [testType, setTestType] = useState<'kebijakan' | 'pakaian-dinas' | null>(null);
+  const [testType, setTestType] = useState<'kebijakan' | 'karir' | null>(null);
   const [testRecipientNip, setTestRecipientNip] = useState('');
   const [isTestLoading, setIsTestLoading] = useState(false);
   const [testSearchQuery, setTestSearchQuery] = useState('');
@@ -136,19 +136,19 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
       }
 
       // Call appropriate function based on testType
-      const functionName = 'send-kebijakan-notifications';
+      const functionName = testType === 'karir' ? 'send-karir-notifications' : 'send-kebijakan-notifications';
       
       // Invoke function (JWT verification is disabled for this function)
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: {
           testMode: true,
-          testPhase: testType === 'pakaian-dinas' ? 'kebijakan' : 'kebijakan',
+          testPhase: testType,
           testRecipient: {
             nip: testEmployee.nip,
             nama: testEmployee.nama,
-            no_hp: testEmployee.no_hp,
+            no_hp: testEmployee.no_hp || '',
             jabatan: testEmployee.jabatan,
-            satker: testEmployee.satker,
+            satker: testEmployee.satker || testEmployee.unitKerja || '',
           }
         }
       });
@@ -159,7 +159,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
       toast({
         title: '✅ Test Berhasil',
-        description: `Pesan test ${testType === 'pakaian-dinas' ? 'Pakaian Dinas' : 'Kebijakan'} dikirim ke ${testEmployee.nama}. Cek WhatsApp dalam 10 detik.`,
+        description: `Pesan test ${testType === 'karir' ? 'Kenaikan Karier' : 'Kebijakan'} dikirim ke ${testEmployee.nama}. Cek WhatsApp dalam 10 detik.`,
       });
 
       // Reset modal
@@ -270,13 +270,13 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
             </Button>
             <Button
               onClick={() => {
-                setTestType('pakaian-dinas');
+                setTestType('karir');
                 setShowTestModal(true);
               }}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               <Beaker className="w-4 h-4 mr-2" />
-              Test Pakaian Dinas
+              Test Kenaikan Karier
             </Button>
           </div>
           <p className="text-xs text-gray-600 mt-3">
@@ -544,7 +544,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Beaker className="w-5 h-5 text-purple-600" />
-                {testType === 'pakaian-dinas' ? 'Test Pakaian Dinas' : 'Test Kebijakan'}
+                {testType === 'karir' ? 'Test Kenaikan Karier' : 'Test Kebijakan'}
               </CardTitle>
               <p className="text-sm text-gray-600 font-normal">Pilih 1 karyawan untuk menerima test notifikasi</p>
             </CardHeader>

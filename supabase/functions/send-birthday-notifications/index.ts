@@ -1,13 +1,15 @@
 /**
- * Supabase Edge Function: Send Kebijakan (Policy) Notifications
- * Trigger: Cron job setiap tanggal 16 pukul 18:00 WIB (0 11 16 * * UTC)
+ * Supabase Edge Function: Send Birthday Notifications
+ * Trigger: Cron job setiap hari pukul 08:00 WIB (0 1 * * * UTC)
+ * NOTE: Requires manual schedule setup in Supabase Dashboard!
  * 
- * FITUR: 
- * - Dikirim ke SEMUA karyawan aktif (bukan hanya yang naik pangkat)
- * - Cek hari libur: pastikan tanggal 17 bukan hari libur
- * - Device rotation dari Fonnte (sama dengan karir-notifications)
- * - Rate limiting dan retry mechanism
- * - Kebijakan broadcast ke semua (fase 2)
+ * FITUR:
+ * - Setiap hari cek semua karyawan
+ * - Jika ada yang berulang tahun hari ini (cocok bulan+tanggal dari NIP), kirim greeting
+ * - Extract tanggal lahir dari NIP (8 digit pertama: YYYYMMDD format)
+ * - Smart personalization: age-based greeting variants (normal/40+/50+)
+ * - Device rotation dari Fonnte dengan rate limiting
+ * - Retry mechanism dengan exponential backoff
  */
 
 // @ts-ignore - Deno runtime
@@ -51,29 +53,21 @@ let deviceTokens: DeviceToken[] = [];
 let deviceStats = new Map<string, { usageCount: number; lastUsed: Date; onCooldown: boolean }>();
 const RATE_LIMIT = { perHour: 15, perDay: 40, cooldownSeconds: 15 };
 
-// Daftar Hari Libur Nasional 2026 (Indonesia)
-const HARI_LIBUR_2026 = [
-  "2026-01-01", // Tahun Baru
-  "2026-02-14", // Isra & Mi'raj
-  "2026-03-25", // Ramadhan 1 Syawal (Lebaran)
-  "2026-03-26", // Lebaran
-  "2026-03-27", // Cuti Bersama Lebaran
-  "2026-03-28", // Cuti Bersama Lebaran
-  "2026-03-29", // Cuti Bersama Lebaran
-  "2026-04-03", // Awal Ramadhan
-  "2026-04-10", // Jumat Agung
-  "2026-04-13", // Hari Raya Nyepi
-  "2026-05-01", // Hari Buruh
-  "2026-05-14", // Kenaikan Isa Almasih
-  "2026-05-16", // Papua Day
-  "2026-06-01", // Pancasila Day
-  "2026-06-24", // Hari Raya Haji
-  "2026-06-25", // Cuti Bersama Idulfitri
-  "2026-07-14", // Tahun Baru Islam (14 Juli dijadwalkan)
-  "2026-08-17", // Hari Kemerdekaan
-  "2026-12-25", // Hari Natal
-  "2026-12-26", // Cuti Bersama
-];
+// ==================== CORS HEADERS ====================
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json',
+};
+
+// ==================== RESPONSE HELPER ====================
+function createCorsResponse(body: any, status: number = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: corsHeaders,
+  });
+}
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -84,7 +78,7 @@ function extractTanggalLahirFromNIP(nip: string): string | null {
   try {
     const normalizedNIP = nip.replace(/\s+/g, "");
     const tanggalLahirStr = normalizedNIP.substring(0, 8);
-    if (tanggalLahirStr.length === 8) {
+    if (tanggalLahirStr.length === 8 && /^\d+$/.test(tanggalLahirStr)) {
       const tahun = tanggalLahirStr.substring(0, 4);
       const bulan = tanggalLahirStr.substring(4, 6);
       const tanggal = tanggalLahirStr.substring(6, 8);
@@ -113,7 +107,7 @@ function hitungUmur(tanggalLahir: string): number {
 }
 
 /**
- * Check if today is someone's birthday
+ * Check if today is someone's birthday (bulan dan tanggal cocok)
  */
 function isHariIniUlangTahun(tanggalLahir: string): boolean {
   const today = new Date();
@@ -154,33 +148,6 @@ function buildUlangTahunMessage(nama: string, umur: number, jabatan: string, sat
   return `Halo ${nama},\n\n🎉 *SELAMAT ULANG TAHUN* 🎉\n\n${randomUcapan}\n\nSalam *Kecap Maja.*\n_Kerja Efisien, Cepat, Akurat, Profesional_\n_Maju Aman Jeung Amanah_`;
 }
 
-/**
- * Check if tanggal 17 is a holiday
- */
-function isTanggal17Holiday(): boolean {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const tanggal17 = `${year}-${month}-17`;
-  
-  // Check if tanggal 17 is in holiday list
-  if (HARI_LIBUR_2026.includes(tanggal17)) {
-    console.log(`[Holiday Check] Tanggal 17 adalah hari libur: ${tanggal17}`);
-    return true;
-  }
-  
-  // Check if it's Saturday (5) or Sunday (6)
-  const date17 = new Date(year, today.getMonth(), 17);
-  const dayOfWeek = date17.getDay();
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    console.log(`[Holiday Check] Tanggal 17 adalah akhir pekan (hari ke-${dayOfWeek})`);
-    return true;
-  }
-  
-  console.log(`[Holiday Check] Tanggal 17 adalah hari kerja`);
-  return false;
-}
-
 function initializeDeviceTokens() {
   try {
     const tokens = JSON.parse(fontneDeviceTokens);
@@ -195,9 +162,9 @@ function initializeDeviceTokens() {
         });
       }
     }
-    console.log(`[Kebijakan] Initialized ${deviceTokens.filter(t => t.active).length} active devices`);
+    console.log(`[Birthday] Initialized ${deviceTokens.filter(t => t.active).length} active devices`);
   } catch (error) {
-    console.error("[Kebijakan] Failed to parse device tokens:", error);
+    console.error("[Birthday] Failed to parse device tokens:", error);
     deviceTokens = [];
   }
 }
@@ -275,56 +242,17 @@ async function sendViaFonnte(phoneNumber: string, message: string, device: Devic
 }
 
 function normalizePhoneNumber(phone: string): string {
-  // Remove non-digit characters
   const digits = phone.replace(/\D/g, "");
   
-  // if starts with 62, use as is
   if (digits.startsWith("62")) {
     return digits;
   }
   
-  // if starts with 0, replace with 62
   if (digits.startsWith("0")) {
     return "62" + digits.slice(1);
   }
   
-  // otherwise prepend 62
   return "62" + digits;
-}
-
-/**
- * Build kebijakan message dengan personalisasi
- */
-function buildKebijakanMessage(nama: string): string {
-  return `Halo ${nama},
-
-📢 *Pengumuman Kebijakan - Hari Bhakti Korps Pegawai Negeri Sipil*
-
-Sehubungan dengan Hari Bhakti Korps Pegawai Negeri Sipil, kami menginformasikan bahwa pada tanggal *17 Februari 2026* (Kamis) seluruh pegawai diwajibkan memakai **Pakaian Dinas Korpri**.
-
-Pakaian Dinas Korpri adalah simbol kebanggaan kami sebagai PNS. Mari kita tunjukkan dedikasi dan profesionalisme dengan memakai pakaian dinas dengan rapi dan sesuai ketentuan.
-
-Terima kasih atas perhatian dan dukungannya.
-
-Salam *Kecap Maja.*
-_Kerja Efisien, Cepat, Akurat, Profesional_
-_Maju Aman Jeung Amanah_`;
-}
-
-// ==================== CORS HEADERS ====================
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json',
-};
-
-// ==================== RESPONSE HELPER ====================
-function createCorsResponse(body: any, status: number = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: corsHeaders,
-  });
 }
 
 // ==================== MAIN FUNCTION ====================
@@ -333,17 +261,10 @@ serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
   try {
-    // Parse request body
-    let body = {};
-    try {
-      body = await req.json();
-    } catch (e) {
-      // No body is ok
-    }
-
-    const { testMode, testPhase, testRecipient } = body as any;
-
+    console.log("[Birthday Notifications] Starting execution...");
+    
     // Initialize device tokens
     initializeDeviceTokens();
     
@@ -351,59 +272,9 @@ serve(async (req: Request) => {
       return createCorsResponse({ error: "No Fonnte devices available" }, 503);
     }
 
-    console.log("[Kebijakan Notifications] Starting execution...");
-    
-    // TEST MODE: Send only to specific recipient
-    if (testMode && testRecipient) {
-      console.log("[Test Mode] Sending test message to:", testRecipient.nama);
-      
-      const device = selectBestDevice();
-      if (!device) {
-        return createCorsResponse({ error: "No available Fonnte devices" }, 503);
-      }
-
-      const message = buildKebijakanMessage(testRecipient.nama);
-      const success = await sendViaFonnte(testRecipient.no_hp, message, device);
-
-      if (success) {
-        console.log(`[Test Mode] ✅ Message sent to ${testRecipient.nama}`);
-        return createCorsResponse({
-          status: "success",
-          testMode: true,
-          sent: 1,
-          recipient: testRecipient.nama,
-          phone: testRecipient.no_hp,
-          device: device.name,
-          timestamp: new Date().toISOString()
-        }, 200);
-      } else {
-        return createCorsResponse({
-          status: "failed",
-          testMode: true,
-          error: "Failed to send via Fonnte",
-          recipient: testRecipient.nama,
-          phone: testRecipient.no_hp
-        }, 500);
-      }
-    }
-
-    // NORMAL MODE: Continue with regular processing
-    // Check if tanggal 17 is a holiday
-    if (isTanggal17Holiday()) {
-      console.log("[Kebijakan Notifications] ⚠️ Tanggal 17 adalah hari libur/akhir pekan. Notifikasi TIDAK dikirim.");
-      return createCorsResponse({ 
-        status: "skipped",
-        reason: "Tanggal 17 adalah hari libur atau akhir pekan",
-        sent: 0
-      }, 200);
-    }
-
-    console.log("[Kebijakan Notifications] Fetching MASTER.ORGANIK data...");
-    
-    // Default spreadsheetId untuk MASTER.ORGANIK (BPS Pusat) - consistent with Home.tsx
+    // Fetch all employees from Google Sheets
     const DEFAULT_ORGANIK_SHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
     
-    // Fetch all active employees from Google Sheets (MASTER.ORGANIK)
     const { data: sheetsData, error: sheetsError } = await supabase.functions.invoke("google-sheets", {
       body: {
         operation: "read",
@@ -418,15 +289,15 @@ serve(async (req: Request) => {
 
     // Parse employee data
     const karyawanList: Karyawan[] = [];
-    const karyawanUltah: Karyawan[] = [];
+    const karyawanUltahHariIni: Karyawan[] = [];
     
     const rows = sheetsData.data || [];
     if (rows.length <= 1) {
-      console.log("[Kebijakan Notifications] No data found in MASTER.ORGANIK");
+      console.log("[Birthday Notifications] No data found in MASTER.ORGANIK");
       return createCorsResponse({ error: "No employees found", sent: 0 }, 400);
     }
 
-    // Build header index map for flexible column lookup
+    // Build header index map
     const headerRow = rows[0] || [];
     const headerMap: Record<string, number> = {};
     headerRow.forEach((header: any, idx: number) => {
@@ -435,7 +306,7 @@ serve(async (req: Request) => {
       }
     });
     
-    console.log("[Kebijakan Notifications] Header columns found:", Object.keys(headerMap).join(', '));
+    console.log("[Birthday Notifications] Header columns found:", Object.keys(headerMap).join(', '));
 
     // Skip header row and process data
     const pegawaiData = rows.slice(1);
@@ -443,7 +314,6 @@ serve(async (req: Request) => {
     for (const row of pegawaiData) {
       if (!row || row.length < 3) continue;
       
-      // Use header map for flexible column lookup with fallback indices
       const nip = row[headerMap['NIP'] || headerMap['NIP_BPS'] || 2] || row[1];
       const nama = row[headerMap['NAMA'] || 3];
       const jabatan = row[headerMap['JABATAN'] || 4];
@@ -470,29 +340,29 @@ serve(async (req: Request) => {
         karyawan.isBirthday = isHariIniUlangTahun(tanggalLahir);
         
         if (karyawan.isBirthday) {
-          karyawanUltah.push(karyawan);
-          console.log(`🎉 Birthday detected: ${nama} (${karyawan.umur} tahun)`);
+          karyawanUltahHariIni.push(karyawan);
+          console.log(`🎉 Birthday detected: ${nama} (${karyawan.umur} tahun) - NIP: ${nip}`);
         }
       }
       
       karyawanList.push(karyawan);
     }
 
-    console.log(`[Kebijakan Notifications] Total karyawan: ${karyawanList.length}`);
-    console.log(`[Kebijakan Notifications] Karyawan yang berulang tahun hari ini: ${karyawanUltah.length}`);
+    console.log(`[Birthday Notifications] Total karyawan: ${karyawanList.length}`);
+    console.log(`[Birthday Notifications] Karyawan yang berulang tahun hari ini: ${karyawanUltahHariIni.length}`);
 
     if (karyawanList.length === 0) {
       return createCorsResponse({ error: "No employees found", sent: 0 }, 400);
     }
 
-    // Send notifications in two phases
+    // Send birthday greetings
     let sentCount = 0;
     let failedCount = 0;
-    const results: { nip: string; nama: string; messageType: string; status: string; error?: string }[] = [];
+    const results: any[] = [];
 
-    // PHASE 1: Send birthday greetings (if exist)
-    console.log(`[Birthday Phase] Sending birthday greetings to ${karyawanUltah.length} employees...`);
-    for (const emp of karyawanUltah) {
+    console.log(`[Birthday Greetings] Sending birthday messages to ${karyawanUltahHariIni.length} employees...`);
+    
+    for (const emp of karyawanUltahHariIni) {
       try {
         const device = selectBestDevice();
         if (!device) {
@@ -500,7 +370,6 @@ serve(async (req: Request) => {
           results.push({
             nip: emp.nip,
             nama: emp.nama,
-            messageType: "birthday",
             status: "failed",
             error: "No device available",
           });
@@ -515,8 +384,9 @@ serve(async (req: Request) => {
           results.push({
             nip: emp.nip,
             nama: emp.nama,
-            messageType: "birthday",
             status: "sent",
+            device: device.name,
+            umur: emp.umur
           });
           console.log(`🎉 Birthday greeting sent to ${emp.nama} (${emp.umur} tahun) via ${device.name}`);
         } else {
@@ -524,7 +394,6 @@ serve(async (req: Request) => {
           results.push({
             nip: emp.nip,
             nama: emp.nama,
-            messageType: "birthday",
             status: "failed",
             error: "Fonnte API error",
           });
@@ -538,7 +407,6 @@ serve(async (req: Request) => {
         results.push({
           nip: emp.nip,
           nama: emp.nama,
-          messageType: "birthday",
           status: "error",
           error: err instanceof Error ? err.message : "Unknown error",
         });
@@ -546,91 +414,19 @@ serve(async (req: Request) => {
       }
     }
 
-    // PHASE 2: Send kebijakan notifications to all employees (including those with birthdays)
-    console.log(`[Kebijakan Phase] Sending kebijakan notifications to ${karyawanList.length} employees...`);
-    for (const emp of karyawanList) {
-      try {
-        const device = selectBestDevice();
-        if (!device) {
-          failedCount++;
-          results.push({
-            nip: emp.nip,
-            nama: emp.nama,
-            messageType: "kebijakan",
-            status: "failed",
-            error: "No device available",
-          });
-          continue;
-        }
-
-        const message = buildKebijakanMessage(emp.nama);
-        const success = await sendViaFonnte(emp.no_hp, message, device);
-
-        if (success) {
-          sentCount++;
-          results.push({
-            nip: emp.nip,
-            nama: emp.nama,
-            messageType: "kebijakan",
-            status: "sent",
-          });
-          console.log(`✓ Kebijakan sent to ${emp.nama} (${emp.nip}) via ${device.name}`);
-        } else {
-          failedCount++;
-          results.push({
-            nip: emp.nip,
-            nama: emp.nama,
-            messageType: "kebijakan",
-            status: "failed",
-            error: "Fonnte API error",
-          });
-          console.log(`✗ Kebijakan failed: ${emp.nama} (${emp.nip})`);
-        }
-
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (err) {
-        failedCount++;
-        results.push({
-          nip: emp.nip,
-          nama: emp.nama,
-          messageType: "kebijakan",
-          status: "error",
-          error: err instanceof Error ? err.message : "Unknown error",
-        });
-        console.error(`Error sending kebijakan to ${emp.nama}:`, err);
-      }
-    }
-
-    console.log(`[Kebijakan Notifications] Complete. Sent: ${sentCount}/${karyawanList.length * 2}, Failed: ${failedCount}`);
-
-    // Count by message type
-    const birthdayResults = results.filter(r => r.messageType === 'birthday');
-    const kebijakanResults = results.filter(r => r.messageType === 'kebijakan');
-    const birthdaySent = birthdayResults.filter(r => r.status === 'sent').length;
-    const kebijakanSent = kebijakanResults.filter(r => r.status === 'sent').length;
+    console.log(`[Birthday Notifications] Complete. Sent: ${sentCount}/${karyawanUltahHariIni.length}, Failed: ${failedCount}`);
 
     return createCorsResponse({
       status: "success",
       sent: sentCount,
       failed: failedCount,
-      total: karyawanList.length,
-      breakdown: {
-        birthday: {
-          count: karyawanUltah.length,
-          sent: birthdaySent,
-          failed: karyawanUltah.length - birthdaySent
-        },
-        kebijakan: {
-          total: karyawanList.length,
-          sent: kebijakanSent,
-          failed: karyawanList.length - kebijakanSent
-        }
-      },
-      results: results.slice(0, 20), // Return first 20 for logging
+      total: karyawanUltahHariIni.length,
+      results: results,
+      timestamp: new Date().toISOString()
     }, 200);
+
   } catch (error) {
-    console.error("[Kebijakan Notifications Error]", error);
+    console.error("[Birthday Notifications Error]", error);
     return createCorsResponse({
       error: error instanceof Error ? error.message : "Unknown error",
     }, 500);

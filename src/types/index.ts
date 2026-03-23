@@ -33,6 +33,8 @@ export interface Karyawan {
   jenisKelamin: 'Laki-laki' | 'Perempuan' | 'L' | 'P';
   linkSkJabatan?: string;
   linkSkPangkat?: string;
+  no_hp?: string;
+  satker?: string;
 }
 
 export interface KonversiData {

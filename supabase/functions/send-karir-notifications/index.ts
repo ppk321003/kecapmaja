@@ -1,13 +1,14 @@
 /**
  * Supabase Edge Function: Send WA Notifications untuk Kenaikan Karir
- * Trigger: Cron job setiap tanggal 1 pukul 08:00 WIB (0 8 1 * * UTC)
+ * Trigger: Cron job setiap tanggal 1 pukul 08:00 WIB (0 1 1 * * UTC)
  * 
  * FITUR:
- * - Identifikasi karyawan yang bisa naik jabatan/golongan sekarang atau dalam 3 bulan
- * - Support CPNS II/c exception (40 AK instead of 60 AK) 
- * - Device rotation strategy dengan rate limiting
- * - Retry mechanism untuk handling Fonnte rate limit  
- * - Detailed logging untuk semua sends (success/failed)
+ * - Identifikasi karyawan kategori Keahlian/Keterampilan yang akan memenuhi syarat kenaikan jabatan/pangkat dalam 1-6 bulan
+ * - Support dual kenaikan: jabatan + pangkat (combined notification jika bersamaan)
+ * - Support CPNS II/c exception (40 AK instead of 60 AK)
+ * - Device rotation strategy dengan rate limiting (15/jam per device)
+ * - Retry mechanism dengan exponential backoff
+ * - Detailed logging untuk all sends (success/failed)
  */
 
 // @ts-ignore - Deno runtime
@@ -127,20 +128,63 @@ function normalizeTanggal(tanggal: string): string {
 }
 
 /**
+ * Get kebutuhan pangkat berdasarkan golongan saat ini dan kategori
+ */
+function getKebutuhanPangkat(golongan: string, kategori: string): number {
+  if (kategori === 'Reguler') return 0;
+  
+  const kebutuhanKeahlian: Record<string, number> = {
+    'III/a': 50, 'III/b': 50, 'III/c': 100, 'III/d': 100,
+    'IV/a': 150, 'IV/b': 150, 'IV/c': 150, 'IV/d': 200
+  };
+  const kebutuhanKeterampilan: Record<string, number> = {
+    'II/a': 15, 'II/b': 20, 'II/c': 20, 'II/d': 20,
+    'III/a': 50, 'III/b': 50, 'III/c': 100
+  };
+  
+  const kebutuhan = kategori === 'Keahlian' ? kebutuhanKeahlian : kebutuhanKeterampilan;
+  return kebutuhan[golongan] || 0;
+}
+
+/**
+ * Get kebutuhan jabatan berdasarkan jabatan saat ini dan kategori
  * CPNS II/c exception: HANYA jika tmtPns === tmtPangkat, maka kebutuhan = 40 AK
  */
-function getKebutuhanJabatanTerampil(golongan: string, tmtPns?: string, tmtPangkat?: string): number {
-  // Exception: CPNS II/c (start dari II/c dengan tmtPns === tmtPangkat)
-  // Normalize tanggal untuk handle berbagai format (e.g. "1 Maret 2022" vs "01 Maret 2022")
-  if (
-    golongan === 'II/c' && 
-    tmtPns && 
-    tmtPangkat && 
-    normalizeTanggal(tmtPns) === normalizeTanggal(tmtPangkat)
-  ) {
-    return 40; // CPNS dari II/c hanya butuh 40 AK
+function getKebutuhanJabatan(jabatan: string, kategori: string, golongan?: string, tmtPns?: string, tmtPangkat?: string): number {
+  if (kategori === 'Reguler') return 0;
+  
+  const kebutuhanKeahlian: Record<string, number> = {
+    'Ahli Pertama': 100,
+    'Ahli Muda': 200,
+    'Ahli Madya': 450,
+    'Ahli Utama': 0
+  };
+  const kebutuhanKeterampilan: Record<string, number> = {
+    'Terampil': 60,
+    'Mahir': 100,
+    'Penyelia': 0
+  };
+  
+  if (kategori === 'Keahlian') {
+    for (const [key, value] of Object.entries(kebutuhanKeahlian)) {
+      if (jabatan.includes(key)) return value;
+    }
+  } else {
+    // EXCEPTION: CPNS II/c (tmtPns === tmtPangkat) hanya butuh 40 AK untuk naik ke Mahir
+    if (
+      jabatan.includes('Terampil') && 
+      golongan === 'II/c' && 
+      tmtPns && 
+      tmtPangkat && 
+      normalizeTanggal(tmtPns) === normalizeTanggal(tmtPangkat)
+    ) {
+      return 40;
+    }
+    for (const [key, value] of Object.entries(kebutuhanKeterampilan)) {
+      if (jabatan.includes(key)) return value;
+    }
   }
-  return 60; // Normal untuk yang lain
+  return 0;
 }
 
 function hitungAKTambahan(karyawan: Karyawan, predikatAsumsi: number = 1.0): number {
@@ -164,26 +208,51 @@ function cekKaryawanBisaUsul(karyawan: Karyawan, predikatAsumsi: number = 1.0) {
     return { bisaUsul: false, type: null, bulanDibutuhkan: 999 };
   }
 
-  // Untuk Terampil yang ingin naik ke Mahir
-  const kebutuhanJabatan = getKebutuhanJabatanTerampil(karyawan.golongan, karyawan.tmtPns, karyawan.tmtPangkat);
-  
+  // Hitung AK real saat ini
   const akTambahan = hitungAKTambahan(karyawan, predikatAsumsi);
   const akRealSaatIni = karyawan.akKumulatif + akTambahan;
-  const kekuranganJabatan = Math.max(0, kebutuhanJabatan - akRealSaatIni);
-
   const koefisien = 5.0; // Terampil
   const akPerBulan = predikatAsumsi * koefisien / 12;
-  const bulanDibutuhkan = akPerBulan > 0 ? Math.ceil(kekuranganJabatan / akPerBulan) : 999;
 
-  const bisaUsulJabatan = akRealSaatIni >= kebutuhanJabatan && kebutuhanJabatan > 0;
-  const dalamTigaBulan = bulanDibutuhkan > 0 && bulanDibutuhkan <= 3;
+  // CEK 1: KENAIKAN JABATAN
+  const kebutuhanJabatan = getKebutuhanJabatan(karyawan.jabatan, karyawan.kategori, karyawan.golongan, karyawan.tmtPns, karyawan.tmtPangkat);
+  const kekuranganJabatan = Math.max(0, kebutuhanJabatan - akRealSaatIni);
+  const bulanUntukJabatan = akPerBulan > 0 ? Math.ceil(kekuranganJabatan / akPerBulan) : 999;
+  const bisaUsulJabatan = bulanUntukJabatan >= 1 && bulanUntukJabatan <= 6;
+
+  // CEK 2: KENAIKAN PANGKAT
+  const kebutuhanPangkat = getKebutuhanPangkat(karyawan.golongan, karyawan.kategori);
+  const kekuranganPangkat = Math.max(0, kebutuhanPangkat - akRealSaatIni);
+  const bulanUntukPangkat = akPerBulan > 0 ? Math.ceil(kekuranganPangkat / akPerBulan) : 999;
+  const bisaUsulPangkat = bulanUntukPangkat >= 1 && bulanUntukPangkat <= 6;
+
+  // Tentukan tipe notifikasi
+  let type = null;
+  let bulanDibutuhkan = 999;
+  
+  if (bisaUsulJabatan && bisaUsulPangkat && bulanUntukJabatan === bulanUntukPangkat) {
+    // Kedua-duanya butuh waktu sama → combined notification
+    type = 'jabatan_pangkat';
+    bulanDibutuhkan = bulanUntukJabatan;
+  } else if (bisaUsulJabatan && bulanUntukJabatan <= bulanUntukPangkat) {
+    // Hanya jabatan atau jabatan lebih dulu
+    type = 'jabatan';
+    bulanDibutuhkan = bulanUntukJabatan;
+  } else if (bisaUsulPangkat) {
+    // Hanya pangkat atau pangkat lebih dulu
+    type = 'pangkat';
+    bulanDibutuhkan = bulanUntukPangkat;
+  }
 
   return {
-    bisaUsul: bisaUsulJabatan || dalamTigaBulan,
-    type: bisaUsulJabatan ? 'sekarang' : 'dalam_3_bulan',
+    bisaUsul: type !== null,
+    type: type,
     bulanDibutuhkan: bulanDibutuhkan,
     akRealSaatIni: akRealSaatIni,
-    kebutuhanJabatan: kebutuhanJabatan
+    kebutuhanJabatan: kebutuhanJabatan,
+    kebutuhanPangkat: kebutuhanPangkat,
+    bulanUntukJabatan: bulanUntukJabatan,
+    bulanUntukPangkat: bulanUntukPangkat
   };
 }
 
@@ -368,12 +437,19 @@ function buildMessage(karyawan: Karyawan, estimasi: any): string {
   message += `Jabatan: ${karyawan.jabatan}\n`;
   message += `Pangkat: ${karyawan.golongan}\n\n`;
 
-  if (estimasi.type === 'sekarang') {
-    message += `✅ *Anda SUDAH BISA mengajukan kenaikan!*\n`;
-    message += `Hubungi PPK atau kunjungi aplikasi untuk process selanjutnya.\n\n`;
-  } else if (estimasi.type === 'dalam_3_bulan') {
+  if (estimasi.type === 'jabatan_pangkat') {
+    // Kedua-duanya akan memenuhi syarat dalam waktu sama
     message += `⏳ *Dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*\n`;
-    message += `Anda akan memenuhi syarat kenaikan!\n\n`;
+    message += `🎯 Anda akan memenuhi syarat untuk:\n`;
+    message += `  • *Kenaikan Jabatan* (${estimasi.kebutuhanJabatan} AK)\n`;
+    message += `  • *Kenaikan Pangkat* (${estimasi.kebutuhanPangkat} AK)\n`;
+    message += `Persiapkan dokumen melengkapi untuk kedua usulan!\n\n`;
+  } else if (estimasi.type === 'jabatan') {
+    message += `⏳ *Dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*\n`;
+    message += `🎯 Anda akan memenuhi syarat untuk *Kenaikan Jabatan* (${estimasi.kebutuhanJabatan} AK)\n\n`;
+  } else if (estimasi.type === 'pangkat') {
+    message += `⏳ *Dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*\n`;
+    message += `🎯 Anda akan memenuhi syarat untuk *Kenaikan Pangkat* (${estimasi.kebutuhanPangkat} AK)\n\n`;
   }
 
   message += `📱 Pantau progress lengkap di:\n${appLink}\n\n`;
