@@ -415,6 +415,59 @@ async function sendWAViaFonnte(
   }
 }
 
+function getJabatanBerikutnya(jabatanSekarang: string, kategori: string): string {
+  if (kategori === 'Reguler') return 'Tidak berlaku';
+  
+  const progressionKeahlian: Record<string, string> = {
+    'Ahli Pertama': 'Ahli Muda',
+    'Ahli Muda': 'Ahli Madya',
+    'Ahli Madya': 'Ahli Utama',
+    'Ahli Utama': 'Tidak Ada'
+  };
+  
+  const progressionKeterampilan: Record<string, string> = {
+    'Terampil': 'Mahir',
+    'Mahir': 'Penyelia',
+    'Penyelia': 'Tidak Ada'
+  };
+  
+  if (kategori === 'Keahlian') {
+    for (const [key, value] of Object.entries(progressionKeahlian)) {
+      if (jabatanSekarang.includes(key)) return value;
+    }
+  } else if (kategori === 'Keterampilan') {
+    for (const [key, value] of Object.entries(progressionKeterampilan)) {
+      if (jabatanSekarang.includes(key)) return value;
+    }
+  }
+  
+  return 'Tidak Diketahui';
+}
+
+function getGolonganBerikutnya(golonganSekarang: string, kategori: string): string {
+  if (kategori === 'Reguler') {
+    const progressionReguler: Record<string, string> = {
+      'II/a': 'II/b', 'II/b': 'II/c', 'II/c': 'II/d', 'II/d': 'III/a',
+      'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d', 'III/d': 'IV/a',
+      'IV/a': 'IV/b', 'IV/b': 'IV/c', 'IV/c': 'IV/d', 'IV/d': 'IV/e'
+    };
+    return progressionReguler[golonganSekarang] || 'Tidak Ada';
+  }
+  
+  const progressionKeahlian: Record<string, string> = {
+    'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d', 'III/d': 'IV/a',
+    'IV/a': 'IV/b', 'IV/b': 'IV/c', 'IV/c': 'IV/d', 'IV/d': 'IV/e'
+  };
+  
+  const progressionKeterampilan: Record<string, string> = {
+    'II/a': 'II/b', 'II/b': 'II/c', 'II/c': 'II/d', 'II/d': 'III/a',
+    'III/a': 'III/b', 'III/b': 'III/c', 'III/c': 'III/d'
+  };
+  
+  const progression = kategori === 'Keahlian' ? progressionKeahlian : progressionKeterampilan;
+  return progression[golonganSekarang] || 'Tidak Ada';
+}
+
 function formatEstimasiWaktu(bulan: number): string {
   if (bulan <= 0) return 'Sekarang';
   if (bulan === 1) return '1 bulan';
@@ -430,6 +483,8 @@ function formatEstimasiWaktu(bulan: number): string {
 
 function buildMessage(karyawan: Karyawan, estimasi: any): string {
   const appLink = 'https://kecapmaja.app/KarierKu';
+  const jabatanBerikutnya = getJabatanBerikutnya(karyawan.jabatan, karyawan.kategori);
+  const golonganBerikutnya = getGolonganBerikutnya(karyawan.golongan, karyawan.kategori);
 
   let message = `Halo ${karyawan.nama.split(' ')[0]}, 👋\n\n`;
   message += `Kabar baik! Status kenaikan karir Anda:\n\n`;
@@ -439,17 +494,33 @@ function buildMessage(karyawan: Karyawan, estimasi: any): string {
 
   if (estimasi.type === 'jabatan_pangkat') {
     // Kedua-duanya akan memenuhi syarat dalam waktu sama
-    message += `⏳ *Dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*\n`;
-    message += `🎯 Anda akan memenuhi syarat untuk:\n`;
-    message += `  • *Kenaikan Jabatan* (${estimasi.kebutuhanJabatan} AK)\n`;
-    message += `  • *Kenaikan Pangkat* (${estimasi.kebutuhanPangkat} AK)\n`;
-    message += `Persiapkan dokumen melengkapi untuk kedua usulan!\n\n`;
+    message += `📊 *Posisi yang akan diperoleh dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*:\n`;
+    message += `Jabatan: ${jabatanBerikutnya}\n`;
+    message += `Pangkat: ${golonganBerikutnya}\n\n`;
+    message += `🎯 *Syarat yang diperlukan:*\n`;
+    message += `  • Kenaikan Jabatan: ${estimasi.kebutuhanJabatan} AK\n`;
+    message += `  • Kenaikan Pangkat: ${estimasi.kebutuhanPangkat} AK\n\n`;
+    message += `📋 *Persiapkan dokumen untuk kedua usulan:*\n`;
+    message += `  • SK Kenaikan Jabatan\n`;
+    message += `  • SK Kenaikan Pangkat\n\n`;
   } else if (estimasi.type === 'jabatan') {
-    message += `⏳ *Dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*\n`;
-    message += `🎯 Anda akan memenuhi syarat untuk *Kenaikan Jabatan* (${estimasi.kebutuhanJabatan} AK)\n\n`;
+    message += `📊 *Posisi yang akan diperoleh dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*:\n`;
+    message += `Jabatan: ${jabatanBerikutnya}\n`;
+    message += `Pangkat: ${karyawan.golongan}\n\n`;
+    message += `🎯 *Syarat yang diperlukan:*\n`;
+    message += `  • Kenaikan Jabatan: ${estimasi.kebutuhanJabatan} AK\n\n`;
+    message += `📋 *Siapkan dokumen usulan kenaikan jabatan*\n`;
+    message += `  • SK Kenaikan Jabatan\n`;
+    message += `  • Bukti AK Kumulatif\n\n`;
   } else if (estimasi.type === 'pangkat') {
-    message += `⏳ *Dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*\n`;
-    message += `🎯 Anda akan memenuhi syarat untuk *Kenaikan Pangkat* (${estimasi.kebutuhanPangkat} AK)\n\n`;
+    message += `📊 *Posisi yang akan diperoleh dalam ${formatEstimasiWaktu(estimasi.bulanDibutuhkan)}*:\n`;
+    message += `Jabatan: ${karyawan.jabatan}\n`;
+    message += `Pangkat: ${golonganBerikutnya}\n\n`;
+    message += `🎯 *Syarat yang diperlukan:*\n`;
+    message += `  • Kenaikan Pangkat: ${estimasi.kebutuhanPangkat} AK\n\n`;
+    message += `📋 *Siapkan dokumen usulan kenaikan pangkat*\n`;
+    message += `  • SK Kenaikan Pangkat\n`;
+    message += `  • Bukti AK Kumulatif\n\n`;
   }
 
   message += `📱 Pantau progress lengkap di:\n${appLink}\n\n`;
@@ -565,9 +636,10 @@ serve(async (req: Request) => {
       
       if (error) {
         console.error('[Sheets] Fetch error:', error);
-      } else {
+      } else if (data && data.length > 0) {
         // Transform Google Sheets data to Karyawan interface
         // Assuming data returns rows where each row is an array [col0, col1, col2, ...]
+        const rows = data as any[];
         const headerRow = rows[0] || [];
         const dataRows = rows.slice(1) || [];
         
@@ -596,7 +668,7 @@ serve(async (req: Request) => {
             tmtPns: row[headerMap['TMT_PNS'] || 12]?.toString() || '',
             tmtPangkat: row[headerMap['TMT_PANGKAT'] || 13]?.toString() || ''
           }))
-          .filter(emp => emp.nip && emp.nama && emp.no_hp);
+          .filter((emp: Karyawan) => emp.nip && emp.nama && emp.no_hp);
         
         console.log(`[Sheets] Fetched ${karyawanList.length} employees from ${dataRows.length} data rows`);
       }
