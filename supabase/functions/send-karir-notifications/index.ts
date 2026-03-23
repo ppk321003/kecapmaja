@@ -326,6 +326,7 @@ function initializeDeviceTokens() {
 
 function selectBestDevice(): DeviceToken | null {
   const availableDevices = deviceTokens.filter(t => t.active);
+  console.log(`[Device] Available active devices: ${availableDevices.length}`);
   if (availableDevices.length === 0) return null;
 
   // Select device with weighted distribution (prefer less-used devices)
@@ -337,6 +338,7 @@ function selectBestDevice(): DeviceToken | null {
     if (stats.onCooldown) {
       const timeSinceLastUse = Date.now() - stats.lastUsed.getTime();
       if (timeSinceLastUse < RATE_LIMIT.cooldownSeconds * 1000) {
+        console.log(`[Device] ${device.name} is on cooldown`);
         return false;
       }
       stats.onCooldown = false;
@@ -345,6 +347,7 @@ function selectBestDevice(): DeviceToken | null {
     return true;
   });
 
+  console.log(`[Device] Candidates after cooldown check: ${candidates.length}`);
   if (candidates.length === 0) return null;
 
   // True random selection with weighted distribution (prefer less-used devices)
@@ -356,16 +359,20 @@ function selectBestDevice(): DeviceToken | null {
   
   const totalWeight = weights.reduce((sum, w) => sum + w, 0);
   let random = Math.random() * totalWeight;
+  console.log(`[Device] Weights: ${candidates.map((d, i) => `${d.name}=${weights[i]}`).join(', ')}, Random: ${random.toFixed(2)} of ${totalWeight}`);
   
   for (let i = 0; i < candidates.length; i++) {
     random -= weights[i];
     if (random <= 0) {
+      console.log(`[Device] Selected device: ${candidates[i].name}`);
       return candidates[i];
     }
   }
   
   // Fallback (should never reach here)
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  const fallback = candidates[Math.floor(Math.random() * candidates.length)];
+  console.log(`[Device] Fallback selection: ${fallback.name}`);
+  return fallback;
 }
 
 async function sendWAViaFonnte(
@@ -619,11 +626,13 @@ serve(async (req: Request) => {
     // TEST MODE: Send only to specific recipient
     if (testMode && testRecipient) {
       console.log('[Test Mode] Sending test message to:', testRecipient.nama);
+      console.log('[Test Mode] Received testRecipient:', JSON.stringify(testRecipient, null, 2));
       
       const device = selectBestDevice();
       if (!device) {
         return createCorsResponse({ error: "No available Fonnte devices" }, 503);
       }
+      console.log(`[Test Mode] Selected device: ${device.name}`);
 
       // Create test message - use real data from frontend with sensible defaults
       const testEmployee = {
@@ -635,15 +644,16 @@ serve(async (req: Request) => {
         tmtPangkat: testRecipient.tmtPangkat ?? ''
       };
       
-      console.log(`[Test Mode] Data: kategori=${testEmployee.kategori}, ak=${testEmployee.akKumulatif}, jabatan=${testEmployee.jabatan}`);
+      console.log(`[Test Mode] Final testEmployee: kategori=${testEmployee.kategori}, ak=${testEmployee.akKumulatif}, golongan=${testEmployee.golongan}`);
       const estimasi = cekKaryawanBisaUsul(testEmployee);
-      console.log(`[Test Mode] Result: bisaUsul=${estimasi.bisaUsul}, type=${estimasi.type}, bulan=${estimasi.bulanDibutuhkan}`);
+      console.log(`[Test Mode] Estimation result: bisaUsul=${estimasi.bisaUsul}, type=${estimasi.type}, bulan=${estimasi.bulanDibutuhkan}, akReal=${estimasi.akRealSaatIni}`);
       const message = buildMessage(testEmployee, estimasi);
+      console.log(`[Test Mode] Generated message (first 200 chars): ${message.substring(0, 200)}...`);
       
       const result = await sendWAViaFonnte(testEmployee.no_hp, message);
 
       if (result.success) {
-        console.log(`[Test Mode] ✅ Message sent to ${testEmployee.nama}`);
+        console.log(`[Test Mode] ✅ Message sent via ${result.device}`);
         return createCorsResponse({
           success: true,
           testMode: true,
@@ -651,6 +661,15 @@ serve(async (req: Request) => {
           recipient: testEmployee.nama,
           phone: testEmployee.no_hp,
           device: result.device,
+          estimasi: {
+            bisaUsul: estimasi.bisaUsul,
+            type: estimasi.type,
+            bulanDibutuhkan: estimasi.bulanDibutuhkan,
+            akRealSaatIni: estimasi.akRealSaatIni,
+            kebutuhanJabatan: estimasi.kebutuhanJabatan,
+            kebutuhanPangkat: estimasi.kebutuhanPangkat
+          },
+          receivedData: testRecipient,
           timestamp: new Date().toISOString()
         }, 200);
       } else {
@@ -659,7 +678,8 @@ serve(async (req: Request) => {
           testMode: true,
           error: "Failed to send via Fonnte",
           recipient: testEmployee.nama,
-          phone: testEmployee.no_hp
+          phone: testEmployee.no_hp,
+          estimasi: estimasi
         }, 500);
       }
     }
