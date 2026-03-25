@@ -1448,14 +1448,20 @@ export default function EntriTarget() {
 
       // PERBAIKAN: Gunakan processMultipleValues untuk konsistensi join
       const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
-      const targetList = activity.workers.map(w => w.target).join(" | ");
-      const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
+      const targetList = activity.workers.map(w => cleanNumberValue(w.target)).join(" | ");
+      const realisasiList = activity.workers.map(w => cleanNumberValue(w.realisasi)).join(" | ");
 
-      // PERBAIKAN: Hitung nilai realisasi per petugas seperti Skrip 1
-      const nilaiRealisasiList = activity.workers.map(w => formatCurrency(cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan))).join(" | ");
+      // PERBAIKAN: Hitung nilai realisasi per petugas seperti Skrip 1 - TANPA formatCurrency saat save ke sheet
+      // Kirim sebagai array numeric values untuk kolom Q, format yang sama dengan O dan P 
+      const nilaiRealisasiList = activity.workers.map(w => {
+        const nilai = cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan);
+        return Math.round(nilai); // Round untuk integer value
+      }).join(" | ");
 
       // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
       const totalRealisasi = calculateActivityTotal(activity);
+      // Round total untuk integer value
+      const totalRealisasiNumeric = Math.round(totalRealisasi);
       const nikList = activity.workers.map(w => w.nip).join(" | ");
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
       const rowData = [[nextNo.toString(),
@@ -1476,8 +1482,8 @@ export default function EntriTarget() {
       // H: Tanggal Mulai
       format(activity.tanggalAkhir, "dd/MM/yyyy"),
       // I: Tanggal Akhir
-      cleanNumberValue(activity.hargaSatuan),
-      // J: Harga Satuan - PERBAIKAN: Gunakan cleanNumberValue untuk encoding yang benar
+      Math.round(cleanNumberValue(activity.hargaSatuan)),
+      // J: Harga Satuan - NUMERIC (rounded to integer)
       activity.satuan,
       // K: Satuan
       activity.koordinator,
@@ -1491,9 +1497,9 @@ export default function EntriTarget() {
       realisasiList,
       // P: Realisasi
       nilaiRealisasiList,
-      // Q: Nilai Realisasi
-      formatCurrency(totalRealisasi),
-      // R: Total Realisasi
+      // Q: Nilai Realisasi (numeric values separated by " | ")
+      totalRealisasiNumeric,
+      // R: Total Realisasi - NUMERIC (no .toString())
       activity.bebanAnggaran || "",
       // S: Beban Anggaran
       activity.dikirimKePPK || "",
@@ -1525,17 +1531,23 @@ export default function EntriTarget() {
     if (!activity.spreadsheetRowIndex) return;
     try {
       const namaPetugas = activity.workers.map(w => w.nama).join(" | ");
-      const targetList = activity.workers.map(w => w.target).join(" | ");
-      const realisasiList = activity.workers.map(w => w.realisasi).join(" | ");
+      const targetList = activity.workers.map(w => cleanNumberValue(w.target)).join(" | ");
+      const realisasiList = activity.workers.map(w => cleanNumberValue(w.realisasi)).join(" | ");
 
-      // PERBAIKAN: Gunakan cleanNumberValue secara konsisten
-      const nilaiRealisasiList = activity.workers.map(w => formatCurrency(cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan))).join(" | ");
+      // PERBAIKAN: Gunakan cleanNumberValue secara konsisten - TANPA formatCurrency saat update ke sheet
+      // Kirim sebagai numeric values rounded untuk integer
+      const nilaiRealisasiList = activity.workers.map(w => {
+        const nilai = cleanNumberValue(w.realisasi) * cleanNumberValue(activity.hargaSatuan);
+        return Math.round(nilai); // Round untuk integer value
+      }).join(" | ");
 
       // PERBAIKAN: Gunakan fungsi calculateActivityTotal yang baru
       const totalRealisasi = calculateActivityTotal(activity);
+      // Round total untuk integer value
+      const totalRealisasiNumeric = Math.round(totalRealisasi);
       const nikList = activity.workers.map(w => w.nip).join(" | ");
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
-      const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), user?.role || "User", `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), cleanNumberValue(activity.hargaSatuan), activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, formatCurrency(totalRealisasi), activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList]];
+      const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), user?.role || "User", `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), Math.round(cleanNumberValue(activity.hargaSatuan)), activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, totalRealisasiNumeric, activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList]];
       const {
         error
       } = await supabase.functions.invoke('google-sheets', {
