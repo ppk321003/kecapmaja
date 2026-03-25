@@ -1464,6 +1464,11 @@ export default function EntriTarget() {
       const totalRealisasiNumeric = Math.round(totalRealisasi);
       const nikList = activity.workers.map(w => w.nip).join(" | ");
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
+      
+      // PERBAIKAN: Auto-generate Status TTD dan Status Notif berdasarkan jumlah workers
+      const statusTTDList = Array(activity.workers.length).fill("Belum ditandatangani").join(" | ");
+      const statusNotifList = Array(activity.workers.length).fill("belum").join(" | ");
+      
       const rowData = [[nextNo.toString(),
       // A: No
       user?.role || "User",
@@ -1508,7 +1513,12 @@ export default function EntriTarget() {
       // U: (Kosong)
       "",
       // V: (Kosong)
-      nikList // W: NIK List
+      nikList,
+      // W: NIK List
+      statusTTDList,
+      // X: Status TTD (auto-generate based on workers count)
+      statusNotifList
+      // Y: Status Notif (auto-generate based on workers count)
       ]];
       const {
         error
@@ -1547,7 +1557,12 @@ export default function EntriTarget() {
       const totalRealisasiNumeric = Math.round(totalRealisasi);
       const nikList = activity.workers.map(w => w.nip).join(" | ");
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
-      const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), user?.role || "User", `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), Math.round(cleanNumberValue(activity.hargaSatuan)), activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, totalRealisasiNumeric, activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList]];
+      
+      // PERBAIKAN: Auto-generate Status TTD dan Status Notif berdasarkan jumlah workers
+      const statusTTDList = Array(activity.workers.length).fill("Belum ditandatangani").join(" | ");
+      const statusNotifList = Array(activity.workers.length).fill("belum").join(" | ");
+      
+      const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), user?.role || "User", `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), Math.round(cleanNumberValue(activity.hargaSatuan)), activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, totalRealisasiNumeric, activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList, statusTTDList, statusNotifList]];
       const {
         error
       } = await supabase.functions.invoke('google-sheets', {
