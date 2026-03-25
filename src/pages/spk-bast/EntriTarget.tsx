@@ -1476,8 +1476,8 @@ export default function EntriTarget() {
       // H: Tanggal Mulai
       format(activity.tanggalAkhir, "dd/MM/yyyy"),
       // I: Tanggal Akhir
-      activity.hargaSatuan,
-      // J: Harga Satuan
+      cleanNumberValue(activity.hargaSatuan),
+      // J: Harga Satuan - PERBAIKAN: Gunakan cleanNumberValue untuk encoding yang benar
       activity.satuan,
       // K: Satuan
       activity.koordinator,
@@ -1535,7 +1535,7 @@ export default function EntriTarget() {
       const totalRealisasi = calculateActivityTotal(activity);
       const nikList = activity.workers.map(w => w.nip).join(" | ");
       const komponenPOKLabel = getKomponenPOKLabelFromValue(activity.komponenPOK);
-      const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), user?.role || "User", `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), activity.hargaSatuan, activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, formatCurrency(totalRealisasi), activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList]];
+      const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), user?.role || "User", `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), cleanNumberValue(activity.hargaSatuan), activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, formatCurrency(totalRealisasi), activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList]];
       const {
         error
       } = await supabase.functions.invoke('google-sheets', {
