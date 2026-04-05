@@ -73,6 +73,7 @@ type MitraFormData = z.infer<typeof mitraSchema>;
 
 interface Pengelola extends PengelolaFormData {
   rowIndex: number;
+  email: string;
   foto?: string;
 }
 
@@ -82,6 +83,7 @@ interface Organik {
   nipBps: string;
   nip: string;
   nama: string;
+  email: string;
   jabatan: string;
   golAkhir: string;
   pangkat: string;
@@ -285,6 +287,7 @@ export default function EntriPengelola() {
         return {
           rowIndex: index + 2,
           nama: rowObj['nama'] || rowObj['Nama'] || "",
+          email: rowObj['email'] || rowObj['Email'] || "",
           nip: nip,
           jabatan: rowObj['jabatan'] || rowObj['Jabatan'] || "",
           foto: foto
@@ -358,6 +361,7 @@ export default function EntriPengelola() {
           nipBps: row[1] || rowObj['nipbps'] || rowObj['NIP BPS'] || rowObj['NIPBPS'] || "",  // Kolom B (index 1)
           nip: nip,
           nama: rowObj['nama'] || rowObj['Nama'] || "",
+          email: rowObj['email'] || rowObj['Email'] || "",
           jabatan: rowObj['jabatan'] || rowObj['Jabatan'] || "",
           golAkhir: row[6] || rowObj['gol. akhir'] || rowObj['Gol. Akhir'] || rowObj['golakhir'] || "",  // Kolom G (index 6)
           pangkat: rowObj['pangkat'] || rowObj['Pangkat'] || "",
@@ -619,12 +623,14 @@ export default function EntriPengelola() {
   const filteredPengelola = pengelola.filter(p => 
     p.nama.toLowerCase().includes(searchPengelola.toLowerCase()) ||
     p.nip.toLowerCase().includes(searchPengelola.toLowerCase()) ||
+    p.email.toLowerCase().includes(searchPengelola.toLowerCase()) ||
     p.jabatan.toLowerCase().includes(searchPengelola.toLowerCase())
   );
 
   const filteredOrganik = organik.filter(o =>
     o.nama.toLowerCase().includes(searchOrganik.toLowerCase()) ||
     o.nip.toLowerCase().includes(searchOrganik.toLowerCase()) ||
+    o.email.toLowerCase().includes(searchOrganik.toLowerCase()) ||
     o.nipBps.toLowerCase().includes(searchOrganik.toLowerCase()) ||
     o.jabatan.toLowerCase().includes(searchOrganik.toLowerCase()) ||
     o.golAkhir.toLowerCase().includes(searchOrganik.toLowerCase()) ||
@@ -808,6 +814,7 @@ export default function EntriPengelola() {
                       <TableHead></TableHead>
                       <TableHead>Nama</TableHead>
                       <TableHead>NIP</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>Jabatan</TableHead>
                       {canEditPengelola && (
                         <TableHead className="text-right">Aksi</TableHead>
@@ -837,6 +844,7 @@ export default function EntriPengelola() {
                         </TableCell>
                         <TableCell className="font-medium">{p.nama}</TableCell>
                         <TableCell>{p.nip}</TableCell>
+                        <TableCell>{p.email}</TableCell>
                         <TableCell>{p.jabatan}</TableCell>
                         {canEditPengelola && (
                           <TableCell className="text-right">
@@ -852,7 +860,7 @@ export default function EntriPengelola() {
                     ))}
                     {filteredPengelola.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={canEditPengelola ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={canEditPengelola ? 7 : 6} className="text-center py-8 text-muted-foreground">
                           {searchPengelola ? "Tidak ada data yang sesuai dengan pencarian" : "Tidak ada data pengelola anggaran"}
                         </TableCell>
                       </TableRow>
@@ -894,6 +902,7 @@ export default function EntriPengelola() {
                       <TableHead></TableHead>
                       <TableHead>Nama</TableHead>
                       <TableHead>NIP</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>NIP BPS</TableHead>
                       <TableHead>Gol. Akhir</TableHead>
                       <TableHead>Pangkat</TableHead>
@@ -923,6 +932,7 @@ export default function EntriPengelola() {
                         </TableCell>
                         <TableCell className="font-medium">{o.nama}</TableCell>
                         <TableCell>{o.nip}</TableCell>
+                        <TableCell>{o.email}</TableCell>
                         <TableCell>{o.nipBps}</TableCell>
                         <TableCell>{o.golAkhir}</TableCell>
                         <TableCell>{o.pangkat}</TableCell>
@@ -931,7 +941,7 @@ export default function EntriPengelola() {
                     ))}
                     {filteredOrganik.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                           {searchOrganik ? "Tidak ada data yang sesuai dengan pencarian" : "Tidak ada data organik"}
                         </TableCell>
                       </TableRow>
