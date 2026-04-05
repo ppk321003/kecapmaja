@@ -49,6 +49,15 @@ const KECAMATAN_LIST = [
   "Talaga"
 ];
 
+const normalizeHeaderKey = (header: string) =>
+  header
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9 ]+/g, '')
+    .replace(/ /g, '');
+
 // Schemas - UPDATE: Tambah field whatsapp
 const pengelolaSchema = z.object({
   nama: z.string().min(1, "Nama harus diisi").max(100),
@@ -272,24 +281,45 @@ export default function EntriPengelola() {
       
       // Use first row as headers
       const headers = rows[0];
+      const emailHeaderIndex = headers.findIndex((header: string) => {
+        const key = normalizeHeaderKey(header);
+        return [
+          'email',
+          'emailaddress',
+          'e-mail',
+          'emailaddress',
+          'alamatemail',
+          'emailaddr'
+        ].includes(key);
+      });
+
       const pengelolaData = rows.slice(1).map((row: any[], index: number) => {
         // Create object from headers
         const rowObj: any = {};
         headers.forEach((header: string, colIndex: number) => {
-          rowObj[header.toLowerCase().trim()] = row[colIndex] || "";
+          rowObj[normalizeHeaderKey(header)] = row[colIndex] || "";
         });
         
-        const nip = (rowObj['nip'] || rowObj['NIP'] || "").trim();
+        const nip = (rowObj['nip'] || "").trim();
         const foto = fotoMap[nip] || "";
         if (!foto && nip) {
           console.log(`[Pengelola] No foto found for NIP: ${nip}`);
         }
+
+        const emailValue =
+          rowObj['email'] ||
+          rowObj['emailaddress'] ||
+          rowObj['e-mail'] ||
+          (emailHeaderIndex !== -1 ? row[emailHeaderIndex] : undefined) ||
+          row[22] ||
+          "";
+
         return {
           rowIndex: index + 2,
-          nama: rowObj['nama'] || rowObj['Nama'] || "",
-          email: rowObj['email'] || rowObj['Email'] || "",
+          nama: rowObj['nama'] || "",
+          email: emailValue,
           nip: nip,
-          jabatan: rowObj['jabatan'] || rowObj['Jabatan'] || "",
+          jabatan: rowObj['jabatan'] || "",
           foto: foto
         };
       });
@@ -412,10 +442,10 @@ export default function EntriPengelola() {
         // Create object from headers
         const rowObj: any = {};
         headers.forEach((header: string, colIndex: number) => {
-          rowObj[header.toLowerCase().trim()] = row[colIndex] || "";
+          rowObj[normalizeHeaderKey(header)] = row[colIndex] || "";
         });
         
-        let foto = rowObj['foto'] || rowObj['Foto'] || "";
+        let foto = rowObj['foto'] || "";
         // Convert Google Drive URL to viewable format
         if (foto && foto.includes('drive.google.com/file/d/')) {
           const fileIdMatch = foto.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
@@ -425,15 +455,22 @@ export default function EntriPengelola() {
         }
         return {
           rowIndex: index + 2,
-          no: rowObj['no'] || rowObj['No'] || "",
-          nik: rowObj['nik'] || rowObj['NIK'] || "",
-          nama: rowObj['nama'] || rowObj['Nama'] || "",
-          pekerjaan: rowObj['pekerjaan'] || rowObj['Pekerjaan'] || "",
-          alamat: rowObj['alamat'] || rowObj['Alamat'] || "",
-          bank: rowObj['bank'] || rowObj['Bank'] || "",
-          rekening: rowObj['rekening'] || rowObj['Rekening'] || "",
-          kecamatan: rowObj['kecamatan'] || rowObj['Kecamatan'] || "",
-          whatsapp: rowObj['whatsapp'] || rowObj['No. HP'] || rowObj['no. hp'] || "",
+          no: rowObj['no'] || "",
+          nik: rowObj['nik'] || "",
+          nama: rowObj['nama'] || "",
+          pekerjaan: rowObj['pekerjaan'] || "",
+          alamat: rowObj['alamat'] || "",
+          bank: rowObj['bank'] || "",
+          rekening: rowObj['rekening'] || "",
+          kecamatan: rowObj['kecamatan'] || "",
+          whatsapp:
+            rowObj['whatsapp'] ||
+            rowObj['nohp'] ||
+            rowObj['hp'] ||
+            rowObj['mobile'] ||
+            rowObj['nohandphone'] ||
+            row[8] ||
+            "",
           foto: foto
         };
       });
@@ -814,7 +851,6 @@ export default function EntriPengelola() {
                       <TableHead></TableHead>
                       <TableHead>Nama</TableHead>
                       <TableHead>NIP</TableHead>
-                      <TableHead>Email</TableHead>
                       <TableHead>Jabatan</TableHead>
                       {canEditPengelola && (
                         <TableHead className="text-right">Aksi</TableHead>
@@ -844,7 +880,6 @@ export default function EntriPengelola() {
                         </TableCell>
                         <TableCell className="font-medium">{p.nama}</TableCell>
                         <TableCell>{p.nip}</TableCell>
-                        <TableCell>{p.email}</TableCell>
                         <TableCell>{p.jabatan}</TableCell>
                         {canEditPengelola && (
                           <TableCell className="text-right">
@@ -860,7 +895,7 @@ export default function EntriPengelola() {
                     ))}
                     {filteredPengelola.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={canEditPengelola ? 7 : 6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={canEditPengelola ? 6 : 5} className="text-center py-8 text-muted-foreground">
                           {searchPengelola ? "Tidak ada data yang sesuai dengan pencarian" : "Tidak ada data pengelola anggaran"}
                         </TableCell>
                       </TableRow>
