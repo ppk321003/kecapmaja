@@ -418,7 +418,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     URL.revokeObjectURL(url);
   };
 
-  const downloadExcel = () => {
+  const downloadPDF = async () => {
     if (!tableRef.current) return;
     const el = tableRef.current;
     const canvas = await html2canvas(el, { scale: 2 });
@@ -429,6 +429,38 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
     pdf.save(`realisasi-bulanan-${summaryView}.pdf`);
+  };
+
+  const downloadExcel = async () => {
+    if (!tableRef.current) return;
+    const canvas = await html2canvas(tableRef.current, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    // Convert image to excel with embedded image
+    const wb = XLSX.utils.book_new();
+    const wsData: any[][] = [];
+    // Use grouped data for summary excel
+    data.forEach(row => {
+      wsData.push([
+        row.name,
+        ...months.map(m => row.months[m] || 0),
+        row.total,
+        row.total_pagu,
+        row.sisa_anggaran,
+        row.blokir || 0,
+      ]);
+    });
+    const headers = ['Nama', ...monthNames, 'Total', 'Pagu', 'Sisa Anggaran', 'Blokir'];
+    wsData.unshift(headers);
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Realisasi');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `realisasi-bulanan-${summaryView}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const downloadJPEG = async () => {
