@@ -368,26 +368,57 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   const tableRef = useRef<HTMLDivElement | null>(null);
 
   // Export helpers using SheetJS and html2canvas + jsPDF
-  const downloadExcel = () => {
-    const headers = ['Nama', 'Total Pagu', ...monthNames, 'Total Realisasi', 'Sisa'];
+  const downloadDetailRealisasiExcel = () => {
+    const headers = [
+      'Program Pembebanan',
+      'Kegiatan',
+      'Komponen Output',
+      'Sub Komponen',
+      'Akun',
+      'Uraian',
+      'Total Pagu',
+      ...monthNames,
+      'Total RPD',
+      'Sisa Anggaran',
+      'Status',
+      'Blokir',
+      'Modified By',
+      'Modified Date'
+    ];
     const wsData: any[][] = [headers];
-    data.forEach(d => {
-      wsData.push([d.name, d.total_pagu || 0, ...months.map(m => d.months[m] || 0), d.total || 0, d.sisa_anggaran || 0]);
+    items.forEach(item => {
+      const totalRpd = Number(item.total_rpd || months.reduce((sum, m) => sum + (Number((item as any)[m] || 0) || 0), 0));
+      wsData.push([
+        item.program_pembebanan || '',
+        item.kegiatan || '',
+        item.komponen_output || '',
+        item.sub_komponen || '',
+        item.akun || '',
+        item.uraian || '',
+        item.total_pagu || 0,
+        ...months.map(m => Number((item as any)[m] || 0) || 0),
+        totalRpd,
+        item.sisa_anggaran || 0,
+        item.status || '',
+        item.blokir || 0,
+        item.modified_by || '',
+        item.modified_date || ''
+      ]);
     });
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Realisasi');
+    XLSX.utils.book_append_sheet(wb, ws, 'Realisasi Detil');
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `realisasi-bulanan-${summaryView}.xlsx`;
+    a.download = `realisasi-bulanan-detil.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const downloadPDF = async () => {
+  const downloadExcel = () => {
     if (!tableRef.current) return;
     const el = tableRef.current;
     const canvas = await html2canvas(el, { scale: 2 });
@@ -620,6 +651,7 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
             </>
           )}
           <Button size="sm" variant="ghost" onClick={() => runQaCompare()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">QA Compare</Button>
+          <Button size="sm" variant="ghost" onClick={() => downloadDetailRealisasiExcel()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Download Detil Realisasi</Button>
           <Button size="sm" variant="ghost" onClick={() => downloadJPEG()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Export JPEG</Button>
           <Button size="sm" variant="ghost" onClick={() => downloadPDF()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Export PDF</Button>
           <Button size="sm" variant="ghost" onClick={() => downloadExcel()} className="text-xs px-2 py-1 h-auto hover:bg-slate-100">Export Excel</Button>
