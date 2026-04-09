@@ -370,55 +370,150 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
   // Export helpers using SheetJS and html2canvas + jsPDF
   const downloadDetailRealisasiExcel = () => {
     const headers = [
+      'No',
       'Program Pembebanan',
       'Kegiatan',
+      'Rincian Output',
       'Komponen Output',
       'Sub Komponen',
       'Akun',
       'Uraian',
-      'Total Pagu',
+      'Volume',
+      'Satuan',
+      'Harga Satuan',
+      'Pagu Semula',
+      'Volume Menjadi',
+      'Satuan Menjadi',
+      'Harga Satuan Menjadi',
+      'Pagu Menjadi',
+      'Selisih Pagu',
       ...monthNames,
-      'Total RPD',
+      'Total Realisasi',
       'Sisa Anggaran',
-      'Status',
+      '% Serapan',
       'Blokir',
-      'Modified By',
-      'Modified Date'
+      'Status',
     ];
     const wsData: any[][] = [headers];
-    items.forEach(item => {
-      const totalRpd = Number(item.total_rpd || months.reduce((sum, m) => sum + (Number((item as any)[m] || 0) || 0), 0));
+
+    // Merge budget items with RPD items by matching keys
+    budgetItems.forEach((bi, idx) => {
+      const biKey = [bi.program_pembebanan, bi.komponen_output, bi.sub_komponen, bi.akun].filter(Boolean).join('.');
+      // Find matching RPD item
+      const rpdMatch = items.find(rpd => {
+        const rpdKey = [rpd.program_pembebanan, rpd.komponen_output, rpd.sub_komponen, rpd.akun].filter(Boolean).join('.');
+        return rpdKey === biKey && rpd.uraian === bi.uraian;
+      });
+
+      const monthValues = months.map(m => rpdMatch ? (Number((rpdMatch as any)[m] || 0) || 0) : 0);
+      const totalRealisasi = monthValues.reduce((s, v) => s + v, 0);
+      const paguMenjadi = Number(bi.jumlah_menjadi) || 0;
+      const sisaAnggaran = paguMenjadi - totalRealisasi;
+      const pctSerapan = paguMenjadi > 0 ? (totalRealisasi / paguMenjadi) * 100 : 0;
+
       wsData.push([
-        item.program_pembebanan || '',
-        item.kegiatan || '',
-        item.komponen_output || '',
-        item.sub_komponen || '',
-        item.akun || '',
-        item.uraian || '',
-        item.total_pagu || 0,
-        ...months.map(m => Number((item as any)[m] || 0) || 0),
-        totalRpd,
-        item.sisa_anggaran || 0,
-        item.status || '',
-        item.blokir || 0,
-        item.modified_by || '',
-        item.modified_date || ''
+        idx + 1,
+        bi.program_pembebanan || '',
+        bi.kegiatan || '',
+        bi.rincian_output || '',
+        bi.komponen_output || '',
+        bi.sub_komponen || '',
+        bi.akun || '',
+        bi.uraian || '',
+        bi.volume_semula || 0,
+        bi.satuan_semula || '',
+        bi.harga_satuan_semula || 0,
+        bi.jumlah_semula || 0,
+        bi.volume_menjadi || 0,
+        bi.satuan_menjadi || '',
+        bi.harga_satuan_menjadi || 0,
+        paguMenjadi,
+        bi.selisih || 0,
+        ...monthValues,
+        totalRealisasi,
+        sisaAnggaran,
+        Math.round(pctSerapan * 100) / 100,
+        bi.blokir || 0,
+        bi.status || '',
       ]);
     });
+
+    // Also add RPD items that don't match any budget item
+    const unmatchedRpd = items.filter(rpd => {
+      const rpdKey = [rpd.program_pembebanan, rpd.komponen_output, rpd.sub_komponen, rpd.akun].filter(Boolean).join('.');
+      return !budgetItems.some(bi => {
+        const biKey = [bi.program_pembebanan, bi.komponen_output, bi.sub_komponen, bi.akun].filter(Boolean).join('.');
+        return biKey === rpdKey && bi.uraian === rpd.uraian;
+      });
+    });
+
+    unmatchedRpd.forEach((rpd, idx) => {
+      const monthValues = months.map(m => Number((rpd as any)[m] || 0) || 0);
+      const totalRealisasi = monthValues.reduce((s, v) => s + v, 0);
+      wsData.push([
+        budgetItems.length + idx + 1,
+        rpd.program_pembebanan || '',
+        rpd.kegiatan || '',
+        '',
+        rpd.komponen_output || '',
+        rpd.sub_komponen || '',
+        rpd.akun || '',
+        rpd.uraian || '',
+        '', '', '', '',
+        '', '', '',
+        rpd.total_pagu || 0,
+        '',
+        ...monthValues,
+        totalRealisasi,
+        rpd.sisa_anggaran || 0,
+        rpd.total_pagu > 0 ? Math.round((totalRealisasi / rpd.total_pagu) * 10000) / 100 : 0,
+        rpd.blokir || 0,
+        rpd.status || '',
+      ]);
+    });
+
     const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 5 },   // No
+      { wch: 18 },  // Program
+      { wch: 18 },  // Kegiatan
+      { wch: 18 },  // Rincian Output
+      { wch: 18 },  // Komponen
+      { wch: 15 },  // Sub Komponen
+      { wch: 12 },  // Akun
+      { wch: 40 },  // Uraian
+      { wch: 10 },  // Volume
+      { wch: 10 },  // Satuan
+      { wch: 15 },  // Harga Satuan
+      { wch: 18 },  // Pagu Semula
+      { wch: 10 },  // Vol Menjadi
+      { wch: 10 },  // Sat Menjadi
+      { wch: 15 },  // HS Menjadi
+      { wch: 18 },  // Pagu Menjadi
+      { wch: 15 },  // Selisih
+      ...monthNames.map(() => ({ wch: 15 })),
+      { wch: 18 },  // Total Realisasi
+      { wch: 18 },  // Sisa
+      { wch: 10 },  // % Serapan
+      { wch: 12 },  // Blokir
+      { wch: 12 },  // Status
+    ];
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Realisasi Detil');
+    XLSX.utils.book_append_sheet(wb, ws, 'Realisasi Bulanan Detil');
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `realisasi-bulanan-detil.xlsx`;
+    a.download = `realisasi-bulanan-detil-per-uraian.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const downloadExcel = () => {
+  const downloadPDF = async () => {
     if (!tableRef.current) return;
     const el = tableRef.current;
     const canvas = await html2canvas(el, { scale: 2 });
@@ -429,6 +524,38 @@ const BahanRevisiProyeksiBulananSubtab: React.FC<Props> = ({
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
     pdf.save(`realisasi-bulanan-${summaryView}.pdf`);
+  };
+
+  const downloadExcel = async () => {
+    if (!tableRef.current) return;
+    const canvas = await html2canvas(tableRef.current, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    // Convert image to excel with embedded image
+    const wb = XLSX.utils.book_new();
+    const wsData: any[][] = [];
+    // Use grouped data for summary excel
+    data.forEach(row => {
+      wsData.push([
+        row.name,
+        ...months.map(m => row.months[m] || 0),
+        row.total,
+        row.total_pagu,
+        row.sisa_anggaran,
+        row.blokir || 0,
+      ]);
+    });
+    const headers = ['Nama', ...monthNames, 'Total', 'Pagu', 'Sisa Anggaran', 'Blokir'];
+    wsData.unshift(headers);
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Realisasi');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `realisasi-bulanan-${summaryView}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const downloadJPEG = async () => {
