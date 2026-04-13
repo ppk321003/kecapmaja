@@ -37,7 +37,7 @@ export default function DownloadSPKBAST() {
   } = useToast();
   
   // Ambil spreadsheet ID dari satker config, bukan hardcoded
-  const SPK_SPREADSHEET_ID = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || "";
+  const SPK_SPREADSHEET_ID = satkerConfig?.getUserSatkerSheetId('spkoutput') || "";
 
   // Generate tahun list dari 2024 sampai 2030
   const tahunList = Array.from({
