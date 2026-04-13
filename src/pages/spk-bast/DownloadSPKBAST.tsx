@@ -26,6 +26,7 @@ interface SPKData {
 const bulanList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 export default function DownloadSPKBAST() {
   const { user } = useAuth();
+  const satkerConfig = useSatkerConfigContext();
   const [data, setData] = useState<SPKData[]>([]);
   const [filteredData, setFilteredData] = useState<SPKData[]>([]);
   const [selectedTahun, setSelectedTahun] = useState<number>(2026);
@@ -34,7 +35,9 @@ export default function DownloadSPKBAST() {
   const {
     toast
   } = useToast();
-  const SPK_SPREADSHEET_ID = "1fmSGAb0lE_iszZPH4I9ols1SAUfDeNU-AOBpG5-Tygc";
+  
+  // Ambil spreadsheet ID dari satker config, bukan hardcoded
+  const SPK_SPREADSHEET_ID = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || "";
 
   // Generate tahun list dari 2024 sampai 2030
   const tahunList = Array.from({
