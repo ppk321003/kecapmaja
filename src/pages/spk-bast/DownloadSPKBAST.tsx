@@ -36,8 +36,8 @@ export default function DownloadSPKBAST() {
     toast
   } = useToast();
   
-  // Ambil spreadsheet ID dari satker config, bukan hardcoded
-  const SPK_SPREADSHEET_ID = satkerConfig?.getUserSatkerSheetId('spkoutput') || "";
+  // Ambil spreadsheet ID entrikegiatan dari satker config (kolom E per satker)
+  const SPK_SPREADSHEET_ID = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || "";
 
   // Generate tahun list dari 2024 sampai 2030
   const tahunList = Array.from({
@@ -90,16 +90,19 @@ export default function DownloadSPKBAST() {
       setError(null);
       console.log("Mengambil data SPK & BAST dari Google Sheets...");
 
-      // Coba beberapa range yang mungkin
-      const rangesToTry = ["OUTPUT!A:G",
-      // Range spesifik dengan sheet OUTPUT (7 kolom sekarang)
-      "OUTPUT!A1:G100",
-      // Range dengan batas
-      "OUTPUT",
-      // Hanya nama sheet
-      "Sheet1!A:G",
-      // Mungkin nama sheet berbeda
-      "A:G" // Range global
+      // Coba beberapa range yang mungkin untuk sheet entrikegiatan
+      const rangesToTry = [
+        "Sheet1!A:W",
+        "Sheet1!A:Z",
+        "Sheet1!A1:W200",
+        "Sheet1!A1:Z200",
+        "A:W",
+        "A:Z",
+        "OUTPUT!A:G",
+        "OUTPUT!A1:G100",
+        "OUTPUT",
+        "Sheet1!A:G",
+        "A:G"
       ];
       let sheetData: any[] = [];
       let successfulRange = "";
@@ -142,100 +145,145 @@ export default function DownloadSPKBAST() {
       const headerRow = sheetData[0];
       console.log("Header row:", headerRow);
 
-      // Temukan start data yang sebenarnya (skip header dan baris kosong)
-      let dataStartIndex = 1; // Default skip header pertama
+      const getHeaderIndex = (labels: string[]) => {
+        const lowerHeaders = headerRow.map((h: any) => (h || '').toString().toLowerCase());
+        return labels.reduce((found, label) => {
+          if (found >= 0) return found;
+          return lowerHeaders.findIndex(h => h.includes(label.toLowerCase()));
+        }, -1);
+      };
 
-      // Cari baris pertama yang memiliki data numerik di kolom nilai
-      for (let i = 1; i < sheetData.length; i++) {
-        const row = sheetData[i];
-        if (row && row.length >= 4) {
-          const nilaiStr = row[3]?.toString() || '';
-          // Cek jika mengandung angka (nilai perjanjian)
-          if (/\d/.test(nilaiStr)) {
-            dataStartIndex = i;
-            break;
-          }
-        }
-      }
-      console.log("Data start index:", dataStartIndex);
+      const periodeIndex = getHeaderIndex(['periode (bulan) spk', 'periode', 'periode (bulan)']);
+      const namaPetugasIndex = getHeaderIndex(['nama petugas', 'petugas']);
+      const nikIndex = getHeaderIndex(['nik', 'nip']);
+      const linkIndex = getHeaderIndex(['link', 'url']);
+      const hargaSatuanIndex = 9; // Kolom J
+      const targetIndex = 14; // Kolom O
+      const realisasiIndex = 15; // Kolom P
+      const nilaiRealisasiIndex = getHeaderIndex(['nilai realisasi']);
+      const nilaiPerjanjianIndex = getHeaderIndex(['nilai perjanjian', 'total realisasi', 'nilai kontrak']);
+
+      const dataStartIndex = 1;
       const parsedData: SPKData[] = [];
+      const monthlyAggregation = new Map<string, {
+        periode: string;
+        tahun: number;
+        bulan: string;
+        nikSet: Set<string>;
+        namaSet: Set<string>;
+        link: string;
+        nilaiPerjanjian: number;
+        nilaiRealisasi: number;
+      }>();
+
+      const normalizeMonthName = (raw: string): string => {
+        const lower = raw.toLowerCase();
+        return bulanList.find(m => lower.includes(m.toLowerCase())) || raw;
+      };
+
+      const normalizePersonValues = (raw: string): string[] => {
+        return raw
+          .split(/\||;|\n/)
+          .map(value => value.trim())
+          .filter(Boolean)
+          .map(value => value.toLowerCase());
+      };
+
       for (let i = dataStartIndex; i < sheetData.length; i++) {
         const row = sheetData[i];
-        if (!row || row.length < 4) continue;
+        if (!row || row.length === 0) continue;
         try {
-          const periode = row[1]?.toString()?.trim() || '';
-          const jumlahSPKStr = row[2]?.toString()?.trim() || '0';
-          const nilaiPerjanjianStr = row[3]?.toString()?.trim() || '0';
-          const nilaiRealisasiStr = row[4]?.toString()?.trim() || '0';
-          const persentaseStr = row[5]?.toString()?.trim() || '0';
-          const link = row[6]?.toString()?.trim() || '';
+          const periodeRaw = periodeIndex >= 0
+            ? row[periodeIndex]?.toString()?.trim() || ''
+            : row[2]?.toString()?.trim() || row[1]?.toString()?.trim() || row[0]?.toString()?.trim() || '';
+          const namaPetugasRaw = namaPetugasIndex >= 0 ? row[namaPetugasIndex]?.toString()?.trim() || '' : '';
+          const nikRaw = nikIndex >= 0 ? row[nikIndex]?.toString()?.trim() || '' : '';
+          const link = linkIndex >= 0 ? row[linkIndex]?.toString()?.trim() || '' : '';
+          const hargaSatuanRaw = row[hargaSatuanIndex]?.toString()?.trim() || '';
+          const targetRaw = row[targetIndex]?.toString()?.trim() || '';
+          const realisasiRaw = row[realisasiIndex]?.toString()?.trim() || '';
+          const nilaiPerjanjianRaw = nilaiPerjanjianIndex >= 0 ? row[nilaiPerjanjianIndex]?.toString()?.trim() || '' : '';
+          const nilaiRealisasiRaw = nilaiRealisasiIndex >= 0 ? row[nilaiRealisasiIndex]?.toString()?.trim() || '' : '';
 
-          // Parse nilai dengan berbagai format
+          if (!periodeRaw) continue;
+          const periodeMatch = periodeRaw.match(/([A-Za-z]{3,})\s+(\d{4})/);
+          if (!periodeMatch) continue;
+
+          const bulan = normalizeMonthName(periodeMatch[1]);
+          const tahun = parseInt(periodeMatch[2], 10);
+          if (isNaN(tahun)) continue;
+
+          const periode = `${bulan} ${tahun}`;
+          const key = `${bulan}-${tahun}`;
+          const existing = monthlyAggregation.get(key) || {
+            periode,
+            tahun,
+            bulan,
+            nikSet: new Set<string>(),
+            namaSet: new Set<string>(),
+            link: '',
+            nilaiPerjanjian: 0,
+            nilaiRealisasi: 0
+          };
+
+          if (nikRaw) {
+            normalizePersonValues(nikRaw).forEach(value => existing.nikSet.add(value));
+          }
+          if (namaPetugasRaw) {
+            normalizePersonValues(namaPetugasRaw).forEach(value => existing.namaSet.add(value));
+          }
+          if (!existing.link && link) {
+            existing.link = link;
+          }
+
           const parseNilai = (str: string): number => {
             if (!str) return 0;
+            const segments = str
+              .split(/\||;|\n/)
+              .map(segment => segment.trim())
+              .filter(Boolean);
 
-            // Hapus karakter non-digit kecuali koma dan titik
-            let cleaned = str.replace(/[^\d,.]/g, '');
-
-            // Handle format Indonesia (1.500.000 -> 1500000)
-            cleaned = cleaned.replace(/\./g, '');
-
-            // Ganti koma dengan titik untuk decimal
-            cleaned = cleaned.replace(',', '.');
-            const parsed = parseFloat(cleaned);
-            return isNaN(parsed) ? 0 : parsed;
+            return segments.reduce((sum, segment) => {
+              let cleaned = segment.replace(/[^\d,.]/g, '');
+              cleaned = cleaned.replace(/\./g, '');
+              cleaned = cleaned.replace(',', '.');
+              const parsed = parseFloat(cleaned);
+              return sum + (isNaN(parsed) ? 0 : parsed);
+            }, 0);
           };
-          const parseJumlahSPK = (str: string): number => {
-            if (!str) return 0;
-            const parsed = parseInt(str);
-            return isNaN(parsed) ? 0 : parsed;
-          };
-          const parsePersentase = (str: string): number => {
-            if (!str) return 0;
-            let cleaned = str.replace('%', '').replace(',', '.');
-            const parsed = parseFloat(cleaned);
-            return isNaN(parsed) ? 0 : parsed;
-          };
-          const jumlahSPK = parseJumlahSPK(jumlahSPKStr);
-          const nilaiPerjanjian = parseNilai(nilaiPerjanjianStr);
-          const nilaiRealisasi = parseNilai(nilaiRealisasiStr);
-          const persentaseRealisasi = parsePersentase(persentaseStr);
 
-          // Extract tahun dan bulan dari periode
-          let tahun = new Date().getFullYear();
-          let bulan = "";
-          const tahunMatch = periode.match(/(\d{4})/);
-          if (tahunMatch) {
-            tahun = parseInt(tahunMatch[1]);
-          }
+          const parsedHargaSatuan = parseNilai(hargaSatuanRaw);
+          const parsedTarget = parseNilai(targetRaw);
+          const parsedRealisasi = parseNilai(realisasiRaw);
 
-          // Extract bulan dari periode
-          for (const namaBulan of bulanList) {
-            if (periode.toLowerCase().includes(namaBulan.toLowerCase())) {
-              bulan = namaBulan;
-              break;
-            }
-          }
+          const nilaiPerjanjian = parsedTarget > 0 ? parsedTarget * parsedHargaSatuan : parseNilai(nilaiPerjanjianRaw);
+          const nilaiRealisasi = parsedRealisasi > 0 ? parsedRealisasi * parsedHargaSatuan : parseNilai(nilaiRealisasiRaw);
 
-          // Validasi data - hanya tambahkan jika ada data yang meaningful
-          if (periode || jumlahSPK > 0 || nilaiPerjanjian > 0 || nilaiRealisasi > 0) {
-            parsedData.push({
-              no: 0,
-              // Akan diisi ulang saat generate complete data
-              periode,
-              jumlahSPK,
-              nilaiPerjanjian,
-              nilaiRealisasi,
-              persentaseRealisasi,
-              link,
-              tahun,
-              bulan
-            });
-          }
+          existing.nilaiPerjanjian = Math.max(existing.nilaiPerjanjian, nilaiPerjanjian);
+          existing.nilaiRealisasi = Math.max(existing.nilaiRealisasi, nilaiRealisasi);
+
+          monthlyAggregation.set(key, existing);
         } catch (parseError) {
           console.error(`Error parsing row ${i}:`, row, parseError);
-          // Continue dengan row berikutnya
         }
+      }
+
+      const getUniqueCount = (entry: { nikSet: Set<string>; namaSet: Set<string> }) => {
+        return Math.max(entry.nikSet.size, entry.namaSet.size);
+      };
+
+      for (const entry of monthlyAggregation.values()) {
+        parsedData.push({
+          no: 0,
+          periode: entry.periode,
+          jumlahSPK: getUniqueCount(entry),
+          nilaiPerjanjian: entry.nilaiPerjanjian,
+          nilaiRealisasi: entry.nilaiRealisasi,
+          persentaseRealisasi: entry.nilaiPerjanjian > 0 ? entry.nilaiRealisasi / entry.nilaiPerjanjian * 100 : 0,
+          link: entry.link,
+          tahun: entry.tahun,
+          bulan: entry.bulan
+        });
       }
       console.log("Data berhasil diparsing:", parsedData.length, "items");
       if (parsedData.length === 0) {
