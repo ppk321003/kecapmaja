@@ -9,6 +9,7 @@ import GenerateSPKBAST from "@/components/GenerateSPKBAST";
 import PreviewSPKBAST from "@/components/PreviewSPKBAST";
 import ResetAndDeleteSPKBAST from "@/components/ResetAndDeleteSPKBAST";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 interface SPKData {
   no: number;
   periode: string;
