@@ -398,8 +398,10 @@ export default function DownloadSPKBAST() {
 
   // Load data saat komponen mount
   useEffect(() => {
-    fetchDataFromSheets();
-  }, []);
+    if (SPK_SPREADSHEET_ID) {
+      fetchDataFromSheets();
+    }
+  }, [SPK_SPREADSHEET_ID]);
 
   // Fungsi untuk memformat angka ke format Rupiah
   const formatRupiah = (angka: number): string => {
