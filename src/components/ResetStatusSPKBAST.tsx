@@ -128,7 +128,7 @@ export default function ResetStatusSPKBAST() {
         setCustomPeriode('');
       };
 
-      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbyzO_5I9H_KlvaUjmX7aCcFH5ffNj01LbMW8deRABZef9WQpNBlh3VU54qkzW9d7zHc/exec?action=resetStatus&periode=${encodeURIComponent(periodeToReset)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}&folderId=${encodeURIComponent(folderId)}`;
+      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbzdCowcmf5CAAL6CdHtrnSGQIJ-Ty80oPWyQGqwmMDSA11MICoj0a2rOxwU52suFrM/exec?action=resetStatus&periode=${encodeURIComponent(periodeToReset)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}&folderId=${encodeURIComponent(folderId)}`;
       console.log(`🔄 Triggering reset for: ${periodeToReset}`);
       console.log(`   URL: ${APPS_SCRIPT_URL}`);
       img.src = APPS_SCRIPT_URL;
