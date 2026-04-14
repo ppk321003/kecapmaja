@@ -45,6 +45,7 @@ serve(async (req: Request) => {
     }
 
     // Make server-side request to Apps Script (no CORS issues on server)
+    appsScriptUrl.searchParams.set("action", "generate");
     const response = await fetch(appsScriptUrl.toString(), {
       method: "GET",
       headers: {
@@ -53,12 +54,31 @@ serve(async (req: Request) => {
     });
 
     const result = await response.text();
-    console.log(`✅ Apps Script response received:`, response.status);
+    console.log(`✅ Apps Script response received:`, response.status, result);
+
+    if (!response.ok) {
+      console.error(`❌ Apps Script error response: ${response.status}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Apps Script returned status ${response.status}`,
+          appsScriptResponse: result,
+        }),
+        {
+          status: response.status,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "Generation started successfully",
+        appsScriptResponse: result,
         timestamp: new Date().toISOString(),
       }),
       {
