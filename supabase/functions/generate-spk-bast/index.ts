@@ -37,6 +37,9 @@ serve(async (req: Request) => {
     // Call Apps Script with spreadsheetId parameter
     const appsScriptUrl = new URL(APPS_SCRIPT_URL);
     appsScriptUrl.searchParams.set("spreadsheetId", spreadsheetId);
+    if (folderId) {
+      appsScriptUrl.searchParams.set("folderId", folderId);
+    }
 
     // Make server-side request to Apps Script (no CORS issues on server)
     const response = await fetch(appsScriptUrl.toString(), {

@@ -30,7 +30,7 @@ export interface SatkerConfig {
   generatespj_sheet_id?: string;
   kuitansi_sheet_id?: string;
   bahanrevisi_sheet_id?: string;
-  spkoutput_sheet_id?: string;
+  spkoutput_folder_id?: string;
 }
 
 /**
@@ -104,7 +104,7 @@ export function useSatkerConfig() {
           generatespj_sheet_id: row[22]?.trim() || '',
           kuitansi_sheet_id: row[23]?.trim() || '',
           bahanrevisi_sheet_id: row[24]?.trim() || '',
-          spkoutput_sheet_id: row[25]?.trim() || '',
+          spkoutput_folder_id: row[25]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
@@ -163,7 +163,7 @@ export function getSheetIdBySatkerAndModule(
     kecaptobendahara: 'kecaptobendahara_sheet_id',
     kuitansi: 'kuitansi_sheet_id',
     bahanrevisi: 'bahanrevisi_sheet_id',
-    spkoutput: 'spkoutput_sheet_id',
+    spkoutput: 'spkoutput_folder_id',
   };
 
   const sheetId = config[moduleKeyMap[module]];

@@ -14,6 +14,7 @@ export default function GenerateSPKBAST() {
   const satkerConfig = useSatkerConfigContext();
   const [isLoading, setIsLoading] = useState(false);
   const [spreadsheetId, setSpreadsheetId] = useState<string>('');
+  const [folderId, setFolderId] = useState<string>('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [periodeList, setPeriodeList] = useState<Array<{ periode: string; count: number }>>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -25,12 +26,17 @@ export default function GenerateSPKBAST() {
   }
 
   useEffect(() => {
-    // Get spreadsheet ID dari satker config
+    // Get spreadsheet ID dan output folder ID dari satker config
     if (satkerConfig) {
       const id = satkerConfig.getUserSatkerSheetId('entrikegiatan');
+      const outputFolderId = satkerConfig.getUserSatkerSheetId('spkoutput');
       if (id) {
         setSpreadsheetId(id);
         console.log('📊 Spreadsheet ID dari config:', id.substring(0, 20) + '...');
+      }
+      if (outputFolderId) {
+        setFolderId(outputFolderId);
+        console.log('📊 Output folder ID dari config:', outputFolderId.substring(0, 20) + '...');
       }
     }
   }, [satkerConfig]);
@@ -133,7 +139,8 @@ export default function GenerateSPKBAST() {
       // Call Supabase Edge Function to trigger Apps Script
       const { data, error } = await supabase.functions.invoke("generate-spk-bast", {
         body: {
-          spreadsheetId: spreadsheetId
+          spreadsheetId: spreadsheetId,
+          folderId: folderId
         }
       });
 
