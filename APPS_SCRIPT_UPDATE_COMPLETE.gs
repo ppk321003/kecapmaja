@@ -1,8 +1,8 @@
 // ============================================
 // APPS SCRIPT COMPLETE - SPK & BAST GENERATION
 // ============================================
-// Deployment ID: AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl
-// URL: https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec
+// Deployment ID: AKfycbzybnOLGBQiG3Uw-c7vMEwbiBbfz0hYf9r6XLZTIVhNvDLnGzsCjGuuLK40zxBh14gh
+// URL: https://script.google.com/macros/s/AKfycbzybnOLGBQiG3Uw-c7vMEwbiBbfz0hYf9r6XLZTIVhNvDLnGzsCjGuuLK40zxBh14gh/exec
 // Version: 7 (Feb 22 2026, 16:45)
 //
 // FITUR LENGKAP:

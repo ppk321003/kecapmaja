@@ -166,7 +166,7 @@ export default function ResetAndDeleteSPKBAST() {
         resolve(); // Even on error, the server process may have succeeded
       };
 
-      const RESET_URL = `https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec?action=resetStatus&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
+      const RESET_URL = `https://script.google.com/macros/s/AKfycbzybnOLGBQiG3Uw-c7vMEwbiBbfz0hYf9r6XLZTIVhNvDLnGzsCjGuuLK40zxBh14gh/exec?action=resetStatus&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
       console.log(`   Reset URL called`);
       resetImg.src = RESET_URL;
     });
@@ -189,7 +189,7 @@ export default function ResetAndDeleteSPKBAST() {
         resolve();
       };
 
-      const DELETE_URL = `https://script.google.com/macros/s/AKfycbzaHb831im2Lx4-YjEOr23gQIOIhEwovPi_q9d59lCqMnBxSPD5GLcO4biDdGl3jubl/exec?action=deleteFolder&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
+      const DELETE_URL = `https://script.google.com/macros/s/AKfycbzybnOLGBQiG3Uw-c7vMEwbiBbfz0hYf9r6XLZTIVhNvDLnGzsCjGuuLK40zxBh14gh/exec?action=deleteFolder&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
       console.log(`   Delete URL called`);
       deleteImg.src = DELETE_URL;
     });
