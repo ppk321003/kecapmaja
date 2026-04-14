@@ -1,8 +1,8 @@
 // ============================================
 // APPS SCRIPT COMPLETE - SPK & BAST GENERATION
 // ============================================
-// Deployment ID: AKfycbzybnOLGBQiG3Uw-c7vMEwbiBbfz0hYf9r6XLZTIVhNvDLnGzsCjGuuLK40zxBh14gh
-// URL: https://script.google.com/macros/s/AKfycbzybnOLGBQiG3Uw-c7vMEwbiBbfz0hYf9r6XLZTIVhNvDLnGzsCjGuuLK40zxBh14gh/exec
+// Deployment ID: AKfycbz9IUT4qwZ_5uEZeUVmhWb7kKO5PhkUwuSw-VccngDa7CRUQ9OGuGKnk38BW9P_O957
+// URL: https://script.google.com/macros/s/AKfycbz9IUT4qwZ_5uEZeUVmhWb7kKO5PhkUwuSw-VccngDa7CRUQ9OGuGKnk38BW9P_O957/exec
 // Version: 7 (Feb 22 2026, 16:45)
 //
 // FITUR LENGKAP:
@@ -916,12 +916,16 @@ function MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK(e) {
           nilai: 0,
           pekerjaan: masterData.pekerjaan || "-",
           alamat: masterData.alamat || "-",
+          templateSpkId: petugasData.templateSpkId || "",
           uraianTugas: [],
           rowIndices: new Set()
         });
       }
 
       const spkData = periodeData.petugasMap.get(petugasKey);
+      if (!spkData.templateSpkId && petugasData.templateSpkId) {
+        spkData.templateSpkId = petugasData.templateSpkId;
+      }
       spkData.rowIndices.add(originalRowNumber);
 
       petugasData.fungsi.forEach(fungsi => {
@@ -1085,7 +1089,9 @@ function MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK(e) {
     const tglBAST_terbilang = namaHari[tglBAST.getDay()] + " tanggal " + terbilang(tglBAST.getDate()) + " bulan " + spk.bulan.toLowerCase() + " tahun " + terbilang(parseInt(spk.tahun));
     
     try {
-      const templateFile = DriveApp.getFileById(TEMPLATE_ID_OK_SD);
+      const templateId = spk.templateSpkId || TEMPLATE_ID_OK_SD;
+      Logger.log(`   Using template ID: ${templateId}`);
+      const templateFile = DriveApp.getFileById(templateId);
       
       const expectedFileName = `${noSPK} - ${spk.nama}`;
       const realTimeCheck = periodeFolder.getFilesByName(expectedFileName);
@@ -1375,7 +1381,8 @@ function validateAndProcessRowDataWithRealisasi(obj, header, executionId) {
       processedData.push({
         nama: nama, nik: nik, nilai: nilai, fungsi: [fungsi].filter(Boolean),
         target: target, realisasi: realisasi, satuan: satuan, beban: beban,
-        uraian: uraian, hargaSatuan: hargaSatuan, jangkaWaktu: jangkaWaktu
+        uraian: uraian, hargaSatuan: hargaSatuan, jangkaWaktu: jangkaWaktu,
+        templateSpkId: String((obj["template_spk_id"] || obj["templete_spk_id"] || obj["Template SPK ID"] || "")).trim()
       });
     }
 
