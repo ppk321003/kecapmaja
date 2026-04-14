@@ -17,7 +17,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { spreadsheetId, folderId, templateSpkId } = await req.json().catch(() => ({}));
+    const { spreadsheetId, folderId, templateSpkId, satkerId } = await req.json().catch(() => ({}));
 
     if (!spreadsheetId) {
       return new Response(
@@ -42,6 +42,12 @@ serve(async (req: Request) => {
       isTruthy: !!templateSpkId,
       trimmed: templateSpkId?.trim() ? 'YES' : 'NO'
     });
+    console.log('[generate-spk-bast] Received satkerId:', {
+      satkerId: satkerId || 'NOT_PROVIDED',
+      satkerIdLength: satkerId?.length || 0,
+      isTruthy: !!satkerId,
+      trimmed: satkerId?.trim() ? 'YES' : 'NO'
+    });
 
     // Call Apps Script with spreadsheetId parameter
     const appsScriptUrl = new URL(APPS_SCRIPT_URL);
@@ -54,6 +60,12 @@ serve(async (req: Request) => {
       console.log(`✅ Added templateSpkId to URL: ${templateSpkId.substring(0, 30)}...`);
     } else {
       console.warn('⚠️ templateSpkId not set - Apps Script will use default');
+    }
+    if (satkerId && satkerId.trim()) {
+      appsScriptUrl.searchParams.set("satkerId", satkerId.trim());
+      console.log(`✅ Added satkerId to URL: ${satkerId}`);
+    } else {
+      console.warn('⚠️ satkerId not set - Apps Script will use default 3210');
     }
 
     // Make server-side request to Apps Script (no CORS issues on server)

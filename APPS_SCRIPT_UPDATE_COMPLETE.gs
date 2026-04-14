@@ -53,7 +53,7 @@ function getConfigFolderId() {
   return "1RxtMos2V6TAoE-VIuJtmW9lkACLDmtQb";
 }
 
-function setSatkerConfig(spreadsheetId, folderId, templateSpkId) {
+function setSatkerConfig(spreadsheetId, folderId, templateSpkId, satkerId) {
   try {
     const props = PropertiesService.getScriptProperties();
     if (spreadsheetId) {
@@ -68,6 +68,10 @@ function setSatkerConfig(spreadsheetId, folderId, templateSpkId) {
       props.setProperty("templateSpkId", templateSpkId);
       Logger.log(`✅ Config saved: templateSpkId=${templateSpkId}`);
     }
+    if (satkerId) {
+      props.setProperty("satkerId", satkerId);
+      Logger.log(`✅ Config saved: satkerId=${satkerId}`);
+    }
     Logger.log(`✅ Config saved: spreadsheet=${spreadsheetId}, folder=${folderId}`);
     return true;
   } catch(err) {
@@ -81,6 +85,11 @@ function getConfigTemplateSpkId() {
   return props.getProperty("templateSpkId") || "";
 }
 
+function getConfigSatkerId() {
+  const props = PropertiesService.getScriptProperties();
+  return props.getProperty("satkerId") || "3210"; // Default ke 3210 jika tidak ada
+}
+
 // ============================================
 // WEB ENDPOINT - doGet Handler
 // ============================================
@@ -90,6 +99,7 @@ function doGet(e) {
   const spreadsheetId = e.parameter.spreadsheetId;
   const folderId = e.parameter.folderId;
   const templateSpkId = e.parameter.templateSpkId;
+  const satkerId = e.parameter.satkerId;
 
   Logger.log(`📥 doGet called - Action: "${action}", Periode: "${periode}"`);
   Logger.log(`   spreadsheetId: ${spreadsheetId ? spreadsheetId.substring(0, 20) + '...' : 'not provided'}`);
@@ -100,12 +110,18 @@ function doGet(e) {
   Logger.log(`   Type: ${typeof templateSpkId}`);
   Logger.log(`   Truthy: ${!!templateSpkId}`);
   Logger.log(`   Trimmed: ${templateSpkId ? templateSpkId.trim() : 'N/A'}`);
+  Logger.log(`🏢 satkerId parameter:`);
+  Logger.log(`   Value: ${satkerId || 'NOT_PROVIDED'}`);
+  Logger.log(`   Length: ${satkerId ? satkerId.length : 0}`);
+  Logger.log(`   Type: ${typeof satkerId}`);
+  Logger.log(`   Truthy: ${!!satkerId}`);
+  Logger.log(`   Trimmed: ${satkerId ? satkerId.trim() : 'N/A'}`);
 
   try {
     // Simpan config jika diberikan
-    if (spreadsheetId || folderId || templateSpkId) {
-      setSatkerConfig(spreadsheetId, folderId, templateSpkId);
-      Logger.log(`✅ Config saved with templateSpkId: ${templateSpkId ? 'YES' : 'NO'}`);
+    if (spreadsheetId || folderId || templateSpkId || satkerId) {
+      setSatkerConfig(spreadsheetId, folderId, templateSpkId, satkerId);
+      Logger.log(`✅ Config saved with templateSpkId: ${templateSpkId ? 'YES' : 'NO'}, satkerId: ${satkerId ? 'YES' : 'NO'}`);
     }
 
     if (action === 'getPeriodeList') {
@@ -1098,8 +1114,15 @@ function MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK(e) {
       continue;
     }
 
-    const noSPK = `${String(urut).padStart(2, "0")}/SPK/PPK/3210/${spk.bulanNum}/${spk.tahun}`;
-    const noBAST = `${String(urut).padStart(2, "0")}/BAST/PPK/3210/${spk.bulanNum}/${spk.tahun}`;
+    // Gunakan satkerId dari config atau default 3210
+    const satkerId = getConfigSatkerId();
+    const noSPK = `${String(urut).padStart(2, "0")}/SPK/PPK/${satkerId}/${spk.bulanNum}/${spk.tahun}`;
+    const noBAST = `${String(urut).padStart(2, "0")}/BAST/PPK/${satkerId}/${spk.bulanNum}/${spk.tahun}`;
+    
+    Logger.log(`📄 Generated numbers for ${spk.nama}:`);
+    Logger.log(`   SPK: ${noSPK}`);
+    Logger.log(`   BAST: ${noBAST}`);
+    Logger.log(`   Using satkerId: ${satkerId}`);
     
     const bulanIdx = bulanMap[spk.bulan] ?? 0;
     const tglBAST = new Date(parseInt(spk.tahun), bulanIdx + 1, 0);
