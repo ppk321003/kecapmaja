@@ -140,6 +140,7 @@ export default function GenerateSPKBAST() {
       const satkerConfigData = satkerConfig?.getUserSatkerConfig();
       const templateSpkId = satkerConfigData?.template_spk_id;
       const satkerId = satkerConfigData?.satker_id;
+      const masterMitraSheetId = satkerConfigData?.masterorganik_sheet_id;
       
       console.log('[GenerateSPKBAST] Generation started:', {
         spreadsheetId: spreadsheetId?.substring(0, 20) + '...',
@@ -147,7 +148,8 @@ export default function GenerateSPKBAST() {
         satkerConfigData: satkerConfigData ? { satker_id: satkerConfigData.satker_id, satker_nama: satkerConfigData.satker_nama } : null,
         templateSpkId: templateSpkId ? templateSpkId.substring(0, 30) + '...' : 'NOT_PROVIDED',
         templateSpkIdLength: templateSpkId?.length || 0,
-        satkerId: satkerId || 'NOT_PROVIDED'
+        satkerId: satkerId || 'NOT_PROVIDED',
+        masterMitraSheetId: masterMitraSheetId ? masterMitraSheetId.substring(0, 30) + '...' : 'NOT_PROVIDED'
       });
       
       const body: Record<string, string> = {
@@ -165,6 +167,12 @@ export default function GenerateSPKBAST() {
         console.log('✅ satkerId added to request body:', satkerId);
       } else {
         console.warn('⚠️ satkerId is empty or not provided - will use default 3210');
+      }
+      if (masterMitraSheetId && masterMitraSheetId.trim()) {
+        body.masterMitraSheetId = masterMitraSheetId;
+        console.log('✅ masterMitraSheetId added to request body');
+      } else {
+        console.warn('⚠️ masterMitraSheetId is empty or not provided - master data may fallback to default sheet');
       }
 
       const { data, error } = await supabase.functions.invoke("generate-spk-bast", {

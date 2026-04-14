@@ -53,7 +53,7 @@ function getConfigFolderId() {
   return "1RxtMos2V6TAoE-VIuJtmW9lkACLDmtQb";
 }
 
-function setSatkerConfig(spreadsheetId, folderId, templateSpkId, satkerId) {
+function setSatkerConfig(spreadsheetId, folderId, templateSpkId, satkerId, masterMitraSheetId) {
   try {
     const props = PropertiesService.getScriptProperties();
     if (spreadsheetId) {
@@ -71,6 +71,10 @@ function setSatkerConfig(spreadsheetId, folderId, templateSpkId, satkerId) {
     if (satkerId) {
       props.setProperty("satkerId", satkerId);
       Logger.log(`✅ Config saved: satkerId=${satkerId}`);
+    }
+    if (masterMitraSheetId) {
+      props.setProperty("masterMitraSheetId", masterMitraSheetId);
+      Logger.log(`✅ Config saved: masterMitraSheetId=${masterMitraSheetId}`);
     }
     Logger.log(`✅ Config saved: spreadsheet=${spreadsheetId}, folder=${folderId}`);
     return true;
@@ -90,6 +94,11 @@ function getConfigSatkerId() {
   return props.getProperty("satkerId") || "3210"; // Default ke 3210 jika tidak ada
 }
 
+function getConfigMasterMitraSheetId() {
+  const props = PropertiesService.getScriptProperties();
+  return props.getProperty("masterMitraSheetId") || "";
+}
+
 // ============================================
 // WEB ENDPOINT - doGet Handler
 // ============================================
@@ -100,6 +109,7 @@ function doGet(e) {
   const folderId = e.parameter.folderId;
   const templateSpkId = e.parameter.templateSpkId;
   const satkerId = e.parameter.satkerId;
+  const masterMitraSheetId = e.parameter.masterMitraSheetId;
 
   Logger.log(`📥 doGet called - Action: "${action}", Periode: "${periode}"`);
   Logger.log(`   spreadsheetId: ${spreadsheetId ? spreadsheetId.substring(0, 20) + '...' : 'not provided'}`);
@@ -116,12 +126,18 @@ function doGet(e) {
   Logger.log(`   Type: ${typeof satkerId}`);
   Logger.log(`   Truthy: ${!!satkerId}`);
   Logger.log(`   Trimmed: ${satkerId ? satkerId.trim() : 'N/A'}`);
+  Logger.log(`📘 masterMitraSheetId parameter:`);
+  Logger.log(`   Value: ${masterMitraSheetId ? masterMitraSheetId.substring(0, 30) + '...' : 'NOT_PROVIDED'}`);
+  Logger.log(`   Length: ${masterMitraSheetId ? masterMitraSheetId.length : 0}`);
+  Logger.log(`   Type: ${typeof masterMitraSheetId}`);
+  Logger.log(`   Truthy: ${!!masterMitraSheetId}`);
+  Logger.log(`   Trimmed: ${masterMitraSheetId ? masterMitraSheetId.trim() : 'N/A'}`);
 
   try {
     // Simpan config jika diberikan
-    if (spreadsheetId || folderId || templateSpkId || satkerId) {
-      setSatkerConfig(spreadsheetId, folderId, templateSpkId, satkerId);
-      Logger.log(`✅ Config saved with templateSpkId: ${templateSpkId ? 'YES' : 'NO'}, satkerId: ${satkerId ? 'YES' : 'NO'}`);
+    if (spreadsheetId || folderId || templateSpkId || satkerId || masterMitraSheetId) {
+      setSatkerConfig(spreadsheetId, folderId, templateSpkId, satkerId, masterMitraSheetId);
+      Logger.log(`✅ Config saved with templateSpkId: ${templateSpkId ? 'YES' : 'NO'}, satkerId: ${satkerId ? 'YES' : 'NO'}, masterMitraSheetId: ${masterMitraSheetId ? 'YES' : 'NO'}`);
     }
 
     if (action === 'getPeriodeList') {
@@ -775,7 +791,9 @@ function MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK(e) {
   Logger.log(`📖 [${executionId}] Membaca master mitra...`);
   let masterMap = {};
   try {
-    const masterSs = SpreadsheetApp.openById(MASTER_MITRA_ID_OK_SD);
+    const masterMitraSheetId = getConfigMasterMitraSheetId() || MASTER_MITRA_ID_OK_SD;
+    Logger.log(`   Using master mitra sheet ID: ${masterMitraSheetId}`);
+    const masterSs = SpreadsheetApp.openById(masterMitraSheetId);
     const masterSheet = masterSs.getSheetByName("MASTER.MITRA");
     if (masterSheet) {
       const masterRange = masterSheet.getRange(1, 1, masterSheet.getLastRow(), masterSheet.getLastColumn());

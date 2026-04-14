@@ -17,7 +17,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { spreadsheetId, folderId, templateSpkId, satkerId } = await req.json().catch(() => ({}));
+    const { spreadsheetId, folderId, templateSpkId, satkerId, masterMitraSheetId } = await req.json().catch(() => ({}));
 
     if (!spreadsheetId) {
       return new Response(
@@ -66,6 +66,12 @@ serve(async (req: Request) => {
       console.log(`✅ Added satkerId to URL: ${satkerId}`);
     } else {
       console.warn('⚠️ satkerId not set - Apps Script will use default 3210');
+    }
+    if (masterMitraSheetId && masterMitraSheetId.trim()) {
+      appsScriptUrl.searchParams.set("masterMitraSheetId", masterMitraSheetId.trim());
+      console.log(`✅ Added masterMitraSheetId to URL: ${masterMitraSheetId.substring(0, 30)}...`);
+    } else {
+      console.warn('⚠️ masterMitraSheetId not set - Apps Script will use default master sheet');
     }
 
     // Make server-side request to Apps Script (no CORS issues on server)
