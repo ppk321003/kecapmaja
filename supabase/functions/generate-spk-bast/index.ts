@@ -17,7 +17,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { spreadsheetId } = await req.json().catch(() => ({}));
+    const { spreadsheetId, folderId } = await req.json().catch(() => ({}));
 
     if (!spreadsheetId) {
       return new Response(
@@ -33,6 +33,9 @@ serve(async (req: Request) => {
     }
 
     console.log(`🚀 Triggering Apps Script for spreadsheet: ${spreadsheetId.substring(0, 20)}...`);
+    if (folderId) {
+      console.log(`📁 Using folderId: ${folderId.substring(0, 20)}...`);
+    }
 
     // Call Apps Script with spreadsheetId parameter
     const appsScriptUrl = new URL(APPS_SCRIPT_URL);
