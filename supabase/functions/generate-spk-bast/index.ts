@@ -36,6 +36,12 @@ serve(async (req: Request) => {
     if (folderId) {
       console.log(`📁 Using folderId: ${folderId.substring(0, 20)}...`);
     }
+    console.log('[generate-spk-bast] Received templateSpkId:', {
+      templateSpkId: templateSpkId ? templateSpkId.substring(0, 30) + '...' : 'NOT_PROVIDED',
+      templateSpkIdLength: templateSpkId?.length || 0,
+      isTruthy: !!templateSpkId,
+      trimmed: templateSpkId?.trim() ? 'YES' : 'NO'
+    });
 
     // Call Apps Script with spreadsheetId parameter
     const appsScriptUrl = new URL(APPS_SCRIPT_URL);
@@ -43,9 +49,11 @@ serve(async (req: Request) => {
     if (folderId) {
       appsScriptUrl.searchParams.set("folderId", folderId);
     }
-    if (templateSpkId) {
-      appsScriptUrl.searchParams.set("templateSpkId", templateSpkId);
-      console.log(`📄 Using templateSpkId: ${templateSpkId.substring(0, 20)}...`);
+    if (templateSpkId && templateSpkId.trim()) {
+      appsScriptUrl.searchParams.set("templateSpkId", templateSpkId.trim());
+      console.log(`✅ Added templateSpkId to URL: ${templateSpkId.substring(0, 30)}...`);
+    } else {
+      console.warn('⚠️ templateSpkId not set - Apps Script will use default');
     }
 
     // Make server-side request to Apps Script (no CORS issues on server)

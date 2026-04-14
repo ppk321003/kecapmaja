@@ -94,12 +94,18 @@ function doGet(e) {
   Logger.log(`📥 doGet called - Action: "${action}", Periode: "${periode}"`);
   Logger.log(`   spreadsheetId: ${spreadsheetId ? spreadsheetId.substring(0, 20) + '...' : 'not provided'}`);
   Logger.log(`   folderId: ${folderId ? folderId.substring(0, 20) + '...' : 'not provided'}`);
-  Logger.log(`   templateSpkId: ${templateSpkId ? templateSpkId.substring(0, 20) + '...' : 'not provided'}`);
+  Logger.log(`📄 templateSpkId parameter:`);
+  Logger.log(`   Value: ${templateSpkId ? templateSpkId.substring(0, 30) + '...' : 'NOT_PROVIDED'}`);
+  Logger.log(`   Length: ${templateSpkId ? templateSpkId.length : 0}`);
+  Logger.log(`   Type: ${typeof templateSpkId}`);
+  Logger.log(`   Truthy: ${!!templateSpkId}`);
+  Logger.log(`   Trimmed: ${templateSpkId ? templateSpkId.trim() : 'N/A'}`);
 
   try {
     // Simpan config jika diberikan
     if (spreadsheetId || folderId || templateSpkId) {
       setSatkerConfig(spreadsheetId, folderId, templateSpkId);
+      Logger.log(`✅ Config saved with templateSpkId: ${templateSpkId ? 'YES' : 'NO'}`);
     }
 
     if (action === 'getPeriodeList') {
@@ -1100,8 +1106,13 @@ function MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK(e) {
     const tglBAST_terbilang = namaHari[tglBAST.getDay()] + " tanggal " + terbilang(tglBAST.getDate()) + " bulan " + spk.bulan.toLowerCase() + " tahun " + terbilang(parseInt(spk.tahun));
     
     try {
-      const templateId = spk.templateSpkId || getConfigTemplateSpkId() || TEMPLATE_ID_OK_SD;
-      Logger.log(`   Using template ID: ${templateId}`);
+      const configTemplateId = getConfigTemplateSpkId();
+      const templateId = spk.templateSpkId || configTemplateId || TEMPLATE_ID_OK_SD;
+      Logger.log(`   Template selection:`);
+      Logger.log(`      - spk.templateSpkId: ${spk.templateSpkId ? spk.templateSpkId.substring(0, 20) + '...' : 'empty'}`);
+      Logger.log(`      - config template: ${configTemplateId ? configTemplateId.substring(0, 20) + '...' : 'empty'}`);
+      Logger.log(`      - default (3210): ${TEMPLATE_ID_OK_SD.substring(0, 20) + '...'}`);
+      Logger.log(`      - USING: ${templateId.substring(0, 20) + '...'}`);
       const templateFile = DriveApp.getFileById(templateId);
       
       const expectedFileName = `${noSPK} - ${spk.nama}`;

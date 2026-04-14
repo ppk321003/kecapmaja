@@ -137,13 +137,26 @@ export default function GenerateSPKBAST() {
     
     try {
       // Call Supabase Edge Function to trigger Apps Script
-      const templateSpkId = satkerConfig?.getUserSatkerConfig()?.template_spk_id;
+      const satkerConfigData = satkerConfig?.getUserSatkerConfig();
+      const templateSpkId = satkerConfigData?.template_spk_id;
+      
+      console.log('[GenerateSPKBAST] Generation started:', {
+        spreadsheetId: spreadsheetId?.substring(0, 20) + '...',
+        folderId: folderId?.substring(0, 20) + '...',
+        satkerConfigData: satkerConfigData ? { satker_id: satkerConfigData.satker_id, satker_nama: satkerConfigData.satker_nama } : null,
+        templateSpkId: templateSpkId ? templateSpkId.substring(0, 30) + '...' : 'NOT_PROVIDED',
+        templateSpkIdLength: templateSpkId?.length || 0
+      });
+      
       const body: Record<string, string> = {
         spreadsheetId: spreadsheetId,
         folderId: folderId
       };
-      if (templateSpkId) {
+      if (templateSpkId && templateSpkId.trim()) {
         body.templateSpkId = templateSpkId;
+        console.log('✅ templateSpkId added to request body');
+      } else {
+        console.warn('⚠️ templateSpkId is empty or not provided - will use default template');
       }
 
       const { data, error } = await supabase.functions.invoke("generate-spk-bast", {
