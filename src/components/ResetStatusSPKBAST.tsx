@@ -19,6 +19,7 @@ export default function ResetStatusSPKBAST() {
   const [periodeList, setPeriodeList] = useState<string[]>([]);
   const [customPeriode, setCustomPeriode] = useState<string>('');
   const [spreadsheetId, setSpreadsheetId] = useState<string>('');
+  const [folderId, setFolderId] = useState<string>('');
 
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
   if (!isPPK) {
@@ -26,12 +27,19 @@ export default function ResetStatusSPKBAST() {
   }
 
   useEffect(() => {
-    // Get spreadsheet ID dari satker config
+    // Get spreadsheet ID dan folder ID dari satker config
     if (satkerConfig) {
-      const id = satkerConfig.getUserSatkerSheetId('entrikegiatan');
-      if (id) {
-        setSpreadsheetId(id);
-        console.log('📊 Spreadsheet ID dari config:', id.substring(0, 20) + '...');
+      const sheetId = satkerConfig.getUserSatkerSheetId('entrikegiatan');
+      const outputFolderId = satkerConfig.getUserSatkerSheetId('spkoutput');
+      
+      if (sheetId) {
+        setSpreadsheetId(sheetId);
+        console.log('📊 Spreadsheet ID dari config:', sheetId.substring(0, 20) + '...');
+      }
+      
+      if (outputFolderId) {
+        setFolderId(outputFolderId);
+        console.log('📁 Output folder ID dari config:', outputFolderId.substring(0, 20) + '...');
       }
     }
   }, [satkerConfig]);
@@ -120,7 +128,7 @@ export default function ResetStatusSPKBAST() {
         setCustomPeriode('');
       };
 
-      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbyzO_5I9H_KlvaUjmX7aCcFH5ffNj01LbMW8deRABZef9WQpNBlh3VU54qkzW9d7zHc/exec?action=resetStatus&periode=${encodeURIComponent(periodeToReset)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
+      const APPS_SCRIPT_URL = `https://script.google.com/macros/s/AKfycbyzO_5I9H_KlvaUjmX7aCcFH5ffNj01LbMW8deRABZef9WQpNBlh3VU54qkzW9d7zHc/exec?action=resetStatus&periode=${encodeURIComponent(periodeToReset)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}&folderId=${encodeURIComponent(folderId)}`;
       console.log(`🔄 Triggering reset for: ${periodeToReset}`);
       console.log(`   URL: ${APPS_SCRIPT_URL}`);
       img.src = APPS_SCRIPT_URL;

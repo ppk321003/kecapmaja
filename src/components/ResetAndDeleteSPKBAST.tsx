@@ -20,6 +20,7 @@ export default function ResetAndDeleteSPKBAST() {
   const [periodeList, setPeriodeList] = useState<string[]>([]);
   const [customPeriode, setCustomPeriode] = useState<string>('');
   const [spreadsheetId, setSpreadsheetId] = useState<string>('');
+  const [folderId, setFolderId] = useState<string>('');
   const [pendingPeriode, setPendingPeriode] = useState<string>('');
 
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
@@ -28,12 +29,19 @@ export default function ResetAndDeleteSPKBAST() {
   }
 
   useEffect(() => {
-    // Get spreadsheet ID dari satker config
+    // Get spreadsheet ID dan folder ID dari satker config
     if (satkerConfig) {
-      const id = satkerConfig.getUserSatkerSheetId('entrikegiatan');
-      if (id) {
-        setSpreadsheetId(id);
-        console.log('📊 Spreadsheet ID dari config:', id.substring(0, 20) + '...');
+      const sheetId = satkerConfig.getUserSatkerSheetId('entrikegiatan');
+      const outputFolderId = satkerConfig.getUserSatkerSheetId('spkoutput');
+      
+      if (sheetId) {
+        setSpreadsheetId(sheetId);
+        console.log('📊 Spreadsheet ID dari config:', sheetId.substring(0, 20) + '...');
+      }
+      
+      if (outputFolderId) {
+        setFolderId(outputFolderId);
+        console.log('📁 Output folder ID dari config:', outputFolderId.substring(0, 20) + '...');
       }
     }
   }, [satkerConfig]);
@@ -166,7 +174,7 @@ export default function ResetAndDeleteSPKBAST() {
         resolve(); // Even on error, the server process may have succeeded
       };
 
-      const RESET_URL = `https://script.google.com/macros/s/AKfycbyzO_5I9H_KlvaUjmX7aCcFH5ffNj01LbMW8deRABZef9WQpNBlh3VU54qkzW9d7zHc/exec?action=resetStatus&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
+      const RESET_URL = `https://script.google.com/macros/s/AKfycbyzO_5I9H_KlvaUjmX7aCcFH5ffNj01LbMW8deRABZef9WQpNBlh3VU54qkzW9d7zHc/exec?action=resetStatus&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}&folderId=${encodeURIComponent(folderId)}`;
       console.log(`   Reset URL called`);
       resetImg.src = RESET_URL;
     });
@@ -189,7 +197,7 @@ export default function ResetAndDeleteSPKBAST() {
         resolve();
       };
 
-      const DELETE_URL = `https://script.google.com/macros/s/AKfycbyzO_5I9H_KlvaUjmX7aCcFH5ffNj01LbMW8deRABZef9WQpNBlh3VU54qkzW9d7zHc/exec?action=deleteFolder&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}`;
+      const DELETE_URL = `https://script.google.com/macros/s/AKfycbyzO_5I9H_KlvaUjmX7aCcFH5ffNj01LbMW8deRABZef9WQpNBlh3VU54qkzW9d7zHc/exec?action=deleteFolder&periode=${encodeURIComponent(periode)}&spreadsheetId=${encodeURIComponent(spreadsheetId)}&folderId=${encodeURIComponent(folderId)}`;
       console.log(`   Delete URL called`);
       deleteImg.src = DELETE_URL;
     });
