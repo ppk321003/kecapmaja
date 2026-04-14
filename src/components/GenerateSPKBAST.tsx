@@ -137,11 +137,17 @@ export default function GenerateSPKBAST() {
     
     try {
       // Call Supabase Edge Function to trigger Apps Script
+      const templateSpkId = satkerConfig?.getUserSatkerConfig()?.template_spk_id;
+      const body: Record<string, string> = {
+        spreadsheetId: spreadsheetId,
+        folderId: folderId
+      };
+      if (templateSpkId) {
+        body.templateSpkId = templateSpkId;
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-spk-bast", {
-        body: {
-          spreadsheetId: spreadsheetId,
-          folderId: folderId
-        }
+        body
       });
 
       if (error) {

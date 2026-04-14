@@ -31,6 +31,7 @@ export interface SatkerConfig {
   kuitansi_sheet_id?: string;
   bahanrevisi_sheet_id?: string;
   spkoutput_folder_id?: string;
+  template_spk_id?: string;
 }
 
 /**
@@ -49,7 +50,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:Z`, // 26 kolom (termasuk spkoutput_sheet_id di kolom Z)
+            range: `${sheetName}!A:AA`, // 27 kolom (termasuk spkoutput_folder_id di kolom Z dan template_spk_id di kolom AA)
           },
         });
         
@@ -105,6 +106,7 @@ export function useSatkerConfig() {
           kuitansi_sheet_id: row[23]?.trim() || '',
           bahanrevisi_sheet_id: row[24]?.trim() || '',
           spkoutput_folder_id: row[25]?.trim() || '',
+          template_spk_id: row[26]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({

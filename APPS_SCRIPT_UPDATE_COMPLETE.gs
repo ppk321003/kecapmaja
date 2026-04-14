@@ -53,7 +53,7 @@ function getConfigFolderId() {
   return "1RxtMos2V6TAoE-VIuJtmW9lkACLDmtQb";
 }
 
-function setSatkerConfig(spreadsheetId, folderId) {
+function setSatkerConfig(spreadsheetId, folderId, templateSpkId) {
   try {
     const props = PropertiesService.getScriptProperties();
     if (spreadsheetId) {
@@ -64,12 +64,21 @@ function setSatkerConfig(spreadsheetId, folderId) {
       props.setProperty("folderId", folderId);
       DYNAMIC_OUTPUT_FOLDER_ID = folderId;
     }
+    if (templateSpkId) {
+      props.setProperty("templateSpkId", templateSpkId);
+      Logger.log(`✅ Config saved: templateSpkId=${templateSpkId}`);
+    }
     Logger.log(`✅ Config saved: spreadsheet=${spreadsheetId}, folder=${folderId}`);
     return true;
   } catch(err) {
     Logger.log(`❌ Error saving config: ${err}`);
     return false;
   }
+}
+
+function getConfigTemplateSpkId() {
+  const props = PropertiesService.getScriptProperties();
+  return props.getProperty("templateSpkId") || "";
 }
 
 // ============================================
@@ -80,15 +89,17 @@ function doGet(e) {
   const periode = e.parameter.periode;
   const spreadsheetId = e.parameter.spreadsheetId;
   const folderId = e.parameter.folderId;
+  const templateSpkId = e.parameter.templateSpkId;
 
   Logger.log(`📥 doGet called - Action: "${action}", Periode: "${periode}"`);
   Logger.log(`   spreadsheetId: ${spreadsheetId ? spreadsheetId.substring(0, 20) + '...' : 'not provided'}`);
   Logger.log(`   folderId: ${folderId ? folderId.substring(0, 20) + '...' : 'not provided'}`);
+  Logger.log(`   templateSpkId: ${templateSpkId ? templateSpkId.substring(0, 20) + '...' : 'not provided'}`);
 
   try {
     // Simpan config jika diberikan
-    if (spreadsheetId || folderId) {
-      setSatkerConfig(spreadsheetId, folderId);
+    if (spreadsheetId || folderId || templateSpkId) {
+      setSatkerConfig(spreadsheetId, folderId, templateSpkId);
     }
 
     if (action === 'getPeriodeList') {
@@ -1089,7 +1100,7 @@ function MailMergeSPK_Gabungan_PreserveFormat_v20_OKSD_NIK(e) {
     const tglBAST_terbilang = namaHari[tglBAST.getDay()] + " tanggal " + terbilang(tglBAST.getDate()) + " bulan " + spk.bulan.toLowerCase() + " tahun " + terbilang(parseInt(spk.tahun));
     
     try {
-      const templateId = spk.templateSpkId || TEMPLATE_ID_OK_SD;
+      const templateId = spk.templateSpkId || getConfigTemplateSpkId() || TEMPLATE_ID_OK_SD;
       Logger.log(`   Using template ID: ${templateId}`);
       const templateFile = DriveApp.getFileById(templateId);
       

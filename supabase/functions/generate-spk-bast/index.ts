@@ -17,7 +17,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { spreadsheetId, folderId } = await req.json().catch(() => ({}));
+    const { spreadsheetId, folderId, templateSpkId } = await req.json().catch(() => ({}));
 
     if (!spreadsheetId) {
       return new Response(
@@ -42,6 +42,10 @@ serve(async (req: Request) => {
     appsScriptUrl.searchParams.set("spreadsheetId", spreadsheetId);
     if (folderId) {
       appsScriptUrl.searchParams.set("folderId", folderId);
+    }
+    if (templateSpkId) {
+      appsScriptUrl.searchParams.set("templateSpkId", templateSpkId);
+      console.log(`📄 Using templateSpkId: ${templateSpkId.substring(0, 20)}...`);
     }
 
     // Make server-side request to Apps Script (no CORS issues on server)
