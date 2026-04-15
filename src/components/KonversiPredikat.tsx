@@ -365,10 +365,9 @@ class KonversiCalculator {
   ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
     const tglPenghitunganDate = DateParser.parseTanggalIndonesia(tglPenghitunganAkTerakhir);
     
-    // Jika tanggal penghitungan AK terakhir bukan tanggal 1 atau 2, maka tidak dihitung AK untuk bulan tersebut
-    if (tglPenghitunganDate.getDate() !== 1 && tglPenghitunganDate.getDate() !== 2) {
-      return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
-    }
+    // Jika tanggal penghitungan AK terakhir bukan tanggal 1 atau 2,
+    // maka bulan tersebut tidak dihitung, tetapi perhitungan berlanjut dari bulan berikutnya.
+    const isCountedTglPenghitunganMonth = [1, 2].includes(tglPenghitunganDate.getDate());
     
     const periode = this.calculatePeriodeSemester(tahun, semester);
     const periodeMulai = DateParser.parseTanggalIndonesia(periode.mulai);
@@ -386,7 +385,6 @@ class KonversiCalculator {
     }
 
     const startDate = tglPenghitunganDate <= periodeMulai ? periodeMulai : tglPenghitunganDate;
-    const isCountedTglPenghitunganMonth = [1, 2].includes(tglPenghitunganDate.getDate());
 
     const startFromDate = new Date(startDate);
     if (!isCountedTglPenghitunganMonth && tglPenghitunganDate > periodeMulai) {
