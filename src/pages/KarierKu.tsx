@@ -204,19 +204,30 @@ class AngkaKreditCalculator {
   static hitungAKTambahan(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
     // Untuk kategori Reguler, tidak ada AK tambahan untuk jabatan
     if (karyawan.kategori === 'Reguler') return 0;
-    
+
     const tglPenghitunganTerakhir = DateParser.parseTanggalIndonesia(karyawan.tglPenghitunganAkTerakhir);
     const hariIni = new Date();
-    
+
     if (tglPenghitunganTerakhir > hariIni) return 0;
-    
-    const selisihBulan = this.hitungSelisihBulan(tglPenghitunganTerakhir, hariIni);
+
+    const startMonth = new Date(tglPenghitunganTerakhir.getFullYear(), tglPenghitunganTerakhir.getMonth(), 1);
+    if (![1, 2].includes(tglPenghitunganTerakhir.getDate())) {
+      startMonth.setMonth(startMonth.getMonth() + 1);
+    }
+
+    const endMonth = new Date(hariIni.getFullYear(), hariIni.getMonth(), 1);
+    const lastDayOfCurrentMonth = new Date(hariIni.getFullYear(), hariIni.getMonth() + 1, 0).getDate();
+    if (hariIni.getDate() === lastDayOfCurrentMonth) {
+      endMonth.setMonth(endMonth.getMonth() + 1);
+    }
+
+    const selisihBulan = this.hitungSelisihBulan(startMonth, endMonth);
     if (selisihBulan <= 0) return 0;
-    
+
     const koefisien = this.getKoefisien(karyawan.jabatan);
     const akPerBulan = predikatAsumsi * koefisien / 12;
     const akTambahan = selisihBulan * akPerBulan;
-    
+
     return Number(akTambahan.toFixed(3));
   }
   static hitungAKRealSaatIni(karyawan: Karyawan, predikatAsumsi: number = 1.00): number {
