@@ -386,11 +386,14 @@ class KonversiCalculator {
     }
 
     const startDate = tglPenghitunganDate <= periodeMulai ? periodeMulai : tglPenghitunganDate;
-    
-    const startFromNextMonth = new Date(startDate);
-    startFromNextMonth.setMonth(startFromNextMonth.getMonth() + 1);
-    startFromNextMonth.setDate(1);
-    
+    const isCountedTglPenghitunganMonth = [1, 2].includes(tglPenghitunganDate.getDate());
+
+    const startFromDate = new Date(startDate);
+    if (!isCountedTglPenghitunganMonth) {
+      startFromDate.setMonth(startFromDate.getMonth() + 1);
+    }
+    startFromDate.setDate(1);
+
     const endDate = isCurrentPeriod ? sekarang : periodeSelesai;
 
     if (startFromNextMonth > endDate) {
@@ -417,13 +420,16 @@ class KonversiCalculator {
     const sekarang = new Date();
     const currentYear = sekarang.getFullYear();
     const currentMonth = sekarang.getMonth() + 1;
-    
+    const currentDay = sekarang.getDate();
+    const lastDayOfCurrentMonth = new Date(currentYear, currentMonth, 0).getDate();
+    const lastCompleteMonth = currentDay === lastDayOfCurrentMonth ? currentMonth : currentMonth - 1;
+
     if (tahun !== currentYear) return 6;
-    
+
     if (semester === 1) {
-      return Math.min(currentMonth, 6);
+      return Math.min(Math.max(lastCompleteMonth, 0), 6);
     } else {
-      return Math.max(0, Math.min(currentMonth - 6, 6));
+      return Math.max(0, Math.min(lastCompleteMonth - 6, 6));
     }
   }
 
