@@ -364,6 +364,12 @@ class KonversiCalculator {
     semester: 1 | 2
   ): { masaKerjaBulan: number; jenisPenilaian: 'PENUH' | 'PROPORSIONAL' } {
     const tglPenghitunganDate = DateParser.parseTanggalIndonesia(tglPenghitunganAkTerakhir);
+    
+    // Jika tanggal penghitungan AK terakhir bukan tanggal 1 atau 2, maka tidak dihitung AK untuk bulan tersebut
+    if (tglPenghitunganDate.getDate() !== 1 && tglPenghitunganDate.getDate() !== 2) {
+      return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
+    }
+    
     const periode = this.calculatePeriodeSemester(tahun, semester);
     const periodeMulai = DateParser.parseTanggalIndonesia(periode.mulai);
     const periodeSelesai = DateParser.parseTanggalIndonesia(periode.selesai);
