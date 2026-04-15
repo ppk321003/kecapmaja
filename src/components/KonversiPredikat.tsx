@@ -389,19 +389,19 @@ class KonversiCalculator {
     const isCountedTglPenghitunganMonth = [1, 2].includes(tglPenghitunganDate.getDate());
 
     const startFromDate = new Date(startDate);
-    if (!isCountedTglPenghitunganMonth) {
+    if (!isCountedTglPenghitunganMonth && tglPenghitunganDate > periodeMulai) {
       startFromDate.setMonth(startFromDate.getMonth() + 1);
     }
     startFromDate.setDate(1);
 
-    const endDate = isCurrentPeriod ? sekarang : periodeSelesai;
+    const endDate = isCurrentPeriod ? new Date(sekarang.getFullYear(), sekarang.getMonth(), 0) : periodeSelesai;
 
-    if (startFromNextMonth > endDate) {
+    if (startFromDate > endDate) {
       return { masaKerjaBulan: 0, jenisPenilaian: 'PROPORSIONAL' };
     }
 
     let masaKerjaBulan = 0;
-    const current = new Date(startFromNextMonth);
+    const current = new Date(startFromDate);
     
     while (current <= endDate) {
       masaKerjaBulan++;
