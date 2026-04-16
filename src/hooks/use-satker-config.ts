@@ -32,6 +32,7 @@ export interface SatkerConfig {
   bahanrevisi_sheet_id?: string;
   spkoutput_folder_id?: string;
   template_spk_id?: string;
+  pulsa_id?: string;
 }
 
 /**
@@ -50,7 +51,7 @@ export function useSatkerConfig() {
           body: {
             spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
             operation: 'read',
-            range: `${sheetName}!A:AA`, // 27 kolom (termasuk spkoutput_folder_id di kolom Z dan template_spk_id di kolom AA)
+            range: `${sheetName}!A:AB`, // 28 kolom (termasuk pulsa_id di kolom AB)
           },
         });
         
@@ -107,6 +108,7 @@ export function useSatkerConfig() {
           bahanrevisi_sheet_id: row[24]?.trim() || '',
           spkoutput_folder_id: row[25]?.trim() || '',
           template_spk_id: row[26]?.trim() || '',
+          pulsa_id: row[27]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
@@ -129,7 +131,7 @@ export function useSatkerConfig() {
 export function getSheetIdBySatkerAndModule(
   configs: SatkerConfig[] | undefined,
   satker_id: string,
-  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara' | 'kuitansi' | 'bahanrevisi' | 'spkoutput'
+  module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara' | 'kuitansi' | 'bahanrevisi' | 'spkoutput' | 'pulsa'
 ): string | null {
   if (!configs) {
     console.warn(`[getSheetIdBySatkerAndModule] Configs is undefined, cannot find satker ${satker_id}`);
@@ -166,6 +168,7 @@ export function getSheetIdBySatkerAndModule(
     kuitansi: 'kuitansi_sheet_id',
     bahanrevisi: 'bahanrevisi_sheet_id',
     spkoutput: 'spkoutput_folder_id',
+    pulsa: 'pulsa_id',
   };
 
   const sheetId = config[moduleKeyMap[module]];

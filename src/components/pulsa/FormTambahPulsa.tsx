@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,22 +15,13 @@ import { InfoIcon, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { tambahPulsaBulanan } from '@/services/pulsaSheetsService';
 import { PersonMultiSelect } from '@/components/PersonMultiSelect';
 import { useOrganikBPS, useMitraStatistik } from '@/hooks/use-database';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 
 interface FormTambahPulsaProps {
   bulanDefault?: number;
   tahunDefault?: number;
   onSuccess?: () => void;
 }
-
-const DAFTAR_KEGIATAN_PRESET = [
-  { id: '2886', label: '2886 - Pendataan KSA' },
-  { id: '2896', label: '2896 - Pelatihan Petugas Potensi Desa' },
-  { id: '2897', label: '2897 - Survey Kepuasan Pelanggan' },
-  { id: '2898', label: '2898 - Monitoring Kualitas Data' },
-  { id: '2899', label: '2899 - Workshop Digital Literacy' },
-  { id: '2900', label: '2900 - Pelatihan Sistem Informasi' },
-  { id: '2901', label: '2901 - Verifikasi Data Lapangan' },
-];
 
 const BULAN_OPTIONS = [
   { id: 1, label: 'Januari' },
@@ -48,9 +39,12 @@ const BULAN_OPTIONS = [
 ];
 
 export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormTambahPulsaProps) {
-  // Get real data dari Google Sheets
+  const satkerConfig = useSatkerConfigContext();
+  const pulsaSheetId = satkerConfig?.getUserSatkerSheetId('pulsa') || '';
+
   const { data: organikList = [], loading: loadingOrganik } = useOrganikBPS();
   const { data: mitraList = [], loading: loadingMitra } = useMitraStatistik();
+
   const [formData, setFormData] = useState({
     bulan: bulanDefault || new Date().getMonth() + 1,
     tahun: tahunDefault || new Date().getFullYear(),
@@ -67,74 +61,88 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
     text: string;
   } | null>(null);
 
-  // Format angka ke Rupiah
   const formatNumber = (value: string) => {
     if (!value) return '';
     return Number(value).toLocaleString('id-ID');
   };
 
-  // Handle nominal input
   const handleNominalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
     setFormData({ ...formData, nominal: value });
   };
 
-  // Validasi form
   const validateForm = () => {
     if (!formData.kegiatan.trim()) {
       setMessage({ type: 'error', text: 'Kegiatan harus diisi' });
       return false;
     }
-
-    if (!formData.organikIds.length) {
-      setMessage({ type: 'error', text: 'Pilih minimal 1 organik' });
+    if (!formData.organikIds.length && !formData.mitraIds.length) {
+      setMessage({ type: 'error', text: 'Pilih minimal 1 organik atau mitra' });
       return false;
     }
-
     if (!formData.nominal || Number(formData.nominal) <= 0) {
-      setMessage({
-        type: 'error',
-        text: 'Nominal harus lebih dari 0',
-      });
+      setMessage({ type: 'error', text: 'Nominal harus lebih dari 0' });
       return false;
     }
-
+    if (!pulsaSheetId) {
+      setMessage({ type: 'error', text: 'Sheet ID pulsa belum dikonfigurasi. Hubungi admin.' });
+      return false;
+    }
     return true;
   };
 
-  // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
-
     if (!validateForm()) return;
 
     setLoading(true);
 
     try {
-      const response = await tambahPulsaBulanan({
-        bulan: formData.bulan,
-        tahun: formData.tahun,
-        kegiatan: formData.kegiatan,
-        organik: formData.organikIds.map(id => {
-          const found = organikList.find(o => o.id === id);
-          return found?.name || id;
-        }).join(', '),
-        mitra: formData.mitraIds.map(id => {
-          const found = mitraList.find(m => m.id === id);
-          return found?.name || id;
-        }).join(', '),
-        nominal: Number(formData.nominal),
-        keterangan: formData.keterangan,
+      // Build list of people (organik + mitra)
+      const people: { name: string; type: 'organik' | 'mitra' }[] = [];
+
+      formData.organikIds.forEach(id => {
+        const found = organikList.find(o => o.id === id);
+        people.push({ name: found?.name || id, type: 'organik' });
       });
 
-      if (response.success) {
+      formData.mitraIds.forEach(id => {
+        const found = mitraList.find(m => m.id === id);
+        people.push({ name: found?.name || id, type: 'mitra' });
+      });
+
+      let successCount = 0;
+      let errorMessages: string[] = [];
+
+      // Save each person as a separate row
+      for (const person of people) {
+        const response = await tambahPulsaBulanan(
+          {
+            bulan: formData.bulan,
+            tahun: formData.tahun,
+            kegiatan: formData.kegiatan,
+            organik: person.type === 'organik' ? person.name : '',
+            mitra: person.type === 'mitra' ? person.name : '',
+            nominal: Number(formData.nominal),
+            keterangan: formData.keterangan,
+          },
+          pulsaSheetId
+        );
+
+        if (response.success) {
+          successCount++;
+        } else {
+          errorMessages.push(`${person.name}: ${response.message}`);
+        }
+      }
+
+      if (successCount > 0) {
         setMessage({
-          type: 'success',
-          text: response.message,
+          type: errorMessages.length > 0 ? 'info' : 'success',
+          text: `✅ ${successCount} data berhasil disimpan.${errorMessages.length > 0 ? ` ⚠️ Gagal: ${errorMessages.join('; ')}` : ''}`,
         });
 
-        // Reset form
         setFormData({
           bulan: bulanDefault || new Date().getMonth() + 1,
           tahun: tahunDefault || new Date().getFullYear(),
@@ -145,16 +153,10 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
           keterangan: '',
         });
 
-        // Notify parent
         onSuccess?.();
-
-        // Auto-clear success message
         setTimeout(() => setMessage(null), 5000);
       } else {
-        setMessage({
-          type: 'error',
-          text: response.message,
-        });
+        setMessage({ type: 'error', text: errorMessages.join('; ') });
       }
     } catch (error) {
       setMessage({
@@ -176,7 +178,6 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
       </CardHeader>
 
       <CardContent>
-        {/* Info Rule */}
         <Alert className="mb-6 bg-blue-50 border-blue-200">
           <InfoIcon className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
@@ -185,12 +186,13 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
           </AlertDescription>
         </Alert>
 
-        {/* Message */}
         {message && (
           <Alert
             className={`mb-6 ${
               message.type === 'success'
                 ? 'bg-green-50 border-green-200'
+                : message.type === 'info'
+                ? 'bg-yellow-50 border-yellow-200'
                 : 'bg-red-50 border-red-200'
             }`}
           >
@@ -203,6 +205,8 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
               className={
                 message.type === 'success'
                   ? 'text-green-800'
+                  : message.type === 'info'
+                  ? 'text-yellow-800'
                   : 'text-red-800'
               }
             >
@@ -212,7 +216,6 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Bulan & Tahun */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="bulan">Bulan</Label>
@@ -247,7 +250,6 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
             </div>
           </div>
 
-          {/* Organik & Mitra - 1 Baris */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="organik">
@@ -255,7 +257,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
               </Label>
               <PersonMultiSelect
                 value={formData.organikIds}
-                onValueChange={(ids) => 
+                onValueChange={(ids) =>
                   setFormData({ ...formData, organikIds: ids })
                 }
                 options={organikList.map(o => ({
@@ -271,12 +273,10 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
             </div>
 
             <div>
-              <Label htmlFor="mitra">
-                Nama Mitra Statistik
-              </Label>
+              <Label htmlFor="mitra">Nama Mitra Statistik</Label>
               <PersonMultiSelect
                 value={formData.mitraIds}
-                onValueChange={(ids) => 
+                onValueChange={(ids) =>
                   setFormData({ ...formData, mitraIds: ids })
                 }
                 options={mitraList.map(m => ({
@@ -292,7 +292,6 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
             </div>
           </div>
 
-          {/* Kegiatan (Panjang) & Nominal (Disesuaikan) */}
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-2">
               <Label htmlFor="kegiatan">
@@ -307,7 +306,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                     setFormData({ ...formData, kegiatan: e.target.value })
                   }
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   💡 Bisa isi kode (2886, 2897) atau nama kegiatan
                 </p>
               </div>
@@ -325,14 +324,13 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                   onChange={handleNominalChange}
                   className="font-mono"
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Rp {formatNumber(formData.nominal) || '0'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Keterangan */}
           <div>
             <Label htmlFor="keterangan">Keterangan</Label>
             <Input
@@ -345,20 +343,19 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
             />
           </div>
 
-          {/* Summary */}
-          <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="bg-muted p-4 rounded-lg">
             <p className="font-semibold mb-2">📋 Ringkasan Data:</p>
             <div className="space-y-1 text-sm">
               <p>
-                <span className="text-gray-600">Bulan:</span>{' '}
+                <span className="text-muted-foreground">Bulan:</span>{' '}
                 {BULAN_OPTIONS.find((b) => b.id === formData.bulan)?.label}{' '}
                 {formData.tahun}
               </p>
               <p>
-                <span className="text-gray-600">Kegiatan:</span> {formData.kegiatan || '-'}
+                <span className="text-muted-foreground">Kegiatan:</span> {formData.kegiatan || '-'}
               </p>
               <p>
-                <span className="text-gray-600">Organik:</span>{' '}
+                <span className="text-muted-foreground">Organik:</span>{' '}
                 {formData.organikIds.length > 0
                   ? formData.organikIds.map(id => {
                       const found = organikList.find(o => o.id === id);
@@ -367,7 +364,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                   : '-'}
               </p>
               <p>
-                <span className="text-gray-600">Mitra:</span>{' '}
+                <span className="text-muted-foreground">Mitra:</span>{' '}
                 {formData.mitraIds.length > 0
                   ? formData.mitraIds.map(id => {
                       const found = mitraList.find(m => m.id === id);
@@ -376,13 +373,14 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                   : '-'}
               </p>
               <p className="font-semibold">
-                <span className="text-gray-600">Total Nominal:</span> Rp{' '}
+                <span className="text-muted-foreground">Total Nominal:</span> Rp{' '}
                 {formatNumber(formData.nominal) || '0'}
+                {' '}× {formData.organikIds.length + formData.mitraIds.length || 0} orang
+                {' '}= Rp {formatNumber(String(Number(formData.nominal || '0') * (formData.organikIds.length + formData.mitraIds.length)))}
               </p>
             </div>
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-2">
             <Button
               type="submit"
@@ -405,8 +403,6 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                 setFormData({
                   bulan: bulanDefault || new Date().getMonth() + 1,
                   tahun: tahunDefault || new Date().getFullYear(),
-                  namaPetugas: '',
-                  nip: '',
                   kegiatan: '',
                   organikIds: [],
                   mitraIds: [],
