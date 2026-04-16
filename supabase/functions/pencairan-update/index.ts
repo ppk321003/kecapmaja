@@ -266,7 +266,7 @@ serve(async (req: Request) => {
     const existingNomorSPPD = currentRow.length > 20 ? currentRow[20] || '' : '';  // U: Nomor SPPD (index 20)
     const existingNominal = currentRow.length > 21 ? currentRow[21] || '' : '';    // V: Nominal (index 21)
 
-    // Variables untuk update - declare sebelum digunakan
+    // Initialize all update variables FIRST before any conditional logic
     let updatedWaktuPengajuan = waktuPengajuan;
     let updatedWaktuBendahara = waktuBendahara;
     let updatedWaktuPpk = waktuPpk;
@@ -279,7 +279,7 @@ serve(async (req: Request) => {
     let updatedPembayaran = existingPembayaran;
     let updatedNomorSPM = existingNomorSPM;
     let updatedNomorSPPD = existingNomorSPPD;
-    let updatedNominal = nominal !== undefined ? nominal : existingNominal;
+    let updatedNominal = existingNominal || '';  // Initialize from existing, will be overridden if nominal provided
 
     // Handle edit action from SM
     if (actor === 'sm' && action === 'edit') {
@@ -287,7 +287,7 @@ serve(async (req: Request) => {
       if (namaPengaju) newSubmitterName = namaPengaju;
       if (jenisPengajuan) newJenisBelanja = jenisPengajuan;
       if (kelengkapan !== undefined) newDocuments = kelengkapan;
-      if (nominal !== undefined) updatedNominal = nominal;
+      if (nominal) updatedNominal = nominal;
       if (status) newStatus = status;
     }
     
@@ -332,10 +332,12 @@ serve(async (req: Request) => {
       if (action === 'approve') {
         newStatus = 'pending_ppspm'; // PPK approve → ke PPSPM
       } else if (action === 'reject') {
-        newStatus = 'incomplete_bendahara'; // PPK reject → kembali ke Bendahara        // Clear pembayaran, nomorSPM, nomorSPPD saat PPK reject
+        newStatus = 'incomplete_bendahara'; // PPK reject → kembali ke Bendahara
+        // Clear pembayaran, nomorSPM, nomorSPPD saat PPK reject
         updatedPembayaran = '';
         updatedNomorSPM = '';
-        updatedNomorSPPD = '';      }
+        updatedNomorSPPD = '';
+      }
       
     } else if (actor === 'ppspm') {
       updatedWaktuPPSPM = updatedAt;
