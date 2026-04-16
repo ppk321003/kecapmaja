@@ -315,6 +315,7 @@ export function SubmissionForm({ open, onClose, onSubmit, editData }: Submission
             namaPengaju: submitterName.trim(),
             jenisPengajuan: jenisPengajuan,
             kelengkapan: kelengkapan,
+            nominal: parseFormattedNumber(nominal) || '',
             satker: user?.satker,
           },
         });
