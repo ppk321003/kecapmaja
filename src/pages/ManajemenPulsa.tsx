@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, RefreshCw } from 'lucide-react';
+import { LaporanPulsa } from '@/components/pulsa/LaporanPulsa';
 import * as XLSX from 'xlsx';
 
 const ManajemenPulsa: React.FC = () => {
