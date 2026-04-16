@@ -10,14 +10,18 @@
  * File ini untuk di-deploy di Supabase Edge Functions
  */
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { JWT } from "https://deno.land/x/jose@v4.11.2/index.ts";
+// @ts-nocheck
+// Deno runtime - TypeScript checks disabled for Deno environment
+
+import { serve } from "std/http/server.ts";
+import { SignJWT } from "jose";
 
 // ==================== CONFIG ====================
 
 const GOOGLE_SHEETS_API_URL = "https://sheets.googleapis.com/v4/spreadsheets";
 const SHEET_ID = Deno.env.get("GOOGLE_SHEETS_ID") || "your-sheet-id-here";
-const GOOGLE_SERVICE_ACCOUNT = JSON.parse(Deno.env.get("GOOGLE_SERVICE_ACCOUNT") || "{}");
+const GOOGLE_SERVICE_ACCOUNT_JSON = Deno.env.get("GOOGLE_SERVICE_ACCOUNT") || "{}";
+const GOOGLE_SERVICE_ACCOUNT = JSON.parse(GOOGLE_SERVICE_ACCOUNT_JSON);
 
 // Sheet ranges (sesuaikan dengan nama sheet di Sheets)
 const RANGES = {
@@ -32,7 +36,7 @@ const RANGES = {
 
 // ==================== JWT TOKEN ====================
 
-async function getGoogleAccessToken() {
+async function getGoogleAccessToken(): Promise<string> {
   const header = {
     alg: "RS256",
     typ: "JWT",
@@ -48,16 +52,17 @@ async function getGoogleAccessToken() {
     iat: now,
   };
 
+  const privateKeyStr = GOOGLE_SERVICE_ACCOUNT.private_key as string;
   const key = await crypto.subtle.importKey(
     "pkcs8",
-    new TextEncoder().encode(GOOGLE_SERVICE_ACCOUNT.private_key),
+    new TextEncoder().encode(privateKeyStr),
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
     ["sign"]
   );
 
   // Sign JWT
-  const jwt = await new SignJWT(payload)
+  const jwt = await new SignJWT(payload as Record<string, unknown>)
     .setProtectedHeader(header)
     .sign(key);
 
@@ -71,13 +76,13 @@ async function getGoogleAccessToken() {
     }),
   });
 
-  const data = await response.json();
-  return data.access_token;
+  const data = await response.json() as Record<string, unknown>;
+  return data.access_token as string;
 }
 
 // ==================== READ FROM SHEETS ====================
 
-async function readFromSheet(range, accessToken) {
+async function readFromSheet(range: string, accessToken: string): Promise<string[][]> {
   const url = `${GOOGLE_SHEETS_API_URL}/${SHEET_ID}/values/${range}`;
 
   const response = await fetch(url, {
@@ -86,13 +91,13 @@ async function readFromSheet(range, accessToken) {
     },
   });
 
-  const data = await response.json();
-  return data.values || [];
+  const data = await response.json() as Record<string, unknown>;
+  return (data.values as string[][]) || [];
 }
 
 // ==================== APPEND TO SHEET ====================
 
-async function appendToSheet(range, values, accessToken) {
+async function appendToSheet(range: string, values: unknown[], accessToken: string): Promise<Record<string, unknown>> {
   const url = `${GOOGLE_SHEETS_API_URL}/${SHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED`;
 
   const response = await fetch(url, {
@@ -106,13 +111,13 @@ async function appendToSheet(range, values, accessToken) {
     }),
   });
 
-  const data = await response.json();
+  const data = await response.json() as Record<string, unknown>;
   return data;
 }
 
 // ==================== UPDATE CELL ====================
 
-async function updateCell(range, value, accessToken) {
+async function updateCell(range: string, value: unknown, accessToken: string): Promise<Record<string, unknown>> {
   const url = `${GOOGLE_SHEETS_API_URL}/${SHEET_ID}/values/${range}?valueInputOption=USER_ENTERED`;
 
   const response = await fetch(url, {
@@ -126,19 +131,19 @@ async function updateCell(range, value, accessToken) {
     }),
   });
 
-  const data = await response.json();
+  const data = await response.json() as Record<string, unknown>;
   return data;
 }
 
 // ==================== VALIDATE DUPLIKASI ====================
 
 async function validatePulsaDuplikasi(
-  bulan,
-  tahun,
-  namaPetugas,
-  kegiatanBaru,
-  accessToken
-) {
+  bulan: number,
+  tahun: number,
+  namaPetugas: string,
+  kegiatanBaru: string,
+  accessToken: string
+): Promise<{ valid: boolean; message?: string }> {
   const data = await readFromSheet(RANGES.PULSA_BULANAN, accessToken);
 
   // Skip header (row 0)
@@ -146,8 +151,8 @@ async function validatePulsaDuplikasi(
     const row = data[i];
 
     // Format: No, Bulan, Tahun, Nama, NIP, Kegiatan, Organik, Mitra, Nominal, Status...
-    const bulanRow = row[1];
-    const tahunRow = row[2];
+    const bulanRow = Number(row[1]);
+    const tahunRow = Number(row[2]);
     const namaRow = row[3];
     const kegiatanRow = row[5];
     const statusRow = row[9];
@@ -174,9 +179,9 @@ async function validatePulsaDuplikasi(
 
 // ==================== TAMBAH PULSA ====================
 
-async function tambahPulsaBulanan(req) {
+async function tambahPulsaBulanan(req: Request): Promise<Record<string, unknown>> {
   try {
-    const body = await req.json();
+    const body = await req.json() as Record<string, unknown>;
     const {
       bulan,
       tahun,
@@ -197,7 +202,7 @@ async function tambahPulsaBulanan(req) {
       };
     }
 
-    if (nominal <= 0) {
+    if ((nominal as number) <= 0) {
       return {
         success: false,
         message: "Nominal harus lebih dari 0",
@@ -209,10 +214,10 @@ async function tambahPulsaBulanan(req) {
 
     // Validasi duplikasi
     const validasi = await validatePulsaDuplikasi(
-      bulan,
-      tahun,
-      namaPetugas,
-      kegiatan,
+      bulan as number,
+      tahun as number,
+      namaPetugas as string,
+      kegiatan as string,
       accessToken
     );
 
@@ -246,14 +251,14 @@ async function tambahPulsaBulanan(req) {
     ];
 
     // Append to sheet
-    const result = await appendToSheet(
+    await appendToSheet(
       RANGES.PULSA_BULANAN,
       newRow,
       accessToken
     );
 
     // Update laporan
-    await updateLaporanPulsa(tahun, bulan, accessToken);
+    await updateLaporanPulsa(tahun as number, bulan as number, accessToken);
 
     return {
       success: true,
@@ -264,16 +269,16 @@ async function tambahPulsaBulanan(req) {
     console.error("Error:", error);
     return {
       success: false,
-      message: `❌ Error: ${error.message}`,
+      message: `❌ Error: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
 
 // ==================== SUBMIT UNTUK APPROVAL ====================
 
-async function submitPulsaUntukApproval(req) {
+async function submitPulsaUntukApproval(req: Request): Promise<Record<string, unknown>> {
   try {
-    const body = await req.json();
+    const body = await req.json() as Record<string, unknown>;
     const { rowNumber } = body;
 
     const accessToken = await getGoogleAccessToken();
@@ -281,7 +286,7 @@ async function submitPulsaUntukApproval(req) {
     // Update status to "pending"
     // Row number + 1 (header di row 1) = rowNumber+1
     // Column J (10th column) = Status
-    const cellRange = `PULSA-BULANAN!J${rowNumber + 1}`;
+    const cellRange = `PULSA-BULANAN!J${(rowNumber as number) + 1}`;
     await updateCell(cellRange, "pending", accessToken);
 
     return {
@@ -292,48 +297,146 @@ async function submitPulsaUntukApproval(req) {
     console.error("Error:", error);
     return {
       success: false,
-      message: `❌ Error: ${error.message}`,
+      message: `❌ Error: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
 
+// ==================== ROLE VALIDATION ====================
+
+function validateRole(role: string, requiredRole: string): { valid: boolean; message?: string } {
+  if (!role) {
+    return {
+      valid: false,
+      message: "❌ Role tidak ditemukan. Silakan login kembali.",
+    };
+  }
+
+  if (role !== requiredRole) {
+    return {
+      valid: false,
+      message: `❌ Akses ditolak. Hanya ${requiredRole} yang bisa melakukan aksi ini.`,
+    };
+  }
+
+  return { valid: true };
+}
+
 // ==================== APPROVE DATA ====================
 
-async function approvePulsa(req) {
+async function approvePulsa(req: Request): Promise<Record<string, unknown>> {
   try {
-    const body = await req.json();
-    const { rowNumber, approvedBy } = body;
+    const body = await req.json() as Record<string, unknown>;
+    const { rowNumber, approvedBy, role } = body;
+
+    // Validate role - only PPK can approve
+    const roleCheck = validateRole(role as string, "PPK");
+    if (!roleCheck.valid) {
+      return roleCheck;
+    }
 
     const accessToken = await getGoogleAccessToken();
 
     // Update status to "approved"
-    const statusCell = `PULSA-BULANAN!J${rowNumber + 1}`;
+    const statusCell = `PULSA-BULANAN!J${(rowNumber as number) + 1}`;
     await updateCell(statusCell, "approved", accessToken);
 
     // Update approved by
-    const approverCell = `PULSA-BULANAN!M${rowNumber + 1}`;
+    const approverCell = `PULSA-BULANAN!M${(rowNumber as number) + 1}`;
     await updateCell(approverCell, approvedBy || "Unknown", accessToken);
 
     // Update approval date
-    const dateCell = `PULSA-BULANAN!N${rowNumber + 1}`;
+    const dateCell = `PULSA-BULANAN!N${(rowNumber as number) + 1}`;
     await updateCell(dateCell, new Date().toLocaleString("id-ID"), accessToken);
+
+    // Update laporan
+    await updateLaporanPulsaFromPendingRow(rowNumber as number, accessToken);
 
     return {
       success: true,
-      message: "✅ Data sudah disetujui",
+      message: "✅ Data pulsa sudah disetujui oleh PPK",
     };
   } catch (error) {
     console.error("Error:", error);
     return {
       success: false,
-      message: `❌ Error: ${error.message}`,
+      message: `❌ Error: ${error instanceof Error ? error.message : String(error)}`,
     };
+  }
+}
+
+// ==================== REJECT DATA ====================
+
+async function rejectPulsa(req: Request): Promise<Record<string, unknown>> {
+  try {
+    const body = await req.json() as Record<string, unknown>;
+    const { rowNumber, approvedBy, rejectionReason, role } = body;
+
+    // Validate role - only PPK can reject
+    const roleCheck = validateRole(role as string, "PPK");
+    if (!roleCheck.valid) {
+      return roleCheck;
+    }
+
+    const accessToken = await getGoogleAccessToken();
+
+    // Update status to "rejected"
+    const statusCell = `PULSA-BULANAN!J${(rowNumber as number) + 1}`;
+    await updateCell(statusCell, "rejected", accessToken);
+
+    // Update approved by (track who rejected it)
+    const approverCell = `PULSA-BULANAN!M${(rowNumber as number) + 1}`;
+    await updateCell(approverCell, `DITOLAK oleh ${approvedBy || "Unknown"}`, accessToken);
+
+    // Update approval date
+    const dateCell = `PULSA-BULANAN!N${(rowNumber as number) + 1}`;
+    await updateCell(dateCell, new Date().toLocaleString("id-ID"), accessToken);
+
+    // Update or add rejection reason in keterangan (column L, 12)
+    const keteranganCell = `PULSA-BULANAN!L${(rowNumber as number) + 1}`;
+    const reasonText = `[DITOLAK] ${rejectionReason || "Tidak sesuai kriteria"}`;
+    await updateCell(keteranganCell, reasonText, accessToken);
+
+    return {
+      success: true,
+      message: `✅ Data pulsa ditolak oleh PPK. Alasan: ${rejectionReason || "Tidak sesuai kriteria"}`,
+    };
+  } catch (error) {
+    console.error("Error:", error);
+    return {
+      success: false,
+      message: `❌ Error: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+// ==================== UPDATE LAPORAN (Single Row) ====================
+
+async function updateLaporanPulsaFromPendingRow(rowNumber: number, accessToken: string): Promise<{ success: boolean }> {
+  try {
+    // Read the row that was just approved
+    const allData = await readFromSheet(RANGES.PULSA_BULANAN, accessToken);
+    
+    if (rowNumber >= allData.length) {
+      return { success: false };
+    }
+
+    const row = allData[rowNumber];
+    const bulan = Number(row[1]);
+    const tahun = Number(row[2]);
+
+    // Recalculate laporan for this month/year
+    await updateLaporanPulsa(tahun, bulan, accessToken);
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating laporan from row:", error);
+    return { success: false };
   }
 }
 
 // ==================== UPDATE LAPORAN ====================
 
-async function updateLaporanPulsa(tahun, bulan, accessToken) {
+async function updateLaporanPulsa(tahun: number, bulan: number, accessToken: string): Promise<{ success: boolean }> {
   try {
     const allData = await readFromSheet(RANGES.PULSA_BULANAN, accessToken);
 
@@ -342,9 +445,9 @@ async function updateLaporanPulsa(tahun, bulan, accessToken) {
     let totalApproved = 0;
     let totalPending = 0;
     let totalDraft = 0;
-    const kegiatanMap = {};
-    const organikMap = {};
-    const petugasSet = new Set();
+    const kegiatanMap: Record<string, number> = {};
+    const organikMap: Record<string, number> = {};
+    const petugasSet = new Set<string>();
 
     // Process data
     for (let i = 1; i < allData.length; i++) {
@@ -386,10 +489,10 @@ async function updateLaporanPulsa(tahun, bulan, accessToken) {
 
     // Format laporan
     const kegiatanDetail = Object.entries(kegiatanMap)
-      .map(([k, v]) => `${k}: Rp ${v.toLocaleString("id-ID")}`)
+      .map(([k, v]) => `${k}: Rp ${(v as number).toLocaleString("id-ID")}`)
       .join(" | ");
     const organikDetail = Object.entries(organikMap)
-      .map(([k, v]) => `${k}: Rp ${v.toLocaleString("id-ID")}`)
+      .map(([k, v]) => `${k}: Rp ${(v as number).toLocaleString("id-ID")}`)
       .join(" | ");
 
     const laporanRow = [
@@ -420,8 +523,6 @@ async function updateLaporanPulsa(tahun, bulan, accessToken) {
 
     if (rowToUpdate > 0) {
       // Update existing
-      const range = `LAPORAN-PULSA!A${rowToUpdate}:I${rowToUpdate}`;
-      // This is a bit complex, so we'll just append for simplicity
       await appendToSheet(RANGES.LAPORAN_PULSA, laporanRow, accessToken);
     } else {
       // Append new
@@ -431,12 +532,13 @@ async function updateLaporanPulsa(tahun, bulan, accessToken) {
     return { success: true };
   } catch (error) {
     console.error("Error updating laporan:", error);
+    return { success: false };
   }
 }
 
 // ==================== MAIN HANDLER ====================
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // CORS headers
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -451,7 +553,7 @@ serve(async (req) => {
   const url = new URL(req.url);
   const action = url.searchParams.get("action");
 
-  let response;
+  let response: Record<string, unknown>;
 
   if (action === "tambah") {
     response = await tambahPulsaBulanan(req);
@@ -459,6 +561,8 @@ serve(async (req) => {
     response = await submitPulsaUntukApproval(req);
   } else if (action === "approve") {
     response = await approvePulsa(req);
+  } else if (action === "reject") {
+    response = await rejectPulsa(req);
   } else {
     response = { error: "Unknown action" };
   }

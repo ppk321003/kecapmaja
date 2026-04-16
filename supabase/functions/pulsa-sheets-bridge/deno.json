@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "std/": "https://deno.land/std@0.208.0/",
+    "jose": "https://deno.land/x/jose@v4.15.4/index.ts"
+  },
+  "tasks": {
+    "dev": "deno run --allow-all --watch index.ts"
+  }
+}
