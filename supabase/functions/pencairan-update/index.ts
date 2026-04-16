@@ -266,17 +266,7 @@ serve(async (req: Request) => {
     const existingNomorSPPD = currentRow.length > 20 ? currentRow[20] || '' : '';  // U: Nomor SPPD (index 20)
     const existingNominal = currentRow.length > 21 ? currentRow[21] || '' : '';    // V: Nominal (index 21)
 
-    // Handle edit action from SM
-    if (actor === 'sm' && action === 'edit') {
-      if (uraianPengajuan) newTitle = uraianPengajuan;
-      if (namaPengaju) newSubmitterName = namaPengaju;
-      if (jenisPengajuan) newJenisBelanja = jenisPengajuan;
-      if (kelengkapan !== undefined) newDocuments = kelengkapan;
-      if (nominal !== undefined) updatedNominal = nominal;
-      if (status) newStatus = status;
-    }
-    
-    // Variables untuk update
+    // Variables untuk update - declare sebelum digunakan
     let updatedWaktuPengajuan = waktuPengajuan;
     let updatedWaktuBendahara = waktuBendahara;
     let updatedWaktuPpk = waktuPpk;
@@ -290,6 +280,16 @@ serve(async (req: Request) => {
     let updatedNomorSPM = existingNomorSPM;
     let updatedNomorSPPD = existingNomorSPPD;
     let updatedNominal = nominal !== undefined ? nominal : existingNominal;
+
+    // Handle edit action from SM
+    if (actor === 'sm' && action === 'edit') {
+      if (uraianPengajuan) newTitle = uraianPengajuan;
+      if (namaPengaju) newSubmitterName = namaPengaju;
+      if (jenisPengajuan) newJenisBelanja = jenisPengajuan;
+      if (kelengkapan !== undefined) newDocuments = kelengkapan;
+      if (nominal !== undefined) updatedNominal = nominal;
+      if (status) newStatus = status;
+    }
     
     console.log(`[Start] Initial newStatus=${newStatus}, currentRow[6]=${currentRow[6]}, status param=${status}`);
     
