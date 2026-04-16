@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { approvePulsa, rejectPulsa, isUserPPK } from '@/services/pulsaApprovalService';
 
 interface TabelPulsaBulananProps {
@@ -53,6 +54,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [approveAction, setApproveAction] = useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchItems();
@@ -106,6 +108,11 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     });
   }, [userRole, isPPK, user, persons]);
 
+  // Dialog state change logging
+  useEffect(() => {
+    console.log('[Dialog State] approveDialogOpen:', approveDialogOpen, 'selectedApprovePerson:', selectedApprovePerson?.nama);
+  }, [approveDialogOpen, selectedApprovePerson]);
+
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; variant: 'secondary' | 'destructive' | 'default' | 'outline' }> = {
       draft: { label: 'Draft', variant: 'secondary' },
@@ -121,14 +128,26 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
   };
 
   const handleApproveClick = (person: PersonPulsaEntry) => {
+    console.log('[handleApproveClick] Clicked person:', person.nama);
     setSelectedApprovePerson(person);
     setApproveAction(null);
+    // Initialize selected items - select all pending items by default
+    const pendingIndices = new Set(
+      person.entries
+        .filter(e => ['pending', 'pending_ppk'].includes(e.status))
+        .map((_, idx) => idx)
+    );
+    setSelectedItems(pendingIndices);
     setApproveDialogOpen(true);
     setRejectionReason('');
+    console.log('[handleApproveClick] Dialog should open now with items:', Array.from(pendingIndices));
   };
 
   const handleApproveConfirm = async () => {
-    if (!selectedApprovePerson) return;
+    if (!selectedApprovePerson || selectedItems.size === 0) {
+      alert('Pilih minimal 1 item untuk disetujui');
+      return;
+    }
 
     setActionLoading('approve-processing');
     const approver = user?.username || 'Unknown';
@@ -137,7 +156,9 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     );
 
     try {
-      for (const entry of pendingEntries) {
+      // Only approve selected items
+      const selectedEntries = Array.from(selectedItems).map(idx => pendingEntries[idx]);
+      for (const entry of selectedEntries) {
         const result = await approvePulsa(entry.rowIndex, approver, userRole);
         if (!result.success) {
           alert(`Error approving row ${entry.rowIndex}: ${result.message}`);
@@ -148,6 +169,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
       onRefresh?.();
       setApproveDialogOpen(false);
       setSelectedApprovePerson(null);
+      setSelectedItems(new Set());
     } finally {
       setActionLoading(null);
     }
@@ -161,8 +183,8 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
   };
 
   const handleRejectConfirm = async () => {
-    if (!selectedApprovePerson || !rejectionReason.trim()) {
-      alert('Alasan penolakan harus diisi');
+    if (!selectedApprovePerson || !rejectionReason.trim() || selectedItems.size === 0) {
+      alert('Pilih item untuk ditolak dan isi alasan penolakan');
       return;
     }
 
@@ -173,7 +195,9 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     );
 
     try {
-      for (const entry of pendingEntries) {
+      // Only reject selected items
+      const selectedEntries = Array.from(selectedItems).map(idx => pendingEntries[idx]);
+      for (const entry of selectedEntries) {
         const result = await rejectPulsa(
           entry.rowIndex,
           rejector,
@@ -191,6 +215,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
       setSelectedApprovePerson(null);
       setRejectionReason('');
       setApproveAction(null);
+      setSelectedItems(new Set());
     } finally {
       setActionLoading(null);
     }
@@ -386,16 +411,21 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
       </Card>
 
       {/* Approve/Reject Dialog */}
-      <Dialog open={approveDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          setApproveDialogOpen(false);
-          setSelectedApprovePerson(null);
-          setApproveAction(null);
-          setRejectionReason('');
-        } else {
-          setApproveDialogOpen(open);
-        }
-      }}>
+      <Dialog 
+        open={approveDialogOpen} 
+        onOpenChange={(open) => {
+          console.log('[Dialog] onOpenChange called with:', open, 'Current state:', approveDialogOpen);
+          if (!open) {
+            setApproveDialogOpen(false);
+            setSelectedApprovePerson(null);
+            setApproveAction(null);
+            setRejectionReason('');
+            setSelectedItems(new Set());
+          } else {
+            setApproveDialogOpen(open);
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Approval Data Pulsa</DialogTitle>
@@ -419,21 +449,39 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
 
           {selectedApprovePerson && (
             <div className="space-y-4">
-              {/* Items to approve */}
+              {/* Items to approve with checkboxes */}
               <div className="border rounded-lg p-3 bg-muted/30">
-                <p className="font-medium text-sm mb-2">Item Pending untuk Disetujui/Ditolak:</p>
+                <p className="font-medium text-sm mb-3">Pilih item untuk disetujui/ditolak:</p>
                 <div className="space-y-2">
                   {selectedApprovePerson.entries
                     .filter(e => ['pending', 'pending_ppk'].includes(e.status))
-                    .map((entry, i) => (
+                    .map((entry, idx) => (
                       <div
-                        key={i}
-                        className="flex justify-between items-center p-2 bg-white border rounded text-sm"
+                        key={idx}
+                        className="flex items-center gap-3 p-2 bg-white border rounded text-sm hover:bg-muted/50"
                       >
-                        <div>
-                          <p className="font-medium">{entry.kegiatan}</p>
-                          <p className="text-xs text-muted-foreground">Rp {entry.nominal.toLocaleString('id-ID')}</p>
-                        </div>
+                        <Checkbox
+                          id={`item-${idx}`}
+                          checked={selectedItems.has(idx)}
+                          onCheckedChange={(checked) => {
+                            const newSet = new Set(selectedItems);
+                            if (checked) {
+                              newSet.add(idx);
+                            } else {
+                              newSet.delete(idx);
+                            }
+                            setSelectedItems(newSet);
+                          }}
+                        />
+                        <label
+                          htmlFor={`item-${idx}`}
+                          className="flex-1 cursor-pointer"
+                        >
+                          <div>
+                            <p className="font-medium">{entry.kegiatan}</p>
+                            <p className="text-xs text-muted-foreground">Rp {entry.nominal.toLocaleString('id-ID')}</p>
+                          </div>
+                        </label>
                         <Badge variant="outline">Pending</Badge>
                       </div>
                     ))}
@@ -443,29 +491,28 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
               {/* Action selection */}
               {approveAction === null && (
                 <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
-                  <p className="font-medium text-sm">Pilih Aksi:</p>
+                  <p className="font-medium text-sm">Pilih Aksi ({selectedItems.size} item terpilih):</p>
                   <div className="flex gap-2">
                     <Button
                       className="flex-1"
                       onClick={() => setApproveAction('approve')}
-                      disabled={actionLoading !== null}
+                      disabled={actionLoading !== null || selectedItems.size === 0}
                     >
                       <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Setujui Semua
+                      Setujui Terpilih
                     </Button>
                     <Button
                       className="flex-1"
                       variant="destructive"
                       onClick={() => setApproveAction('reject')}
-                      disabled={actionLoading !== null}
+                      disabled={actionLoading !== null || selectedItems.size === 0}
                     >
                       <X className="w-4 h-4 mr-2" />
-                      Tolak
+                      Tolak Terpilih
                     </Button>
                   </div>
                 </div>
               )}
-
               {/* Rejection reason input */}
               {approveAction === 'reject' && (
                 <div className="space-y-2">
@@ -490,6 +537,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                 setSelectedApprovePerson(null);
                 setApproveAction(null);
                 setRejectionReason('');
+                setSelectedItems(new Set());
               }}
               disabled={actionLoading !== null}
             >
