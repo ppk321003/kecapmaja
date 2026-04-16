@@ -49,19 +49,10 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
   const [rawRows, setRawRows] = useState<PulsaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [selectedRejectRow, setSelectedRejectRow] = useState<number | null>(null);
+  const [selectedApprovePerson, setSelectedApprovePerson] = useState<PersonPulsaEntry | null>(null);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveAction, setApproveAction] = useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
-
-  // Debug logging
-  useEffect(() => {
-    console.log('[TabelPulsaBulanan] Debug Info:', {
-      userRole,
-      isPPK,
-      username: user?.username,
-      satker: user?.satker,
-    });
-  }, [userRole, isPPK, user]);
 
   useEffect(() => {
     fetchItems();
@@ -99,6 +90,22 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     }, 0);
   }, [persons]);
 
+  // Debug logging - moved after persons definition
+  useEffect(() => {
+    console.log('[TabelPulsaBulanan] Debug Info:', {
+      userRole,
+      isPPK,
+      username: user?.username,
+      satker: user?.satker,
+      personsCount: persons.length,
+      personsWithPending: persons.filter(p => p.entries.some(e => ['pending', 'pending_ppk'].includes(e.status))).length,
+    });
+    persons.forEach((p, idx) => {
+      const pendingStatus = p.entries.filter(e => ['pending', 'pending_ppk'].includes(e.status));
+      console.log(`  Person ${idx}: ${p.nama}, Pending: ${pendingStatus.length}, Entries: ${p.entries.map(e => e.status).join(', ')}`);
+    });
+  }, [userRole, isPPK, user, persons]);
+
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; variant: 'secondary' | 'destructive' | 'default' | 'outline' }> = {
       draft: { label: 'Draft', variant: 'secondary' },
@@ -113,48 +120,80 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     return map[status] || { label: status, variant: 'secondary' as const };
   };
 
-  const handleApprove = async (rowIndex: number) => {
-    setActionLoading(`approve-${rowIndex}`);
-    const approver = user?.username || 'Unknown';
-    const result = await approvePulsa(rowIndex, approver, userRole);
-    if (result.success) {
-      fetchItems();
-      onRefresh?.();
-    } else {
-      alert(result.message);
-    }
-    setActionLoading(null);
+  const handleApproveClick = (person: PersonPulsaEntry) => {
+    setSelectedApprovePerson(person);
+    setApproveAction(null);
+    setApproveDialogOpen(true);
+    setRejectionReason('');
   };
 
-  const handleRejectClick = (rowIndex: number) => {
-    setSelectedRejectRow(rowIndex);
+  const handleApproveConfirm = async () => {
+    if (!selectedApprovePerson) return;
+
+    setActionLoading('approve-processing');
+    const approver = user?.username || 'Unknown';
+    const pendingEntries = selectedApprovePerson.entries.filter(
+      e => ['pending', 'pending_ppk'].includes(e.status)
+    );
+
+    try {
+      for (const entry of pendingEntries) {
+        const result = await approvePulsa(entry.rowIndex, approver, userRole);
+        if (!result.success) {
+          alert(`Error approving row ${entry.rowIndex}: ${result.message}`);
+          return;
+        }
+      }
+      fetchItems();
+      onRefresh?.();
+      setApproveDialogOpen(false);
+      setSelectedApprovePerson(null);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectClick = (person: PersonPulsaEntry) => {
+    setSelectedApprovePerson(person);
+    setApproveAction('reject');
     setRejectionReason('');
-    setRejectDialogOpen(true);
+    setApproveDialogOpen(true);
   };
 
   const handleRejectConfirm = async () => {
-    if (!selectedRejectRow || !rejectionReason.trim()) {
+    if (!selectedApprovePerson || !rejectionReason.trim()) {
       alert('Alasan penolakan harus diisi');
       return;
     }
 
-    setActionLoading(`reject-${selectedRejectRow}`);
+    setActionLoading('reject-processing');
     const rejector = user?.username || 'Unknown';
-    const result = await rejectPulsa(
-      selectedRejectRow,
-      rejector,
-      rejectionReason,
-      userRole
+    const pendingEntries = selectedApprovePerson.entries.filter(
+      e => ['pending', 'pending_ppk'].includes(e.status)
     );
-    if (result.success) {
+
+    try {
+      for (const entry of pendingEntries) {
+        const result = await rejectPulsa(
+          entry.rowIndex,
+          rejector,
+          rejectionReason,
+          userRole
+        );
+        if (!result.success) {
+          alert(`Error rejecting row ${entry.rowIndex}: ${result.message}`);
+          return;
+        }
+      }
       fetchItems();
       onRefresh?.();
-      setRejectDialogOpen(false);
+      setApproveDialogOpen(false);
+      setSelectedApprovePerson(null);
       setRejectionReason('');
-    } else {
-      alert(result.message);
+      setApproveAction(null);
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   };
 
   // Stats
@@ -250,35 +289,33 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
               <table className="w-full text-sm border-collapse">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="px-3 py-2 text-left border" rowSpan={2}>No</th>
-                    <th className="px-3 py-2 text-left border" rowSpan={2}>Nama</th>
-                    <th className="px-3 py-2 text-center border" rowSpan={2}>Status</th>
-                    {Array.from({ length: maxKegiatan }, (_, i) => (
-                      <th key={i} className="px-3 py-2 text-center border" colSpan={2}>
-                        Kegiatan
-                      </th>
-                    ))}
-                    <th className="px-3 py-2 text-right border" rowSpan={2}>Total</th>
-                    <th className="px-3 py-2 text-center border" rowSpan={2}>{isPPK ? 'PPK Action' : 'Status'}</th>
-                  </tr>
-                  <tr>
-                    {Array.from({ length: maxKegiatan }, (_, i) => (
-                      <React.Fragment key={i}>
-                        <th className="px-3 py-1 text-left border text-xs">Nama</th>
-                        <th className="px-3 py-1 text-right border text-xs">Nominal</th>
-                      </React.Fragment>
-                    ))}
+                    <th className="px-3 py-2 text-left border" style={{ minWidth: '40px' }}>No</th>
+                    <th className="px-3 py-2 text-left border">Nama</th>
+                    <th className="px-3 py-2 text-center border">Status</th>
+                    {Array.from({ length: maxKegiatan }).map((_, i) => {
+                      const kegiatanName = persons
+                        .flatMap(p => p.entries[i]?.kegiatan)
+                        .filter(Boolean)[0] || `Kegiatan ${i + 1}`;
+                      return (
+                        <th key={i} className="px-3 py-2 text-right border" style={{ minWidth: '120px' }}>
+                          {kegiatanName}
+                        </th>
+                      );
+                    })}
+                    <th className="px-3 py-2 text-right border" style={{ minWidth: '100px' }}>Total</th>
+                    <th className="px-3 py-2 text-center border" style={{ minWidth: '100px' }}>Approve PPK</th>
                   </tr>
                 </thead>
                 <tbody>
                   {persons.map((person, idx) => {
                     const isDuplicate = getDuplicateWarning(person);
+                    const hasPending = person.entries.some(e => ['pending', 'pending_ppk'].includes(e.status));
                     return (
                       <tr
                         key={person.nama}
                         className={`border-b ${isDuplicate ? 'bg-destructive/10' : 'hover:bg-muted/50'}`}
                       >
-                        <td className="px-3 py-2 border">{idx + 1}</td>
+                        <td className="px-3 py-2 border text-center">{idx + 1}</td>
                         <td className="px-3 py-2 border">
                           <div>
                             <p className="font-medium">{person.nama}</p>
@@ -295,98 +332,48 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                             {person.tipe}
                           </Badge>
                         </td>
-                        {Array.from({ length: maxKegiatan }, (_, i) => {
+                        {Array.from({ length: maxKegiatan }).map((_, i) => {
                           const entry = person.entries[i];
                           return (
-                            <React.Fragment key={i}>
-                              <td className="px-3 py-2 border text-xs">
-                                {entry ? (
-                                  <div>
-                                    <span>{entry.kegiatan}</span>
-                                    <div className="mt-0.5">
-                                      <Badge variant={getStatusBadge(entry.status).variant} className="text-[10px]">
-                                        {getStatusBadge(entry.status).label}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                ) : '-'}
-                              </td>
-                              <td className="px-3 py-2 border text-right font-mono text-xs">
-                                {entry ? `Rp ${entry.nominal.toLocaleString('id-ID')}` : '-'}
-                              </td>
-                            </React.Fragment>
+                            <td key={i} className="px-3 py-2 border text-right font-mono text-xs">
+                              {entry ? `Rp ${entry.nominal.toLocaleString('id-ID')}` : '-'}
+                            </td>
                           );
                         })}
                         <td className="px-3 py-2 border text-right font-semibold font-mono">
                           Rp {person.total.toLocaleString('id-ID')}
                         </td>
                         <td className="px-3 py-2 border text-center">
-                          <div className="flex flex-col gap-1 items-center">
-                            {person.entries.map((entry, i) => {
-                              const isApproved = ['approved', 'approved_ppk', 'completed'].includes(entry.status);
-                              const isPending = ['pending', 'pending_ppk'].includes(entry.status);
-                              const isRejected = ['rejected', 'rejected_ppk'].includes(entry.status);
-
-                              if (isApproved) {
-                                return (
-                                  <div key={i} className="text-xs text-green-600 flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    {entry.disetujuiOleh || 'Approved'}
-                                  </div>
-                                );
-                              }
-
-                              if (isRejected) {
-                                return (
-                                  <div key={i} className="text-xs text-red-600 flex items-center gap-1">
-                                    <X className="w-3 h-3" />
-                                    Rejected
-                                  </div>
-                                );
-                              }
-
-                              if (isPPK && isPending) {
-                                return (
-                                  <div key={i} className="flex gap-1">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-green-600 text-xs h-6 px-2"
-                                      onClick={() => handleApprove(entry.rowIndex)}
-                                      disabled={actionLoading?.startsWith('approve-')}
-                                      title="Approve this item"
-                                    >
-                                      {actionLoading === `approve-${entry.rowIndex}` ? (
-                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                      ) : (
-                                        '✓'
-                                      )}
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-red-600 text-xs h-6 px-2"
-                                      onClick={() => handleRejectClick(entry.rowIndex)}
-                                      disabled={actionLoading?.startsWith('reject-')}
-                                      title="Reject this item"
-                                    >
-                                      {actionLoading === `reject-${entry.rowIndex}` ? (
-                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                      ) : (
-                                        '✕'
-                                      )}
-                                    </Button>
-                                  </div>
-                                );
-                              }
-
-                              return (
-                                <span key={i} className="text-xs text-muted-foreground">
-                                  {entry.status === 'draft' ? 'Draft' : entry.status}
-                                </span>
-                              );
-                            })}
-                          </div>
+                          {isPPK ? (
+                            <>
+                              {hasPending ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs h-7 w-full"
+                                  onClick={() => {
+                                    console.log('[Button Click] Person:', person.nama, 'Pending:', hasPending);
+                                    handleApproveClick(person);
+                                  }}
+                                  disabled={actionLoading !== null}
+                                >
+                                  {actionLoading ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    'Approve/Reject'
+                                  )}
+                                </Button>
+                              ) : person.entries.some(e => ['approved', 'approved_ppk', 'completed'].includes(e.status)) ? (
+                                <span className="text-xs text-green-600 font-semibold">✓ Approved</span>
+                              ) : person.entries.some(e => ['rejected', 'rejected_ppk'].includes(e.status)) ? (
+                                <span className="text-xs text-red-600 font-semibold">✕ Rejected</span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Draft</span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -398,236 +385,144 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
         </CardContent>
       </Card>
 
-      {/* Rejection Reason Dialog */}
-      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent>
+      {/* Approve/Reject Dialog */}
+      <Dialog open={approveDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setApproveDialogOpen(false);
+          setSelectedApprovePerson(null);
+          setApproveAction(null);
+          setRejectionReason('');
+        } else {
+          setApproveDialogOpen(open);
+        }
+      }}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Tolak Data Pulsa</DialogTitle>
+            <DialogTitle>Approval Data Pulsa</DialogTitle>
             <DialogDescription>
-              Mohon jelaskan alasan penolakan data pulsa ini.
+              {selectedApprovePerson && (
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span><strong>Disetujui oleh:</strong> {user?.username || 'Unknown'}</span>
+                    <Badge variant="secondary">{user?.role}</Badge>
+                  </div>
+                  <div>
+                    <strong>Nama Petugas:</strong> {selectedApprovePerson.nama}
+                  </div>
+                  <div>
+                    <strong>Tipe:</strong> {selectedApprovePerson.tipe}
+                  </div>
+                </div>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <Textarea
-            placeholder="Contoh: Nominal tidak sesuai budget, data tidak lengkap, dll..."
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.target.value)}
-            className="min-h-24"
-          />
+
+          {selectedApprovePerson && (
+            <div className="space-y-4">
+              {/* Items to approve */}
+              <div className="border rounded-lg p-3 bg-muted/30">
+                <p className="font-medium text-sm mb-2">Item Pending untuk Disetujui/Ditolak:</p>
+                <div className="space-y-2">
+                  {selectedApprovePerson.entries
+                    .filter(e => ['pending', 'pending_ppk'].includes(e.status))
+                    .map((entry, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between items-center p-2 bg-white border rounded text-sm"
+                      >
+                        <div>
+                          <p className="font-medium">{entry.kegiatan}</p>
+                          <p className="text-xs text-muted-foreground">Rp {entry.nominal.toLocaleString('id-ID')}</p>
+                        </div>
+                        <Badge variant="outline">Pending</Badge>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Action selection */}
+              {approveAction === null && (
+                <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
+                  <p className="font-medium text-sm">Pilih Aksi:</p>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() => setApproveAction('approve')}
+                      disabled={actionLoading !== null}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Setujui Semua
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      variant="destructive"
+                      onClick={() => setApproveAction('reject')}
+                      disabled={actionLoading !== null}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Tolak
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Rejection reason input */}
+              {approveAction === 'reject' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Alasan Penolakan</label>
+                  <Textarea
+                    placeholder="Contoh: Nominal tidak sesuai budget, data tidak lengkap, dll..."
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    className="min-h-20"
+                    disabled={actionLoading !== null}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setRejectDialogOpen(false)}
-              disabled={actionLoading?.startsWith('reject-')}
+              onClick={() => {
+                setApproveDialogOpen(false);
+                setSelectedApprovePerson(null);
+                setApproveAction(null);
+                setRejectionReason('');
+              }}
+              disabled={actionLoading !== null}
             >
               Batal
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleRejectConfirm}
-              disabled={actionLoading?.startsWith('reject-') || !rejectionReason.trim()}
-            >
-              {actionLoading?.startsWith('reject-') ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Memproses...
-                </>
-              ) : (
-                'Tolak'
-              )}
-            </Button>
+            {approveAction !== null && (
+              <Button
+                variant={approveAction === 'reject' ? 'destructive' : 'default'}
+                onClick={
+                  approveAction === 'reject'
+                    ? handleRejectConfirm
+                    : handleApproveConfirm
+                }
+                disabled={
+                  actionLoading !== null ||
+                  (approveAction === 'reject' && !rejectionReason.trim())
+                }
+              >
+                {actionLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Memproses...
+                  </>
+                ) : approveAction === 'reject' ? (
+                  'Tolak'
+                ) : (
+                  'Setujui'
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-};
-
-  // Stats
-  const uniquePersons = persons.length;
-  const totalApproved = rawRows
-    .filter(r => ['approved', 'approved_ppk', 'completed'].includes(r.status))
-    .reduce((sum, r) => sum + r.nominal * (r.organikList.length + r.mitraList.length), 0);
-
-  // Duplicate warning: same person in multiple kegiatan
-  const getDuplicateWarning = (person: PersonPulsaEntry) => {
-    const uniqueKegiatan = new Set(person.entries.map(e => e.kegiatan));
-    return uniqueKegiatan.size > 1;
-  };
-
-  if (!pulsaSheetId) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          Sheet ID pulsa belum dikonfigurasi untuk satker ini.
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">
-            Ringkasan Pulsa {new Date(tahun, bulan - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-6">
-          <div>
-            <p className="text-sm text-muted-foreground">Total Petugas</p>
-            <p className="text-2xl font-bold">{uniquePersons}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Total Nominal (Approved)</p>
-            <p className="text-2xl font-bold">Rp {totalApproved.toLocaleString('id-ID')}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Total Baris Sheet</p>
-            <p className="text-2xl font-bold">{rawRows.length}</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Daftar Pulsa</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          ) : persons.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Tidak ada data pulsa untuk bulan ini</p>
-              <p className="text-xs mt-1">Pastikan data sudah diinput di tab Tambah Pulsa dan sheet sesuai satker</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-3 py-2 text-left border" rowSpan={2}>No</th>
-                    <th className="px-3 py-2 text-left border" rowSpan={2}>Nama</th>
-                    <th className="px-3 py-2 text-center border" rowSpan={2}>Status</th>
-                    {Array.from({ length: maxKegiatan }, (_, i) => (
-                      <th key={i} className="px-3 py-2 text-center border" colSpan={2}>
-                        Kegiatan
-                      </th>
-                    ))}
-                    <th className="px-3 py-2 text-right border" rowSpan={2}>Total</th>
-                    <th className="px-3 py-2 text-center border" rowSpan={2}>Approve PPK</th>
-                  </tr>
-                  <tr>
-                    {Array.from({ length: maxKegiatan }, (_, i) => (
-                      <React.Fragment key={i}>
-                        <th className="px-3 py-1 text-left border text-xs">Nama</th>
-                        <th className="px-3 py-1 text-right border text-xs">Nominal</th>
-                      </React.Fragment>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {persons.map((person, idx) => {
-                    const isDuplicate = getDuplicateWarning(person);
-                    return (
-                      <tr
-                        key={person.nama}
-                        className={`border-b ${isDuplicate ? 'bg-destructive/10' : 'hover:bg-muted/50'}`}
-                      >
-                        <td className="px-3 py-2 border">{idx + 1}</td>
-                        <td className="px-3 py-2 border">
-                          <div>
-                            <p className="font-medium">{person.nama}</p>
-                            {isDuplicate && (
-                              <div className="flex items-center gap-1 mt-1 text-xs text-destructive font-semibold">
-                                <AlertTriangle className="w-3 h-3" />
-                                Duplikasi kegiatan!
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 border text-center">
-                          <Badge variant={person.tipe === 'Organik' ? 'default' : 'secondary'}>
-                            {person.tipe}
-                          </Badge>
-                        </td>
-                        {Array.from({ length: maxKegiatan }, (_, i) => {
-                          const entry = person.entries[i];
-                          return (
-                            <React.Fragment key={i}>
-                              <td className="px-3 py-2 border text-xs">
-                                {entry ? (
-                                  <div>
-                                    <span>{entry.kegiatan}</span>
-                                    <div className="mt-0.5">
-                                      <Badge variant={getStatusBadge(entry.status).variant} className="text-[10px]">
-                                        {getStatusBadge(entry.status).label}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                ) : '-'}
-                              </td>
-                              <td className="px-3 py-2 border text-right font-mono text-xs">
-                                {entry ? `Rp ${entry.nominal.toLocaleString('id-ID')}` : '-'}
-                              </td>
-                            </React.Fragment>
-                          );
-                        })}
-                        <td className="px-3 py-2 border text-right font-semibold font-mono">
-                          Rp {person.total.toLocaleString('id-ID')}
-                        </td>
-                        <td className="px-3 py-2 border text-center">
-                          <div className="flex flex-col gap-1 items-center">
-                            {person.entries.map((entry, i) => {
-                              const isApproved = ['approved', 'approved_ppk', 'completed'].includes(entry.status);
-                              const isPending = ['pending', 'pending_ppk'].includes(entry.status);
-
-                              if (isApproved) {
-                                return (
-                                  <div key={i} className="text-xs text-green-600 flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    {entry.disetujuiOleh || 'Approved'}
-                                  </div>
-                                );
-                              }
-
-                              if (isPPK && isPending) {
-                                return (
-                                  <Button
-                                    key={i}
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-green-600 text-xs h-6"
-                                    onClick={() => handleApprove(entry.rowIndex)}
-                                    disabled={actionLoading === `approve-${entry.rowIndex}`}
-                                  >
-                                    {actionLoading === `approve-${entry.rowIndex}` ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <>✓ {entry.kegiatan}</>
-                                    )}
-                                  </Button>
-                                );
-                              }
-
-                              return (
-                                <span key={i} className="text-xs text-muted-foreground">
-                                  {entry.status === 'draft' ? 'Draft' : entry.status}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 };
