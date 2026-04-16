@@ -255,7 +255,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                     <th className="px-3 py-2 text-center border" rowSpan={2}>Status</th>
                     {Array.from({ length: maxKegiatan }, (_, i) => (
                       <th key={i} className="px-3 py-2 text-center border" colSpan={2}>
-                        Kegiatan {i + 1}
+                        Kegiatan
                       </th>
                     ))}
                     <th className="px-3 py-2 text-right border" rowSpan={2}>Total</th>
@@ -512,7 +512,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                     <th className="px-3 py-2 text-center border" rowSpan={2}>Status</th>
                     {Array.from({ length: maxKegiatan }, (_, i) => (
                       <th key={i} className="px-3 py-2 text-center border" colSpan={2}>
-                        Kegiatan {i + 1}
+                        Kegiatan
                       </th>
                     ))}
                     <th className="px-3 py-2 text-right border" rowSpan={2}>Total</th>
