@@ -76,8 +76,9 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
       setMessage({ type: 'error', text: 'Kegiatan harus diisi' });
       return false;
     }
+    // Issue #5: allow either organik OR mitra to be filled (not both required)
     if (!formData.organikIds.length && !formData.mitraIds.length) {
-      setMessage({ type: 'error', text: 'Pilih minimal 1 organik atau mitra' });
+      setMessage({ type: 'error', text: 'Pilih minimal 1 organik atau 1 mitra' });
       return false;
     }
     if (!formData.nominal || Number(formData.nominal) <= 0) {
@@ -99,48 +100,40 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
     setLoading(true);
 
     try {
-      // Build list of people (organik + mitra)
-      const people: { name: string; type: 'organik' | 'mitra' }[] = [];
+      // Build pipe-separated names
+      const organikNames = formData.organikIds
+        .map(id => {
+          const found = organikList.find(o => o.id === id);
+          return found?.name || id;
+        })
+        .join('|');
 
-      formData.organikIds.forEach(id => {
-        const found = organikList.find(o => o.id === id);
-        people.push({ name: found?.name || id, type: 'organik' });
-      });
+      const mitraNames = formData.mitraIds
+        .map(id => {
+          const found = mitraList.find(m => m.id === id);
+          return found?.name || id;
+        })
+        .join('|');
 
-      formData.mitraIds.forEach(id => {
-        const found = mitraList.find(m => m.id === id);
-        people.push({ name: found?.name || id, type: 'mitra' });
-      });
+      // Issue #1: Save as 1 row with pipe-separated names
+      const response = await tambahPulsaBulanan(
+        {
+          bulan: formData.bulan,
+          tahun: formData.tahun,
+          kegiatan: formData.kegiatan,
+          organik: organikNames,
+          mitra: mitraNames,
+          nominal: Number(formData.nominal),
+          keterangan: formData.keterangan,
+        },
+        pulsaSheetId
+      );
 
-      let successCount = 0;
-      let errorMessages: string[] = [];
-
-      // Save each person as a separate row
-      for (const person of people) {
-        const response = await tambahPulsaBulanan(
-          {
-            bulan: formData.bulan,
-            tahun: formData.tahun,
-            kegiatan: formData.kegiatan,
-            organik: person.type === 'organik' ? person.name : '',
-            mitra: person.type === 'mitra' ? person.name : '',
-            nominal: Number(formData.nominal),
-            keterangan: formData.keterangan,
-          },
-          pulsaSheetId
-        );
-
-        if (response.success) {
-          successCount++;
-        } else {
-          errorMessages.push(`${person.name}: ${response.message}`);
-        }
-      }
-
-      if (successCount > 0) {
+      if (response.success) {
+        const totalPeople = formData.organikIds.length + formData.mitraIds.length;
         setMessage({
-          type: errorMessages.length > 0 ? 'info' : 'success',
-          text: `✅ ${successCount} data berhasil disimpan.${errorMessages.length > 0 ? ` ⚠️ Gagal: ${errorMessages.join('; ')}` : ''}`,
+          type: 'success',
+          text: `✅ Data pulsa untuk ${totalPeople} orang berhasil disimpan dalam 1 baris.`,
         });
 
         setFormData({
@@ -156,7 +149,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
         onSuccess?.();
         setTimeout(() => setMessage(null), 5000);
       } else {
-        setMessage({ type: 'error', text: errorMessages.join('; ') });
+        setMessage({ type: 'error', text: response.message });
       }
     } catch (error) {
       setMessage({
@@ -252,9 +245,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="organik">
-                Nama Organik <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="organik">Nama Organik</Label>
               <PersonMultiSelect
                 value={formData.organikIds}
                 onValueChange={(ids) =>
@@ -266,7 +257,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                   jabatan: o.jabatan,
                   kecamatan: o.kecamatan,
                 }))}
-                placeholder="Pilih organik..."
+                placeholder="Pilih organik (opsional)..."
                 loading={loadingOrganik}
                 type="organik"
               />
@@ -355,7 +346,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                 <span className="text-muted-foreground">Kegiatan:</span> {formData.kegiatan || '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">Organik:</span>{' '}
+                <span className="text-muted-foreground">Organik ({formData.organikIds.length}):</span>{' '}
                 {formData.organikIds.length > 0
                   ? formData.organikIds.map(id => {
                       const found = organikList.find(o => o.id === id);
@@ -364,7 +355,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                   : '-'}
               </p>
               <p>
-                <span className="text-muted-foreground">Mitra:</span>{' '}
+                <span className="text-muted-foreground">Mitra ({formData.mitraIds.length}):</span>{' '}
                 {formData.mitraIds.length > 0
                   ? formData.mitraIds.map(id => {
                       const found = mitraList.find(m => m.id === id);
@@ -377,6 +368,9 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                 {formatNumber(formData.nominal) || '0'}
                 {' '}× {formData.organikIds.length + formData.mitraIds.length || 0} orang
                 {' '}= Rp {formatNumber(String(Number(formData.nominal || '0') * (formData.organikIds.length + formData.mitraIds.length)))}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                📝 Data disimpan sebagai 1 baris di Sheet dengan nama dipisahkan tanda '|'
               </p>
             </div>
           </div>

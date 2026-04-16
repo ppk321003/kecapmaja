@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle2, Send, Trash2, Loader2 } from 'lucide-react';
-import { readPulsaData, updatePulsaStatus, PulsaRow } from '@/services/pulsaSheetsService';
+import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import {
+  readPulsaData,
+  updatePulsaStatus,
+  buildPersonView,
+  PulsaRow,
+  PersonPulsaEntry,
+} from '@/services/pulsaSheetsService';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -22,8 +28,9 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
   const pulsaSheetId = satkerConfig?.getUserSatkerSheetId('pulsa') || '';
   const { user } = useAuth();
   const userRole = user?.role || '';
+  const isPPK = userRole === 'Pejabat Pembuat Komitmen';
 
-  const [items, setItems] = useState<PulsaRow[]>([]);
+  const [rawRows, setRawRows] = useState<PulsaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -39,9 +46,8 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     setLoading(true);
     try {
       const allData = await readPulsaData(pulsaSheetId);
-      // Filter by bulan & tahun
       const filtered = allData.filter(r => r.bulan === bulan && r.tahun === tahun);
-      setItems(filtered);
+      setRawRows(filtered);
     } catch (error) {
       console.error('Error fetching pulsa:', error);
     } finally {
@@ -49,13 +55,21 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     }
   };
 
+  const persons = useMemo(() => buildPersonView(rawRows), [rawRows]);
+
+  // Find max kegiatan count across all persons
+  const maxKegiatan = useMemo(
+    () => Math.max(1, ...persons.map(p => p.entries.length)),
+    [persons]
+  );
+
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; variant: 'secondary' | 'destructive' | 'default' | 'outline' }> = {
       draft: { label: 'Draft', variant: 'secondary' },
-      pending: { label: 'Perlu Approval', variant: 'outline' },
-      pending_ppk: { label: 'Perlu Approval', variant: 'outline' },
-      approved: { label: 'Disetujui', variant: 'default' },
-      approved_ppk: { label: 'Disetujui', variant: 'default' },
+      pending_ppk: { label: 'Pending', variant: 'outline' },
+      pending: { label: 'Pending', variant: 'outline' },
+      approved: { label: 'Approved', variant: 'default' },
+      approved_ppk: { label: 'Approved', variant: 'default' },
       completed: { label: 'Selesai', variant: 'default' },
       rejected: { label: 'Ditolak', variant: 'destructive' },
       rejected_ppk: { label: 'Ditolak', variant: 'destructive' },
@@ -63,22 +77,10 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     return map[status] || { label: status, variant: 'secondary' as const };
   };
 
-  const handleSubmitForApproval = async (row: PulsaRow) => {
-    setActionLoading(`submit-${row.rowIndex}`);
-    const result = await updatePulsaStatus(pulsaSheetId, row.rowIndex, 'pending_ppk');
-    if (result.success) {
-      fetchItems();
-      onRefresh?.();
-    } else {
-      alert(result.message);
-    }
-    setActionLoading(null);
-  };
-
-  const handleApprove = async (row: PulsaRow) => {
-    setActionLoading(`approve-${row.rowIndex}`);
+  const handleApprove = async (rowIndex: number) => {
+    setActionLoading(`approve-${rowIndex}`);
     const approver = user?.username || 'Unknown';
-    const result = await updatePulsaStatus(pulsaSheetId, row.rowIndex, 'approved_ppk', approver);
+    const result = await updatePulsaStatus(pulsaSheetId, rowIndex, 'approved_ppk', approver);
     if (result.success) {
       fetchItems();
       onRefresh?.();
@@ -88,29 +90,23 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     setActionLoading(null);
   };
 
-  // Detect duplicate: same person different kegiatan in same period
-  const getDuplicateWarning = (item: PulsaRow) => {
-    const personName = item.organik || item.mitra;
-    if (!personName) return false;
-    return items.some(
-      other =>
-        other.rowIndex !== item.rowIndex &&
-        (other.organik === personName || other.mitra === personName) &&
-        other.kegiatan !== item.kegiatan &&
-        (other.status === 'approved' || other.status === 'approved_ppk' || other.status === 'completed')
-    );
-  };
+  // Stats
+  const uniquePersons = persons.length;
+  const totalApproved = rawRows
+    .filter(r => ['approved', 'approved_ppk', 'completed'].includes(r.status))
+    .reduce((sum, r) => sum + r.nominal * (r.organikList.length + r.mitraList.length), 0);
 
-  const uniquePersons = new Set(items.map(i => i.organik || i.mitra).filter(Boolean));
-  const totalNominal = items
-    .filter(i => ['approved', 'approved_ppk', 'completed'].includes(i.status))
-    .reduce((sum, i) => sum + (i.nominal || 0), 0);
+  // Duplicate warning: same person in multiple kegiatan
+  const getDuplicateWarning = (person: PersonPulsaEntry) => {
+    const uniqueKegiatan = new Set(person.entries.map(e => e.kegiatan));
+    return uniqueKegiatan.size > 1;
+  };
 
   if (!pulsaSheetId) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          Sheet ID pulsa belum dikonfigurasi untuk satker ini. Hubungi admin untuk menambahkan kolom AB (pulsa_id) di satker_config.
+          Sheet ID pulsa belum dikonfigurasi untuk satker ini.
         </CardContent>
       </Card>
     );
@@ -127,57 +123,70 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
         <CardContent className="flex flex-wrap gap-6">
           <div>
             <p className="text-sm text-muted-foreground">Total Petugas</p>
-            <p className="text-2xl font-bold">{uniquePersons.size}</p>
+            <p className="text-2xl font-bold">{uniquePersons}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Total Nominal (Approved)</p>
-            <p className="text-2xl font-bold">Rp {totalNominal.toLocaleString('id-ID')}</p>
+            <p className="text-2xl font-bold">Rp {totalApproved.toLocaleString('id-ID')}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Total Data</p>
-            <p className="text-2xl font-bold">{items.length}</p>
+            <p className="text-sm text-muted-foreground">Total Baris Sheet</p>
+            <p className="text-2xl font-bold">{rawRows.length}</p>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Daftar Pembelian Pulsa</CardTitle>
+          <CardTitle className="text-base">Daftar Pulsa</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin" />
             </div>
-          ) : items.length === 0 ? (
+          ) : persons.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>Tidak ada data pulsa untuk bulan ini</p>
+              <p className="text-xs mt-1">Pastikan data sudah diinput di tab Tambah Pulsa dan sheet sesuai satker</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border-collapse">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="px-4 py-2 text-left">No</th>
-                    <th className="px-4 py-2 text-left">Organik</th>
-                    <th className="px-4 py-2 text-left">Mitra</th>
-                    <th className="px-4 py-2 text-left">Kegiatan</th>
-                    <th className="px-4 py-2 text-right">Nominal</th>
-                    <th className="px-4 py-2 text-center">Status</th>
-                    <th className="px-4 py-2 text-left">Keterangan</th>
-                    <th className="px-4 py-2 text-center">Aksi</th>
+                    <th className="px-3 py-2 text-left border" rowSpan={2}>No</th>
+                    <th className="px-3 py-2 text-left border" rowSpan={2}>Nama</th>
+                    <th className="px-3 py-2 text-center border" rowSpan={2}>Status</th>
+                    {Array.from({ length: maxKegiatan }, (_, i) => (
+                      <th key={i} className="px-3 py-2 text-center border" colSpan={2}>
+                        Kegiatan {i + 1}
+                      </th>
+                    ))}
+                    <th className="px-3 py-2 text-right border" rowSpan={2}>Total</th>
+                    <th className="px-3 py-2 text-center border" rowSpan={2}>Approve PPK</th>
+                  </tr>
+                  <tr>
+                    {Array.from({ length: maxKegiatan }, (_, i) => (
+                      <React.Fragment key={i}>
+                        <th className="px-3 py-1 text-left border text-xs">Nama</th>
+                        <th className="px-3 py-1 text-right border text-xs">Nominal</th>
+                      </React.Fragment>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item, idx) => {
-                    const isDuplicate = getDuplicateWarning(item);
-                    const badge = getStatusBadge(item.status);
+                  {persons.map((person, idx) => {
+                    const isDuplicate = getDuplicateWarning(person);
                     return (
-                      <tr key={item.rowIndex} className={`border-b ${isDuplicate ? 'bg-destructive/10' : 'hover:bg-muted/50'}`}>
-                        <td className="px-4 py-2">{idx + 1}</td>
-                        <td className="px-4 py-2">
+                      <tr
+                        key={person.nama}
+                        className={`border-b ${isDuplicate ? 'bg-destructive/10' : 'hover:bg-muted/50'}`}
+                      >
+                        <td className="px-3 py-2 border">{idx + 1}</td>
+                        <td className="px-3 py-2 border">
                           <div>
-                            <p className="font-medium">{item.organik || '-'}</p>
+                            <p className="font-medium">{person.nama}</p>
                             {isDuplicate && (
                               <div className="flex items-center gap-1 mt-1 text-xs text-destructive font-semibold">
                                 <AlertTriangle className="w-3 h-3" />
@@ -186,49 +195,76 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-2">{item.mitra || '-'}</td>
-                        <td className="px-4 py-2">{item.kegiatan}</td>
-                        <td className="px-4 py-2 text-right font-medium">
-                          Rp {item.nominal?.toLocaleString('id-ID') || '0'}
+                        <td className="px-3 py-2 border text-center">
+                          <Badge variant={person.tipe === 'Organik' ? 'default' : 'secondary'}>
+                            {person.tipe}
+                          </Badge>
                         </td>
-                        <td className="px-4 py-2 text-center">
-                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                        {Array.from({ length: maxKegiatan }, (_, i) => {
+                          const entry = person.entries[i];
+                          return (
+                            <React.Fragment key={i}>
+                              <td className="px-3 py-2 border text-xs">
+                                {entry ? (
+                                  <div>
+                                    <span>{entry.kegiatan}</span>
+                                    <div className="mt-0.5">
+                                      <Badge variant={getStatusBadge(entry.status).variant} className="text-[10px]">
+                                        {getStatusBadge(entry.status).label}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                ) : '-'}
+                              </td>
+                              <td className="px-3 py-2 border text-right font-mono text-xs">
+                                {entry ? `Rp ${entry.nominal.toLocaleString('id-ID')}` : '-'}
+                              </td>
+                            </React.Fragment>
+                          );
+                        })}
+                        <td className="px-3 py-2 border text-right font-semibold font-mono">
+                          Rp {person.total.toLocaleString('id-ID')}
                         </td>
-                        <td className="px-4 py-2 text-xs">{item.keterangan}</td>
-                        <td className="px-4 py-2 text-center">
-                          <div className="flex justify-center gap-1">
-                            {item.status === 'draft' && userRole !== 'Pejabat Pembuat Komitmen' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSubmitForApproval(item)}
-                                disabled={actionLoading === `submit-${item.rowIndex}`}
-                                title="Ajukan ke PPK"
-                              >
-                                {actionLoading === `submit-${item.rowIndex}` ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <Send className="w-3 h-3" />
-                                )}
-                              </Button>
-                            )}
-                            {(item.status === 'pending_ppk' || item.status === 'pending') &&
-                              userRole === 'Pejabat Pembuat Komitmen' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleApprove(item)}
-                                  disabled={actionLoading === `approve-${item.rowIndex}`}
-                                  title="Approve"
-                                  className="text-green-600"
-                                >
-                                  {actionLoading === `approve-${item.rowIndex}` ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
+                        <td className="px-3 py-2 border text-center">
+                          <div className="flex flex-col gap-1 items-center">
+                            {person.entries.map((entry, i) => {
+                              const isApproved = ['approved', 'approved_ppk', 'completed'].includes(entry.status);
+                              const isPending = ['pending', 'pending_ppk'].includes(entry.status);
+
+                              if (isApproved) {
+                                return (
+                                  <div key={i} className="text-xs text-green-600 flex items-center gap-1">
                                     <CheckCircle2 className="w-3 h-3" />
-                                  )}
-                                </Button>
-                              )}
+                                    {entry.disetujuiOleh || 'Approved'}
+                                  </div>
+                                );
+                              }
+
+                              if (isPPK && isPending) {
+                                return (
+                                  <Button
+                                    key={i}
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600 text-xs h-6"
+                                    onClick={() => handleApprove(entry.rowIndex)}
+                                    disabled={actionLoading === `approve-${entry.rowIndex}`}
+                                  >
+                                    {actionLoading === `approve-${entry.rowIndex}` ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <>✓ {entry.kegiatan}</>
+                                    )}
+                                  </Button>
+                                );
+                              }
+
+                              return (
+                                <span key={i} className="text-xs text-muted-foreground">
+                                  {entry.status === 'draft' ? 'Draft' : entry.status}
+                                </span>
+                              );
+                            })}
                           </div>
                         </td>
                       </tr>

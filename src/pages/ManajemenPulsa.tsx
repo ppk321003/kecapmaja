@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, RefreshCw } from 'lucide-react';
+import { LaporanPulsa } from '@/components/pulsa/LaporanPulsa';
 import * as XLSX from 'xlsx';
 
 const ManajemenPulsa: React.FC = () => {
@@ -126,25 +127,7 @@ const ManajemenPulsa: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="laporan" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Laporan Pembelian Pulsa</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Fitur laporan detail akan segera tersedia</p>
-                <div className="mt-4 space-y-2 text-sm">
-                  <p>📊 Laporan akan mencakup:</p>
-                  <ul className="list-disc pl-6 space-y-1">
-                    <li>Total pembelian per bulan</li>
-                    <li>Breakdown per kegiatan</li>
-                    <li>Breakdown per organisasi/tim</li>
-                    <li>Daftar petugas yang mendapat pulsa</li>
-                    <li>Alert duplikasi kegiatan per petugas</li>
-                    <li>Export untuk bendahara</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
+            <LaporanPulsa bulan={bulan} tahun={tahun} />
           </TabsContent>
         </Tabs>
 
