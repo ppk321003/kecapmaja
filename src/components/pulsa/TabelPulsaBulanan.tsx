@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle2, Clock, Trash2, Send, ArrowUpRight } from 'lucide-react';
-import { PulsaItem, PulsaStatus } from '@/types/pulsa';
-import { supabase } from '@/integrations/supabase';
+import { AlertTriangle, CheckCircle2, Send, Trash2, Loader2 } from 'lucide-react';
+import { readPulsaData, updatePulsaStatus, PulsaRow } from '@/services/pulsaSheetsService';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TabelPulsaBulananProps {
   bulan: number;
@@ -12,142 +13,111 @@ interface TabelPulsaBulananProps {
   onRefresh?: () => void;
 }
 
-export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({ 
-  bulan, 
+export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
+  bulan,
   tahun,
-  onRefresh 
+  onRefresh,
 }) => {
-  const [items, setItems] = useState<PulsaItem[]>([]);
+  const satkerConfig = useSatkerConfigContext();
+  const pulsaSheetId = satkerConfig?.getUserSatkerSheetId('pulsa') || '';
+  const { user } = useAuth();
+  const userRole = user?.role || '';
+
+  const [items, setItems] = useState<PulsaRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>('');
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchUserRole();
     fetchItems();
-  }, [bulan, tahun]);
-
-  const fetchUserRole = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data } = await supabase.auth.getSession();
-    const role = data?.session?.user?.user_metadata?.role || '';
-    setUserRole(role);
-  };
+  }, [bulan, tahun, pulsaSheetId]);
 
   const fetchItems = async () => {
+    if (!pulsaSheetId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('pulsa_items')
-        .select('*')
-        .eq('bulan', bulan)
-        .eq('tahun', tahun)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setItems(data || []);
+      const allData = await readPulsaData(pulsaSheetId);
+      // Filter by bulan & tahun
+      const filtered = allData.filter(r => r.bulan === bulan && r.tahun === tahun);
+      setItems(filtered);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching pulsa:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusBadge = (status: PulsaStatus) => {
-    const statusConfig = {
-      draft: { label: 'Draft', variant: 'secondary' as const },
-      pending_ppk: { label: 'Perlu Approval', variant: 'warning' as const },
-      approved_ppk: { label: 'Disetujui', variant: 'success' as const },
-      rejected_ppk: { label: 'Ditolak', variant: 'destructive' as const },
-      completed: { label: 'Selesai', variant: 'success' as const },
-      cancelled: { label: 'Dibatalkan', variant: 'secondary' as const }
+  const getStatusBadge = (status: string) => {
+    const map: Record<string, { label: string; variant: 'secondary' | 'destructive' | 'default' | 'outline' }> = {
+      draft: { label: 'Draft', variant: 'secondary' },
+      pending: { label: 'Perlu Approval', variant: 'outline' },
+      pending_ppk: { label: 'Perlu Approval', variant: 'outline' },
+      approved: { label: 'Disetujui', variant: 'default' },
+      approved_ppk: { label: 'Disetujui', variant: 'default' },
+      completed: { label: 'Selesai', variant: 'default' },
+      rejected: { label: 'Ditolak', variant: 'destructive' },
+      rejected_ppk: { label: 'Ditolak', variant: 'destructive' },
     };
-
-    return statusConfig[status] || { label: status, variant: 'secondary' as const };
+    return map[status] || { label: status, variant: 'secondary' as const };
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus?')) return;
-    
-    setDeleting(id);
-    try {
-      const { error } = await supabase
-        .from('pulsa_items')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      setItems(items.filter(item => item.id !== id));
-      if (onRefresh) onRefresh();
-    } catch (error) {
-      alert('Gagal menghapus data');
-    } finally {
-      setDeleting(null);
-    }
-  };
-
-  const handleSubmitForApproval = async (id: string) => {
-    setSubmitting(id);
-    try {
-      const { error } = await supabase
-        .from('pulsa_items')
-        .update({ status: 'pending_ppk' })
-        .eq('id', id);
-
-      if (error) throw error;
-      
+  const handleSubmitForApproval = async (row: PulsaRow) => {
+    setActionLoading(`submit-${row.rowIndex}`);
+    const result = await updatePulsaStatus(pulsaSheetId, row.rowIndex, 'pending_ppk');
+    if (result.success) {
       fetchItems();
-      if (onRefresh) onRefresh();
-    } catch (error) {
-      alert('Gagal mengajukan approval');
-    } finally {
-      setSubmitting(null);
+      onRefresh?.();
+    } else {
+      alert(result.message);
     }
+    setActionLoading(null);
   };
 
-  const handleApprove = async (id: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    try {
-      const { error } = await supabase
-        .from('pulsa_items')
-        .update({
-          status: 'approved_ppk',
-          approved_by: user?.user_metadata?.name || user?.email || 'Unknown',
-          approved_at: new Date().toISOString()
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-      
+  const handleApprove = async (row: PulsaRow) => {
+    setActionLoading(`approve-${row.rowIndex}`);
+    const approver = user?.name || user?.username || 'Unknown';
+    const result = await updatePulsaStatus(pulsaSheetId, row.rowIndex, 'approved_ppk', approver);
+    if (result.success) {
       fetchItems();
-      if (onRefresh) onRefresh();
-    } catch (error) {
-      alert('Gagal approve data');
+      onRefresh?.();
+    } else {
+      alert(result.message);
     }
+    setActionLoading(null);
   };
 
-  // Deteksi duplikasi untuk warning
-  const getDuplicateWarning = (item: PulsaItem) => {
-    const hasDuplicate = items.some(other =>
-      other.id !== item.id &&
-      other.nama_petugas === item.nama_petugas &&
-      other.kegiatan !== item.kegiatan &&
-      (other.status === 'approved_ppk' || other.status === 'completed')
+  // Detect duplicate: same person different kegiatan in same period
+  const getDuplicateWarning = (item: PulsaRow) => {
+    const personName = item.organik || item.mitra;
+    if (!personName) return false;
+    return items.some(
+      other =>
+        other.rowIndex !== item.rowIndex &&
+        (other.organik === personName || other.mitra === personName) &&
+        other.kegiatan !== item.kegiatan &&
+        (other.status === 'approved' || other.status === 'approved_ppk' || other.status === 'completed')
     );
-    return hasDuplicate;
   };
 
-  const petugas = items.map(i => i.nama_petugas).filter((v, i, a) => a.indexOf(v) === i);
+  const uniquePersons = new Set(items.map(i => i.organik || i.mitra).filter(Boolean));
   const totalNominal = items
-    .filter(i => i.status === 'approved_ppk' || i.status === 'completed')
+    .filter(i => ['approved', 'approved_ppk', 'completed'].includes(i.status))
     .reduce((sum, i) => sum + (i.nominal || 0), 0);
+
+  if (!pulsaSheetId) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Sheet ID pulsa belum dikonfigurasi untuk satker ini. Hubungi admin untuk menambahkan kolom AB (pulsa_id) di satker_config.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* Summary Card */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">
@@ -156,23 +126,20 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
         </CardHeader>
         <CardContent className="flex flex-wrap gap-6">
           <div>
-            <p className="text-sm text-gray-600">Total Petugas</p>
-            <p className="text-2xl font-bold">{petugas.length}</p>
+            <p className="text-sm text-muted-foreground">Total Petugas</p>
+            <p className="text-2xl font-bold">{uniquePersons.size}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Total Nominal (Approved)</p>
-            <p className="text-2xl font-bold">
-              Rp {totalNominal.toLocaleString('id-ID')}
-            </p>
+            <p className="text-sm text-muted-foreground">Total Nominal (Approved)</p>
+            <p className="text-2xl font-bold">Rp {totalNominal.toLocaleString('id-ID')}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Total Data</p>
+            <p className="text-sm text-muted-foreground">Total Data</p>
             <p className="text-2xl font-bold">{items.length}</p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Data Table */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Daftar Pembelian Pulsa</CardTitle>
@@ -180,89 +147,88 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
         <CardContent>
           {loading ? (
             <div className="flex justify-center py-8">
-              <p>Memuat...</p>
+              <Loader2 className="w-6 h-6 animate-spin" />
             </div>
           ) : items.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               <p>Tidak ada data pulsa untuk bulan ini</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-100">
+                <thead className="bg-muted">
                   <tr>
                     <th className="px-4 py-2 text-left">No</th>
-                    <th className="px-4 py-2 text-left">Nama Petugas</th>
-                    <th className="px-4 py-2 text-left">Kegiatan</th>
                     <th className="px-4 py-2 text-left">Organik</th>
+                    <th className="px-4 py-2 text-left">Mitra</th>
+                    <th className="px-4 py-2 text-left">Kegiatan</th>
                     <th className="px-4 py-2 text-right">Nominal</th>
                     <th className="px-4 py-2 text-center">Status</th>
+                    <th className="px-4 py-2 text-left">Keterangan</th>
                     <th className="px-4 py-2 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item, idx) => {
                     const isDuplicate = getDuplicateWarning(item);
+                    const badge = getStatusBadge(item.status);
                     return (
-                      <tr key={item.id} className={`border-b ${isDuplicate ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                      <tr key={item.rowIndex} className={`border-b ${isDuplicate ? 'bg-destructive/10' : 'hover:bg-muted/50'}`}>
                         <td className="px-4 py-2">{idx + 1}</td>
                         <td className="px-4 py-2">
                           <div>
-                            <p className="font-medium">{item.nama_petugas}</p>
-                            {item.nip && <p className="text-xs text-gray-500">{item.nip}</p>}
+                            <p className="font-medium">{item.organik || '-'}</p>
                             {isDuplicate && (
-                              <div className="flex items-center gap-1 mt-1 text-xs text-red-600 font-semibold">
+                              <div className="flex items-center gap-1 mt-1 text-xs text-destructive font-semibold">
                                 <AlertTriangle className="w-3 h-3" />
                                 Duplikasi kegiatan!
                               </div>
                             )}
                           </div>
                         </td>
+                        <td className="px-4 py-2">{item.mitra || '-'}</td>
                         <td className="px-4 py-2">{item.kegiatan}</td>
-                        <td className="px-4 py-2">{item.organik}</td>
                         <td className="px-4 py-2 text-right font-medium">
                           Rp {item.nominal?.toLocaleString('id-ID') || '0'}
                         </td>
                         <td className="px-4 py-2 text-center">
-                          <Badge variant={getStatusBadge(item.status as PulsaStatus).variant}>
-                            {getStatusBadge(item.status as PulsaStatus).label}
-                          </Badge>
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
                         </td>
+                        <td className="px-4 py-2 text-xs">{item.keterangan}</td>
                         <td className="px-4 py-2 text-center">
                           <div className="flex justify-center gap-1">
                             {item.status === 'draft' && userRole !== 'Pejabat Pembuat Komitmen' && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleSubmitForApproval(item.id)}
-                                  disabled={submitting === item.id}
-                                  title="Ajukan ke PPK"
-                                >
-                                  <Send className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleDelete(item.id)}
-                                  disabled={deleting === item.id}
-                                  title="Hapus"
-                                >
-                                  <Trash2 className="w-3 h-3 text-red-500" />
-                                </Button>
-                              </>
-                            )}
-                            {item.status === 'pending_ppk' && userRole === 'Pejabat Pembuat Komitmen' && (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleApprove(item.id)}
-                                title="Approve"
-                                className="text-green-600"
+                                onClick={() => handleSubmitForApproval(item)}
+                                disabled={actionLoading === `submit-${item.rowIndex}`}
+                                title="Ajukan ke PPK"
                               >
-                                <CheckCircle2 className="w-3 h-3" />
+                                {actionLoading === `submit-${item.rowIndex}` ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Send className="w-3 h-3" />
+                                )}
                               </Button>
                             )}
+                            {(item.status === 'pending_ppk' || item.status === 'pending') &&
+                              userRole === 'Pejabat Pembuat Komitmen' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleApprove(item)}
+                                  disabled={actionLoading === `approve-${item.rowIndex}`}
+                                  title="Approve"
+                                  className="text-green-600"
+                                >
+                                  {actionLoading === `approve-${item.rowIndex}` ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <CheckCircle2 className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              )}
                           </div>
                         </td>
                       </tr>
