@@ -44,6 +44,7 @@ import DownloadRawData from "./pages/DownloadRawData";
 import Pedoman from "./pages/Pedoman";
 import KarierKu from "./pages/KarierKu";
 import Linkers from "./pages/Linkers";
+import ManajemenPulsa from "./pages/ManajemenPulsa";
 import NotFound from "./pages/NotFound";
 import UsulanPencairan from "./pages/UsulanPencairan";
 import UserManagement from "./pages/UserManagement";
@@ -101,6 +102,7 @@ const App = () => (
             <Route path="/download-raw-data" element={<ProtectedRoute><Layout><DownloadRawData /></Layout></ProtectedRoute>} />
             <Route path="/pedoman" element={<ProtectedRoute><Layout><Pedoman /></Layout></ProtectedRoute>} />
             <Route path="/linkers" element={<ProtectedRoute><Layout><Linkers /></Layout></ProtectedRoute>} />
+            <Route path="/monitoring-pulsa" element={<ProtectedRoute><Layout><ManajemenPulsa /></Layout></ProtectedRoute>} />
             <Route path="/user-management" element={<ProtectedRoute><Layout><UserManagement /></Layout></ProtectedRoute>} />
             <Route path="/sikostik28" element={<ProtectedRoute><Layout><Sikostik28 /></Layout></ProtectedRoute>} />
             <Route path="/cetak-kuitansi" element={<ProtectedRoute><Layout><CetakKuitansi /></Layout></ProtectedRoute>} />

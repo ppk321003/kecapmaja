@@ -21,6 +21,7 @@ import {
   Receipt,
   Plus,
   BarChart3,
+  Smartphone,
 } from "lucide-react";
 
 import {
@@ -59,6 +60,7 @@ const afterEDokumenItems = [
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Linkers", url: "/linkers", icon: Link2 },
+  { title: "Monitoring Pulsa Bulanan", url: "/monitoring-pulsa", icon: Smartphone },
 ];
 
 const sikostikMenuItem = { title: "Sikostik 28", url: "/sikostik28", icon: PiggyBank };
