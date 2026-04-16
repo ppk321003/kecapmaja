@@ -77,7 +77,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
 
   const handleApprove = async (row: PulsaRow) => {
     setActionLoading(`approve-${row.rowIndex}`);
-    const approver = user?.name || user?.username || 'Unknown';
+    const approver = user?.username || 'Unknown';
     const result = await updatePulsaStatus(pulsaSheetId, row.rowIndex, 'approved_ppk', approver);
     if (result.success) {
       fetchItems();
