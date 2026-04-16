@@ -92,12 +92,9 @@ export function SubmissionTable({ submissions, onView, onEdit, userRole }: Submi
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
-  // Reset filters when submissions prop changes (e.g., when switching tabs in parent)
-  // This prevents "ghost data" from previous tabs bleeding into current tab
+  // Reset pagination when submissions prop changes (data refresh)
+  // But preserve search query and filters since they're user input, not data-dependent
   useEffect(() => {
-    setSearchQuery('');
-    setSelectedMonth('all');
-    setSelectedYear('all');
     setCurrentPage(1);
   }, [submissions]);
 
