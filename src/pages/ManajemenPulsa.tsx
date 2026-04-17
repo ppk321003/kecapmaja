@@ -48,7 +48,7 @@ const ManajemenPulsa: React.FC = () => {
         bulan,
         tahun,
         organikList: organikList.map(o => ({ name: o.name, noHp: o.noHp, kecamatan: o.kecamatan })),
-        mitraList: mitraList.map(m => ({ name: m.name, noHp: '', kecamatan: m.kecamatan })),
+        mitraList: mitraList.map(m => ({ name: m.name, noHp: m.noHp, kecamatan: m.kecamatan })),
       });
       toast({ title: '✅ Export berhasil' });
     } catch (e) {
