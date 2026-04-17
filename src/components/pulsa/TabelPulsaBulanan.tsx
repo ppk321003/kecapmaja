@@ -287,34 +287,6 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
       )}
 
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">
-            Ringkasan Pulsa {new Date(tahun, bulan - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-6">
-          <div>
-            <p className="text-sm text-muted-foreground">Total Petugas</p>
-            <p className="text-2xl font-bold">{uniquePersons}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Total Nominal (Approved)</p>
-            <p className="text-2xl font-bold">Rp {totalApproved.toLocaleString('id-ID')}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Total Baris Sheet</p>
-            <p className="text-2xl font-bold">{rawRows.length}</p>
-          </div>
-          {isPPK && (
-            <div>
-              <p className="text-sm text-muted-foreground">Pending Approval</p>
-              <p className="text-2xl font-bold text-orange-600">{pendingCount}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardHeader>
           <CardTitle className="text-base">Daftar Pulsa</CardTitle>
         </CardHeader>

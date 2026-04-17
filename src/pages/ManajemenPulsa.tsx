@@ -76,8 +76,8 @@ const ManajemenPulsa: React.FC = () => {
     <div className="w-full py-6 space-y-6 px-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Manajemen Pembelian Pulsa</h1>
-          <p className="text-muted-foreground mt-1">Kelola pembelian pulsa untuk petugas lapangan</p>
+          <h1 className="text-3xl font-bold">Manajemen Pembelian Pulsa / Paket Data</h1>
+          <p className="text-muted-foreground mt-1">Kelola pembelian pulsa dan paket data untuk petugas lapangan</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleRefresh} title="Refresh data">
@@ -133,7 +133,7 @@ const ManajemenPulsa: React.FC = () => {
       <Tabs defaultValue="daftar" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="daftar">Daftar Pulsa</TabsTrigger>
-          <TabsTrigger value="tambah">Tambah Pulsa</TabsTrigger>
+          <TabsTrigger value="tambah">Tambah Ajuan Pulsa/Paket Data</TabsTrigger>
           <TabsTrigger value="laporan">Laporan</TabsTrigger>
         </TabsList>
 
@@ -159,16 +159,7 @@ const ManajemenPulsa: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      <Card className="bg-blue-50 border-blue-200">
-        <CardHeader>
-          <CardTitle className="text-base">ℹ️ Aturan Pembelian Pulsa</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm space-y-2">
-          <p>✅ <strong>Indikator Status:</strong> ✅ hijau = approved, ❌ merah = rejected, ⏳ abu-abu = pending</p>
-          <p>✅ <strong>Export Excel:</strong> Hanya data ber-status <code>approved_ppk</code> yang diexport, multi-sheet per kegiatan</p>
-          <p>✅ Status disimpan per orang (format pipe-separated di sheet)</p>
-        </CardContent>
-      </Card>
+
     </div>
   );
 };

@@ -166,18 +166,11 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <InfoIcon className="w-5 h-5" />
-          Tambah Data Pulsa Bulanan
+          Tambah Ajuan Pulsa/Paket Data
         </CardTitle>
       </CardHeader>
 
       <CardContent>
-        <Alert className="mb-6 bg-blue-50 border-blue-200">
-          <InfoIcon className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            <strong>Aturan Penting:</strong> 1 petugas hanya boleh menerima
-            pulsa dari <strong>1 kegiatan</strong> dalam 1 bulan.
-          </AlertDescription>
-        </Alert>
 
         {message && (
           <Alert
@@ -291,7 +284,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
               <div className="space-y-1">
                 <Input
                   id="kegiatan"
-                  placeholder="Contoh: 2886, Pendataan KSA, atau kode lainnya"
+                  placeholder="Contoh: Pendataan Podes, Pelatihan Susenas, atau lainnya"
                   value={formData.kegiatan}
                   onChange={(e) =>
                     setFormData({ ...formData, kegiatan: e.target.value })
