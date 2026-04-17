@@ -26,6 +26,8 @@ import {
 
 const SHEET_ID = "1P2TulBe-XIEdmiNqGU3UB1mNr6mnTuPDEFq34E-6zf0";
 const ITEMS_PER_PAGE = 12;
+const SUPABASE_PROJECT_ID = "yudlciokearepqzvgzxx";
+const IMAGE_PROXY_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/image-proxy`;
 
 // Helper function to get icon based on file type
 const getFileIcon = (fileType: string) => {
@@ -60,16 +62,13 @@ const getFileIcon = (fileType: string) => {
   }
 };
 
-// CORS Proxy helper for Google Drive images - using Supabase Edge Function
+// Image proxy helper - using Supabase Edge Function for CORS bypass
 const getImageProxyUrl = (url: string): string => {
   if (!url) return '';
   if (isGoogleDriveUrl(url)) {
     const fileId = url.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1];
     if (fileId) {
-      // Use Supabase Edge Function for proxy
-      const { data } = supabase.auth.session() || {};
-      const baseUrl = supabase.functions.getUrl?.()?.split('/functions')[0] || 'https://your-project.supabase.co';
-      return `${baseUrl}/functions/v1/image-proxy?fileId=${fileId}&type=view`;
+      return `${IMAGE_PROXY_URL}?fileId=${fileId}&type=view`;
     }
   }
   return url;
