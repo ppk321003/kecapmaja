@@ -1,10 +1,18 @@
 /**
  * Service untuk Manajemen Pulsa via Google Sheets
- * 
+ *
  * Header Sheet1 (A:L):
  * No | Bulan | Tahun | Kegiatan | Organik | Mitra | Nominal | Status | Keterangan | Tgl Input | Disetujui Oleh | Tgl Approval
- * 
- * Organik & Mitra columns use '|' as separator for multiple names
+ *
+ * IMPORTANT: Organik, Mitra, Status, DisetujuiOleh, TglApproval semua menggunakan
+ * pemisah '|' dengan jumlah elemen yang harus konsisten dengan total nama
+ * (organik diikuti mitra, urutan: organik[0..n], mitra[0..m]).
+ *
+ * Contoh:
+ *   Organik: "Budi|Siti"
+ *   Mitra:   "Aan|Aam"
+ *   Status:  "approved_ppk|pending_ppk|pending_ppk|rejected_ppk"
+ *            (4 status untuk 4 orang)
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -13,8 +21,8 @@ export interface PulsaData {
   bulan: number;
   tahun: number;
   kegiatan: string;
-  organik: string; // pipe-separated
-  mitra: string;   // pipe-separated
+  organik: string; // pipe-separated names
+  mitra: string;   // pipe-separated names
   nominal: number;
   keterangan?: string;
 }
@@ -30,16 +38,19 @@ export interface PulsaRow {
   bulan: number;
   tahun: number;
   kegiatan: string;
-  organik: string;   // pipe-separated raw
-  mitra: string;     // pipe-separated raw
+  organik: string;          // pipe-separated raw
+  mitra: string;            // pipe-separated raw
   organikList: string[];
   mitraList: string[];
   nominal: number;
-  status: string;
+  status: string;           // raw pipe-separated status
+  statusList: string[];     // per-person status
   keterangan: string;
   tglInput: string;
-  disetujuiOleh: string;
-  tglApproval: string;
+  disetujuiOleh: string;          // raw pipe-separated
+  disetujuiOlehList: string[];
+  tglApproval: string;            // raw pipe-separated
+  tglApprovalList: string[];
   rowIndex: number;
 }
 
@@ -54,6 +65,8 @@ export interface PersonPulsaEntry {
     disetujuiOleh: string;
     tglApproval: string;
     rowIndex: number;
+    /** Index orang dalam row tersebut (urutan organik dulu, baru mitra) */
+    personIndex: number;
   }[];
   total: number;
 }
@@ -62,9 +75,28 @@ export interface PersonPulsaEntry {
 function parseIdNumber(val: string | number | undefined): number {
   if (val === undefined || val === null || val === '') return 0;
   const s = String(val).trim();
-  // Remove dots (thousand separator), replace comma with dot (decimal)
   const cleaned = s.replace(/\./g, '').replace(',', '.');
   return Number(cleaned) || 0;
+}
+
+function splitPipe(val: string): string[] {
+  if (!val) return [];
+  return val.split('|').map(s => s.trim());
+}
+
+/** Hitung jumlah orang dalam row (organik + mitra) */
+function countPeople(row: Pick<PulsaRow, 'organikList' | 'mitraList'>): number {
+  return row.organikList.length + row.mitraList.length;
+}
+
+/**
+ * Pad/trim a per-person array to match total people count.
+ * Default fill is 'pending_ppk' for status, '' for others.
+ */
+function normalizePerPerson(arr: string[], total: number, fill: string): string[] {
+  const out = arr.slice(0, total);
+  while (out.length < total) out.push(fill);
+  return out;
 }
 
 /**
@@ -90,6 +122,18 @@ export async function readPulsaData(spreadsheetId: string): Promise<PulsaRow[]> 
       .map((row: string[], idx: number) => {
         const organikRaw = String(row[4] || '').trim();
         const mitraRaw = String(row[5] || '').trim();
+        const statusRaw = String(row[7] || 'pending_ppk').trim();
+        const approverRaw = String(row[10] || '').trim();
+        const tglApprovalRaw = String(row[11] || '').trim();
+
+        const organikList = splitPipe(organikRaw).filter(Boolean);
+        const mitraList = splitPipe(mitraRaw).filter(Boolean);
+        const totalPeople = organikList.length + mitraList.length;
+
+        const statusList = normalizePerPerson(splitPipe(statusRaw), totalPeople, 'pending_ppk');
+        const disetujuiOlehList = normalizePerPerson(splitPipe(approverRaw), totalPeople, '');
+        const tglApprovalList = normalizePerPerson(splitPipe(tglApprovalRaw), totalPeople, '');
+
         return {
           no: parseIdNumber(row[0]) || idx + 1,
           bulan: parseIdNumber(row[1]),
@@ -97,14 +141,17 @@ export async function readPulsaData(spreadsheetId: string): Promise<PulsaRow[]> 
           kegiatan: String(row[3] || '').trim(),
           organik: organikRaw,
           mitra: mitraRaw,
-          organikList: organikRaw ? organikRaw.split('|').map(s => s.trim()).filter(Boolean) : [],
-          mitraList: mitraRaw ? mitraRaw.split('|').map(s => s.trim()).filter(Boolean) : [],
+          organikList,
+          mitraList,
           nominal: parseIdNumber(row[6]),
-          status: String(row[7] || 'draft').trim(),
+          status: statusRaw,
+          statusList,
           keterangan: String(row[8] || '').trim(),
           tglInput: String(row[9] || '').trim(),
-          disetujuiOleh: String(row[10] || '').trim(),
-          tglApproval: String(row[11] || '').trim(),
+          disetujuiOleh: approverRaw,
+          disetujuiOlehList,
+          tglApproval: tglApprovalRaw,
+          tglApprovalList,
           rowIndex: idx + 2,
         };
       });
@@ -115,52 +162,46 @@ export async function readPulsaData(spreadsheetId: string): Promise<PulsaRow[]> 
 }
 
 /**
- * Build person-centric view from rows
+ * Build person-centric view from rows.
+ * personIndex urutan: organik[0..n-1], lalu mitra[0..m-1].
  */
 export function buildPersonView(rows: PulsaRow[]): PersonPulsaEntry[] {
   const personMap = new Map<string, PersonPulsaEntry>();
 
   for (const row of rows) {
-    // Process organik names
-    for (const nama of row.organikList) {
-      if (!personMap.has(nama)) {
-        personMap.set(nama, { nama, tipe: 'Organik', entries: [], total: 0 });
-      }
-      const person = personMap.get(nama)!;
-      person.entries.push({
-        kegiatan: row.kegiatan,
-        nominal: row.nominal,
-        status: row.status,
-        disetujuiOleh: row.disetujuiOleh,
-        tglApproval: row.tglApproval,
-        rowIndex: row.rowIndex,
-      });
-      person.total += row.nominal;
-    }
+    const allNames = [
+      ...row.organikList.map(n => ({ nama: n, tipe: 'Organik' as const })),
+      ...row.mitraList.map(n => ({ nama: n, tipe: 'Mitra' as const })),
+    ];
 
-    // Process mitra names
-    for (const nama of row.mitraList) {
-      if (!personMap.has(nama)) {
-        personMap.set(nama, { nama, tipe: 'Mitra', entries: [], total: 0 });
+    allNames.forEach((p, personIndex) => {
+      const status = row.statusList[personIndex] || 'pending_ppk';
+      const approver = row.disetujuiOlehList[personIndex] || '';
+      const tglApproval = row.tglApprovalList[personIndex] || '';
+
+      if (!personMap.has(p.nama)) {
+        personMap.set(p.nama, { nama: p.nama, tipe: p.tipe, entries: [], total: 0 });
       }
-      const person = personMap.get(nama)!;
+      const person = personMap.get(p.nama)!;
       person.entries.push({
         kegiatan: row.kegiatan,
         nominal: row.nominal,
-        status: row.status,
-        disetujuiOleh: row.disetujuiOleh,
-        tglApproval: row.tglApproval,
+        status,
+        disetujuiOleh: approver,
+        tglApproval,
         rowIndex: row.rowIndex,
+        personIndex,
       });
       person.total += row.nominal;
-    }
+    });
   }
 
   return Array.from(personMap.values()).sort((a, b) => a.nama.localeCompare(b.nama));
 }
 
 /**
- * Tambah data pulsa baru ke Sheet1 - 1 entry per row, names pipe-separated
+ * Tambah data pulsa baru ke Sheet1 - 1 entry per row, names pipe-separated.
+ * Status diinisialisasi 'pending_ppk' untuk setiap orang (pipe-separated).
  */
 export async function tambahPulsaBulanan(
   data: PulsaData,
@@ -174,20 +215,33 @@ export async function tambahPulsaBulanan(
     const existing = await readPulsaData(spreadsheetId);
     const nextNo = existing.length + 1;
 
+    const organikList = splitPipe(data.organik).filter(Boolean);
+    const mitraList = splitPipe(data.mitra).filter(Boolean);
+    const totalPeople = organikList.length + mitraList.length;
+
+    if (totalPeople === 0) {
+      return { success: false, message: 'Minimal 1 orang (organik atau mitra) harus dipilih' };
+    }
+
+    // Initialize status list: pending_ppk per person
+    const statusList = Array(totalPeople).fill('pending_ppk').join('|');
+    const approverList = Array(totalPeople).fill('').join('|');
+    const tglApprovalList = Array(totalPeople).fill('').join('|');
+
     const now = new Date().toLocaleString('id-ID');
     const newRow = [
       nextNo,
       data.bulan,
       data.tahun,
       data.kegiatan,
-      data.organik,    // pipe-separated
-      data.mitra,      // pipe-separated
+      data.organik,
+      data.mitra,
       data.nominal,
-      'draft',
+      statusList,
       data.keterangan || '',
       now,
-      '',
-      '',
+      approverList,
+      tglApprovalList,
     ];
 
     const { error } = await supabase.functions.invoke('google-sheets', {
@@ -203,7 +257,7 @@ export async function tambahPulsaBulanan(
 
     return {
       success: true,
-      message: `✅ Data pulsa berhasil disimpan (No. ${nextNo})`,
+      message: `✅ Data pulsa berhasil disimpan (No. ${nextNo}, ${totalPeople} orang)`,
       rowNumber: nextNo,
     };
   } catch (error) {
@@ -216,7 +270,112 @@ export async function tambahPulsaBulanan(
 }
 
 /**
- * Update status pulsa di Sheet1
+ * Update status per-orang di sebuah row.
+ * Hanya mengganti index tertentu pada array status/disetujuiOleh/tglApproval,
+ * lalu join kembali dengan '|'.
+ *
+ * @param updates Array dari { personIndex, newStatus }
+ */
+export async function updatePersonStatusInRow(
+  spreadsheetId: string,
+  rowIndex: number,
+  updates: { personIndex: number; newStatus: string }[],
+  approverName: string
+): Promise<PulsaResponse> {
+  try {
+    if (!spreadsheetId) {
+      return { success: false, message: 'Sheet ID pulsa belum dikonfigurasi' };
+    }
+    if (updates.length === 0) {
+      return { success: false, message: 'Tidak ada update yang dikirim' };
+    }
+
+    // 1. Read current row to get existing arrays
+    const { data, error: readErr } = await supabase.functions.invoke('google-sheets', {
+      body: {
+        spreadsheetId,
+        operation: 'read',
+        range: `Sheet1!A${rowIndex}:L${rowIndex}`,
+      },
+    });
+    if (readErr) throw readErr;
+
+    const row = (data?.values || [])[0];
+    if (!row) {
+      return { success: false, message: `Row ${rowIndex} tidak ditemukan` };
+    }
+
+    const organikList = splitPipe(String(row[4] || '')).filter(Boolean);
+    const mitraList = splitPipe(String(row[5] || '')).filter(Boolean);
+    const totalPeople = organikList.length + mitraList.length;
+
+    if (totalPeople === 0) {
+      return { success: false, message: 'Row ini tidak punya nama' };
+    }
+
+    const statusList = normalizePerPerson(
+      splitPipe(String(row[7] || '')),
+      totalPeople,
+      'pending_ppk'
+    );
+    const approverList = normalizePerPerson(
+      splitPipe(String(row[10] || '')),
+      totalPeople,
+      ''
+    );
+    const tglApprovalList = normalizePerPerson(
+      splitPipe(String(row[11] || '')),
+      totalPeople,
+      ''
+    );
+
+    // 2. Apply updates only to the targeted indices
+    const now = new Date().toLocaleString('id-ID');
+    for (const u of updates) {
+      if (u.personIndex < 0 || u.personIndex >= totalPeople) {
+        console.warn(`Skip invalid personIndex ${u.personIndex} (total ${totalPeople})`);
+        continue;
+      }
+      statusList[u.personIndex] = u.newStatus;
+      approverList[u.personIndex] = approverName;
+      tglApprovalList[u.personIndex] = now;
+    }
+
+    // 3. Write back joined arrays to columns H, K, L
+    const writes = [
+      { range: `Sheet1!H${rowIndex}`, value: statusList.join('|') },
+      { range: `Sheet1!K${rowIndex}`, value: approverList.join('|') },
+      { range: `Sheet1!L${rowIndex}`, value: tglApprovalList.join('|') },
+    ];
+
+    for (const w of writes) {
+      const { error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId,
+          operation: 'update',
+          range: w.range,
+          values: [[w.value]],
+        },
+      });
+      if (error) throw error;
+    }
+
+    return {
+      success: true,
+      message: `✅ ${updates.length} status berhasil diupdate di row ${rowIndex}`,
+    };
+  } catch (error) {
+    console.error('Error update person status:', error);
+    return {
+      success: false,
+      message: `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
+  }
+}
+
+/**
+ * @deprecated gunakan updatePersonStatusInRow agar status per-orang.
+ * Update seluruh status row (lama, fallback). Disimpan untuk backward-compat.
  */
 export async function updatePulsaStatus(
   spreadsheetId: string,
