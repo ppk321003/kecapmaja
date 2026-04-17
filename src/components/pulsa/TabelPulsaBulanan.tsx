@@ -374,9 +374,29 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                         </td>
                         {Array.from({ length: maxKegiatan }).map((_, i) => {
                           const entry = person.entries[i];
+                          if (!entry) {
+                            return (
+                              <td key={i} className="px-3 py-2 border text-right font-mono text-xs text-muted-foreground">
+                                -
+                              </td>
+                            );
+                          }
+                          const statusIcon =
+                            ['approved', 'approved_ppk', 'completed'].includes(entry.status) ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            ) : ['rejected', 'rejected_ppk'].includes(entry.status) ? (
+                              <XCircle className="w-4 h-4 text-red-600" />
+                            ) : (
+                              <Clock className="w-4 h-4 text-muted-foreground" />
+                            );
                           return (
-                            <td key={i} className="px-3 py-2 border text-right font-mono text-xs">
-                              {entry ? `Rp ${entry.nominal.toLocaleString('id-ID')}` : '-'}
+                            <td key={i} className="px-3 py-2 border">
+                              <div className="flex items-center justify-end gap-2">
+                                <span className="font-mono text-xs">
+                                  Rp {entry.nominal.toLocaleString('id-ID')}
+                                </span>
+                                <span title={entry.status}>{statusIcon}</span>
+                              </div>
                             </td>
                           );
                         })}
