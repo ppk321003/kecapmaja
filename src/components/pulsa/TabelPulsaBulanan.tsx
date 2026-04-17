@@ -10,6 +10,7 @@ import {
   X,
   Clock,
   XCircle,
+  Edit3,
 } from 'lucide-react';
 import {
   readPulsaData,
@@ -134,7 +135,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     console.log('[handleApproveClick] Clicked person:', person.nama);
     setSelectedApprovePerson(person);
     setApproveAction(null);
-    // Initialize selected items - select all pending items by default
+    // Initialize selected items - select all entries (allow re-edit) by default to pending only
     const pendingIndices = new Set(
       person.entries
         .filter(e => ['pending', 'pending_ppk'].includes(e.status))
@@ -143,12 +144,13 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     setSelectedItems(pendingIndices);
     setApproveDialogOpen(true);
     setRejectionReason('');
-    console.log('[handleApproveClick] Dialog should open now with items:', Array.from(pendingIndices));
+    console.log('[handleApproveClick] Dialog opens, default selected pending items:', Array.from(pendingIndices));
   };
 
   /**
-   * Group selected pending entries by rowIndex, then call
+   * Group selected entries (any status) by rowIndex, then call
    * updatePersonStatusInRow once per row with all per-person updates.
+   * PPK can re-edit any entry, including changing approved → rejected and vice versa.
    */
   const processSelectedItems = async (newStatus: 'approved_ppk' | 'rejected_ppk') => {
     if (!selectedApprovePerson || selectedItems.size === 0) {
@@ -157,11 +159,10 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     }
 
     const approver = user?.username || 'Unknown';
-    const pendingEntries = selectedApprovePerson.entries.filter(
-      e => ['pending', 'pending_ppk'].includes(e.status)
-    );
+    // Allow re-edit: include all entries, not just pending
+    const allEntries = selectedApprovePerson.entries;
     const selectedEntries = Array.from(selectedItems)
-      .map(idx => pendingEntries[idx])
+      .map(idx => allEntries[idx])
       .filter(Boolean);
 
     if (selectedEntries.length === 0) return false;
