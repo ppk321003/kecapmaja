@@ -11,13 +11,14 @@ import {
 } from 'lucide-react';
 import {
   readPulsaData,
-  updatePulsaStatus,
+  updatePersonStatusInRow,
   buildPersonView,
   PulsaRow,
   PersonPulsaEntry,
 } from '@/services/pulsaSheetsService';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { isUserPPK } from '@/services/pulsaApprovalService';
 import {
   Dialog,
   DialogContent,
