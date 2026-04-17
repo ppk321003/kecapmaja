@@ -27,6 +27,7 @@ interface MitraStatistik {
   bank: string;
   rekening: string;
   kecamatan: string;
+  noHp: string;
 }
 
 export const useOrganikBPS = () => {
@@ -81,7 +82,8 @@ export const useMitraStatistik = () => {
     alamat: row.alamat || '',
     bank: row.bank || '',
     rekening: row.rekening || '',
-    kecamatan: row.kecamatan || ''
+    kecamatan: row.kecamatan || '',
+    noHp: row['no. hp'] || row['no hp'] || row['nohp'] || ''
   }));
 
   return { data, loading, error };

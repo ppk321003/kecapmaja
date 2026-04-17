@@ -10,6 +10,7 @@ import {
   X,
   Clock,
   XCircle,
+  Edit3,
 } from 'lucide-react';
 import {
   readPulsaData,
@@ -134,7 +135,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     console.log('[handleApproveClick] Clicked person:', person.nama);
     setSelectedApprovePerson(person);
     setApproveAction(null);
-    // Initialize selected items - select all pending items by default
+    // Initialize selected items - select all entries (allow re-edit) by default to pending only
     const pendingIndices = new Set(
       person.entries
         .filter(e => ['pending', 'pending_ppk'].includes(e.status))
@@ -143,12 +144,13 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     setSelectedItems(pendingIndices);
     setApproveDialogOpen(true);
     setRejectionReason('');
-    console.log('[handleApproveClick] Dialog should open now with items:', Array.from(pendingIndices));
+    console.log('[handleApproveClick] Dialog opens, default selected pending items:', Array.from(pendingIndices));
   };
 
   /**
-   * Group selected pending entries by rowIndex, then call
+   * Group selected entries (any status) by rowIndex, then call
    * updatePersonStatusInRow once per row with all per-person updates.
+   * PPK can re-edit any entry, including changing approved → rejected and vice versa.
    */
   const processSelectedItems = async (newStatus: 'approved_ppk' | 'rejected_ppk') => {
     if (!selectedApprovePerson || selectedItems.size === 0) {
@@ -157,11 +159,10 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     }
 
     const approver = user?.username || 'Unknown';
-    const pendingEntries = selectedApprovePerson.entries.filter(
-      e => ['pending', 'pending_ppk'].includes(e.status)
-    );
+    // Allow re-edit: include all entries, not just pending
+    const allEntries = selectedApprovePerson.entries;
     const selectedEntries = Array.from(selectedItems)
-      .map(idx => pendingEntries[idx])
+      .map(idx => allEntries[idx])
       .filter(Boolean);
 
     if (selectedEntries.length === 0) return false;
@@ -343,26 +344,41 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                       );
                     })}
                     <th className="px-3 py-2 text-right border" style={{ minWidth: '100px' }}>Total</th>
-                    <th className="px-3 py-2 text-center border" style={{ minWidth: '100px' }}>Approve PPK</th>
+                    <th className="px-3 py-2 text-left border" style={{ minWidth: '200px' }}>Keterangan</th>
+                    {isPPK && (
+                      <th className="px-3 py-2 text-center border" style={{ minWidth: '90px' }}>Aksi PPK</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {persons.map((person, idx) => {
                     const isDuplicate = getDuplicateWarning(person);
                     const hasPending = person.entries.some(e => ['pending', 'pending_ppk'].includes(e.status));
+                    const hasAnyAction = person.entries.some(e =>
+                      ['approved', 'approved_ppk', 'completed', 'rejected', 'rejected_ppk'].includes(e.status)
+                    );
+                    // Build keterangan from approved entries
+                    const approvedEntries = person.entries.filter(e =>
+                      ['approved', 'approved_ppk', 'completed'].includes(e.status)
+                    );
+                    const keterangan = approvedEntries.length === 0
+                      ? ''
+                      : approvedEntries
+                          .map(e => `Pulsa disetujui dari kegiatan ${e.kegiatan} nominal Rp ${e.nominal.toLocaleString('id-ID')}`)
+                          .join('; ');
                     return (
                       <tr
                         key={person.nama}
-                        className={`border-b ${isDuplicate ? 'bg-destructive/10' : 'hover:bg-muted/50'}`}
+                        className={`border-b ${isDuplicate ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'hover:bg-muted/50'}`}
                       >
                         <td className="px-3 py-2 border text-center">{idx + 1}</td>
                         <td className="px-3 py-2 border">
                           <div>
                             <p className="font-medium">{person.nama}</p>
                             {isDuplicate && (
-                              <div className="flex items-center gap-1 mt-1 text-xs text-destructive font-semibold">
+                              <div className="flex items-center gap-1 mt-1 text-xs text-yellow-700 dark:text-yellow-400 font-semibold">
                                 <AlertTriangle className="w-3 h-3" />
-                                Duplikasi kegiatan!
+                                Duplikasi kegiatan
                               </div>
                             )}
                           </div>
@@ -403,38 +419,29 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                         <td className="px-3 py-2 border text-right font-semibold font-mono">
                           Rp {person.total.toLocaleString('id-ID')}
                         </td>
-                        <td className="px-3 py-2 border text-center">
-                          {isPPK ? (
-                            <>
-                              {hasPending ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-7 w-full"
-                                  onClick={() => {
-                                    console.log('[Button Click] Person:', person.nama, 'Pending:', hasPending);
-                                    handleApproveClick(person);
-                                  }}
-                                  disabled={actionLoading !== null}
-                                >
-                                  {actionLoading ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    'Approve/Reject'
-                                  )}
-                                </Button>
-                              ) : person.entries.some(e => ['approved', 'approved_ppk', 'completed'].includes(e.status)) ? (
-                                <span className="text-xs text-green-600 font-semibold">✓ Approved</span>
-                              ) : person.entries.some(e => ['rejected', 'rejected_ppk'].includes(e.status)) ? (
-                                <span className="text-xs text-red-600 font-semibold">✕ Rejected</span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Draft</span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
+                        <td className="px-3 py-2 border text-xs text-muted-foreground">
+                          {keterangan || <span className="italic opacity-50">—</span>}
                         </td>
+                        {isPPK && (
+                          <td className="px-3 py-2 border text-center">
+                            <Button
+                              size="icon"
+                              variant={hasPending ? 'default' : 'ghost'}
+                              className="h-8 w-8"
+                              title={hasPending ? 'Approve / Reject' : (hasAnyAction ? 'Edit keputusan' : 'Belum ada data')}
+                              onClick={() => handleApproveClick(person)}
+                              disabled={actionLoading !== null}
+                            >
+                              {actionLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : hasPending ? (
+                                <CheckCircle2 className="w-4 h-4" />
+                              ) : (
+                                <Edit3 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -484,27 +491,28 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
 
           {selectedApprovePerson && (
             <div className="space-y-4">
-              {/* Items to approve with checkboxes */}
+              {/* Items to approve with checkboxes — show ALL entries so PPK bisa re-edit keputusan */}
               <div className="border rounded-lg p-3 bg-muted/30">
-                <p className="font-medium text-sm mb-3">Pilih item untuk disetujui/ditolak:</p>
+                <p className="font-medium text-sm mb-3">Pilih item untuk disetujui/ditolak (PPK boleh mengubah keputusan sebelumnya):</p>
                 <div className="space-y-2">
-                  {selectedApprovePerson.entries
-                    .filter(e => ['pending', 'pending_ppk'].includes(e.status))
-                    .map((entry, idx) => (
+                  {selectedApprovePerson.entries.map((entry, idx) => {
+                    const isApproved = ['approved', 'approved_ppk', 'completed'].includes(entry.status);
+                    const isRejected = ['rejected', 'rejected_ppk'].includes(entry.status);
+                    const badgeVariant: 'default' | 'destructive' | 'outline' =
+                      isApproved ? 'default' : isRejected ? 'destructive' : 'outline';
+                    const badgeLabel =
+                      isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending';
+                    return (
                       <div
                         key={idx}
-                        className="flex items-center gap-3 p-2 bg-white border rounded text-sm hover:bg-muted/50"
+                        className="flex items-center gap-3 p-2 bg-background border rounded text-sm hover:bg-muted/50"
                       >
                         <Checkbox
                           id={`item-${idx}`}
                           checked={selectedItems.has(idx)}
                           onCheckedChange={(checked) => {
                             const newSet = new Set(selectedItems);
-                            if (checked) {
-                              newSet.add(idx);
-                            } else {
-                              newSet.delete(idx);
-                            }
+                            if (checked) newSet.add(idx); else newSet.delete(idx);
                             setSelectedItems(newSet);
                           }}
                         />
@@ -517,9 +525,10 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                             <p className="text-xs text-muted-foreground">Rp {entry.nominal.toLocaleString('id-ID')}</p>
                           </div>
                         </label>
-                        <Badge variant="outline">Pending</Badge>
+                        <Badge variant={badgeVariant}>{badgeLabel}</Badge>
                       </div>
-                    ))}
+                    );
+                  })}
                 </div>
               </div>
 
