@@ -11,13 +11,14 @@ import {
 } from 'lucide-react';
 import {
   readPulsaData,
-  updatePulsaStatus,
+  updatePersonStatusInRow,
   buildPersonView,
   PulsaRow,
   PersonPulsaEntry,
 } from '@/services/pulsaSheetsService';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { isUserPPK } from '@/services/pulsaApprovalService';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { approvePulsa, rejectPulsa, isUserPPK } from '@/services/pulsaApprovalService';
+
 
 interface TabelPulsaBulananProps {
   bulan: number;
@@ -143,33 +144,62 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     console.log('[handleApproveClick] Dialog should open now with items:', Array.from(pendingIndices));
   };
 
-  const handleApproveConfirm = async () => {
+  /**
+   * Group selected pending entries by rowIndex, then call
+   * updatePersonStatusInRow once per row with all per-person updates.
+   */
+  const processSelectedItems = async (newStatus: 'approved_ppk' | 'rejected_ppk') => {
     if (!selectedApprovePerson || selectedItems.size === 0) {
-      alert('Pilih minimal 1 item untuk disetujui');
-      return;
+      alert('Pilih minimal 1 item');
+      return false;
     }
 
-    setActionLoading('approve-processing');
     const approver = user?.username || 'Unknown';
     const pendingEntries = selectedApprovePerson.entries.filter(
       e => ['pending', 'pending_ppk'].includes(e.status)
     );
+    const selectedEntries = Array.from(selectedItems)
+      .map(idx => pendingEntries[idx])
+      .filter(Boolean);
 
-    try {
-      // Only approve selected items
-      const selectedEntries = Array.from(selectedItems).map(idx => pendingEntries[idx]);
-      for (const entry of selectedEntries) {
-        const result = await approvePulsa(entry.rowIndex, approver, userRole);
-        if (!result.success) {
-          alert(`Error approving row ${entry.rowIndex}: ${result.message}`);
-          return;
-        }
+    if (selectedEntries.length === 0) return false;
+
+    // Group by rowIndex
+    const byRow = new Map<number, { personIndex: number; newStatus: string }[]>();
+    for (const entry of selectedEntries) {
+      if (!byRow.has(entry.rowIndex)) byRow.set(entry.rowIndex, []);
+      byRow.get(entry.rowIndex)!.push({
+        personIndex: entry.personIndex,
+        newStatus,
+      });
+    }
+
+    for (const [rowIndex, updates] of byRow) {
+      const result = await updatePersonStatusInRow(
+        pulsaSheetId,
+        rowIndex,
+        updates,
+        approver
+      );
+      if (!result.success) {
+        alert(`Error update row ${rowIndex}: ${result.message}`);
+        return false;
       }
-      fetchItems();
-      onRefresh?.();
-      setApproveDialogOpen(false);
-      setSelectedApprovePerson(null);
-      setSelectedItems(new Set());
+    }
+    return true;
+  };
+
+  const handleApproveConfirm = async () => {
+    setActionLoading('approve-processing');
+    try {
+      const ok = await processSelectedItems('approved_ppk');
+      if (ok) {
+        fetchItems();
+        onRefresh?.();
+        setApproveDialogOpen(false);
+        setSelectedApprovePerson(null);
+        setSelectedItems(new Set());
+      }
     } finally {
       setActionLoading(null);
     }
@@ -183,39 +213,22 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
   };
 
   const handleRejectConfirm = async () => {
-    if (!selectedApprovePerson || !rejectionReason.trim() || selectedItems.size === 0) {
-      alert('Pilih item untuk ditolak dan isi alasan penolakan');
+    if (!rejectionReason.trim()) {
+      alert('Isi alasan penolakan');
       return;
     }
-
     setActionLoading('reject-processing');
-    const rejector = user?.username || 'Unknown';
-    const pendingEntries = selectedApprovePerson.entries.filter(
-      e => ['pending', 'pending_ppk'].includes(e.status)
-    );
-
     try {
-      // Only reject selected items
-      const selectedEntries = Array.from(selectedItems).map(idx => pendingEntries[idx]);
-      for (const entry of selectedEntries) {
-        const result = await rejectPulsa(
-          entry.rowIndex,
-          rejector,
-          rejectionReason,
-          userRole
-        );
-        if (!result.success) {
-          alert(`Error rejecting row ${entry.rowIndex}: ${result.message}`);
-          return;
-        }
+      const ok = await processSelectedItems('rejected_ppk');
+      if (ok) {
+        fetchItems();
+        onRefresh?.();
+        setApproveDialogOpen(false);
+        setSelectedApprovePerson(null);
+        setRejectionReason('');
+        setApproveAction(null);
+        setSelectedItems(new Set());
       }
-      fetchItems();
-      onRefresh?.();
-      setApproveDialogOpen(false);
-      setSelectedApprovePerson(null);
-      setRejectionReason('');
-      setApproveAction(null);
-      setSelectedItems(new Set());
     } finally {
       setActionLoading(null);
     }
