@@ -117,10 +117,89 @@ Ganti `YOUR_SHEET_ID_HERE` dengan SHEET_ID yang di-copy.
 - Check kolom headers sesuai urutan (No, Tahun, Tanggal, ...)
 - Data mulai dari row 2 (row 1 adalah header)
 
-**Thumbnail tidak tampil**
-- Untuk Google Drive links, gunakan share link atau public link
-- Format: `https://drive.google.com/file/d/{FILE_ID}/view` atau yang di-generate Google Drive
-- Atau upload image ke tempat lain dan link direct URL
+**Thumbnail tidak tampil / Load gagal**
+
+❌ **MASALAH UMUM:**
+1. **URL format salah** - Menggunakan sharing link alih-alih image URL
+2. **File tidak di-share** - File harus public atau "Anyone with link" dapat akses
+3. **CORS issue** - Google Drive membatasi akses dari browser
+
+✅ **SOLUSI:**
+
+**A. Fix URL Format untuk Google Drive**
+
+Google Drive view link:
+```
+❌ WRONG: https://drive.google.com/file/d/{FILE_ID}/view?usp=drive_link
+```
+
+Harus convert ke image URL:
+```
+✅ CORRECT: https://drive.google.com/uc?export=view&id={FILE_ID}
+```
+
+**B. Get FILE_ID dari Google Drive Link**
+
+1. Share publik file di Google Drive terlebih dahulu:
+   - Right-click file → Share
+   - Change to "Anyone with the link"
+   - Click "Copy link"
+   - URL format: `https://drive.google.com/file/d/{FILE_ID}/view?usp=drive_link`
+
+2. Extract FILE_ID dari URL:
+   ```
+   Dari: https://drive.google.com/file/d/1PHzBM6nM9VO78gtdKBJSaLbRpjJRwwIR/view?usp=drive_link
+   FILE_ID: 1PHzBM6nM9VO78gtdKBJSaLbRpjJRwwIR
+   ```
+
+3. Gunakan image URL:
+   ```
+   https://drive.google.com/uc?export=view&id=1PHzBM6nM9VO78gtdKBJSaLbRpjJRwwIR
+   ```
+
+4. Paste ke kolom "Thumbnail URL" di Sheet
+
+**C. Testing di Browser Console**
+
+1. Buka halaman `/layanan-umum`
+2. Buka DevTools → Console tab (F12)
+3. Cari logs: `[LayananUmum] Item`
+4. Lihat image URL yang di-generate:
+
+```javascript
+[LayananUmum] Item 1: {
+  namaPublikasi: "Paparan Kepala BPS...",
+  imageLink: "https://drive.google.com/file/d/1P...",
+  isGoogleDrive: true,
+  thumbnailUrl: "https://drive.google.com/uc?export=view&id=1P...",
+  hasViewUrl: true
+}
+```
+
+5. Jika ada error saat load:
+```javascript
+[LayananUmum] Image failed to load: 1 {src: "https://...", error: {...}}
+```
+
+**D. Quick Test URL**
+
+Copy-paste ke browser address bar untuk test apakah image URL bekerja:
+```
+https://drive.google.com/uc?export=view&id=1PHzBM6nM9VO78gtdKBJSaLbRpjJRwwIR
+```
+
+Jika muncul image → URL benar  
+Jika error/not found → FILE_ID salah atau file tidak di-share
+
+**E. Alternative: Upload ke tempat lain**
+
+Jika Google Drive tidak bekerja, bisa upload image ke:
+- **Imgur** - instant link
+- **Cloudinary** - dengan free tier
+- **GitHub** - raw.githubusercontent.com
+- **Supabase Storage** - jika project pakai Supabase
+
+Kemudian use direct image URL di Thumbnail URL column.
 
 ---
 

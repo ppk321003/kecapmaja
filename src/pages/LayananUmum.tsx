@@ -59,6 +59,19 @@ const getFileIcon = (fileType: string) => {
   }
 };
 
+// CORS Proxy helper for Google Drive images
+const getCORSProxyUrl = (url: string): string => {
+  if (!url) return '';
+  if (isGoogleDriveUrl(url)) {
+    const fileId = url.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1];
+    if (fileId) {
+      // Use cors.sh proxy service for CORS bypass
+      return `https://cors.sh/https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+  }
+  return url;
+};
+
 export default function LayananUmum() {
   const { publikasi, loading, error } = usePublikasiSheets({
     spreadsheetId: SHEET_ID,
@@ -321,6 +334,15 @@ export default function LayananUmum() {
                 ? getGoogleDriveImageUrl(imageLink)
                 : /\.(jpe?g|png|webp|gif|svg)$/i.test(imageLink) ? imageLink : null);
               const viewUrl = isGoogleDriveUrl(pub.link) ? getGoogleDriveViewUrl(pub.link) : pub.link;
+              
+              // Debug logging
+              console.log(`[LayananUmum] Item ${pub.no}:`, {
+                namaPublikasi: pub.namaPublikasi,
+                imageLink: imageLink?.substring(0, 50),
+                isGoogleDrive: isGoogleDriveUrl(imageLink),
+                thumbnailUrl: thumbnailUrl?.substring(0, 50),
+                hasViewUrl: !!viewUrl
+              });
 
               return (
                 <a
@@ -334,10 +356,18 @@ export default function LayananUmum() {
                   <div className="relative w-full aspect-video bg-slate-100 overflow-hidden">
                     {thumbnailUrl ? (
                       <img
-                        src={thumbnailUrl}
+                        src={getCORSProxyUrl(thumbnailUrl)}
                         alt={pub.namaPublikasi}
                         className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        crossOrigin="anonymous"
+                        onLoad={() => console.log(`[LayananUmum] Image loaded: ${pub.no}`)}
+                        onError={(e) => {
+                          console.error(`[LayananUmum] Image failed to load: ${pub.no}`, {
+                            src: (e.target as HTMLImageElement).src,
+                            error: e
+                          });
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-slate-200">
