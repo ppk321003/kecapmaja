@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { usePublikasiSheets } from '@/hooks/use-publikasi-sheets';
+import { supabase } from '@/integrations/supabase/client';
 import { isGoogleDriveUrl, getGoogleDriveImageUrl, getGoogleDriveViewUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,14 +60,16 @@ const getFileIcon = (fileType: string) => {
   }
 };
 
-// CORS Proxy helper for Google Drive images
-const getCORSProxyUrl = (url: string): string => {
+// CORS Proxy helper for Google Drive images - using Supabase Edge Function
+const getImageProxyUrl = (url: string): string => {
   if (!url) return '';
   if (isGoogleDriveUrl(url)) {
     const fileId = url.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1];
     if (fileId) {
-      // Use cors.sh proxy service for CORS bypass
-      return `https://cors.sh/https://drive.google.com/uc?export=view&id=${fileId}`;
+      // Use Supabase Edge Function for proxy
+      const { data } = supabase.auth.session() || {};
+      const baseUrl = supabase.functions.getUrl?.()?.split('/functions')[0] || 'https://your-project.supabase.co';
+      return `${baseUrl}/functions/v1/image-proxy?fileId=${fileId}&type=view`;
     }
   }
   return url;
@@ -356,7 +359,7 @@ export default function LayananUmum() {
                   <div className="relative w-full aspect-video bg-slate-100 overflow-hidden">
                     {thumbnailUrl ? (
                       <img
-                        src={getCORSProxyUrl(thumbnailUrl)}
+                        src={getImageProxyUrl(thumbnailUrl)}
                         alt={pub.namaPublikasi}
                         className="h-full w-full object-cover transition-transform group-hover:scale-110"
                         crossOrigin="anonymous"
