@@ -1,8 +1,12 @@
 import { useState, useMemo } from 'react';
 import { usePublikasiSheets } from '@/hooks/use-publikasi-sheets';
-import { isGoogleDriveUrl, getGoogleDriveImageUrl, getGoogleDriveViewUrl } from '@/utils/drive-url-converter';
+import { isGoogleDriveUrl, getGoogleDriveImageUrl, getGoogleDriveViewUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ExternalLink, ChevronLeft, ChevronRight, FileText, FileDoc, FileImage, FileVideo, FileAudio } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -10,17 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from '@/components/ui/badge';
-import { ExternalLink, FileText, Download, Search, Filter } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useState as useStateCallback } from 'react';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -31,6 +24,40 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const SHEET_ID = "1P2TulBe-XIEdmiNqGU3UB1mNr6mnTuPDEFq34E-6zf0";
+const ITEMS_PER_PAGE = 12;
+
+// Helper function to get icon based on file type
+const getFileIcon = (fileType: string) => {
+  const type = fileType.toLowerCase();
+  switch(type) {
+    case 'pdf': return '📄';
+    case 'doc':
+    case 'docx':
+    case 'word': return '📝';
+    case 'xls':
+    case 'xlsx':
+    case 'excel': return '📊';
+    case 'ppt':
+    case 'pptx':
+    case 'presentation': return '🎯';
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif':
+    case 'image': return '🖼️';
+    case 'mp4':
+    case 'avi':
+    case 'mov':
+    case 'video': return '🎥';
+    case 'mp3':
+    case 'wav':
+    case 'audio': return '🎵';
+    case 'zip':
+    case 'rar':
+    case 'archive': return '📦';
+    default: return '📎';
+  }
+};
 
 export default function LayananUmum() {
   const { publikasi, loading, error } = usePublikasiSheets({
@@ -38,14 +65,18 @@ export default function LayananUmum() {
     sheetName: "Sheet1"
   });
 
-  console.log('[LayananUmum] Publikasi loaded:', publikasi.length, 'items');
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'terbaru' | 'terlama' | 'nama'>('terbaru');
+  const [search, setSearch] = useState('');
   const [selectedYears, setSelectedYears] = useState<Set<number>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<'terbaru' | 'terlama' | 'nama'>('terbaru');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
+
+  console.log('[LayananUmum] State:', { 
+    publikasiCount: publikasi.length, 
+    loading, 
+    error,
+    firstItem: publikasi[0]
+  });
 
   // Get unique years and categories
   const years = useMemo(() => {
@@ -58,24 +89,21 @@ export default function LayananUmum() {
     return unique;
   }, [publikasi]);
 
-  // Filter and search logic
-  const filteredPublikasi = useMemo(() => {
-    let filtered = publikasi;
+  // Filter and search
+  const filtered = useMemo(() => {
+    let result = publikasi;
 
-    // Year filter
     if (selectedYears.size > 0) {
-      filtered = filtered.filter(p => selectedYears.has(p.tahun));
+      result = result.filter(p => selectedYears.has(p.tahun));
     }
 
-    // Category filter
     if (selectedCategories.size > 0) {
-      filtered = filtered.filter(p => selectedCategories.has(p.kategori));
+      result = result.filter(p => selectedCategories.has(p.kategori));
     }
 
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(p =>
+    if (search) {
+      const term = search.toLowerCase();
+      result = result.filter(p =>
         p.namaPublikasi.toLowerCase().includes(term) ||
         p.deskripsi.toLowerCase().includes(term) ||
         p.kategori.toLowerCase().includes(term)
@@ -83,17 +111,12 @@ export default function LayananUmum() {
     }
 
     // Sort
-    const sorted = [...filtered];
+    const sorted = [...result];
+    const tahun = new Date().getFullYear();
     switch (sortBy) {
-      case 'terbaru': {
-        const tahun = new Date().getFullYear();
-        sorted.sort((a, b) => {
-          const aDiff = Math.abs(a.tahun - tahun);
-          const bDiff = Math.abs(b.tahun - tahun);
-          return aDiff - bDiff;
-        });
+      case 'terbaru':
+        sorted.sort((a, b) => Math.abs(a.tahun - tahun) - Math.abs(b.tahun - tahun));
         break;
-      }
       case 'terlama':
         sorted.sort((a, b) => a.tahun - b.tahun);
         break;
@@ -103,50 +126,49 @@ export default function LayananUmum() {
     }
 
     return sorted;
-  }, [publikasi, searchTerm, sortBy, selectedYears, selectedCategories]);
+  }, [publikasi, search, selectedYears, selectedCategories, sortBy]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredPublikasi.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentItems = filteredPublikasi.slice(startIndex, endIndex);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
+  const paginatedItems = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const toggleYear = (year: number) => {
     const newYears = new Set(selectedYears);
-    if (newYears.has(year)) {
-      newYears.delete(year);
-    } else {
-      newYears.add(year);
-    }
+    newYears.has(year) ? newYears.delete(year) : newYears.add(year);
     setSelectedYears(newYears);
     setCurrentPage(1);
   };
 
-  const toggleCategory = (category: string) => {
-    const newCategories = new Set(selectedCategories);
-    if (newCategories.has(category)) {
-      newCategories.delete(category);
-    } else {
-      newCategories.add(category);
-    }
-    setSelectedCategories(newCategories);
+  const toggleCategory = (cat: string) => {
+    const newCats = new Set(selectedCategories);
+    newCats.has(cat) ? newCats.delete(cat) : newCats.add(cat);
+    setSelectedCategories(newCats);
     setCurrentPage(1);
   };
 
   const clearFilters = () => {
-    setSearchTerm('');
+    setSearch('');
     setSelectedYears(new Set());
     setSelectedCategories(new Set());
     setCurrentPage(1);
   };
 
-  const getFileIcon = (tipeFile: string) => {
-    const type = tipeFile.toLowerCase();
-    if (type.includes('pdf')) return '📄';
-    if (type.includes('excel') || type.includes('xlsx') || type.includes('xls')) return '📊';
-    if (type.includes('web') || type.includes('interactive')) return '🌐';
-    if (type.includes('email')) return '📧';
-    return '📎';
+  const goPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+
+  const getPageNumbers = () => {
+    const pages: (number | 'ellipsis')[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (safePage > 3) pages.push('ellipsis');
+      for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) pages.push(i);
+      if (safePage < totalPages - 2) pages.push('ellipsis');
+      pages.push(totalPages);
+    }
+    return pages;
   };
 
   return (
@@ -163,287 +185,231 @@ export default function LayananUmum() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        {/* Search and Filters Section */}
-        <div className="mb-8 space-y-4">
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-3 text-slate-400 h-5 w-5" />
-            <Input
-              placeholder="Cari publikasi berdasarkan nama atau deskripsi..."
-              className="pl-10 py-2 h-11"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-            />
-          </div>
+        {/* Search & Filters */}
+        <div className="space-y-4 mb-8">
+          <Input
+            placeholder="Cari publikasi..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            className="max-w-md"
+          />
 
-          {/* Filter and Sort Controls */}
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between flex-wrap">
-            <div className="flex gap-2 flex-wrap">
-              {/* Year Filter */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    Tahun {selectedYears.size > 0 && `(${selectedYears.size})`}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuLabel>Filter Tahun</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {years.map(year => (
-                    <DropdownMenuCheckboxItem
-                      key={year}
-                      checked={selectedYears.has(year)}
-                      onCheckedChange={() => toggleYear(year)}
-                    >
-                      {year}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Category Filter */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    Kategori {selectedCategories.size > 0 && `(${selectedCategories.size})`}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto">
-                  <DropdownMenuLabel>Filter Kategori</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {categories.map(category => (
-                    <DropdownMenuCheckboxItem
-                      key={category}
-                      checked={selectedCategories.has(category)}
-                      onCheckedChange={() => toggleCategory(category)}
-                    >
-                      {category}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="flex gap-2 items-center">
-              {/* Sort */}
-              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="terbaru">Terbaru</SelectItem>
-                  <SelectItem value="terlama">Terlama</SelectItem>
-                  <SelectItem value="nama">Nama A-Z</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* Clear Filters Button */}
-              {(searchTerm || selectedYears.size > 0 || selectedCategories.size > 0) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="text-sm"
-                >
-                  Reset
+          <div className="flex flex-wrap gap-2 items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Tahun {selectedYears.size > 0 && `(${selectedYears.size})`}
                 </Button>
-              )}
-            </div>
-          </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuLabel>Filter Tahun</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {years.map(year => (
+                  <DropdownMenuCheckboxItem
+                    key={year}
+                    checked={selectedYears.has(year)}
+                    onCheckedChange={() => toggleYear(year)}
+                  >
+                    {year}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          {/* Active Filters Display */}
-          {(selectedYears.size > 0 || selectedCategories.size > 0) && (
-            <div className="flex flex-wrap gap-2">
-              {Array.from(selectedYears).map(year => (
-                <Badge key={`year-${year}`} variant="secondary" className="gap-1">
-                  {year}
-                  <button onClick={() => toggleYear(year)} className="ml-1">✕</button>
-                </Badge>
-              ))}
-              {Array.from(selectedCategories).map(cat => (
-                <Badge key={`cat-${cat}`} variant="secondary" className="gap-1">
-                  {cat}
-                  <button onClick={() => toggleCategory(cat)} className="ml-1">✕</button>
-                </Badge>
-              ))}
-            </div>
-          )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Kategori {selectedCategories.size > 0 && `(${selectedCategories.size})`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto">
+                <DropdownMenuLabel>Filter Kategori</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {categories.map(cat => (
+                  <DropdownMenuCheckboxItem
+                    key={cat}
+                    checked={selectedCategories.has(cat)}
+                    onCheckedChange={() => toggleCategory(cat)}
+                  >
+                    {cat}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="terbaru">Terbaru</SelectItem>
+                <SelectItem value="terlama">Terlama</SelectItem>
+                <SelectItem value="nama">Nama A-Z</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(search || selectedYears.size > 0 || selectedCategories.size > 0) && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>Reset</Button>
+            )}
+          </div>
         </div>
 
-        {/* Results Info */}
+        {/* Active Filters */}
+        {(selectedYears.size > 0 || selectedCategories.size > 0) && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {Array.from(selectedYears).map(y => (
+              <Badge key={`y-${y}`} variant="secondary" className="gap-1 cursor-pointer" onClick={() => toggleYear(y)}>
+                {y} ✕
+              </Badge>
+            ))}
+            {Array.from(selectedCategories).map(c => (
+              <Badge key={`c-${c}`} variant="secondary" className="gap-1 cursor-pointer" onClick={() => toggleCategory(c)}>
+                {c} ✕
+              </Badge>
+            ))}
+          </div>
+        )}
+
         <div className="text-sm text-slate-600 mb-6">
-          Menampilkan {currentItems.length > 0 ? startIndex + 1 : 0}-{Math.min(endIndex, filteredPublikasi.length)} dari {filteredPublikasi.length} publikasi
+          Menampilkan {filtered.length > 0 ? startIndex + 1 : 0}–{Math.min(startIndex + ITEMS_PER_PAGE, filtered.length)} dari {filtered.length} publikasi
         </div>
 
         {/* Loading State */}
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[...Array(12)].map((_, i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton className="h-48 rounded-lg" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
+              <Card key={i} className="overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <div className="p-4 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              </Card>
             ))}
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <Card className="border-red-200 bg-red-50">
-            <CardHeader>
-              <CardTitle className="text-red-600">Error</CardTitle>
-            </CardHeader>
-            <CardContent className="text-red-600">
-              {error}. Silakan coba lagi atau hubungi administrator.
-            </CardContent>
+          <Card className="border-red-200 bg-red-50 p-6">
+            <p className="text-red-600">{error}</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => window.location.reload()}>
+              Coba Lagi
+            </Button>
           </Card>
         )}
 
         {/* Empty State */}
-        {!loading && !error && currentItems.length === 0 && (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <FileText className="h-12 w-12 text-slate-300 mb-4" />
-              <p className="text-slate-500 text-center">
-                {filteredPublikasi.length === 0 && publikasi.length > 0
-                  ? 'Tidak ada publikasi yang sesuai dengan filter Anda'
-                  : 'Tidak ada publikasi tersedia'}
-              </p>
-              {filteredPublikasi.length === 0 && publikasi.length > 0 && (
-                <Button variant="outline" size="sm" onClick={clearFilters} className="mt-4">
-                  Reset Filter
-                </Button>
-              )}
-            </CardContent>
+        {!loading && !error && filtered.length === 0 && (
+          <Card className="border-dashed p-12 text-center">
+            <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500">
+              {publikasi.length === 0 ? 'Tidak ada publikasi tersedia' : 'Tidak ada yang cocok dengan filter'}
+            </p>
+            {publikasi.length > 0 && (
+              <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>Reset Filter</Button>
+            )}
           </Card>
         )}
 
-        {/* Publications Grid */}
-        {!loading && !error && currentItems.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {currentItems.map((pub) => {
-              const imageUrl = isGoogleDriveUrl(pub.thumbnailUrl)
-                ? getGoogleDriveImageUrl(pub.thumbnailUrl)
-                : pub.thumbnailUrl;
-              const viewUrl = isGoogleDriveUrl(pub.link)
-                ? getGoogleDriveViewUrl(pub.link)
-                : pub.link;
+        {/* Grid */}
+        {!loading && !error && paginatedItems.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            {paginatedItems.map((pub) => {
+              const imageLink = pub.thumbnailUrl;
+              const thumbnailUrl = imageLink && (isGoogleDriveUrl(imageLink)
+                ? getGoogleDriveImageUrl(imageLink)
+                : /\.(jpe?g|png|webp|gif|svg)$/i.test(imageLink) ? imageLink : null);
+              const viewUrl = isGoogleDriveUrl(pub.link) ? getGoogleDriveViewUrl(pub.link) : pub.link;
 
               return (
-              <Card key={pub.no} className="hover:shadow-lg transition-shadow flex flex-col h-full overflow-hidden">
-                {/* Thumbnail */}
-                {pub.thumbnailUrl && (
-                  <div className="relative h-40 bg-slate-100 overflow-hidden">
-                    <img
-                      src={imageUrl}
-                      alt={pub.namaPublikasi}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
-
-                <CardContent className="flex-1 pt-4 pb-3 flex flex-col">
-                  {/* Category and Status */}
-                  <div className="flex gap-2 mb-2 flex-wrap">
-                    {pub.kategori && (
-                      <Badge variant="outline" className="text-xs">
-                        {pub.kategori}
-                      </Badge>
+                <a
+                  key={pub.no}
+                  href={viewUrl || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group block rounded-lg bg-card border border-border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1"
+                >
+                  {/* Thumbnail */}
+                  <div className="relative w-full aspect-video bg-slate-100 overflow-hidden">
+                    {thumbnailUrl ? (
+                      <img
+                        src={thumbnailUrl}
+                        alt={pub.namaPublikasi}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-slate-200">
+                        <FileText className="h-8 w-8 text-slate-400" />
+                      </div>
                     )}
-                    {pub.status && (
-                      <Badge variant={pub.status === 'Featured' ? 'default' : 'secondary'} className="text-xs">
-                        {pub.status}
-                      </Badge>
-                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                    </div>
                   </div>
 
-                  {/* Title */}
-                  <h3 className="font-semibold text-sm line-clamp-2 text-slate-900 mb-2">
-                    {pub.namaPublikasi}
-                  </h3>
-
-                  {/* Year */}
-                  <p className="text-xs text-slate-500 mb-2">Tahun: {pub.tahun}</p>
-
-                  {/* Description */}
-                  {pub.deskripsi && (
-                    <p className="text-xs text-slate-600 line-clamp-2 mb-3 flex-1">
-                      {pub.deskripsi}
-                    </p>
-                  )}
-
-                  {/* File Type and Link */}
-                  <div className="flex items-center gap-2 pt-3 border-t">
-                    {pub.tipeFile && (
-                      <span className="text-lg">{getFileIcon(pub.tipeFile)}</span>
+                  {/* Content */}
+                  <div className="p-4 space-y-2">
+                    <h3 className="text-sm font-semibold text-foreground line-clamp-2 group-hover:text-blue-600">
+                      {pub.namaPublikasi}
+                    </h3>
+                    <div className="flex gap-1 flex-wrap">
+                      {pub.kategori && <Badge variant="outline" className="text-xs">{pub.kategori}</Badge>}
+                      {pub.status && <Badge variant="secondary" className="text-xs">{pub.status}</Badge>}
+                    </div>
+                    {pub.deskripsi && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{pub.deskripsi}</p>
                     )}
-                    {pub.link && (
-                      <a
-                        href={viewUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition"
-                      >
-                        Lihat
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
+                    <p className="text-xs text-slate-500">Tahun {pub.tahun}</p>
                   </div>
-                </CardContent>
-              </Card>
+                </a>
               );
             })}
           </div>
         )}
 
         {/* Pagination */}
-        {!loading && !error && totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-8">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            >
-              Sebelumnya
-            </Button>
-
-            <div className="flex gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setCurrentPage(page)}
-                  className="w-10"
-                >
-                  {page}
-                </Button>
-              ))}
+        {!loading && !error && filtered.length > 0 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-4 px-2 border-t">
+            <div className="text-sm text-muted-foreground">
+              <p>Halaman {safePage} dari {totalPages}</p>
             </div>
-
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Selanjutnya
-            </Button>
-          </div>
-        )}
-
-        {/* Page Info */}
-        {!loading && !error && totalPages > 1 && (
-          <div className="text-center text-sm text-slate-600 mt-4">
-            Halaman {currentPage} dari {totalPages}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => goPage(safePage - 1)}
+                  disabled={safePage === 1}
+                  className="inline-flex items-center justify-center h-8 w-8 rounded border border-border/40 bg-background text-sm hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                {getPageNumbers().map((p, i) =>
+                  p === 'ellipsis' ? (
+                    <span key={`e${i}`} className="px-1 text-muted-foreground">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => goPage(p)}
+                      className={`inline-flex items-center justify-center h-8 min-w-[2rem] rounded border text-sm font-medium transition-colors ${
+                        p === safePage
+                          ? 'border-blue-600 bg-blue-600 text-white'
+                          : 'border-border/40 bg-background hover:bg-slate-100'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+                <button
+                  onClick={() => goPage(safePage + 1)}
+                  disabled={safePage === totalPages}
+                  className="inline-flex items-center justify-center h-8 w-8 rounded border border-border/40 bg-background text-sm hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

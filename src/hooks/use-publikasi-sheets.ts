@@ -32,25 +32,42 @@ export const usePublikasiSheets = ({ spreadsheetId, sheetName = "Sheet1" }: UseP
         setLoading(true);
         setError(null);
 
+        console.log('[usePublikasiSheets] Fetching from:', { spreadsheetId: spreadsheetId.substring(0,30) + '...', sheetName });
+
+        // Try simple sheet name first (like Home.tsx does)
         const { data, error: supabaseError } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: spreadsheetId,
             operation: "read",
-            range: `${sheetName}!A:J`  // Full range A to J with A1 notation
+            range: sheetName  // Use simple name like "Sheet1"
           }
         });
 
-        if (supabaseError) throw supabaseError;
+        if (supabaseError) {
+          console.error('[usePublikasiSheets] API Error:', supabaseError);
+          throw supabaseError;
+        }
 
-        console.log('[usePublikasiSheets] API call with:', { spreadsheetId: spreadsheetId.substring(0, 20) + '...', range: `${sheetName}!A:J` });
+        console.log('[usePublikasiSheets] API Response:', { 
+          hasData: !!data, 
+          hasValues: !!data?.values,
+          valuesLength: data?.values?.length,
+          dataKeys: data ? Object.keys(data) : []
+        });
 
-        const rows = data.values || [];
+        const rows = data?.values || [];
         
         if (rows.length <= 1) {
-          console.log('[usePublikasiSheets] No data (only header or empty)');
+          console.log('[usePublikasiSheets] No data rows (header only or empty)');
           setPublikasi([]);
           return;
         }
+
+        console.log('[usePublikasiSheets] Data structure:', {
+          headerRow: rows[0],
+          firstRow: rows[1],
+          totalRows: rows.length
+        });
 
         const publikasiData: Publikasi[] = rows.slice(1)
           .filter((row: any[]) => row && row.length > 0 && row[0])
@@ -67,14 +84,18 @@ export const usePublikasiSheets = ({ spreadsheetId, sheetName = "Sheet1" }: UseP
             tipeFile: String(row[9] || '')
           }));
 
-        console.log('[usePublikasiSheets] Loaded:', publikasiData.length, 'publikasi');
+        console.log('[usePublikasiSheets] ✅ Successfully loaded:', publikasiData.length, 'publikasi');
+        if (publikasiData.length > 0) {
+          console.log('[usePublikasiSheets] First item:', publikasiData[0]);
+        }
         setPublikasi(publikasiData);
       } catch (err: any) {
-        console.error('Error fetching publikasi:', err);
-        setError(err.message || 'Gagal memuat data publikasi');
+        console.error('[usePublikasiSheets] ❌ Error:', err);
+        const errorMsg = err.message || 'Gagal memuat data publikasi';
+        setError(errorMsg);
         toast({
           title: "Error",
-          description: "Gagal memuat data publikasi: " + err.message,
+          description: `Gagal memuat data: ${errorMsg}`,
           variant: "destructive"
         });
       } finally {
