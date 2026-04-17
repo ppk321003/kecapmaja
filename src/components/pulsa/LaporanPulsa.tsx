@@ -28,17 +28,40 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
 
   const persons = useMemo(() => buildPersonView(rawRows), [rawRows]);
 
-  // Aggregate by kegiatan
+  // Aggregate by kegiatan: per-person nominal accumulation by status
   const byKegiatan = useMemo(() => {
-    const map = new Map<string, { kegiatan: string; nominal: number; count: number; approved: number }>();
+    const map = new Map<string, {
+      kegiatan: string;
+      totalAjuan: number;
+      totalDisetujui: number;
+      totalDitolak: number;
+      totalPending: number;
+      countOrang: number;
+      countApproved: number;
+    }>();
     for (const row of rawRows) {
-      const peopleCount = row.organikList.length + row.mitraList.length;
-      const existing = map.get(row.kegiatan) || { kegiatan: row.kegiatan, nominal: 0, count: 0, approved: 0 };
-      existing.nominal += row.nominal * peopleCount;
-      existing.count += peopleCount;
-      if (['approved', 'approved_ppk', 'completed'].includes(row.status)) {
-        existing.approved += peopleCount;
-      }
+      const totalPeople = row.organikList.length + row.mitraList.length;
+      const existing = map.get(row.kegiatan) || {
+        kegiatan: row.kegiatan,
+        totalAjuan: 0,
+        totalDisetujui: 0,
+        totalDitolak: 0,
+        totalPending: 0,
+        countOrang: 0,
+        countApproved: 0,
+      };
+      existing.totalAjuan += row.nominal * totalPeople;
+      existing.countOrang += totalPeople;
+      row.statusList.forEach(st => {
+        if (['approved', 'approved_ppk', 'completed'].includes(st)) {
+          existing.totalDisetujui += row.nominal;
+          existing.countApproved += 1;
+        } else if (['rejected', 'rejected_ppk'].includes(st)) {
+          existing.totalDitolak += row.nominal;
+        } else {
+          existing.totalPending += row.nominal;
+        }
+      });
       map.set(row.kegiatan, existing);
     }
     return Array.from(map.values());
@@ -47,10 +70,8 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
   // Stats
   const totalOrganik = persons.filter(p => p.tipe === 'Organik').length;
   const totalMitra = persons.filter(p => p.tipe === 'Mitra').length;
-  const grandTotal = persons.reduce((s, p) => s + p.total, 0);
-  const approvedTotal = rawRows
-    .filter(r => ['approved', 'approved_ppk', 'completed'].includes(r.status))
-    .reduce((s, r) => s + r.nominal * (r.organikList.length + r.mitraList.length), 0);
+  const grandTotalAjuan = byKegiatan.reduce((s, k) => s + k.totalAjuan, 0);
+  const grandTotalDisetujui = byKegiatan.reduce((s, k) => s + k.totalDisetujui, 0);
 
   const bulanNama = new Date(tahun, bulan - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
 
@@ -91,14 +112,14 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground">Grand Total</p>
-            <p className="text-2xl font-bold">Rp {grandTotal.toLocaleString('id-ID')}</p>
+            <p className="text-sm text-muted-foreground">Total Nominal Ajuan</p>
+            <p className="text-2xl font-bold">Rp {grandTotalAjuan.toLocaleString('id-ID')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground">Total Approved</p>
-            <p className="text-2xl font-bold text-green-600">Rp {approvedTotal.toLocaleString('id-ID')}</p>
+            <p className="text-sm text-muted-foreground">Total Disetujui PPK</p>
+            <p className="text-2xl font-bold text-green-600">Rp {grandTotalDisetujui.toLocaleString('id-ID')}</p>
           </CardContent>
         </Card>
       </div>
@@ -117,18 +138,20 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                 <thead className="bg-muted">
                   <tr>
                     <th className="px-4 py-2 text-left">Kegiatan</th>
-                    <th className="px-4 py-2 text-right">Jumlah Petugas</th>
-                    <th className="px-4 py-2 text-right">Approved</th>
-                    <th className="px-4 py-2 text-right">Total Nominal</th>
+                    <th className="px-4 py-2 text-right">Jml Petugas</th>
+                    <th className="px-4 py-2 text-right">Disetujui (org)</th>
+                    <th className="px-4 py-2 text-right">Total Ajuan</th>
+                    <th className="px-4 py-2 text-right">Total Disetujui</th>
                   </tr>
                 </thead>
                 <tbody>
                   {byKegiatan.map(k => (
                     <tr key={k.kegiatan} className="border-b hover:bg-muted/50">
                       <td className="px-4 py-2 font-medium">{k.kegiatan}</td>
-                      <td className="px-4 py-2 text-right">{k.count}</td>
-                      <td className="px-4 py-2 text-right">{k.approved}</td>
-                      <td className="px-4 py-2 text-right font-mono">Rp {k.nominal.toLocaleString('id-ID')}</td>
+                      <td className="px-4 py-2 text-right">{k.countOrang}</td>
+                      <td className="px-4 py-2 text-right">{k.countApproved}</td>
+                      <td className="px-4 py-2 text-right font-mono">Rp {k.totalAjuan.toLocaleString('id-ID')}</td>
+                      <td className="px-4 py-2 text-right font-mono text-green-600 font-semibold">Rp {k.totalDisetujui.toLocaleString('id-ID')}</td>
                     </tr>
                   ))}
                 </tbody>
