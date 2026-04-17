@@ -8,6 +8,8 @@ import {
   Loader2,
   AlertCircle,
   X,
+  Clock,
+  XCircle,
 } from 'lucide-react';
 import {
   readPulsaData,
