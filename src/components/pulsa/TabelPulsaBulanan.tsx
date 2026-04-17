@@ -491,27 +491,28 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
 
           {selectedApprovePerson && (
             <div className="space-y-4">
-              {/* Items to approve with checkboxes */}
+              {/* Items to approve with checkboxes — show ALL entries so PPK bisa re-edit keputusan */}
               <div className="border rounded-lg p-3 bg-muted/30">
-                <p className="font-medium text-sm mb-3">Pilih item untuk disetujui/ditolak:</p>
+                <p className="font-medium text-sm mb-3">Pilih item untuk disetujui/ditolak (PPK boleh mengubah keputusan sebelumnya):</p>
                 <div className="space-y-2">
-                  {selectedApprovePerson.entries
-                    .filter(e => ['pending', 'pending_ppk'].includes(e.status))
-                    .map((entry, idx) => (
+                  {selectedApprovePerson.entries.map((entry, idx) => {
+                    const isApproved = ['approved', 'approved_ppk', 'completed'].includes(entry.status);
+                    const isRejected = ['rejected', 'rejected_ppk'].includes(entry.status);
+                    const badgeVariant: 'default' | 'destructive' | 'outline' =
+                      isApproved ? 'default' : isRejected ? 'destructive' : 'outline';
+                    const badgeLabel =
+                      isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending';
+                    return (
                       <div
                         key={idx}
-                        className="flex items-center gap-3 p-2 bg-white border rounded text-sm hover:bg-muted/50"
+                        className="flex items-center gap-3 p-2 bg-background border rounded text-sm hover:bg-muted/50"
                       >
                         <Checkbox
                           id={`item-${idx}`}
                           checked={selectedItems.has(idx)}
                           onCheckedChange={(checked) => {
                             const newSet = new Set(selectedItems);
-                            if (checked) {
-                              newSet.add(idx);
-                            } else {
-                              newSet.delete(idx);
-                            }
+                            if (checked) newSet.add(idx); else newSet.delete(idx);
                             setSelectedItems(newSet);
                           }}
                         />
@@ -524,9 +525,10 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                             <p className="text-xs text-muted-foreground">Rp {entry.nominal.toLocaleString('id-ID')}</p>
                           </div>
                         </label>
-                        <Badge variant="outline">Pending</Badge>
+                        <Badge variant={badgeVariant}>{badgeLabel}</Badge>
                       </div>
-                    ))}
+                    );
+                  })}
                 </div>
               </div>
 
