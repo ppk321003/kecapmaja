@@ -344,26 +344,41 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                       );
                     })}
                     <th className="px-3 py-2 text-right border" style={{ minWidth: '100px' }}>Total</th>
-                    <th className="px-3 py-2 text-center border" style={{ minWidth: '100px' }}>Approve PPK</th>
+                    <th className="px-3 py-2 text-left border" style={{ minWidth: '200px' }}>Keterangan</th>
+                    {isPPK && (
+                      <th className="px-3 py-2 text-center border" style={{ minWidth: '90px' }}>Aksi PPK</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {persons.map((person, idx) => {
                     const isDuplicate = getDuplicateWarning(person);
                     const hasPending = person.entries.some(e => ['pending', 'pending_ppk'].includes(e.status));
+                    const hasAnyAction = person.entries.some(e =>
+                      ['approved', 'approved_ppk', 'completed', 'rejected', 'rejected_ppk'].includes(e.status)
+                    );
+                    // Build keterangan from approved entries
+                    const approvedEntries = person.entries.filter(e =>
+                      ['approved', 'approved_ppk', 'completed'].includes(e.status)
+                    );
+                    const keterangan = approvedEntries.length === 0
+                      ? ''
+                      : approvedEntries
+                          .map(e => `Pulsa disetujui dari kegiatan ${e.kegiatan} nominal Rp ${e.nominal.toLocaleString('id-ID')}`)
+                          .join('; ');
                     return (
                       <tr
                         key={person.nama}
-                        className={`border-b ${isDuplicate ? 'bg-destructive/10' : 'hover:bg-muted/50'}`}
+                        className={`border-b ${isDuplicate ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'hover:bg-muted/50'}`}
                       >
                         <td className="px-3 py-2 border text-center">{idx + 1}</td>
                         <td className="px-3 py-2 border">
                           <div>
                             <p className="font-medium">{person.nama}</p>
                             {isDuplicate && (
-                              <div className="flex items-center gap-1 mt-1 text-xs text-destructive font-semibold">
+                              <div className="flex items-center gap-1 mt-1 text-xs text-yellow-700 dark:text-yellow-400 font-semibold">
                                 <AlertTriangle className="w-3 h-3" />
-                                Duplikasi kegiatan!
+                                Duplikasi kegiatan
                               </div>
                             )}
                           </div>
@@ -404,38 +419,29 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                         <td className="px-3 py-2 border text-right font-semibold font-mono">
                           Rp {person.total.toLocaleString('id-ID')}
                         </td>
-                        <td className="px-3 py-2 border text-center">
-                          {isPPK ? (
-                            <>
-                              {hasPending ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-7 w-full"
-                                  onClick={() => {
-                                    console.log('[Button Click] Person:', person.nama, 'Pending:', hasPending);
-                                    handleApproveClick(person);
-                                  }}
-                                  disabled={actionLoading !== null}
-                                >
-                                  {actionLoading ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    'Approve/Reject'
-                                  )}
-                                </Button>
-                              ) : person.entries.some(e => ['approved', 'approved_ppk', 'completed'].includes(e.status)) ? (
-                                <span className="text-xs text-green-600 font-semibold">✓ Approved</span>
-                              ) : person.entries.some(e => ['rejected', 'rejected_ppk'].includes(e.status)) ? (
-                                <span className="text-xs text-red-600 font-semibold">✕ Rejected</span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Draft</span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
+                        <td className="px-3 py-2 border text-xs text-muted-foreground">
+                          {keterangan || <span className="italic opacity-50">—</span>}
                         </td>
+                        {isPPK && (
+                          <td className="px-3 py-2 border text-center">
+                            <Button
+                              size="icon"
+                              variant={hasPending ? 'default' : 'ghost'}
+                              className="h-8 w-8"
+                              title={hasPending ? 'Approve / Reject' : (hasAnyAction ? 'Edit keputusan' : 'Belum ada data')}
+                              onClick={() => handleApproveClick(person)}
+                              disabled={actionLoading !== null}
+                            >
+                              {actionLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : hasPending ? (
+                                <CheckCircle2 className="w-4 h-4" />
+                              ) : (
+                                <Edit3 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
