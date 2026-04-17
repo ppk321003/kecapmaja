@@ -92,7 +92,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
   // Count pending items
   const pendingCount = useMemo(() => {
     return persons.reduce((sum, person) => {
-      return sum + person.entries.filter(e => ['pending', 'pending_ppk'].includes(e.status)).length;
+      return sum + person.entries.filter((e): e is NonNullable<typeof e> => e !== null && ['pending', 'pending_ppk'].includes(e.status)).length;
     }, 0);
   }, [persons]);
 
@@ -104,11 +104,11 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
       username: user?.username,
       satker: user?.satker,
       personsCount: persons.length,
-      personsWithPending: persons.filter(p => p.entries.some(e => ['pending', 'pending_ppk'].includes(e.status))).length,
+      personsWithPending: persons.filter(p => p.entries.some((e): e is NonNullable<typeof e> => e !== null && ['pending', 'pending_ppk'].includes(e.status))).length,
     });
     persons.forEach((p, idx) => {
-      const pendingStatus = p.entries.filter(e => ['pending', 'pending_ppk'].includes(e.status));
-      console.log(`  Person ${idx}: ${p.nama}, Pending: ${pendingStatus.length}, Entries: ${p.entries.map(e => e.status).join(', ')}`);
+      const pendingStatus = p.entries.filter((e): e is NonNullable<typeof e> => e !== null && ['pending', 'pending_ppk'].includes(e.status));
+      console.log(`  Person ${idx}: ${p.nama}, Pending: ${pendingStatus.length}, Entries: ${p.entries.filter((e): e is NonNullable<typeof e> => e !== null).map(e => e.status).join(', ')}`);
     });
   }, [userRole, isPPK, user, persons]);
 
@@ -135,11 +135,13 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     console.log('[handleApproveClick] Clicked person:', person.nama);
     setSelectedApprovePerson(person);
     setApproveAction(null);
-    // Initialize selected items - select all entries (allow re-edit) by default to pending only
+    // Initialize selected items - select all PENDING entries by default
+    // Use full entries array indices (includes null positions)
     const pendingIndices = new Set(
       person.entries
-        .filter(e => ['pending', 'pending_ppk'].includes(e.status))
-        .map((_, idx) => idx)
+        .map((e, idx) => ({ e, idx }))
+        .filter(({ e }) => e !== null && ['pending', 'pending_ppk'].includes(e.status))
+        .map(({ idx }) => idx)
     );
     setSelectedItems(pendingIndices);
     setApproveDialogOpen(true);
@@ -245,7 +247,8 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
 
   // Duplicate warning: same person in multiple kegiatan
   const getDuplicateWarning = (person: PersonPulsaEntry) => {
-    const uniqueKegiatan = new Set(person.entries.map(e => e.kegiatan));
+    const validEntries = person.entries.filter((e): e is NonNullable<typeof e> => e !== null);
+    const uniqueKegiatan = new Set(validEntries.map(e => e.kegiatan));
     return uniqueKegiatan.size > 1;
   };
 
@@ -344,7 +347,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                       );
                     })}
                     <th className="px-3 py-2 text-right border" style={{ minWidth: '100px' }}>Total</th>
-                    <th className="px-3 py-2 text-left border" style={{ minWidth: '200px' }}>Keterangan</th>
+                    <th className="px-3 py-2 text-center border" style={{ minWidth: '50px' }}>✓</th>
                     {isPPK && (
                       <th className="px-3 py-2 text-center border" style={{ minWidth: '90px' }}>Aksi PPK</th>
                     )}
@@ -353,12 +356,14 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                 <tbody>
                   {persons.map((person, idx) => {
                     const isDuplicate = getDuplicateWarning(person);
-                    const hasPending = person.entries.some(e => ['pending', 'pending_ppk'].includes(e.status));
-                    const hasAnyAction = person.entries.some(e =>
+                    // Filter out null entries
+                    const validEntries = person.entries.filter((e): e is NonNullable<typeof e> => e !== null);
+                    const hasPending = validEntries.some(e => ['pending', 'pending_ppk'].includes(e.status));
+                    const hasAnyAction = validEntries.some(e =>
                       ['approved', 'approved_ppk', 'completed', 'rejected', 'rejected_ppk'].includes(e.status)
                     );
                     // Build keterangan from approved entries
-                    const approvedEntries = person.entries.filter(e =>
+                    const approvedEntries = validEntries.filter(e =>
                       ['approved', 'approved_ppk', 'completed'].includes(e.status)
                     );
                     const keterangan = approvedEntries.length === 0
@@ -419,8 +424,14 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                         <td className="px-3 py-2 border text-right font-semibold font-mono">
                           Rp {person.total.toLocaleString('id-ID')}
                         </td>
-                        <td className="px-3 py-2 border text-xs text-muted-foreground">
-                          {keterangan || <span className="italic opacity-50">—</span>}
+                        <td className="px-3 py-2 border text-center">
+                          {approvedEntries.length > 0 ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" title={`${approvedEntries.length} disetujui`} />
+                          ) : validEntries.some(e => ['rejected', 'rejected_ppk'].includes(e.status)) ? (
+                            <XCircle className="w-4 h-4 text-red-600 mx-auto" title="Ada yang ditolak" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-muted-foreground mx-auto" />
+                          )}
                         </td>
                         {isPPK && (
                           <td className="px-3 py-2 border text-center">
@@ -445,6 +456,49 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                       </tr>
                     );
                   })}
+                  {/* Totals Row */}
+                  <tr className="bg-muted font-semibold border-t-2">
+                    <td colSpan={3} className="px-3 py-2 border text-right">JUMLAH AJUAN:</td>
+                    {Array.from({ length: maxKegiatan }).map((_, i) => {
+                      const subtotal = persons.reduce((sum, p) => {
+                        const entry = p.entries[i];
+                        return sum + (entry ? entry.nominal : 0);
+                      }, 0);
+                      return (
+                        <td key={i} className="px-3 py-2 border text-right font-mono text-sm">
+                          Rp {subtotal.toLocaleString('id-ID')}
+                        </td>
+                      );
+                    })}
+                    <td className="px-3 py-2 border text-right font-mono text-sm">
+                      Rp {persons.reduce((sum, p) => sum + p.total, 0).toLocaleString('id-ID')}
+                    </td>
+                    <td className="px-3 py-2 border text-center"></td>
+                  </tr>
+                  {/* Approved Row */}
+                  <tr className="bg-green-50 dark:bg-green-900/20 font-semibold border-b">
+                    <td colSpan={3} className="px-3 py-2 border text-right">DISETUJUI:</td>
+                    {Array.from({ length: maxKegiatan }).map((_, i) => {
+                      const subtotal = persons.reduce((sum, p) => {
+                        const entry = p.entries[i];
+                        return sum + (entry && ['approved', 'approved_ppk', 'completed'].includes(entry.status) ? entry.nominal : 0);
+                      }, 0);
+                      return (
+                        <td key={i} className="px-3 py-2 border text-right font-mono text-sm">
+                          Rp {subtotal.toLocaleString('id-ID')}
+                        </td>
+                      );
+                    })}
+                    <td className="px-3 py-2 border text-right font-mono text-sm">
+                      Rp {persons.reduce((sum, p) => {
+                        const approved = p.entries.filter((e): e is NonNullable<typeof e> => e !== null && ['approved', 'approved_ppk', 'completed'].includes(e.status));
+                        return sum + approved.reduce((s, e) => s + e.nominal, 0);
+                      }, 0).toLocaleString('id-ID')}
+                    </td>
+                    <td className="px-3 py-2 border text-center text-xs text-green-600">
+                      {persons.filter(p => p.entries.some((e): e is NonNullable<typeof e> => e !== null && ['approved', 'approved_ppk', 'completed'].includes(e.status))).length} org
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -495,7 +549,10 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
               <div className="border rounded-lg p-3 bg-muted/30">
                 <p className="font-medium text-sm mb-3">Pilih item untuk disetujui/ditolak (PPK boleh mengubah keputusan sebelumnya):</p>
                 <div className="space-y-2">
-                  {selectedApprovePerson.entries.map((entry, idx) => {
+                  {selectedApprovePerson.entries
+                    .map((entry, idx) => entry ? { entry, idx } : null)
+                    .filter((item): item is { entry: NonNullable<typeof item['entry']>; idx: number } => item !== null)
+                    .map(({ entry, idx }) => {
                     const isApproved = ['approved', 'approved_ppk', 'completed'].includes(entry.status);
                     const isRejected = ['rejected', 'rejected_ppk'].includes(entry.status);
                     const badgeVariant: 'default' | 'destructive' | 'outline' =

@@ -85,8 +85,25 @@ export function exportPulsaToExcel(opts: ExportPulsaOptions): void {
       [kegiatan],
       [`Bulan: ${bulanNama} ${tahun}`],
       [],
-      ['No', 'Nama', 'Status', 'Kecamatan', 'Nomor Telp', 'Tanda Tangan'],
-      ...approved.map((a, i) => [i + 1, a.nama, a.tipe, a.kecamatan, a.noHp, '']),
+      ['No', 'Nama', 'Status', 'Kecamatan', 'Nomor Telp', 'Nominal', 'Tanda Tangan'],
+      ...approved.map((a, i) => {
+        // Find nominal from rows for this person
+        let nominal = 0;
+        for (const row of kegRows) {
+          const allNames = [
+            ...row.organikList.map((n, idx) => ({ nama: n, tipe: 'Organik' as const, idx })),
+            ...row.mitraList.map((n, idx) => ({ nama: n, tipe: 'Mitra' as const, idx: row.organikList.length + idx })),
+          ];
+          for (const p of allNames) {
+            if (p.nama.trim().toLowerCase() === a.nama.trim().toLowerCase() && 
+                row.statusList[p.idx] === 'approved_ppk') {
+              nominal = row.nominal;
+              break;
+            }
+          }
+        }
+        return [i + 1, a.nama, a.tipe, a.kecamatan, a.noHp, nominal, ''];
+      }),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -98,13 +115,14 @@ export function exportPulsaToExcel(opts: ExportPulsaOptions): void {
       { wch: 12 },  // Status
       { wch: 20 },  // Kecamatan
       { wch: 18 },  // No Telp
+      { wch: 15 },  // Nominal
       { wch: 25 },  // TTD
     ];
 
-    // Merge title row across columns A:F
+    // Merge title row across columns A:G (instead of A:F)
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(kegiatan, kegiatanIdx));

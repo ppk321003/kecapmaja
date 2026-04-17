@@ -58,7 +58,7 @@ export interface PulsaRow {
 export interface PersonPulsaEntry {
   nama: string;
   tipe: 'Organik' | 'Mitra';
-  entries: {
+  entries: (({
     kegiatan: string;
     nominal: number;
     status: string;
@@ -67,7 +67,7 @@ export interface PersonPulsaEntry {
     rowIndex: number;
     /** Index orang dalam row tersebut (urutan organik dulu, baru mitra) */
     personIndex: number;
-  }[];
+  } | null))[]; // Allow null for entries tanpa kegiatan untuk orang tertentu
   total: number;
 }
 
@@ -164,8 +164,24 @@ export async function readPulsaData(spreadsheetId: string): Promise<PulsaRow[]> 
 /**
  * Build person-centric view from rows.
  * personIndex urutan: organik[0..n-1], lalu mitra[0..m-1].
+ * 
+ * PENTING: Entries harus terurut konsisten per kegiatan untuk semua orang,
+ * agar kolom kegiatan di UI menampilkan data yang tepat.
+ * Entries array panjangnya sama untuk semua orang = jumlah kegiatan unik.
+ * Posisi setiap entry sesuai dengan kegiatanIndex.
  */
 export function buildPersonView(rows: PulsaRow[]): PersonPulsaEntry[] {
+  // Step 1: Extract unique kegiatan dalam urutan pertama kali muncul
+  const kegiatanOrder: string[] = [];
+  const kegiatanSet = new Set<string>();
+  for (const row of rows) {
+    if (!kegiatanSet.has(row.kegiatan)) {
+      kegiatanSet.add(row.kegiatan);
+      kegiatanOrder.push(row.kegiatan);
+    }
+  }
+
+  // Step 2: Build person map dengan entries array yang sudah dialokasikan per kegiatan
   const personMap = new Map<string, PersonPulsaEntry>();
 
   for (const row of rows) {
@@ -180,10 +196,20 @@ export function buildPersonView(rows: PulsaRow[]): PersonPulsaEntry[] {
       const tglApproval = row.tglApprovalList[personIndex] || '';
 
       if (!personMap.has(p.nama)) {
-        personMap.set(p.nama, { nama: p.nama, tipe: p.tipe, entries: [], total: 0 });
+        // Initialize person dengan entries array panjang kegiatanOrder (semua null di awal)
+        personMap.set(p.nama, { 
+          nama: p.nama, 
+          tipe: p.tipe, 
+          entries: Array(kegiatanOrder.length).fill(null),
+          total: 0 
+        });
       }
+      
       const person = personMap.get(p.nama)!;
-      person.entries.push({
+      const kegiatanIndex = kegiatanOrder.indexOf(row.kegiatan);
+      
+      // Store entry di posisi kegiatan yang konsisten (bukan di akhir array)
+      person.entries[kegiatanIndex] = {
         kegiatan: row.kegiatan,
         nominal: row.nominal,
         status,
@@ -191,7 +217,8 @@ export function buildPersonView(rows: PulsaRow[]): PersonPulsaEntry[] {
         tglApproval,
         rowIndex: row.rowIndex,
         personIndex,
-      });
+      };
+      
       person.total += row.nominal;
     });
   }

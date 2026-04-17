@@ -191,7 +191,9 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                         <Badge variant={p.tipe === 'Organik' ? 'default' : 'secondary'}>{p.tipe}</Badge>
                       </td>
                       <td className="px-4 py-2">
-                        {p.entries.map((e, i) => (
+                        {p.entries
+                          .filter((e): e is NonNullable<typeof e> => e !== null)
+                          .map((e, i) => (
                           <div key={i} className="text-xs">
                             {e.kegiatan} — Rp {e.nominal.toLocaleString('id-ID')}
                           </div>
@@ -201,7 +203,9 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                         Rp {p.total.toLocaleString('id-ID')}
                       </td>
                       <td className="px-4 py-2 text-center">
-                        {p.entries.map((e, i) => {
+                        {p.entries
+                          .filter((e): e is NonNullable<typeof e> => e !== null)
+                          .map((e, i) => {
                           const badge = (() => {
                             if (['approved', 'approved_ppk', 'completed'].includes(e.status))
                               return { label: '✓', variant: 'default' as const };
