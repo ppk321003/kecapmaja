@@ -209,6 +209,8 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                           const badge = (() => {
                             if (['approved', 'approved_ppk', 'completed'].includes(e.status))
                               return { label: '✓', variant: 'default' as const };
+                            if (['rejected', 'rejected_ppk'].includes(e.status))
+                              return { label: '❌', variant: 'destructive' as const };
                             if (['pending', 'pending_ppk'].includes(e.status))
                               return { label: '⏳', variant: 'outline' as const };
                             return { label: 'Draft', variant: 'secondary' as const };
