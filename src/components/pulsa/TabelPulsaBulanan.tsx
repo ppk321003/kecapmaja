@@ -796,6 +796,57 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Approve Confirmation - replaces native browser confirm() */}
+      <AlertDialog
+        open={bulkConfirm?.open ?? false}
+        onOpenChange={(open) => {
+          if (!open && actionLoading === null) setBulkConfirm(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-500" />
+              Konfirmasi Approve Massal
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 pt-2">
+                <p>
+                  Anda akan <strong className="text-green-700">SETUJUI {bulkConfirm?.targetsCount ?? 0} item</strong>{' '}
+                  dari <strong>{bulkConfirm?.label ?? ''}</strong>.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Aksi ini akan langsung tersimpan ke sheet dan tidak bisa dibatalkan.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading !== null}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={actionLoading !== null}
+              className="bg-green-600 hover:bg-green-700"
+              onClick={(e) => {
+                e.preventDefault();
+                if (bulkConfirm) executeBulkApprove(bulkConfirm.filter);
+              }}
+            >
+              {actionLoading?.startsWith('bulk-') ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Ya, Setujui Semua
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
