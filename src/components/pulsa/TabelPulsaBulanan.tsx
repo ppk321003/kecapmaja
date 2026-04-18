@@ -398,7 +398,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
               <Button
                 size="sm"
                 variant="default"
-                onClick={() => handleBulkApprove({ type: 'all-pending' })}
+                onClick={() => requestBulkApprove({ type: 'all-pending' })}
                 disabled={actionLoading !== null}
                 title="Setujui semua item pending sekaligus"
               >
@@ -422,7 +422,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                   {Array.from(kegiatanPendingMap.entries()).map(([keg, count]) => (
                     <DropdownMenuItem
                       key={keg}
-                      onClick={() => handleBulkApprove({ type: 'kegiatan', kegiatan: keg })}
+                      onClick={() => requestBulkApprove({ type: 'kegiatan', kegiatan: keg })}
                     >
                       <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
                       <span className="flex-1 truncate">{keg}</span>
