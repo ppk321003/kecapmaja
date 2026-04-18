@@ -193,11 +193,26 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                       <td className="px-4 py-2">
                         {p.entries
                           .filter((e): e is NonNullable<typeof e> => e !== null)
-                          .map((e, i) => (
-                          <div key={i} className="text-xs">
-                            {e.kegiatan} — Rp {e.nominal.toLocaleString('id-ID')}
-                          </div>
-                        ))}
+                          .map((e, i) => {
+                            const statusIcon = (() => {
+                              if (['approved', 'approved_ppk', 'completed'].includes(e.status)) {
+                                return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 mr-1 text-xs">✓</span>;
+                              }
+                              if (['rejected', 'rejected_ppk'].includes(e.status)) {
+                                return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 mr-1 text-xs">❌</span>;
+                              }
+                              if (['pending', 'pending_ppk'].includes(e.status)) {
+                                return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 mr-1 text-xs">⏳</span>;
+                              }
+                              return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 mr-1 text-xs">-</span>;
+                            })();
+                            return (
+                              <div key={i} className="text-xs flex items-center mb-1">
+                                {statusIcon}
+                                <span>{e.kegiatan} — Rp {e.nominal.toLocaleString('id-ID')}</span>
+                              </div>
+                            );
+                          })}
                       </td>
                       <td className="px-4 py-2 text-right font-mono font-semibold">
                         Rp {p.total.toLocaleString('id-ID')}
