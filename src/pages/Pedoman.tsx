@@ -46,6 +46,8 @@ import {
   ExternalLink,
   Briefcase,
   GraduationCap,
+  Smartphone,
+  Wallet,
 } from "lucide-react";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
@@ -434,6 +436,57 @@ const pedomanData = (satkerContext) => ({
       ],
     },
   ],
+  anggaranPulsa: [
+    {
+      title: "Monitoring Pulsa Bulanan",
+      icon: Smartphone,
+      url: "/monitoring-pulsa",
+      description: "Modul pengelolaan pembelian pulsa / paket data untuk petugas lapangan (organik dan mitra statistik) dengan alur pengajuan, persetujuan PPK, dan ekspor ke Excel per kegiatan.",
+      features: [
+        "Tab Daftar Pulsa: tabel rekap per orang dengan status visual (✅ disetujui, ❌ ditolak, ⏳ menunggu) per kegiatan",
+        "Tab Tambah Ajuan: input pulsa untuk satu/beberapa orang sekaligus (organik & mitra) dalam 1 baris hemat ruang sheet",
+        "Tab Laporan: ringkasan total nominal ajuan vs disetujui PPK, breakdown per kegiatan dan per fungsi",
+        "Persetujuan per orang: PPK dapat menyetujui/menolak per individu untuk tiap kegiatan",
+        "Approve massal: tombol 'Approve Semua Pending' atau 'Per Kegiatan' untuk efisiensi PPK",
+        "Edit keputusan: PPK boleh mengubah status yang sudah disetujui/ditolak (misal pindah kegiatan)",
+        "Validasi duplikasi: sistem menandai (warna kuning) jika seorang petugas mendapat pulsa dari >1 kegiatan dalam bulan yang sama",
+        "Export Excel multi-sheet: 1 sheet per kegiatan, hanya berisi data berstatus 'approved_ppk', lengkap dengan No. HP organik & mitra",
+      ],
+      tips: [
+        "Filter bulan & tahun di header sebelum input atau review",
+        "Gunakan 'Approve Per Kegiatan' jika ingin menyetujui satu kegiatan sekaligus",
+        "Perhatikan baris kuning — tanda petugas terdaftar di lebih dari 1 kegiatan",
+        "Export Excel hanya menampilkan ajuan yang sudah disetujui PPK",
+        "Kolom Keterangan otomatis terisi setelah PPK menyetujui (format: 'Pulsa disetujui dari kegiatan X nominal Rp Y')",
+      ],
+      accessInfo: "Input: semua pengaju. Approve & Edit Keputusan: hanya PPK",
+    },
+    {
+      title: "Bahan Revisi Anggaran",
+      icon: Wallet,
+      url: "/bahan-revisi-anggaran",
+      description: "Modul perencanaan dan monitoring realisasi anggaran (POK) yang menggabungkan pagu, RPD bulanan, realisasi, dan analisis selisih untuk keperluan revisi DIPA/POK.",
+      features: [
+        "Subtab Anggaran: tabel detail mata anggaran (Program, Kegiatan, KRO, RO, Komponen, Akun) dengan filter lengkap",
+        "Subtab Ringkasan: agregasi pagu, realisasi, dan sisa per level (Program → Akun) dengan grafik visual",
+        "Subtab Proyeksi Bulanan: estimasi pencairan per bulan berdasarkan RPD vs realisasi aktual",
+        "Upload RPD: import file POK (CSV) — sistem otomatis mengalikan nominal × 1000 dan generate ID deterministik",
+        "Upload Realisasi Bulanan: import CSV laporan SAS dengan matching multi-tingkat (ID → Strict → Fuzzy)",
+        "Konsolidasi otomatis: realisasi nol tetap ditampilkan agar tidak ada item terlewat saat revisi",
+        "Detail Realisasi: drill-down per item dengan riwayat realisasi bulanan",
+        "Export Excel: download Detil Realisasi lengkap untuk pelaporan dan bahan revisi",
+        "Kesimpulan Perubahan: ringkasan otomatis selisih sebelum vs sesudah revisi anggaran",
+      ],
+      tips: [
+        "Lakukan Upload RPD terlebih dahulu di awal tahun anggaran untuk membentuk basis data",
+        "Upload Realisasi Bulanan setiap bulan begitu data SAS keluar",
+        "Cek tab Ringkasan untuk melihat akun yang penyerapannya rendah/melebihi pagu",
+        "Gunakan filter Komponen/Akun untuk fokus pada area tertentu",
+        "Sebelum mengajukan revisi, export Detil Realisasi sebagai lampiran",
+      ],
+      accessInfo: "Akses: PPK dan pejabat fungsi (Sosial, Produksi, Distribusi, Neraca, IPDS, TU)",
+    },
+  ],
 });
 
 const tabConfig = [
@@ -442,6 +495,7 @@ const tabConfig = [
   { value: "eDokumen", label: "e-Dokumen", icon: Edit, color: "text-purple-500" },
   { value: "karirJadwal", label: "Karir & Jadwal", icon: GraduationCap, color: "text-pink-500" },
   { value: "linkersPengadaan", label: "Linkers & Pengadaan", icon: ShoppingCart, color: "text-orange-500" },
+  { value: "anggaranPulsa", label: "Anggaran & Pulsa", icon: Wallet, color: "text-cyan-500" },
   { value: "lainnya", label: "Lainnya", icon: Package, color: "text-amber-500" },
 ];
 
