@@ -291,7 +291,7 @@ export function FormTambahPulsa({ bulanDefault, tahunDefault, onSuccess }: FormT
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  💡 Bisa isi kode (2886, 2897) atau nama kegiatan
+                  💡 Tuliskan nama kegiatan
                 </p>
               </div>
             </div>
