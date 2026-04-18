@@ -653,6 +653,12 @@ export default function Pedoman() {
           </div>
         </TabsContent>
 
+        <TabsContent value="anggaranPulsa" className="mt-0">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
+            {pedoman.anggaranPulsa.map(renderPedomanCard)}
+          </div>
+        </TabsContent>
+
         <TabsContent value="lainnya" className="mt-0">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
             {pedoman.lainnya.map(renderPedomanCard)}
