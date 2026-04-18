@@ -11,7 +11,17 @@ import {
   Clock,
   XCircle,
   Edit3,
+  Zap,
+  ChevronDown,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   readPulsaData,
   updatePersonStatusInRow,
@@ -252,6 +262,84 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
     return uniqueKegiatan.size > 1;
   };
 
+  // Unique kegiatan list with pending counts (untuk bulk approve by kegiatan)
+  const kegiatanPendingMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of rawRows) {
+      const pendingInRow = row.statusList.filter(s => ['pending', 'pending_ppk'].includes(s)).length;
+      if (pendingInRow > 0) {
+        map.set(row.kegiatan, (map.get(row.kegiatan) || 0) + pendingInRow);
+      }
+    }
+    return map;
+  }, [rawRows]);
+
+  /**
+   * Bulk approve: kumpulkan semua entry yang match filter, group by rowIndex,
+   * lalu update sheet secara paralel (Promise.all).
+   * filter: 'all-pending' = semua pending; atau nama kegiatan spesifik.
+   */
+  const handleBulkApprove = async (
+    filter: { type: 'all-pending' } | { type: 'kegiatan'; kegiatan: string },
+    newStatus: 'approved_ppk' | 'rejected_ppk' = 'approved_ppk'
+  ) => {
+    const targets: { rowIndex: number; personIndex: number }[] = [];
+
+    for (const row of rawRows) {
+      if (filter.type === 'kegiatan' && row.kegiatan !== filter.kegiatan) continue;
+      row.statusList.forEach((status, personIndex) => {
+        if (['pending', 'pending_ppk'].includes(status)) {
+          targets.push({ rowIndex: row.rowIndex, personIndex });
+        }
+      });
+    }
+
+    if (targets.length === 0) {
+      alert('Tidak ada item pending yang cocok');
+      return;
+    }
+
+    const label = filter.type === 'kegiatan' ? `kegiatan "${filter.kegiatan}"` : 'SEMUA pending';
+    const action = newStatus === 'approved_ppk' ? 'SETUJUI' : 'TOLAK';
+    if (!confirm(`${action} ${targets.length} item dari ${label}?\n\nAksi ini akan langsung tersimpan ke sheet.`)) {
+      return;
+    }
+
+    setActionLoading(`bulk-${filter.type}`);
+    try {
+      // Group by rowIndex
+      const byRow = new Map<number, { personIndex: number; newStatus: string }[]>();
+      for (const t of targets) {
+        if (!byRow.has(t.rowIndex)) byRow.set(t.rowIndex, []);
+        byRow.get(t.rowIndex)!.push({ personIndex: t.personIndex, newStatus });
+      }
+
+      const approver = user?.username || 'Unknown';
+      // Parallel update — semua row sekaligus
+      const results = await Promise.all(
+        Array.from(byRow.entries()).map(([rowIndex, updates]) =>
+          updatePersonStatusInRow(pulsaSheetId, rowIndex, updates, approver)
+        )
+      );
+
+      const failed = results.filter(r => !r.success);
+      if (failed.length > 0) {
+        alert(`⚠️ ${failed.length} row gagal diupdate. Cek console.`);
+        console.error('Bulk approve failures:', failed);
+      } else {
+        alert(`✅ ${targets.length} item berhasil di-${action.toLowerCase()} (${byRow.size} row diupdate)`);
+      }
+
+      await fetchItems();
+      onRefresh?.();
+    } catch (err) {
+      console.error('Bulk approve error:', err);
+      alert(`❌ Error: ${err instanceof Error ? err.message : 'Unknown'}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (!pulsaSheetId) {
     return (
       <Card>
@@ -287,8 +375,48 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base">Daftar Pulsa</CardTitle>
+          {isPPK && kegiatanPendingMap.size > 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleBulkApprove({ type: 'all-pending' })}
+                disabled={actionLoading !== null}
+                title="Setujui semua item pending sekaligus"
+              >
+                {actionLoading === 'bulk-all-pending' ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Zap className="w-4 h-4 mr-2" />
+                )}
+                Approve Semua Pending ({pendingCount})
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={actionLoading !== null}>
+                    Per Kegiatan
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 bg-popover">
+                  <DropdownMenuLabel>Approve semua pending dari:</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {Array.from(kegiatanPendingMap.entries()).map(([keg, count]) => (
+                    <DropdownMenuItem
+                      key={keg}
+                      onClick={() => handleBulkApprove({ type: 'kegiatan', kegiatan: keg })}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
+                      <span className="flex-1 truncate">{keg}</span>
+                      <Badge variant="outline" className="ml-2">{count}</Badge>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
