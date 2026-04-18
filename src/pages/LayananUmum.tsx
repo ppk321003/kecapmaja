@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, ChevronLeft, ChevronRight, FileText, FileDoc, FileImage, FileVideo, FileAudio } from 'lucide-react';
+import { ExternalLink, ChevronLeft, ChevronRight, FileText, FileImage, FileVideo, FileAudio } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -62,16 +62,37 @@ const getFileIcon = (fileType: string) => {
   }
 };
 
-// Image proxy helper - using Supabase Edge Function for CORS bypass
-const getImageProxyUrl = (url: string): string => {
-  if (!url) return '';
+// Extract Google Drive file ID from any drive URL format
+const extractDriveFileId = (url: string): string | null => {
+  if (!url) return null;
+  // Format: /file/d/{ID}/...
+  let m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  // Format: ?id={ID} or &id={ID}
+  m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  // Format: /d/{ID}
+  m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  return null;
+};
+
+// Returns the best <img>-embeddable URL for any thumbnail source
+const buildThumbnailSrc = (url: string): string | null => {
+  if (!url) return null;
+  // Google Drive → use thumbnail endpoint (works in <img>, no CORS issues)
   if (isGoogleDriveUrl(url)) {
-    const fileId = url.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1];
+    const fileId = extractDriveFileId(url);
     if (fileId) {
-      return `${IMAGE_PROXY_URL}?fileId=${fileId}&type=view`;
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
     }
+    return null;
   }
-  return url;
+  // Direct image URL
+  if (/\.(jpe?g|png|webp|gif|svg)(\?.*)?$/i.test(url)) {
+    return url;
+  }
+  return null;
 };
 
 export default function LayananUmum() {
@@ -331,20 +352,14 @@ export default function LayananUmum() {
         {!loading && !error && paginatedItems.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
             {paginatedItems.map((pub) => {
-              const imageLink = pub.thumbnailUrl;
-              const thumbnailUrl = imageLink && (isGoogleDriveUrl(imageLink)
-                ? getGoogleDriveImageUrl(imageLink)
-                : /\.(jpe?g|png|webp|gif|svg)$/i.test(imageLink) ? imageLink : null);
-              const viewUrl = isGoogleDriveUrl(pub.link) ? getGoogleDriveViewUrl(pub.link) : pub.link;
-              
-              // Debug logging
-              console.log(`[LayananUmum] Item ${pub.no}:`, {
-                namaPublikasi: pub.namaPublikasi,
-                imageLink: imageLink?.substring(0, 50),
-                isGoogleDrive: isGoogleDriveUrl(imageLink),
-                thumbnailUrl: thumbnailUrl?.substring(0, 50),
-                hasViewUrl: !!viewUrl
-              });
+              // Prefer thumbnailUrl (column G); fallback to link (column F) if it's a Drive URL
+              const rawThumb = pub.thumbnailUrl?.trim() || '';
+              const rawLink = pub.link?.trim() || '';
+              const thumbSource = rawThumb && (isGoogleDriveUrl(rawThumb) || /\.(jpe?g|png|webp|gif|svg)/i.test(rawThumb))
+                ? rawThumb
+                : (isGoogleDriveUrl(rawLink) ? rawLink : '');
+              const thumbnailSrc = buildThumbnailSrc(thumbSource);
+              const viewUrl = isGoogleDriveUrl(rawLink) ? getGoogleDriveViewUrl(rawLink) : rawLink;
 
               return (
                 <a
@@ -356,19 +371,23 @@ export default function LayananUmum() {
                 >
                   {/* Thumbnail */}
                   <div className="relative w-full aspect-video bg-slate-100 overflow-hidden">
-                    {thumbnailUrl ? (
+                    {thumbnailSrc ? (
                       <img
-                        src={getImageProxyUrl(thumbnailUrl)}
+                        src={thumbnailSrc}
                         alt={pub.namaPublikasi}
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
                         className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                        crossOrigin="anonymous"
-                        onLoad={() => console.log(`[LayananUmum] Image loaded: ${pub.no}`)}
                         onError={(e) => {
-                          console.error(`[LayananUmum] Image failed to load: ${pub.no}`, {
-                            src: (e.target as HTMLImageElement).src,
-                            error: e
-                          });
-                          (e.target as HTMLImageElement).style.display = 'none';
+                          const img = e.target as HTMLImageElement;
+                          // Fallback chain for Google Drive: thumbnail → uc?export=view
+                          const fileId = extractDriveFileId(thumbSource);
+                          if (fileId && img.dataset.fallback !== 'tried') {
+                            img.dataset.fallback = 'tried';
+                            img.src = `https://lh3.googleusercontent.com/d/${fileId}=w800`;
+                            return;
+                          }
+                          img.style.display = 'none';
                         }}
                       />
                     ) : (
