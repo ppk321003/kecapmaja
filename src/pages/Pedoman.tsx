@@ -609,7 +609,7 @@ export default function Pedoman() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="flex w-full max-w-3xl mx-auto mb-6 bg-muted/80 p-1 rounded-full shadow-inner justify-center">
+        <TabsList className="flex w-full mb-6 bg-muted/80 p-1 rounded-full shadow-inner justify-center">
           {tabConfig.map((tab) => (
             <TabsTrigger
               key={tab.value}

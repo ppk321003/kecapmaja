@@ -679,10 +679,9 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                     .map(({ entry, idx }) => {
                     const isApproved = ['approved', 'approved_ppk', 'completed'].includes(entry.status);
                     const isRejected = ['rejected', 'rejected_ppk'].includes(entry.status);
-                    const badgeVariant: 'default' | 'destructive' | 'outline' =
-                      isApproved ? 'default' : isRejected ? 'destructive' : 'outline';
-                    const badgeLabel =
-                      isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending';
+                    const statusInfo = getStatusBadge(entry.status);
+                    const badgeVariant = statusInfo.variant;
+                    const badgeLabel = statusInfo.label;
                     return (
                       <div
                         key={idx}
