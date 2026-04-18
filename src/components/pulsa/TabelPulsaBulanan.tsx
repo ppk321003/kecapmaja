@@ -398,9 +398,13 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                         </td>
                         <td className="px-3 py-2 border text-center">
                           {approvedEntries.length > 0 ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" title={`${approvedEntries.length} disetujui`} />
+                            <span title={`${approvedEntries.length} disetujui`}>
+                              <CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" />
+                            </span>
                           ) : validEntries.some(e => ['rejected', 'rejected_ppk'].includes(e.status)) ? (
-                            <XCircle className="w-4 h-4 text-red-600 mx-auto" title="Ada yang ditolak" />
+                            <span title="Ada yang ditolak">
+                              <XCircle className="w-4 h-4 text-red-600 mx-auto" />
+                            </span>
                           ) : (
                             <Clock className="w-4 h-4 text-muted-foreground mx-auto" />
                           )}
