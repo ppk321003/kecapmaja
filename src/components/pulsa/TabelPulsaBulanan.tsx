@@ -79,6 +79,13 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
   const [approveAction, setApproveAction] = useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  // Bulk approve confirmation dialog (custom AlertDialog, not browser confirm)
+  const [bulkConfirm, setBulkConfirm] = useState<{
+    open: boolean;
+    filter: { type: 'all-pending' } | { type: 'kegiatan'; kegiatan: string };
+    targetsCount: number;
+    label: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -285,16 +292,30 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
   }, [rawRows]);
 
   /**
-   * Bulk approve: kumpulkan semua entry yang match filter, group by rowIndex,
-   * lalu update sheet secara paralel (Promise.all).
-   * filter: 'all-pending' = semua pending; atau nama kegiatan spesifik.
+   * Open custom confirmation dialog (replaces browser confirm).
    */
-  const handleBulkApprove = async (
+  const requestBulkApprove = (
+    filter: { type: 'all-pending' } | { type: 'kegiatan'; kegiatan: string }
+  ) => {
+    let count = 0;
+    for (const row of rawRows) {
+      if (filter.type === 'kegiatan' && row.kegiatan !== filter.kegiatan) continue;
+      count += row.statusList.filter(s => ['pending', 'pending_ppk'].includes(s)).length;
+    }
+    if (count === 0) return;
+    const label = filter.type === 'kegiatan' ? `kegiatan "${filter.kegiatan}"` : 'SEMUA pending';
+    setBulkConfirm({ open: true, filter, targetsCount: count, label });
+  };
+
+  /**
+   * Execute bulk approve after user confirms in custom dialog.
+   * Group by rowIndex, parallel update via Promise.all.
+   */
+  const executeBulkApprove = async (
     filter: { type: 'all-pending' } | { type: 'kegiatan'; kegiatan: string },
     newStatus: 'approved_ppk' | 'rejected_ppk' = 'approved_ppk'
   ) => {
     const targets: { rowIndex: number; personIndex: number }[] = [];
-
     for (const row of rawRows) {
       if (filter.type === 'kegiatan' && row.kegiatan !== filter.kegiatan) continue;
       row.statusList.forEach((status, personIndex) => {
@@ -303,21 +324,10 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
         }
       });
     }
-
-    if (targets.length === 0) {
-      alert('Tidak ada item pending yang cocok');
-      return;
-    }
-
-    const label = filter.type === 'kegiatan' ? `kegiatan "${filter.kegiatan}"` : 'SEMUA pending';
-    const action = newStatus === 'approved_ppk' ? 'SETUJUI' : 'TOLAK';
-    if (!confirm(`${action} ${targets.length} item dari ${label}?\n\nAksi ini akan langsung tersimpan ke sheet.`)) {
-      return;
-    }
+    if (targets.length === 0) return;
 
     setActionLoading(`bulk-${filter.type}`);
     try {
-      // Group by rowIndex
       const byRow = new Map<number, { personIndex: number; newStatus: string }[]>();
       for (const t of targets) {
         if (!byRow.has(t.rowIndex)) byRow.set(t.rowIndex, []);
@@ -325,7 +335,6 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
       }
 
       const approver = user?.username || 'Unknown';
-      // Parallel update — semua row sekaligus
       const results = await Promise.all(
         Array.from(byRow.entries()).map(([rowIndex, updates]) =>
           updatePersonStatusInRow(pulsaSheetId, rowIndex, updates, approver)
@@ -334,19 +343,16 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
 
       const failed = results.filter(r => !r.success);
       if (failed.length > 0) {
-        alert(`⚠️ ${failed.length} row gagal diupdate. Cek console.`);
         console.error('Bulk approve failures:', failed);
-      } else {
-        alert(`✅ ${targets.length} item berhasil di-${action.toLowerCase()} (${byRow.size} row diupdate)`);
       }
 
       await fetchItems();
       onRefresh?.();
     } catch (err) {
       console.error('Bulk approve error:', err);
-      alert(`❌ Error: ${err instanceof Error ? err.message : 'Unknown'}`);
     } finally {
       setActionLoading(null);
+      setBulkConfirm(null);
     }
   };
 
