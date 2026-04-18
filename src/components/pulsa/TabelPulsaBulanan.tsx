@@ -552,7 +552,9 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                               <XCircle className="w-4 h-4 text-red-600 mx-auto" />
                             </span>
                           ) : (
-                            <Clock className="w-4 h-4 text-muted-foreground mx-auto" />
+                            <span title="Menunggu approval" className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-400 ring-2 ring-amber-200 mx-auto animate-pulse">
+                              <Clock className="w-3 h-3 text-white" />
+                            </span>
                           )}
                         </td>
                         {isPPK && (
@@ -560,7 +562,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                             <Button
                               size="icon"
                               variant={hasPending ? 'default' : 'ghost'}
-                              className="h-8 w-8"
+                              className={`h-8 w-8 ${hasPending ? 'bg-amber-500 hover:bg-amber-600 text-white ring-2 ring-amber-300 animate-pulse' : ''}`}
                               title={hasPending ? 'Approve / Reject' : (hasAnyAction ? 'Edit keputusan' : 'Belum ada data')}
                               onClick={() => handleApproveClick(person)}
                               disabled={actionLoading !== null}
