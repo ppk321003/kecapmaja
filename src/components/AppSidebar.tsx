@@ -43,42 +43,85 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
-// Items before e-Dokumen
-const beforeEDokumenItems = [
+// ALWAYS VISIBLE ITEMS
+const topLevelItems = [
   { title: "Beranda", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Sigap SPJ", url: "/usulan-pencairan", icon: DollarSign },
-  { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
 ];
 
-// Items after e-Dokumen
-const afterEDokumenItems = [
-  { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
-  { title: "Padamel-3210 | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
-  { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
-  { title: "Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3 },
+// MENU GROUP: KEUANGAN
+const keuanganItems = [
+  { title: "Sigap SPJ", url: "/usulan-pencairan", icon: DollarSign },
+  { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
+  { title: "Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3, conditional: "showBahanRevisiAnggaran" },
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
-  { title: "Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
-  { title: "Linkers", url: "/linkers", icon: Link2 },
+];
+
+// MENU GROUP: PENGADAAN
+const pengadaanItems = [
+  { title: "Usul Pengadaan", url: "/Pengadaan", icon: ShoppingCart },
   { title: "Monitoring Pulsa Bulanan", url: "/monitoring-pulsa", icon: Smartphone },
 ];
 
-const sikostikMenuItem = { title: "Sikostik 28", url: "/sikostik28", icon: PiggyBank };
+// MENU GROUP: KEPEGAWAIAN
+const kepegawaianItems = [
+  { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
+  { title: "Padamel | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
+  { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
+];
 
-
+// MENU GROUP: e-DOKUMEN SUB ITEMS
 const eDokumenSubItems: { title: string; url: string; icon: typeof FilePlus; external?: boolean }[] = [
   { title: "Buat e-Dokumen", url: "/e-dokumen/buat", icon: FilePlus },
   { title: "Download e-Dokumen", url: "/e-dokumen/download", icon: DownloadIcon },
 ];
+
+// MENU GROUP: DOKUMEN
+const dokumenItems = [
+  { title: "e-Dokumen", url: "/e-dokumen", icon: FolderOpen, hasSubItems: true, subItems: eDokumenSubItems },
+  { title: "Cetak Kuitansi", url: "/cetak-kuitansi", icon: Receipt, conditional: "showCetakKuitansi" },
+];
+
+// MENU GROUP: ADMIN & UTILITAS
+const adminUtilitasItems = [
+  { title: "User Management", url: "/user-management", icon: UsersRound, conditional: "isPPK" },
+  { title: "Sikostik 28", url: "/sikostik28", icon: PiggyBank, conditional: "isSatker3210" },
+  { title: "Linkers", url: "/linkers", icon: Link2 },
+  { title: "Pedoman", url: "/pedoman", icon: BookOpen },
+];
+
+interface MenuGroup {
+  title: string;
+  icon: any;
+  items: MenuItem[];
+}
+
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: any;
+  conditional?: string;
+  hasSubItems?: boolean;
+  subItems?: MenuItem[];
+}
 
 export function AppSidebar() {
   const { open } = useSidebar();
   const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
-  const isEDokumenActive = currentPath.startsWith("/e-dokumen");
-  const [eDokumenOpen, setEDokumenOpen] = useState(() => isEDokumenActive);
   
+  // State untuk track which groups are open - Default collapsed
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    keuangan: false,
+    pengadaan: false,
+    kepegawaian: false,
+    dokumen: false,
+    adminUtilitas: false,
+  });
+
+  const [eDokumenOpen, setEDokumenOpen] = useState(() => currentPath.startsWith("/e-dokumen"));
+
   // Check if user is PPK for User Management menu
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
   
@@ -91,27 +134,41 @@ export function AppSidebar() {
   // Check if user is satker 3210 for Sikostik 28 menu
   const isSatker3210 = user?.satker === '3210';
   
+  // Show Cetak Kuitansi for PPK Satker 3210
+  const showCetakKuitansi = isSatker3210 && isPPK;
+
   // Get satker_nama from satker config (column B) - current logged-in user's satker
   const satkerNama = useMemo(() => {
     return satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS';
   }, [satkerContext]);
-  
-  // Conditionally update Padamel title in afterEDokumenItems
-  const computedAfterEDokumenItems = useMemo(() => {
-    return afterEDokumenItems.map((item) => {
-      if (item.title.startsWith("Padamel-3210")) {
-        const satkerId = satkerContext?.getUserSatkerConfig()?.satker_id || "3210";
-        return { ...item, title: `Padamel-${satkerId} | Mitra Kepka` };
-      }
-      return item;
-    });
-  }, [satkerContext]);
 
-  console.log("Logged-in user:", user);
-  console.log("isSatker3210:", isSatker3210);
-  console.log("isPPK:", isPPK);
-  console.log("hasFungsiRole:", hasFungsiRole);
-  console.log("showBahanRevisiAnggaran:", showBahanRevisiAnggaran);
+  // Helper function to check if item should be visible
+  const shouldShowItem = (item: MenuItem): boolean => {
+    if (!item.conditional) return true;
+    
+    const conditions: Record<string, boolean> = {
+      isPPK,
+      isSatker3210,
+      showBahanRevisiAnggaran,
+      showCetakKuitansi,
+    };
+    
+    return conditions[item.conditional] ?? false;
+  };
+
+  // Helper function to filter items based on conditions
+  const getVisibleItems = (items: MenuItem[]): MenuItem[] => {
+    return items.filter(shouldShowItem);
+  };
+
+  const toggleGroup = (group: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [group]: !prev[group],
+    }));
+  };
+
+  console.log("AppSidebar Loaded - User:", user?.name, "| Role:", user?.role, "| Satker:", user?.satker);
 
   return (
     <Sidebar
@@ -397,193 +454,337 @@ export function AppSidebar() {
               </p>
             </div>
 
-            {/* MENU UTAMA */}
+            {/* NEW GROUPED MENU STRUCTURE */}
             <SidebarGroup className="px-3 py-4">
-            <SidebarGroupLabel className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-3 px-3">
-              Menu Utama
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {/* Before e-Dokumen: Beranda, Dashboard, Sigap SPJ, SPK dan BAST */}
-                {beforeEDokumenItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+              <SidebarGroupLabel className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-3 px-3">
+                Menu Utama
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {/* TOP LEVEL: Beranda & Dashboard */}
+                  {topLevelItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          end
+                          className={({ isActive }) =>
+                            isActive
+                              ? "text-white font-semibold transition-all duration-200"
+                              : "text-white/90 hover:text-white transition-all duration-200"
+                          }
+                        >
+                          <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                          {open && <span className="font-medium">{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
 
-                {/* MENU E-DOKUMEN */}
-                <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton
-                        className={
-                          isEDokumenActive
-                            ? "relative text-white font-semibold transition-all duration-200 before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-5 before:bg-white before:rounded-r-md"
-                            : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <FolderOpen className="h-4 w-4 text-white transition-transform duration-200" />
-                        {open && <span className="font-medium">e-Dokumen</span>}
-                        {open && (
+            {/* MENU GROUP: KEUANGAN */}
+            {getVisibleItems(keuanganItems).length > 0 && (
+              <SidebarGroup className="px-3 py-1">
+                <SidebarGroupContent className="mt-0">
+                  <SidebarMenu className="space-y-1">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <button
+                          onClick={() => toggleGroup("keuangan")}
+                          className={"flex items-center justify-between w-full transition-all duration-200 " + (true ? "text-white font-semibold" : "text-white/90 hover:text-white")}
+                        >
+                          <div className="flex items-center gap-3">
+                            <DollarSign className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                            {open && <span className="font-medium">Keuangan</span>}
+                          </div>
                           <ChevronDown
-                            className="ml-auto h-4 w-4 text-white transition-transform duration-300"
+                            className="h-4 w-4 transition-transform duration-300"
                             style={{
-                              transform: eDokumenOpen ? "rotate(180deg)" : "rotate(0deg)",
+                              transform: expandedGroups.keuangan ? "rotate(180deg)" : "rotate(0deg)",
                             }}
                           />
-                        )}
+                        </button>
                       </SidebarMenuButton>
-                    </CollapsibleTrigger>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+                {expandedGroups.keuangan && (
+                  <SidebarGroupContent className="mt-1">
+                    <SidebarMenu className="space-y-0.5 pl-2">
+                      {getVisibleItems(keuanganItems).map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild>
+                            <NavLink
+                              to={item.url}
+                              end
+                              className={({ isActive }) =>
+                                isActive
+                                  ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200"
+                                  : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"
+                              }
+                            >
+                              {open && <span>{item.title}</span>}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                )}
+              </SidebarGroup>
+            )}
 
-                    <CollapsibleContent className="mt-1">
-                      <SidebarMenuSub className="ml-4 border-l border-white/20 pl-2 space-y-1">
-                        {eDokumenSubItems.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton asChild>
-                              {subItem.external ? (
-                                <a
-                                  href={subItem.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-white/80 hover:text-white transition-all duration-200 flex items-center gap-2 group"
-                                >
-                                  <subItem.icon className="h-3.5 w-3.5 text-white transition-transform duration-200 group-hover:scale-110" />
-                                  <span className="text-sm font-light">{subItem.title}</span>
-                                </a>
-                              ) : (
+            {/* MENU GROUP: PENGADAAN */}
+            {getVisibleItems(pengadaanItems).length > 0 && (
+              <SidebarGroup className="px-3 py-1">
+                <SidebarGroupContent className="mt-0">
+                  <SidebarMenu className="space-y-1">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <button
+                          onClick={() => toggleGroup("pengadaan")}
+                          className={"flex items-center justify-between w-full transition-all duration-200 " + (true ? "text-white font-semibold" : "text-white/90 hover:text-white")}
+                        >
+                          <div className="flex items-center gap-3">
+                            <ShoppingCart className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                            {open && <span className="font-medium">Pengadaan</span>}
+                          </div>
+                          <ChevronDown
+                            className="h-4 w-4 transition-transform duration-300"
+                            style={{
+                              transform: expandedGroups.pengadaan ? "rotate(180deg)" : "rotate(0deg)",
+                            }}
+                          />
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+                {expandedGroups.pengadaan && (
+                  <SidebarGroupContent className="mt-1">
+                    <SidebarMenu className="space-y-0.5 pl-2">
+                      {getVisibleItems(pengadaanItems).map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild>
+                            <NavLink
+                              to={item.url}
+                              end
+                              className={({ isActive }) =>
+                                isActive
+                                  ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200"
+                                  : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"
+                              }
+                            >
+                              {open && <span>{item.title}</span>}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                )}
+              </SidebarGroup>
+            )}
+
+            {/* MENU GROUP: KEPEGAWAIAN */}
+            {getVisibleItems(kepegawaianItems).length > 0 && (
+              <SidebarGroup className="px-3 py-1">
+                <SidebarGroupContent className="mt-0">
+                  <SidebarMenu className="space-y-1">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <button
+                          onClick={() => toggleGroup("kepegawaian")}
+                          className={"flex items-center justify-between w-full transition-all duration-200 " + (true ? "text-white font-semibold" : "text-white/90 hover:text-white")}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Users className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                            {open && <span className="font-medium">Kepegawaian</span>}
+                          </div>
+                          <ChevronDown
+                            className="h-4 w-4 transition-transform duration-300"
+                            style={{
+                              transform: expandedGroups.kepegawaian ? "rotate(180deg)" : "rotate(0deg)",
+                            }}
+                          />
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+                {expandedGroups.kepegawaian && (
+                  <SidebarGroupContent className="mt-1">
+                    <SidebarMenu className="space-y-0.5 pl-2">
+                      {getVisibleItems(kepegawaianItems).map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild>
+                            <NavLink
+                              to={item.url}
+                              end
+                              className={({ isActive }) =>
+                                isActive
+                                  ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200"
+                                  : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"
+                              }
+                            >
+                              {open && <span>{item.title}</span>}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                )}
+              </SidebarGroup>
+            )}
+
+            {/* MENU GROUP: DOKUMEN */}
+            {getVisibleItems(dokumenItems).length > 0 && (
+              <SidebarGroup className="px-3 py-1">
+                <SidebarGroupContent className="mt-0">
+                  <SidebarMenu className="space-y-1">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <button
+                          onClick={() => toggleGroup("dokumen")}
+                          className={"flex items-center justify-between w-full transition-all duration-200 " + (true ? "text-white font-semibold" : "text-white/90 hover:text-white")}
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                            {open && <span className="font-medium">Dokumen</span>}
+                          </div>
+                          <ChevronDown
+                            className="h-4 w-4 transition-transform duration-300"
+                            style={{
+                              transform: expandedGroups.dokumen ? "rotate(180deg)" : "rotate(0deg)",
+                            }}
+                          />
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+                {expandedGroups.dokumen && (
+                  <SidebarGroupContent className="mt-1">
+                    <SidebarMenu className="space-y-0.5 pl-2">
+                      {getVisibleItems(dokumenItems).map((item) => (
+                        <div key={item.title}>
+                          {item.hasSubItems ? (
+                            <Collapsible open={eDokumenOpen} onOpenChange={setEDokumenOpen}>
+                              <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                  <SidebarMenuButton className="text-white/80 hover:text-white text-xs py-2 pl-4 font-medium transition-all duration-200">
+                                    {open && <span>{item.title}</span>}
+                                    {open && (
+                                      <ChevronDown
+                                        className="ml-auto h-3 w-3 text-white transition-transform duration-300"
+                                        style={{
+                                          transform: eDokumenOpen ? "rotate(180deg)" : "rotate(0deg)",
+                                        }}
+                                      />
+                                    )}
+                                  </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-0.5">
+                                  <SidebarMenuSub className="space-y-0.5 pl-4">
+                                    {item.subItems?.map((subItem) => (
+                                      <SidebarMenuSubItem key={subItem.title}>
+                                        <SidebarMenuSubButton asChild>
+                                          <NavLink
+                                            to={subItem.url}
+                                            className={({ isActive }) =>
+                                              isActive
+                                                ? "text-white font-medium text-xs py-1.5 pl-2 transition-all duration-200"
+                                                : "text-white/80 hover:text-white text-xs py-1.5 pl-2 transition-all duration-200"
+                                            }
+                                          >
+                                            <span>{subItem.title}</span>
+                                          </NavLink>
+                                        </SidebarMenuSubButton>
+                                      </SidebarMenuSubItem>
+                                    ))}
+                                  </SidebarMenuSub>
+                                </CollapsibleContent>
+                              </SidebarMenuItem>
+                            </Collapsible>
+                          ) : (
+                            <SidebarMenuItem>
+                              <SidebarMenuButton asChild>
                                 <NavLink
-                                  to={subItem.url}
+                                  to={item.url}
+                                  end
                                   className={({ isActive }) =>
                                     isActive
-                                      ? "text-white font-medium transition-all duration-200"
-                                      : "text-white/80 hover:text-white transition-all duration-200"
+                                      ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200"
+                                      : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"
                                   }
                                 >
-                                  <subItem.icon className="h-3.5 w-3.5 text-white transition-transform duration-200 group-hover:scale-110" />
-                                  <span className="text-sm font-light">{subItem.title}</span>
+                                  {open && <span>{item.title}</span>}
                                 </NavLink>
-                              )}
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-
-                {/* After e-Dokumen: KarierKu, Padamel, Block Tanggal, Anggaran, Kecap, Pengadaan, Linkers */}
-                {computedAfterEDokumenItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-
-                {/* MENU SIKOSTIK 28 - Only visible for Satker 3210 */}
-                {isSatker3210 && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={sikostikMenuItem.url}
-                        end
-                        className={({ isActive }) =>
-                          isActive
-                            ? "text-white font-semibold transition-all duration-200"
-                            : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <sikostikMenuItem.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">{sikostikMenuItem.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          )}
+                        </div>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
                 )}
+              </SidebarGroup>
+            )}
 
-                {/* MENU CETAK KUITANSI - Only visible for PPK Satker 3210 */}
-                {isSatker3210 && user?.role === "Pejabat Pembuat Komitmen" && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/cetak-kuitansi"
-                        end
-                        className={({ isActive }) =>
-                          isActive
-                            ? "text-white font-semibold transition-all duration-200"
-                            : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <Receipt className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">Cetak Kuitansi</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+            {/* MENU GROUP: ADMIN & UTILITAS */}
+            {getVisibleItems(adminUtilitasItems).length > 0 && (
+              <SidebarGroup className="px-3 py-1">
+                <SidebarGroupContent className="mt-0">
+                  <SidebarMenu className="space-y-1">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <button
+                          onClick={() => toggleGroup("adminUtilitas")}
+                          className={"flex items-center justify-between w-full transition-all duration-200 " + (true ? "text-white font-semibold" : "text-white/90 hover:text-white")}
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileCheck className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                            {open && <span className="font-medium">Admin & Utilitas</span>}
+                          </div>
+                          <ChevronDown
+                            className="h-4 w-4 transition-transform duration-300"
+                            style={{
+                              transform: expandedGroups.adminUtilitas ? "rotate(180deg)" : "rotate(0deg)",
+                            }}
+                          />
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+                {expandedGroups.adminUtilitas && (
+                  <SidebarGroupContent className="mt-1">
+                    <SidebarMenu className="space-y-0.5 pl-2">
+                      {getVisibleItems(adminUtilitasItems).map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild>
+                            <NavLink
+                              to={item.url}
+                              end
+                              className={({ isActive }) =>
+                                isActive
+                                  ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200"
+                                  : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"
+                              }
+                            >
+                              {open && <span>{item.title}</span>}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
                 )}
-
-                {/* User Management - Only visible for PPK */}
-                {isPPK && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/user-management"
-                        end
-                        className={({ isActive }) =>
-                        isActive
-                          ? "text-white font-semibold transition-all duration-200"
-                          : "text-white/90 hover:text-white transition-all duration-200"
-                        }
-                      >
-                        <UsersRound className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                        {open && <span className="font-medium">User Management</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-
-                {/* Pedoman */}
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/pedoman"
-                      end
-                      className={({ isActive }) =>
-                      isActive
-                        ? "text-white font-semibold transition-all duration-200"
-                        : "text-white/90 hover:text-white transition-all duration-200"
-                      }
-                    >
-                      <BookOpen className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                      {open && <span className="font-medium">Pedoman</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+              </SidebarGroup>
+            )}
           </div>
 
           {/* FOOTER - Fixed at bottom */}
