@@ -11,7 +11,17 @@ import {
   Clock,
   XCircle,
   Edit3,
+  Zap,
+  ChevronDown,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   readPulsaData,
   updatePersonStatusInRow,
