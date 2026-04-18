@@ -375,8 +375,48 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base">Daftar Pulsa</CardTitle>
+          {isPPK && kegiatanPendingMap.size > 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleBulkApprove({ type: 'all-pending' })}
+                disabled={actionLoading !== null}
+                title="Setujui semua item pending sekaligus"
+              >
+                {actionLoading === 'bulk-all-pending' ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Zap className="w-4 h-4 mr-2" />
+                )}
+                Approve Semua Pending ({pendingCount})
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={actionLoading !== null}>
+                    Per Kegiatan
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 bg-popover">
+                  <DropdownMenuLabel>Approve semua pending dari:</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {Array.from(kegiatanPendingMap.entries()).map(([keg, count]) => (
+                    <DropdownMenuItem
+                      key={keg}
+                      onClick={() => handleBulkApprove({ type: 'kegiatan', kegiatan: keg })}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
+                      <span className="flex-1 truncate">{keg}</span>
+                      <Badge variant="outline" className="ml-2">{count}</Badge>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
