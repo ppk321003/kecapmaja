@@ -178,12 +178,20 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                     <th className="px-4 py-2 text-left">Nama</th>
                     <th className="px-4 py-2 text-center">Tipe</th>
                     <th className="px-4 py-2 text-left">Kegiatan</th>
-                    <th className="px-4 py-2 text-right">Total</th>
+                    <th className="px-4 py-2 text-right">Total Ajuan</th>
+                    <th className="px-4 py-2 text-right">Total Disetujui</th>
                     <th className="px-4 py-2 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {persons.map((p, idx) => (
+                  {persons.map((p, idx) => {
+                    // Hitung total disetujui dari entries yang approved
+                    const totalDisetujui = p.entries
+                      .filter((e): e is NonNullable<typeof e> => e !== null)
+                      .filter(e => ['approved', 'approved_ppk', 'completed'].includes(e.status))
+                      .reduce((sum, e) => sum + e.nominal, 0);
+                    
+                    return (
                     <tr key={p.nama} className="border-b hover:bg-muted/50">
                       <td className="px-4 py-2">{idx + 1}</td>
                       <td className="px-4 py-2 font-medium">{p.nama}</td>
@@ -217,6 +225,9 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                       <td className="px-4 py-2 text-right font-mono font-semibold">
                         Rp {p.total.toLocaleString('id-ID')}
                       </td>
+                      <td className="px-4 py-2 text-right font-mono font-semibold text-green-600">
+                        Rp {totalDisetujui.toLocaleString('id-ID')}
+                      </td>
                       <td className="px-4 py-2 text-center">
                         {p.entries
                           .filter((e): e is NonNullable<typeof e> => e !== null)
@@ -234,7 +245,8 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                         })}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
