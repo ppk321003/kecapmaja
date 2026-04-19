@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -12,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle2, Loader2, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +24,13 @@ const MASTER_ORGANIK_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCv
 const MASTER_ORGANIK_SHEET = "MASTER.ORGANIK";
 const KODE_SATKER_FILTER = "3210";
 
+const KEPENTINGAN_OPTIONS = [
+  { id: "perpustakaan", label: "Layanan Perpustakaan" },
+  { id: "konsultasi", label: "Konsultasi Statistik" },
+  { id: "rekomendasi", label: "Rekomendasi Statistik (Khusus OPD/Pemda)" },
+  { id: "lainnya", label: "Lainnya" },
+];
+
 const formSchema = z.object({
   nama: z.string().trim().min(2, "Nama minimal 2 karakter").max(100, "Nama terlalu panjang"),
   asal: z.string().trim().min(2, "Asal/Instansi wajib diisi").max(150, "Terlalu panjang"),
@@ -33,8 +40,17 @@ const formSchema = z.object({
     .regex(/^\d+$/, "Nomor HP hanya boleh angka")
     .min(9, "Nomor HP minimal 9 digit")
     .max(15, "Nomor HP maksimal 15 digit"),
-  kepentingan: z.string().trim().min(3, "Kepentingan wajib diisi").max(500, "Terlalu panjang"),
+  kepentinganList: z.array(z.string()).min(1, "Pilih minimal 1 kepentingan"),
+  lainnyaText: z.string().optional(),
   tujuan: z.string().max(100).optional(),
+}).superRefine((data, ctx) => {
+  if (data.kepentinganList.includes("lainnya") && !data.lainnyaText?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["lainnyaText"],
+      message: "Mohon jelaskan kepentingan lainnya",
+    });
+  }
 });
 
 const formatTimestamp = (date: Date) => {
@@ -51,11 +67,19 @@ type FormState = {
   nama: string;
   asal: string;
   noHp: string;
-  kepentingan: string;
+  kepentinganList: string[];
+  lainnyaText: string;
   tujuan: string;
 };
 
-const INITIAL: FormState = { nama: "", asal: "", noHp: "", kepentingan: "", tujuan: "" };
+const INITIAL: FormState = { 
+  nama: "", 
+  asal: "", 
+  noHp: "", 
+  kepentinganList: [], 
+  lainnyaText: "",
+  tujuan: "" 
+};
 
 type Organik = { nama: string; noHp: string };
 
@@ -118,9 +142,19 @@ const ETamu = () => {
     fetchOrganik();
   }, []);
 
-  const handleChange = (key: keyof FormState, value: string) => {
+  const handleChange = (key: keyof FormState, value: string | string[]) => {
     setForm((p) => ({ ...p, [key]: value }));
     if (errors[key]) setErrors((p) => ({ ...p, [key]: undefined }));
+  };
+
+  const handleKepentinganToggle = (id: string) => {
+    setForm((p) => ({
+      ...p,
+      kepentinganList: p.kepentinganList.includes(id)
+        ? p.kepentinganList.filter((item) => item !== id)
+        : [...p.kepentinganList, id],
+    }));
+    if (errors.kepentinganList) setErrors((p) => ({ ...p, kepentinganList: undefined }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -143,12 +177,23 @@ const ETamu = () => {
       const tujuanNama = parsed.data.tujuan || "";
       const matched = organikList.find((o) => o.nama === tujuanNama);
       const noHpTujuan = matched?.noHp || "";
+      
+      // Format kepentingan: join selected labels, append lainnya text if selected
+      const selectedLabels = KEPENTINGAN_OPTIONS
+        .filter((opt) => parsed.data.kepentinganList.includes(opt.id))
+        .map((opt) => opt.label);
+      
+      let kepentinganText = selectedLabels.join("; ");
+      if (parsed.data.kepentinganList.includes("lainnya") && parsed.data.lainnyaText?.trim()) {
+        kepentinganText += " - " + parsed.data.lainnyaText.trim();
+      }
+
       const row = [
         timestamp,
         parsed.data.nama,
         parsed.data.asal,
         parsed.data.noHp,
-        parsed.data.kepentingan,
+        kepentinganText,
         tujuanNama,
         noHpTujuan,
       ];
@@ -325,19 +370,48 @@ const ETamu = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="kepentingan">
+                  <Label>
                     Kepentingan <span className="text-destructive">*</span>
                   </Label>
-                  <Textarea
-                    id="kepentingan"
-                    placeholder="Contoh: Konsultasi data publikasi"
-                    rows={3}
-                    value={form.kepentingan}
-                    onChange={(e) => handleChange("kepentingan", e.target.value)}
-                    maxLength={500}
-                  />
-                  {errors.kepentingan && (
-                    <p className="text-xs text-destructive">{errors.kepentingan}</p>
+                  <div className="space-y-3 rounded-lg border border-input bg-muted/30 p-4">
+                    {KEPENTINGAN_OPTIONS.map((option) => (
+                      <div key={option.id} className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id={`kepentingan-${option.id}`}
+                            checked={form.kepentinganList.includes(option.id)}
+                            onCheckedChange={() => handleKepentinganToggle(option.id)}
+                          />
+                          <Label
+                            htmlFor={`kepentingan-${option.id}`}
+                            className="font-normal cursor-pointer"
+                          >
+                            {option.label}
+                          </Label>
+                        </div>
+                        {option.id === "lainnya" && form.kepentinganList.includes("lainnya") && (
+                          <div className="ml-7 mt-2">
+                            <Input
+                              placeholder="Jelaskan kepentingan lainnya..."
+                              value={form.lainnyaText}
+                              onChange={(e) =>
+                                handleChange("lainnyaText", e.target.value)
+                              }
+                              maxLength={300}
+                              className="text-sm"
+                            />
+                            {errors.lainnyaText && (
+                              <p className="mt-1 text-xs text-destructive">
+                                {errors.lainnyaText}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {errors.kepentinganList && (
+                    <p className="text-xs text-destructive">{errors.kepentinganList}</p>
                   )}
                 </div>
 
