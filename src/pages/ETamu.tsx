@@ -57,15 +57,17 @@ type FormState = {
 
 const INITIAL: FormState = { nama: "", asal: "", noHp: "", kepentingan: "", tujuan: "" };
 
+type Organik = { nama: string; noHp: string };
+
 const ETamu = () => {
   const [form, setForm] = useState<FormState>(INITIAL);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [organikList, setOrganikList] = useState<string[]>([]);
+  const [organikList, setOrganikList] = useState<Organik[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(true);
 
-  // Fetch dropdown organik (filter kode satker 3210)
+  // Fetch dropdown organik (filter kode satker 3210) + No HP
   useEffect(() => {
     const fetchOrganik = async () => {
       try {
@@ -84,15 +86,29 @@ const ETamu = () => {
         const satkerIdx = headers.findIndex(
           (h) => h.includes("kode") && h.includes("satker"),
         );
+        // Kolom I = index 8; fallback cari header berisi "hp"
+        let hpIdx = headers.findIndex((h) => h.replace(/[\s.]/g, "") === "nohp");
+        if (hpIdx === -1) hpIdx = headers.findIndex((h) => h.includes("hp"));
+        if (hpIdx === -1) hpIdx = 8;
+
         const filtered = rows.slice(1).filter((r) => {
           if (satkerIdx === -1) return true;
           return String(r[satkerIdx] || "").trim() === KODE_SATKER_FILTER;
         });
-        const names = filtered
-          .map((r) => String(r[namaIdx] || "").trim())
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b, "id"));
-        setOrganikList(Array.from(new Set(names)));
+        const items: Organik[] = filtered
+          .map((r) => ({
+            nama: String(r[namaIdx] || "").trim(),
+            noHp: String(r[hpIdx] || "").trim(),
+          }))
+          .filter((o) => o.nama);
+        const seen = new Set<string>();
+        const unique = items.filter((o) => {
+          if (seen.has(o.nama)) return false;
+          seen.add(o.nama);
+          return true;
+        });
+        unique.sort((a, b) => a.nama.localeCompare(b.nama, "id"));
+        setOrganikList(unique);
       } catch (err) {
         console.error("Gagal memuat daftar organik:", err);
       } finally {
@@ -124,13 +140,17 @@ const ETamu = () => {
     setSubmitting(true);
     try {
       const timestamp = formatTimestamp(new Date());
+      const tujuanNama = parsed.data.tujuan || "";
+      const matched = organikList.find((o) => o.nama === tujuanNama);
+      const noHpTujuan = matched?.noHp || "";
       const row = [
         timestamp,
         parsed.data.nama,
         parsed.data.asal,
         parsed.data.noHp,
         parsed.data.kepentingan,
-        parsed.data.tujuan || "",
+        tujuanNama,
+        noHpTujuan,
       ];
 
       const { error } = await supabase.functions.invoke("google-sheets", {
