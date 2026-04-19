@@ -13,9 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2, AlertTriangle, Loader2, Send } from "lucide-react";
+import { CheckCircle2, Loader2, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import bpsLogo from "@/assets/bps-logo.png";
 
 const TAMU_SPREADSHEET_ID = "1Q9kPlXg18BvAtnbM-cpoQ0xud1zC3rpA6CDa3EZcRGY";
 const TAMU_SHEET = "Sheet1";
@@ -56,15 +57,17 @@ type FormState = {
 
 const INITIAL: FormState = { nama: "", asal: "", noHp: "", kepentingan: "", tujuan: "" };
 
+type Organik = { nama: string; noHp: string };
+
 const ETamu = () => {
   const [form, setForm] = useState<FormState>(INITIAL);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [organikList, setOrganikList] = useState<string[]>([]);
+  const [organikList, setOrganikList] = useState<Organik[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(true);
 
-  // Fetch dropdown organik (filter kode satker 3210)
+  // Fetch dropdown organik (filter kode satker 3210) + No HP
   useEffect(() => {
     const fetchOrganik = async () => {
       try {
@@ -83,15 +86,29 @@ const ETamu = () => {
         const satkerIdx = headers.findIndex(
           (h) => h.includes("kode") && h.includes("satker"),
         );
+        // Kolom I = index 8; fallback cari header berisi "hp"
+        let hpIdx = headers.findIndex((h) => h.replace(/[\s.]/g, "") === "nohp");
+        if (hpIdx === -1) hpIdx = headers.findIndex((h) => h.includes("hp"));
+        if (hpIdx === -1) hpIdx = 8;
+
         const filtered = rows.slice(1).filter((r) => {
           if (satkerIdx === -1) return true;
           return String(r[satkerIdx] || "").trim() === KODE_SATKER_FILTER;
         });
-        const names = filtered
-          .map((r) => String(r[namaIdx] || "").trim())
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b, "id"));
-        setOrganikList(Array.from(new Set(names)));
+        const items: Organik[] = filtered
+          .map((r) => ({
+            nama: String(r[namaIdx] || "").trim(),
+            noHp: String(r[hpIdx] || "").trim(),
+          }))
+          .filter((o) => o.nama);
+        const seen = new Set<string>();
+        const unique = items.filter((o) => {
+          if (seen.has(o.nama)) return false;
+          seen.add(o.nama);
+          return true;
+        });
+        unique.sort((a, b) => a.nama.localeCompare(b.nama, "id"));
+        setOrganikList(unique);
       } catch (err) {
         console.error("Gagal memuat daftar organik:", err);
       } finally {
@@ -123,13 +140,17 @@ const ETamu = () => {
     setSubmitting(true);
     try {
       const timestamp = formatTimestamp(new Date());
+      const tujuanNama = parsed.data.tujuan || "";
+      const matched = organikList.find((o) => o.nama === tujuanNama);
+      const noHpTujuan = matched?.noHp || "";
       const row = [
         timestamp,
         parsed.data.nama,
         parsed.data.asal,
         parsed.data.noHp,
         parsed.data.kepentingan,
-        parsed.data.tujuan || "",
+        tujuanNama,
+        noHpTujuan,
       ];
 
       const { error } = await supabase.functions.invoke("google-sheets", {
@@ -200,8 +221,8 @@ const ETamu = () => {
       <div className="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-10">
         {/* Header instansi */}
         <div className="mb-6 text-center text-white">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-2xl font-bold text-[hsl(215,80%,30%)] shadow-lg">
-            BPS
+          <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/95 p-3 shadow-xl ring-1 ring-white/40">
+            <img src={bpsLogo} alt="Logo BPS" className="h-full w-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight md:text-4xl">e-Tamu</h1>
           <p className="mt-1 text-sm text-white/85 md:text-base">
@@ -213,28 +234,48 @@ const ETamu = () => {
           <CardHeader className="space-y-1 border-b">
             <CardTitle className="text-xl">Formulir Kunjungan</CardTitle>
             <CardDescription>
-              Mohon lengkapi data berikut. Tanda <span className="text-destructive">*</span> wajib
-              diisi.
+              Mohon lengkapi data kunjungan Anda dengan benar.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {success ? (
-              <Alert className="border-green-500/40 bg-green-50 text-green-900">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <AlertTitle className="font-semibold">Terima kasih!</AlertTitle>
-                <AlertDescription>
-                  Data berhasil dikirim. Silakan menunggu petugas yang dituju.
-                  <div className="mt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setSuccess(false)}
-                    >
-                      Isi tamu berikutnya
-                    </Button>
+              <div className="flex flex-col items-center text-center py-6 px-2">
+                <div className="relative mb-5">
+                  <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-2xl" />
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-xl">
+                    <CheckCircle2 className="h-11 w-11 text-white" strokeWidth={2.5} />
                   </div>
-                </AlertDescription>
-              </Alert>
+                </div>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Data Tercatat
+                </div>
+                <h3 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+                  Terima Kasih atas Kunjungan Anda
+                </h3>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  Kehadiran Anda merupakan kehormatan bagi kami. Data kunjungan telah berhasil
+                  tercatat pada sistem <span className="font-semibold text-foreground">e-Tamu BPS Kabupaten Majalengka</span>.
+                  Mohon berkenan menunggu sejenak, petugas yang dituju akan segera melayani Anda.
+                </p>
+                <div className="mt-5 w-full max-w-md rounded-lg border border-border bg-muted/40 px-4 py-3 text-left">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    <span className="font-semibold text-foreground">Salam Hormat,</span>
+                    <br />
+                    Badan Pusat Statistik Kabupaten Majalengka
+                    <br />
+                    <span className="italic">"Menyediakan Data, Mencerdaskan Bangsa"</span>
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-6"
+                  onClick={() => setSuccess(false)}
+                >
+                  Isi Tamu Berikutnya
+                </Button>
+              </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -320,9 +361,9 @@ const ETamu = () => {
                           Daftar pegawai tidak tersedia
                         </div>
                       )}
-                      {organikList.map((nama) => (
-                        <SelectItem key={nama} value={nama}>
-                          {nama}
+                      {organikList.map((o) => (
+                        <SelectItem key={o.nama} value={o.nama}>
+                          {o.nama}
                         </SelectItem>
                       ))}
                     </SelectContent>
