@@ -31,6 +31,18 @@ const KEPENTINGAN_OPTIONS = [
   { id: "lainnya", label: "Lainnya" },
 ];
 
+const JENIS_KELAMIN_OPTIONS = ["Laki-laki", "Perempuan"];
+const UMUR_OPTIONS = [
+  "Dibawah 17 tahun",
+  "17-25",
+  "26-34",
+  "35-44",
+  "45-54",
+  "55-65",
+  "Diatas 65",
+];
+const PENDIDIKAN_OPTIONS = ["SLTA/Sederajat", "D1/D2/D3", "D4/S1", "S2", "S3"];
+
 const formSchema = z.object({
   nama: z.string().trim().min(2, "Nama minimal 2 karakter").max(100, "Nama terlalu panjang"),
   asal: z.string().trim().min(2, "Asal/Instansi wajib diisi").max(150, "Terlalu panjang"),
@@ -40,6 +52,10 @@ const formSchema = z.object({
     .regex(/^\d+$/, "Nomor HP hanya boleh angka")
     .min(9, "Nomor HP minimal 9 digit")
     .max(15, "Nomor HP maksimal 15 digit"),
+  jenisKelamin: z.string().min(1, "Jenis kelamin wajib dipilih"),
+  email: z.string().trim().email("Format email tidak valid").max(120, "Email terlalu panjang"),
+  umur: z.string().min(1, "Kelompok umur wajib dipilih"),
+  pendidikan: z.string().min(1, "Pendidikan wajib dipilih"),
   kepentinganList: z.array(z.string()).min(1, "Pilih minimal 1 kepentingan"),
   lainnyaText: z.string().optional(),
   tujuan: z.string().max(100).optional(),
@@ -67,18 +83,26 @@ type FormState = {
   nama: string;
   asal: string;
   noHp: string;
+  jenisKelamin: string;
+  email: string;
+  umur: string;
+  pendidikan: string;
   kepentinganList: string[];
   lainnyaText: string;
   tujuan: string;
 };
 
-const INITIAL: FormState = { 
-  nama: "", 
-  asal: "", 
-  noHp: "", 
-  kepentinganList: [], 
+const INITIAL: FormState = {
+  nama: "",
+  asal: "",
+  noHp: "",
+  jenisKelamin: "",
+  email: "",
+  umur: "",
+  pendidikan: "",
+  kepentinganList: [],
   lainnyaText: "",
-  tujuan: "" 
+  tujuan: "",
 };
 
 type Organik = { nama: string; noHp: string };
@@ -188,14 +212,20 @@ const ETamu = () => {
         kepentinganText += " - " + parsed.data.lainnyaText.trim();
       }
 
+      // Kolom A-G existing + H kosong (placeholder) + I-L baru
       const row = [
-        timestamp,
-        parsed.data.nama,
-        parsed.data.asal,
-        parsed.data.noHp,
-        kepentinganText,
-        tujuanNama,
-        noHpTujuan,
+        timestamp,                    // A
+        parsed.data.nama,             // B
+        parsed.data.asal,             // C
+        parsed.data.noHp,             // D
+        kepentinganText,              // E
+        tujuanNama,                   // F
+        noHpTujuan,                   // G
+        "",                           // H (reserved)
+        parsed.data.jenisKelamin,     // I
+        parsed.data.email,            // J
+        parsed.data.umur,             // K
+        parsed.data.pendidikan,       // L
       ];
 
       const { error } = await supabase.functions.invoke("google-sheets", {
