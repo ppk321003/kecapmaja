@@ -113,7 +113,7 @@ const INITIAL: FormState = {
   tujuan: "",
 };
 
-type Organik = { nama: string; noHp: string };
+type Organik = { nama: string; noHp: string; jabatan: string };
 
 const ETamu = () => {
   const [form, setForm] = useState<FormState>(INITIAL);
@@ -123,7 +123,7 @@ const ETamu = () => {
   const [organikList, setOrganikList] = useState<Organik[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(true);
 
-  // Fetch dropdown organik (filter kode satker 3210) + No HP
+  // Fetch dropdown organik (filter kode satker 3210) + No HP + Jabatan
   useEffect(() => {
     const fetchOrganik = async () => {
       try {
@@ -146,6 +146,10 @@ const ETamu = () => {
         let hpIdx = headers.findIndex((h) => h.replace(/[\s.]/g, "") === "nohp");
         if (hpIdx === -1) hpIdx = headers.findIndex((h) => h.includes("hp"));
         if (hpIdx === -1) hpIdx = 8;
+        
+        // Kolom E = index 4; fallback cari header berisi "jabatan"
+        let jabatanIdx = headers.findIndex((h) => h === "jabatan");
+        if (jabatanIdx === -1) jabatanIdx = 4;
 
         const filtered = rows.slice(1).filter((r) => {
           if (satkerIdx === -1) return true;
@@ -155,6 +159,7 @@ const ETamu = () => {
           .map((r) => ({
             nama: String(r[namaIdx] || "").trim(),
             noHp: String(r[hpIdx] || "").trim(),
+            jabatan: String(r[jabatanIdx] || "").trim(),
           }))
           .filter((o) => o.nama);
         const seen = new Set<string>();
@@ -349,6 +354,18 @@ const ETamu = () => {
                     <br />
                     <span className="italic">"Menyediakan Data, Mencerdaskan Bangsa"</span>
                   </p>
+                </div>
+                <div className="mt-6 w-full max-w-md rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 px-4 py-4">
+                  <p className="text-xs leading-relaxed text-foreground mb-3">
+                    <span className="font-semibold">Untuk evaluasi, perbaikan dan peningkatan layanan kami</span> mohon isikan pengalaman Saudara melalui:
+                  </p>
+                  <Button
+                    type="button"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                    onClick={() => window.open('https://s.bps.go.id/skd3210', '_blank')}
+                  >
+                    ISI SKD
+                  </Button>
                 </div>
                 <Button
                   type="button"
@@ -551,7 +568,14 @@ const ETamu = () => {
                         placeholder={
                           loadingOrganik ? "Memuat daftar pegawai…" : "Pilih pegawai (opsional)"
                         }
-                      />
+                      >
+                        {form.tujuan && organikList.find(o => o.nama === form.tujuan) && (
+                          <span>
+                            {form.tujuan}
+                            {organikList.find(o => o.nama === form.tujuan)?.jabatan && ` - ${organikList.find(o => o.nama === form.tujuan)?.jabatan}`}
+                          </span>
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="max-h-72">
                       {organikList.length === 0 && !loadingOrganik && (
@@ -561,7 +585,10 @@ const ETamu = () => {
                       )}
                       {organikList.map((o) => (
                         <SelectItem key={o.nama} value={o.nama}>
-                          {o.nama}
+                          <span>
+                            {o.nama}
+                            {o.jabatan && ` - ${o.jabatan}`}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
