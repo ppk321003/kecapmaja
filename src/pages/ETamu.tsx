@@ -221,8 +221,8 @@ const ETamu = () => {
       <div className="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-4 py-10">
         {/* Header instansi */}
         <div className="mb-6 text-center text-white">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-2xl font-bold text-[hsl(215,80%,30%)] shadow-lg">
-            BPS
+          <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/95 p-3 shadow-xl ring-1 ring-white/40">
+            <img src={bpsLogo} alt="Logo BPS" className="h-full w-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight md:text-4xl">e-Tamu</h1>
           <p className="mt-1 text-sm text-white/85 md:text-base">
