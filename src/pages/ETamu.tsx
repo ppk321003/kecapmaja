@@ -41,7 +41,15 @@ const UMUR_OPTIONS = [
   "55 - 65 tahun",
   "Diatas 65 tahun",
 ];
-const PENDIDIKAN_OPTIONS = ["SLTA/Sederajat", "D1/D2/D3", "D4/S1", "S2", "S3"];
+const PENDIDIKAN_OPTIONS = [
+  "SD/Sederajat",
+  "SLTP/Sederajat",
+  "SLTA/Sederajat",
+  "D1/D2/D3",
+  "D4/S1",
+  "S2",
+  "S3",
+];
 
 const formSchema = z.object({
   nama: z.string().trim().min(2, "Nama minimal 2 karakter").max(100, "Nama terlalu panjang"),
