@@ -54,6 +54,7 @@ import BuatKuitansi from "./pages/BuatKuitansi";
 import DetailKuitansi from "./pages/DetailKuitansi";
 import EditKuitansi from "./pages/EditKuitansi";
 import LayananUmum from "./pages/LayananUmum";
+import ETamu from "./pages/ETamu";
 import BahanRevisiAnggaran from "./components/bahanrevisi/BahanRevisiAnggaran";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,7 @@ const App = () => (
             <Route path="/edit-kuitansi/:id" element={<ProtectedRoute><Layout><EditKuitansi /></Layout></ProtectedRoute>} />
             <Route path="/bahan-revisi-anggaran" element={<ProtectedRoute><Layout><BahanRevisiAnggaran /></Layout></ProtectedRoute>} />
             <Route path="/layanan-umum" element={<LayananUmum />} />
+            <Route path="/e-tamu" element={<ETamu />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
