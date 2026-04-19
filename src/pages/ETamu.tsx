@@ -234,8 +234,7 @@ const ETamu = () => {
           <CardHeader className="space-y-1 border-b">
             <CardTitle className="text-xl">Formulir Kunjungan</CardTitle>
             <CardDescription>
-              Mohon lengkapi data berikut. Tanda <span className="text-destructive">*</span> wajib
-              diisi.
+              Mohon lengkapi data kunjungan Anda dengan benar.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
