@@ -15,6 +15,7 @@ import DashboardPerjadin from "@/components/DashboardPerjadin";
 import LKKinerja from "@/components/LK-Kinerja";
 import DashboardPencairan from "@/components/DashboardPencairan";
 import DashboardSikostik28 from "@/components/DashboardSikostik28";
+import DashboardPelayanan from "@/components/DashboardPelayanan";
 
 // Default fallback untuk compatibility
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
@@ -631,7 +632,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [masterDataLoaded, setMasterDataLoaded] = useState(false);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
-  const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28'>('honorarium');
+  const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28' | 'pelayanan'>('honorarium');
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [filterFungsi, setFilterFungsi] = useState<string>("Semua Fungsi");
   const isSatker3210 = user?.satker === '3210';
@@ -1502,13 +1503,14 @@ export default function Dashboard() {
         
         <div className="flex items-center gap-4">
           {/* Tabs Utama */}
-          <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28')}>
+          <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28' | 'pelayanan')}>
             <TabsList>
               <TabsTrigger value="honorarium">Honorarium</TabsTrigger>
               <TabsTrigger value="perjadin">Perjadin</TabsTrigger>
               {isSatker3210 && <TabsTrigger value="kinerja">Kinerja</TabsTrigger>}
               <TabsTrigger value="pencairan">Sigap</TabsTrigger>
               {isSatker3210 && <TabsTrigger value="sikostik28">Sikostik28</TabsTrigger>}
+              {isSatker3210 && <TabsTrigger value="pelayanan">Pelayanan</TabsTrigger>}
             </TabsList>
           </Tabs>
 
@@ -1828,6 +1830,10 @@ export default function Dashboard() {
           />
         ) : isSatker3210 && mainTab === 'sikostik28' ? (
           <DashboardSikostik28 
+            filterTahun={filterTahun}
+          />
+        ) : isSatker3210 && mainTab === 'pelayanan' ? (
+          <DashboardPelayanan 
             filterTahun={filterTahun}
           />
         ) : (
