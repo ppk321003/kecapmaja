@@ -34,12 +34,12 @@ const KEPENTINGAN_OPTIONS = [
 const JENIS_KELAMIN_OPTIONS = ["Laki-laki", "Perempuan"];
 const UMUR_OPTIONS = [
   "Dibawah 17 tahun",
-  "17-25",
-  "26-34",
-  "35-44",
-  "45-54",
-  "55-65",
-  "Diatas 65",
+  "17 - 25 tahun",
+  "26 - 34 tahun",
+  "35 - 44 tahun",
+  "45 - 54 tahun",
+  "55 - 65 tahun",
+  "Diatas 65 tahun",
 ];
 const PENDIDIKAN_OPTIONS = ["SLTA/Sederajat", "D1/D2/D3", "D4/S1", "S2", "S3"];
 
