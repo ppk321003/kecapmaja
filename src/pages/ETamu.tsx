@@ -13,9 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2, AlertTriangle, Loader2, Send } from "lucide-react";
+import { CheckCircle2, Loader2, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import bpsLogo from "@/assets/bps-logo.png";
 
 const TAMU_SPREADSHEET_ID = "1Q9kPlXg18BvAtnbM-cpoQ0xud1zC3rpA6CDa3EZcRGY";
 const TAMU_SHEET = "Sheet1";
