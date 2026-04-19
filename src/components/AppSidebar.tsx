@@ -168,7 +168,7 @@ export function AppSidebar() {
     }));
   };
 
-  console.log("AppSidebar Loaded - User:", user?.name, "| Role:", user?.role, "| Satker:", user?.satker);
+  console.log("AppSidebar Loaded - User:", user?.username, "| Role:", user?.role, "| Satker:", user?.satker);
 
   return (
     <Sidebar
