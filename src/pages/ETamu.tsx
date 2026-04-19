@@ -399,6 +399,92 @@ const ETamu = () => {
                   {errors.noHp && <p className="text-xs text-destructive">{errors.noHp}</p>}
                 </div>
 
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    Email <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="nama@email.com"
+                    value={form.email}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                    maxLength={120}
+                  />
+                  {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+                </div>
+
+                {/* Grid 2 kolom: Jenis Kelamin & Umur */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="jenisKelamin">
+                      Jenis Kelamin <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={form.jenisKelamin}
+                      onValueChange={(v) => handleChange("jenisKelamin", v)}
+                    >
+                      <SelectTrigger id="jenisKelamin">
+                        <SelectValue placeholder="Pilih..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {JENIS_KELAMIN_OPTIONS.map((o) => (
+                          <SelectItem key={o} value={o}>{o}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.jenisKelamin && (
+                      <p className="text-xs text-destructive">{errors.jenisKelamin}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="umur">
+                      Kelompok Umur <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={form.umur}
+                      onValueChange={(v) => handleChange("umur", v)}
+                    >
+                      <SelectTrigger id="umur">
+                        <SelectValue placeholder="Pilih..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UMUR_OPTIONS.map((o) => (
+                          <SelectItem key={o} value={o}>{o}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.umur && (
+                      <p className="text-xs text-destructive">{errors.umur}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pendidikan */}
+                <div className="space-y-2">
+                  <Label htmlFor="pendidikan">
+                    Pendidikan Tertinggi <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={form.pendidikan}
+                    onValueChange={(v) => handleChange("pendidikan", v)}
+                  >
+                    <SelectTrigger id="pendidikan">
+                      <SelectValue placeholder="Pilih pendidikan tertinggi yang ditamatkan..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PENDIDIKAN_OPTIONS.map((o) => (
+                        <SelectItem key={o} value={o}>{o}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.pendidikan && (
+                    <p className="text-xs text-destructive">{errors.pendidikan}</p>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label>
                     Kepentingan <span className="text-destructive">*</span>
