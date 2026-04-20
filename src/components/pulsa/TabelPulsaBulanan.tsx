@@ -462,7 +462,8 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                         </th>
                       );
                     })}
-                    <th className="px-3 py-2 text-right border" style={{ minWidth: '100px' }}>Total</th>
+                    <th className="px-3 py-2 text-right border" style={{ minWidth: '100px' }}>Total Ajuan</th>
+                    <th className="px-3 py-2 text-right border" style={{ minWidth: '120px' }}>Total Disetujui</th>
                     <th className="px-3 py-2 text-center border" style={{ minWidth: '50px' }}>✓</th>
                     {isPPK && (
                       <th className="px-3 py-2 text-center border" style={{ minWidth: '90px' }}>Aksi PPK</th>
@@ -490,7 +491,7 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                     return (
                       <tr
                         key={person.nama}
-                        className={`border-b ${isDuplicate ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'hover:bg-muted/50'}`}
+                        className={`border-b ${isDuplicate ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'hover:bg-muted/50'}`}
                       >
                         <td className="px-3 py-2 border text-center">{idx + 1}</td>
                         <td className="px-3 py-2 border">
@@ -541,6 +542,9 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                         })}
                         <td className="px-3 py-2 border text-right font-semibold font-mono">
                           Rp {person.total.toLocaleString('id-ID')}
+                        </td>
+                        <td className="px-3 py-2 border text-right font-semibold font-mono">
+                          Rp {approvedEntries.reduce((sum, e) => sum + e.nominal, 0).toLocaleString('id-ID')}
                         </td>
                         <td className="px-3 py-2 border text-center">
                           {approvedEntries.length > 0 ? (
@@ -597,6 +601,12 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                     <td className="px-3 py-2 border text-right font-mono text-sm">
                       Rp {persons.reduce((sum, p) => sum + p.total, 0).toLocaleString('id-ID')}
                     </td>
+                    <td className="px-3 py-2 border text-right font-mono text-sm">
+                      Rp {persons.reduce((sum, p) => {
+                        const approved = p.entries.filter((e): e is NonNullable<typeof e> => e !== null && ['approved', 'approved_ppk', 'completed'].includes(e.status));
+                        return sum + approved.reduce((s, e) => s + e.nominal, 0);
+                      }, 0).toLocaleString('id-ID')}
+                    </td>
                     <td className="px-3 py-2 border text-center"></td>
                   </tr>
                   {/* Approved Row */}
@@ -613,6 +623,12 @@ export const TabelPulsaBulanan: React.FC<TabelPulsaBulananProps> = ({
                         </td>
                       );
                     })}
+                    <td className="px-3 py-2 border text-right font-mono text-sm">
+                      Rp {persons.reduce((sum, p) => {
+                        const approved = p.entries.filter((e): e is NonNullable<typeof e> => e !== null && ['approved', 'approved_ppk', 'completed'].includes(e.status));
+                        return sum + approved.reduce((s, e) => s + e.nominal, 0);
+                      }, 0).toLocaleString('id-ID')}
+                    </td>
                     <td className="px-3 py-2 border text-right font-mono text-sm">
                       Rp {persons.reduce((sum, p) => {
                         const approved = p.entries.filter((e): e is NonNullable<typeof e> => e !== null && ['approved', 'approved_ppk', 'completed'].includes(e.status));

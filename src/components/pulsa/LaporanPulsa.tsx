@@ -234,14 +234,16 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                           .map((e, i) => {
                           const badge = (() => {
                             if (['approved', 'approved_ppk', 'completed'].includes(e.status))
-                              return { label: '✓', variant: 'default' as const };
+                              return { label: '✓', variant: 'default' as const, sizeClass: 'text-xs px-1.5 py-0.5' };
                             if (['rejected', 'rejected_ppk'].includes(e.status))
-                              return { label: '❌', variant: 'destructive' as const };
+                              return { label: '✕', variant: 'destructive' as const, textColor: 'text-white font-bold', sizeClass: 'text-xs px-1.5 py-0.5' };
                             if (['pending', 'pending_ppk'].includes(e.status))
-                              return { label: '⏳', variant: 'outline' as const };
-                            return { label: 'Draft', variant: 'secondary' as const };
+                              return { label: '⏳', variant: 'outline' as const, sizeClass: 'text-xs px-1.5 py-0.5' };
+                            return { label: 'Draft', variant: 'secondary' as const, sizeClass: 'text-xs px-2' };
                           })();
-                          return <Badge key={i} variant={badge.variant} className="text-xs mx-0.5">{badge.label}</Badge>;
+                          const extraClass = badge.textColor ? badge.textColor : '';
+                          const sizeClass = badge.sizeClass || 'text-xs mx-0.5';
+                          return <Badge key={i} variant={badge.variant} className={`${sizeClass} mx-0.5 ${extraClass}`}>{badge.label}</Badge>;
                         })}
                       </td>
                     </tr>
