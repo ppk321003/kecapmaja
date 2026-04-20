@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { readPulsaData, buildPersonView, PulsaRow } from '@/services/pulsaSheetsService';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
+import { terbilangRupiah, cleanTerbilang } from '@/lib/terbilang';
 
 interface LaporanPulsaProps {
   bulan: number;
@@ -154,8 +155,24 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
                       <td className="px-4 py-2 text-right font-mono text-green-600 font-semibold">Rp {k.totalDisetujui.toLocaleString('id-ID')}</td>
                     </tr>
                   ))}
+                  {/* Total Row */}
+                  <tr className="bg-muted font-semibold border-t-2">
+                    <td className="px-4 py-2 text-left">JUMLAH</td>
+                    <td className="px-4 py-2 text-right">{byKegiatan.reduce((sum, k) => sum + k.countOrang, 0)}</td>
+                    <td className="px-4 py-2 text-right">{byKegiatan.reduce((sum, k) => sum + k.countApproved, 0)}</td>
+                    <td className="px-4 py-2 text-right font-mono">Rp {byKegiatan.reduce((sum, k) => sum + k.totalAjuan, 0).toLocaleString('id-ID')}</td>
+                    <td className="px-4 py-2 text-right font-mono text-green-600">Rp {byKegiatan.reduce((sum, k) => sum + k.totalDisetujui, 0).toLocaleString('id-ID')}</td>
+                  </tr>
                 </tbody>
               </table>
+            </div>
+          )}
+          {byKegiatan.length > 0 && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+              <p className="text-muted-foreground">Terbilang Total Disetujui:</p>
+              <p className="font-semibold text-blue-900 capitalize mt-1">
+                {cleanTerbilang(terbilangRupiah(byKegiatan.reduce((sum, k) => sum + k.totalDisetujui, 0)))}
+              </p>
             </div>
           )}
         </CardContent>
