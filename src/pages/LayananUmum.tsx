@@ -220,7 +220,7 @@ export default function LayananUmum() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full max-w-7xl mx-auto px-4 py-8">
         {/* Search & Filters */}
         <div className="space-y-4 mb-8">
           <Input
@@ -370,7 +370,7 @@ export default function LayananUmum() {
                   className="group block rounded-lg bg-card border border-border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1"
                 >
                   {/* Thumbnail */}
-                  <div className="relative w-full aspect-video bg-slate-100 overflow-hidden">
+                  <div className="relative w-full aspect-square bg-slate-100 overflow-hidden">
                     {thumbnailSrc ? (
                       <img
                         src={thumbnailSrc}
