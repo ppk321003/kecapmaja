@@ -1838,6 +1838,10 @@ export default function Dashboard() {
           <DashboardPelayanan 
             filterTahun={filterTahun}
           />
+        ) : isSatker3210 && mainTab === 'humas' ? (
+          <DashboardHumas 
+            filterTahun={filterTahun}
+          />
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <p>Tab ini hanya tersedia untuk Satker 3210</p>
