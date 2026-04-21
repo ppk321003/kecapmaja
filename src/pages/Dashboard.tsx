@@ -16,6 +16,7 @@ import LKKinerja from "@/components/LK-Kinerja";
 import DashboardPencairan from "@/components/DashboardPencairan";
 import DashboardSikostik28 from "@/components/DashboardSikostik28";
 import DashboardPelayanan from "@/components/DashboardPelayanan";
+import DashboardHumas from "@/components/DashboardHumas";
 
 // Default fallback untuk compatibility
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
@@ -632,7 +633,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [masterDataLoaded, setMasterDataLoaded] = useState(false);
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
-  const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28' | 'pelayanan'>('honorarium');
+  const [mainTab, setMainTab] = useState<'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28' | 'pelayanan' | 'humas'>('honorarium');
   const [viewMode, setViewMode] = useState<'kegiatan' | 'anggaran'>('anggaran');
   const [filterFungsi, setFilterFungsi] = useState<string>("Semua Fungsi");
   const isSatker3210 = user?.satker === '3210';
@@ -1503,7 +1504,7 @@ export default function Dashboard() {
         
         <div className="flex items-center gap-4">
           {/* Tabs Utama */}
-          <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28' | 'pelayanan')}>
+          <Tabs value={mainTab} onValueChange={value => setMainTab(value as 'honorarium' | 'perjadin' | 'kinerja' | 'pencairan' | 'sikostik28' | 'pelayanan' | 'humas')}>
             <TabsList>
               <TabsTrigger value="honorarium">Honorarium</TabsTrigger>
               <TabsTrigger value="perjadin">Perjadin</TabsTrigger>
@@ -1511,6 +1512,7 @@ export default function Dashboard() {
               <TabsTrigger value="pencairan">Sigap</TabsTrigger>
               {isSatker3210 && <TabsTrigger value="sikostik28">Sikostik28</TabsTrigger>}
               {isSatker3210 && <TabsTrigger value="pelayanan">Pelayanan</TabsTrigger>}
+              {isSatker3210 && <TabsTrigger value="humas">Humas</TabsTrigger>}
             </TabsList>
           </Tabs>
 
@@ -1834,6 +1836,10 @@ export default function Dashboard() {
           />
         ) : isSatker3210 && mainTab === 'pelayanan' ? (
           <DashboardPelayanan 
+            filterTahun={filterTahun}
+          />
+        ) : isSatker3210 && mainTab === 'humas' ? (
+          <DashboardHumas 
             filterTahun={filterTahun}
           />
         ) : (
