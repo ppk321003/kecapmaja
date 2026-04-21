@@ -216,6 +216,167 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
         </Card>
       </div>
 
+      {/* PPK Resume Card — visible only for PPK */}
+      {isPPK && (
+        <Card className="border-primary/30 shadow-md">
+          <CardHeader className="pb-3 bg-primary/5 border-b">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-primary" />
+              Resume PPK — Analisis Persetujuan {bulanNama}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            {/* Top metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Layers className="w-3 h-3" /> Jumlah Diajukan
+                </p>
+                <p className="text-xl font-bold">{ppkResume.totalAjuanCount}</p>
+                <p className="text-[11px] text-muted-foreground">entri pengajuan</p>
+              </div>
+              <div className="rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Disetujui
+                </p>
+                <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">
+                  {ppkResume.totalDisetujuiCount}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  ({ppkResume.persetujuanRate}% dari ajuan)
+                </p>
+              </div>
+              <div className="rounded-lg border bg-rose-50 dark:bg-rose-950/30 p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <XCircle className="w-3 h-3 text-rose-600" /> Ditolak
+                </p>
+                <p className="text-xl font-bold text-rose-700 dark:text-rose-400">
+                  {ppkResume.totalRejectedCount}
+                </p>
+                <p className="text-[11px] text-muted-foreground">entri</p>
+              </div>
+              <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Belum Diproses
+                </p>
+                <p className="text-xl font-bold text-amber-700 dark:text-amber-400">
+                  {ppkResume.totalPendingCount}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {ppkResume.orangBelumDiproses} orang menunggu
+                </p>
+              </div>
+            </div>
+
+            {/* Nominal & efisiensi */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Wallet className="w-3 h-3" /> Total Ajuan vs Disetujui
+                </p>
+                <p className="text-sm font-mono mt-1">
+                  Rp {grandTotalAjuan.toLocaleString('id-ID')} → <span className="text-emerald-600 font-semibold">Rp {grandTotalDisetujui.toLocaleString('id-ID')}</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Selisih: Rp {ppkResume.selisih.toLocaleString('id-ID')}
+                </p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" /> Efisiensi Anggaran
+                </p>
+                <p className="text-2xl font-bold">{ppkResume.efisiensiAnggaran}%</p>
+                <p className="text-[11px] text-muted-foreground">nominal disetujui / ajuan</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Item Perhatian
+                </p>
+                <p className="text-2xl font-bold text-amber-700">
+                  {ppkResume.namaDisetujui0.length + ppkResume.namaDisetujuiMultiKegiatan.length + ppkResume.namaDisetujuiMelebihi.length}
+                </p>
+                <p className="text-[11px] text-muted-foreground">total temuan</p>
+              </div>
+            </div>
+
+            {/* Daftar nama disetujui 0 */}
+            <div className="rounded-lg border border-rose-200 bg-rose-50/50 dark:bg-rose-950/20 p-3">
+              <p className="text-sm font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-2 mb-2">
+                <XCircle className="w-4 h-4" />
+                Diajukan tetapi Disetujui Rp 0
+                <Badge variant="destructive" className="ml-auto">{ppkResume.namaDisetujui0.length}</Badge>
+              </p>
+              {ppkResume.namaDisetujui0.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Tidak ada — semua ajuan telah mendapat persetujuan ✓</p>
+              ) : (
+                <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
+                  {ppkResume.namaDisetujui0.map((n, i) => (
+                    <li key={i} className="flex justify-between border-b border-rose-100 dark:border-rose-900 py-1">
+                      <span><Badge variant="outline" className="mr-2 text-[10px]">{n.tipe}</Badge>{n.nama}</span>
+                      <span className="font-mono text-muted-foreground">Ajuan: Rp {n.ajuan.toLocaleString('id-ID')}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Daftar nama disetujui multi-kegiatan */}
+            <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4" />
+                Disetujui Lebih dari 1 Kegiatan (potensi duplikasi)
+                <Badge variant="outline" className="ml-auto border-amber-500 text-amber-700">
+                  {ppkResume.namaDisetujuiMultiKegiatan.length}
+                </Badge>
+              </p>
+              {ppkResume.namaDisetujuiMultiKegiatan.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Tidak ada — sesuai aturan 1 orang / 1 kegiatan / bulan ✓</p>
+              ) : (
+                <ul className="text-xs space-y-1 max-h-40 overflow-y-auto">
+                  {ppkResume.namaDisetujuiMultiKegiatan.map((n, i) => (
+                    <li key={i} className="border-b border-amber-100 dark:border-amber-900 py-1">
+                      <div className="flex justify-between">
+                        <span><Badge variant="outline" className="mr-2 text-[10px]">{n.tipe}</Badge><strong>{n.nama}</strong></span>
+                        <span className="font-mono">Total: Rp {n.total.toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="text-muted-foreground pl-1 text-[11px]">
+                        Kegiatan: {n.kegiatan.join(' • ')}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Daftar nama disetujui melebihi 150rb */}
+            <div className="rounded-lg border border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 p-3">
+              <p className="text-sm font-semibold text-orange-800 dark:text-orange-300 flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4" />
+                Disetujui Melebihi Rp 150.000 / orang
+                <Badge variant="outline" className="ml-auto border-orange-500 text-orange-700">
+                  {ppkResume.namaDisetujuiMelebihi.length}
+                </Badge>
+              </p>
+              {ppkResume.namaDisetujuiMelebihi.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Tidak ada — semua persetujuan dalam batas wajar ✓</p>
+              ) : (
+                <ul className="text-xs space-y-1 max-h-40 overflow-y-auto">
+                  {ppkResume.namaDisetujuiMelebihi.map((n, i) => (
+                    <li key={i} className="flex justify-between border-b border-orange-100 dark:border-orange-900 py-1">
+                      <span><Badge variant="outline" className="mr-2 text-[10px]">{n.tipe}</Badge>{n.nama}</span>
+                      <span className="font-mono">
+                        Rp {n.total.toLocaleString('id-ID')}{' '}
+                        <span className="text-rose-600">(+Rp {n.kelebihan.toLocaleString('id-ID')})</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* By Kegiatan */}
       <Card>
         <CardHeader>
