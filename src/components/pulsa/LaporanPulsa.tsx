@@ -77,6 +77,94 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
   const grandTotalAjuan = byKegiatan.reduce((s, k) => s + k.totalAjuan, 0);
   const grandTotalDisetujui = byKegiatan.reduce((s, k) => s + k.totalDisetujui, 0);
 
+  // PPK Resume — analisis per orang
+  const ppkResume = useMemo(() => {
+    const APPROVED = ['approved', 'approved_ppk', 'completed'];
+    const PENDING = ['pending', 'pending_ppk', 'draft', ''];
+    const REJECTED = ['rejected', 'rejected_ppk'];
+    const LIMIT_PER_ORANG = 150000;
+
+    let totalAjuanCount = 0;
+    let totalDisetujuiCount = 0;
+    let totalRejectedCount = 0;
+    let totalPendingCount = 0;
+
+    const namaDisetujui0: { nama: string; tipe: string; ajuan: number }[] = [];
+    const namaDisetujuiMultiKegiatan: { nama: string; tipe: string; kegiatan: string[]; total: number }[] = [];
+    const namaDisetujuiMelebihi: { nama: string; tipe: string; total: number; kelebihan: number }[] = [];
+
+    for (const p of persons) {
+      const validEntries = p.entries.filter((e): e is NonNullable<typeof e> => e !== null);
+      const approvedEntries = validEntries.filter(e => APPROVED.includes(e.status));
+      const rejectedEntries = validEntries.filter(e => REJECTED.includes(e.status));
+      const pendingEntries = validEntries.filter(e => !APPROVED.includes(e.status) && !REJECTED.includes(e.status));
+
+      totalAjuanCount += validEntries.length;
+      totalDisetujuiCount += approvedEntries.length;
+      totalRejectedCount += rejectedEntries.length;
+      totalPendingCount += pendingEntries.length;
+
+      const totalApproved = approvedEntries.reduce((s, e) => s + e.nominal, 0);
+
+      // diajukan tapi disetujui 0 → ada ajuan tapi tidak ada yg approved
+      if (validEntries.length > 0 && approvedEntries.length === 0) {
+        namaDisetujui0.push({
+          nama: p.nama,
+          tipe: p.tipe,
+          ajuan: validEntries.reduce((s, e) => s + e.nominal, 0),
+        });
+      }
+
+      // disetujui lebih dari 1 kegiatan
+      const uniqApprovedKeg = Array.from(new Set(approvedEntries.map(e => e.kegiatan)));
+      if (uniqApprovedKeg.length > 1) {
+        namaDisetujuiMultiKegiatan.push({
+          nama: p.nama,
+          tipe: p.tipe,
+          kegiatan: uniqApprovedKeg,
+          total: totalApproved,
+        });
+      }
+
+      // total disetujui melebihi 150.000
+      if (totalApproved > LIMIT_PER_ORANG) {
+        namaDisetujuiMelebihi.push({
+          nama: p.nama,
+          tipe: p.tipe,
+          total: totalApproved,
+          kelebihan: totalApproved - LIMIT_PER_ORANG,
+        });
+      }
+    }
+
+    // Tambahan resume
+    const persetujuanRate = totalAjuanCount > 0
+      ? Math.round((totalDisetujuiCount / totalAjuanCount) * 100)
+      : 0;
+    const efisiensiAnggaran = grandTotalAjuan > 0
+      ? Math.round((grandTotalDisetujui / grandTotalAjuan) * 100)
+      : 0;
+    const selisih = grandTotalAjuan - grandTotalDisetujui;
+    const orangBelumDiproses = persons.filter(p => {
+      const v = p.entries.filter((e): e is NonNullable<typeof e> => e !== null);
+      return v.some(e => !APPROVED.includes(e.status) && !REJECTED.includes(e.status));
+    }).length;
+
+    return {
+      totalAjuanCount,
+      totalDisetujuiCount,
+      totalRejectedCount,
+      totalPendingCount,
+      namaDisetujui0,
+      namaDisetujuiMultiKegiatan,
+      namaDisetujuiMelebihi,
+      persetujuanRate,
+      efisiensiAnggaran,
+      selisih,
+      orangBelumDiproses,
+    };
+  }, [persons, grandTotalAjuan, grandTotalDisetujui]);
+
   const bulanNama = new Date(tahun, bulan - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
 
   if (loading) {
