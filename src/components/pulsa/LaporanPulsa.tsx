@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2, XCircle, TrendingUp, Layers, Wallet } from 'lucide-react';
 import { readPulsaData, buildPersonView, PulsaRow } from '@/services/pulsaSheetsService';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { terbilangRupiah, cleanTerbilang } from '@/lib/terbilang';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LaporanPulsaProps {
   bulan: number;
@@ -14,6 +15,8 @@ interface LaporanPulsaProps {
 export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
   const satkerConfig = useSatkerConfigContext();
   const pulsaSheetId = satkerConfig?.getUserSatkerSheetId('pulsa') || '';
+  const { user } = useAuth();
+  const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
 
   const [rawRows, setRawRows] = useState<PulsaRow[]>([]);
   const [loading, setLoading] = useState(true);
