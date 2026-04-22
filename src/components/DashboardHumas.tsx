@@ -134,7 +134,7 @@ const DashboardHumas = ({ filterTahun }: DashboardHumasProps) => {
     () =>
       rows.filter(
         (r) =>
-          r.plan.trim() &&
+          r.content.trim() &&
           !["published", "reposted"].includes(r.status.trim().toLowerCase()),
       ),
     [rows],
@@ -353,7 +353,7 @@ const DashboardHumas = ({ filterTahun }: DashboardHumasProps) => {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground leading-snug">
-                        {r.plan}
+                        {r.content}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
                         {r.dateStr && <span>📅 {r.dateStr}</span>}
