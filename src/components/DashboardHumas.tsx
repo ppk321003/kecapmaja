@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronRight, CalendarDays, ListTodo, StickyNote, ExternalLink, Instagram, Facebook, Link as LinkIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ListTodo, StickyNote, ExternalLink, Instagram, Facebook, Link as LinkIcon, ImageIcon, Music, Palette, Film } from "lucide-react";
 
 const HUMAS_SPREADSHEET_ID = "1F1-RkAR6s_VO7yxC5qBP8LVcPMxpKeilm2aU1wrXoBc";
 const HUMAS_SHEET = "Plan Details";
@@ -413,43 +413,77 @@ const DashboardHumas = ({ filterTahun }: DashboardHumasProps) => {
             <CardDescription>Kumpulan link penting untuk konten & publikasi</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
-              <li>
-                <a href="https://drive.google.com/drive/folders/1_ojOTIO7Jsm01ZrOBmuP8wB4NbskPSJp?usp=sharing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                  Galeri SE <ExternalLink className="h-4 w-4" />
-                </a>
-              </li>
-              <li>
-                <a href="https://drive.google.com/drive/folders/1TpG9ZdoUV6vkY_XixM32CsaUbezDm44G" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                  Publisitas SE2026 <ExternalLink className="h-4 w-4" />
-                </a>
-              </li>
-              <li>
-                <a href="https://drive.google.com/drive/folders/1gSXSYXuNZCdBUTJDuEwYPy2gNSLguWwO?usp=sharing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                  Publisitas dari Provinsi <ExternalLink className="h-4 w-4" />
-                </a>
-              </li>
-              <li>
-                <a href="https://s.bps.go.id/kontenmedsos2026" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                  KONTEN MEDSOS 2026 <ExternalLink className="h-4 w-4" />
-                </a>
-              </li>
-              <li>
-                <a href="https://drive.google.com/drive/folders/1Pq9OwYQboBJdxhorgwLKCn40jZOyO4LY?usp=sharing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                  Logo-Logo <ExternalLink className="h-4 w-4" />
-                </a>
-              </li>
-              <li>
-                <a href="http://s.bps.go.id/mediapublisitasHSN2025" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                  HSN 2025 <ExternalLink className="h-4 w-4" />
-                </a>
-              </li>
-              <li>
-                <a href="https://s.bps.go.id/kelengkapanlagu" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
-                  Lagu-Lagu <ExternalLink className="h-4 w-4" />
-                </a>
-              </li>
-            </ul>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {/* Galeri SE */}
+              <a href="https://drive.google.com/drive/folders/1_ojOTIO7Jsm01ZrOBmuP8wB4NbskPSJp?usp=sharing" target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 hover:shadow-lg hover:scale-105 transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-purple-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative flex flex-col items-center gap-2">
+                  <ImageIcon className="h-6 w-6 text-purple-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-semibold text-center text-purple-900 group-hover:text-purple-700">Galeri SE</span>
+                  <ExternalLink className="h-3 w-3 text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </a>
+
+              {/* Publisitas SE2026 */}
+              <a href="https://drive.google.com/drive/folders/1TpG9ZdoUV6vkY_XixM32CsaUbezDm44G" target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-pink-50 to-pink-100 border border-pink-200 hover:shadow-lg hover:scale-105 transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-pink-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative flex flex-col items-center gap-2">
+                  <Film className="h-6 w-6 text-pink-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-semibold text-center text-pink-900 group-hover:text-pink-700">Publisitas SE2026</span>
+                  <ExternalLink className="h-3 w-3 text-pink-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </a>
+
+              {/* Publisitas dari Provinsi */}
+              <a href="https://drive.google.com/drive/folders/1gSXSYXuNZCdBUTJDuEwYPy2gNSLguWwO?usp=sharing" target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 hover:shadow-lg hover:scale-105 transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative flex flex-col items-center gap-2">
+                  <ImageIcon className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-semibold text-center text-blue-900 group-hover:text-blue-700">Publisitas Provinsi</span>
+                  <ExternalLink className="h-3 w-3 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </a>
+
+              {/* KONTEN MEDSOS 2026 */}
+              <a href="https://s.bps.go.id/kontenmedsos2026" target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 hover:shadow-lg hover:scale-105 transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-green-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative flex flex-col items-center gap-2">
+                  <Instagram className="h-6 w-6 text-green-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-semibold text-center text-green-900 group-hover:text-green-700">Konten Medsos</span>
+                  <ExternalLink className="h-3 w-3 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </a>
+
+              {/* Logo-Logo */}
+              <a href="https://drive.google.com/drive/folders/1Pq9OwYQboBJdxhorgwLKCn40jZOyO4LY?usp=sharing" target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 hover:shadow-lg hover:scale-105 transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-orange-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative flex flex-col items-center gap-2">
+                  <Palette className="h-6 w-6 text-orange-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-semibold text-center text-orange-900 group-hover:text-orange-700">Logo-Logo</span>
+                  <ExternalLink className="h-3 w-3 text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </a>
+
+              {/* HSN 2025 */}
+              <a href="http://s.bps.go.id/mediapublisitasHSN2025" target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-red-50 to-red-100 border border-red-200 hover:shadow-lg hover:scale-105 transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-red-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative flex flex-col items-center gap-2">
+                  <Film className="h-6 w-6 text-red-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-semibold text-center text-red-900 group-hover:text-red-700">HSN 2025</span>
+                  <ExternalLink className="h-3 w-3 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </a>
+
+              {/* Lagu-Lagu */}
+              <a href="https://s.bps.go.id/kelengkapanlagu" target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-cyan-50 to-cyan-100 border border-cyan-200 hover:shadow-lg hover:scale-105 transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-cyan-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative flex flex-col items-center gap-2">
+                  <Music className="h-6 w-6 text-cyan-600 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-semibold text-center text-cyan-900 group-hover:text-cyan-700">Lagu-Lagu</span>
+                  <ExternalLink className="h-3 w-3 text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </a>
+            </div>
           </CardContent>
         </Card>
       </div>
