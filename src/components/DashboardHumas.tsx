@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronRight, CalendarDays, ListTodo, StickyNote, ExternalLink, Instagram, Facebook } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ListTodo, StickyNote, ExternalLink, Instagram, Facebook, Link as LinkIcon } from "lucide-react";
 
 const HUMAS_SPREADSHEET_ID = "1F1-RkAR6s_VO7yxC5qBP8LVcPMxpKeilm2aU1wrXoBc";
 const HUMAS_SHEET = "Plan Details";
@@ -401,6 +401,55 @@ const DashboardHumas = ({ filterTahun }: DashboardHumasProps) => {
                 ))}
               </ul>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <LinkIcon className="h-5 w-5 text-blue-600" />
+              Link Referensi
+            </CardTitle>
+            <CardDescription>Kumpulan link penting untuk konten & publikasi</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              <li>
+                <a href="https://drive.google.com/drive/folders/1_ojOTIO7Jsm01ZrOBmuP8wB4NbskPSJp?usp=sharing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                  Galeri SE <ExternalLink className="h-4 w-4" />
+                </a>
+              </li>
+              <li>
+                <a href="https://drive.google.com/drive/folders/1TpG9ZdoUV6vkY_XixM32CsaUbezDm44G" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                  Publisitas SE2026 <ExternalLink className="h-4 w-4" />
+                </a>
+              </li>
+              <li>
+                <a href="https://drive.google.com/drive/folders/1gSXSYXuNZCdBUTJDuEwYPy2gNSLguWwO?usp=sharing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                  Publisitas dari Provinsi <ExternalLink className="h-4 w-4" />
+                </a>
+              </li>
+              <li>
+                <a href="https://s.bps.go.id/kontenmedsos2026" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                  KONTEN MEDSOS 2026 <ExternalLink className="h-4 w-4" />
+                </a>
+              </li>
+              <li>
+                <a href="https://drive.google.com/drive/folders/1Pq9OwYQboBJdxhorgwLKCn40jZOyO4LY?usp=sharing" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                  Logo-Logo <ExternalLink className="h-4 w-4" />
+                </a>
+              </li>
+              <li>
+                <a href="http://s.bps.go.id/mediapublisitasHSN2025" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                  HSN 2025 <ExternalLink className="h-4 w-4" />
+                </a>
+              </li>
+              <li>
+                <a href="https://s.bps.go.id/kelengkapanlagu" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                  Lagu-Lagu <ExternalLink className="h-4 w-4" />
+                </a>
+              </li>
+            </ul>
           </CardContent>
         </Card>
       </div>
