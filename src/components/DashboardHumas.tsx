@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronRight, CalendarDays, ListTodo, StickyNote, ExternalLink, Instagram, Facebook, Link as LinkIcon, ImageIcon, Music, Palette, Film } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, ListTodo, StickyNote, ExternalLink, Instagram, Facebook, Link as LinkIcon, ImageIcon, Music, Palette, Film, Sheet } from "lucide-react";
 
 const HUMAS_SPREADSHEET_ID = "1F1-RkAR6s_VO7yxC5qBP8LVcPMxpKeilm2aU1wrXoBc";
 const HUMAS_SHEET = "Plan Details";
