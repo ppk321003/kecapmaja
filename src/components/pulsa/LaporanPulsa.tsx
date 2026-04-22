@@ -188,95 +188,95 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
   return (
     <div className="space-y-3">
       {/* Summary Cards - Compact */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="shadow-sm">
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground truncate">Total Petugas</p>
-            <p className="text-lg font-bold">{persons.length}</p>
-            <p className="text-[11px] text-muted-foreground line-clamp-1">O: {totalOrganik} M: {totalMitra}</p>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground truncate">Total Petugas</p>
+            <p className="text-2xl font-bold">{persons.length}</p>
+            <p className="text-sm text-muted-foreground line-clamp-1">Organik: {totalOrganik} Mitra: {totalMitra}</p>
           </CardContent>
         </Card>
         <Card className="shadow-sm">
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Total Kegiatan</p>
-            <p className="text-lg font-bold">{byKegiatan.length}</p>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Total Kegiatan</p>
+            <p className="text-2xl font-bold">{byKegiatan.length}</p>
           </CardContent>
         </Card>
         <Card className="shadow-sm">
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground truncate">Nominal Ajuan</p>
-            <p className="text-sm font-bold font-mono">Rp {(grandTotalAjuan/1000000).toFixed(1)}J</p>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground truncate">Nominal Ajuan</p>
+            <p className="text-lg font-bold font-mono">Rp {(grandTotalAjuan/1000000).toFixed(1)} Juta</p>
           </CardContent>
         </Card>
         <Card className="shadow-sm">
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Disetujui PPK</p>
-            <p className="text-sm font-bold font-mono text-green-600">Rp {(grandTotalDisetujui/1000000).toFixed(1)}J</p>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Disetujui PPK</p>
+            <p className="text-lg font-bold font-mono text-green-600">Rp {(grandTotalDisetujui/1000000).toFixed(1)} Juta</p>
           </CardContent>
         </Card>
       </div>
 
       {/* PPK Resume Card — visible only for PPK */}
       {isPPK && (
-        <Card className="border-primary/30 shadow-sm">
-          <CardHeader className="p-3 bg-primary/5 border-b">
-            <CardTitle className="text-sm flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4 text-primary" />
+        <Card className="border-primary/30 shadow-md">
+          <CardHeader className="p-4 bg-primary/5 border-b">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-primary" />
               Resume PPK — {bulanNama}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 space-y-2">
+          <CardContent className="p-4 space-y-3">
             {/* Top metrics - 2x2 grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div className="rounded border bg-muted/30 p-2">
-                <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                  <Layers className="w-3 h-3" /> Diajukan
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded border bg-muted/30 p-3">
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Layers className="w-4 h-4" /> Diajukan
                 </p>
-                <p className="text-base font-bold">{ppkResume.totalAjuanCount}</p>
+                <p className="text-2xl font-bold">{ppkResume.totalAjuanCount}</p>
               </div>
-              <div className="rounded border bg-emerald-50 dark:bg-emerald-950/30 p-2">
-                <p className="text-[10px] text-emerald-700 font-semibold">Disetujui</p>
-                <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">
+              <div className="rounded border bg-emerald-50 dark:bg-emerald-950/30 p-3">
+                <p className="text-sm text-emerald-700 font-semibold">Disetujui</p>
+                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
                   {ppkResume.totalDisetujuiCount}
                 </p>
-                <p className="text-[9px] text-emerald-600">{ppkResume.persetujuanRate}%</p>
+                <p className="text-xs text-emerald-600">{ppkResume.persetujuanRate}%</p>
               </div>
-              <div className="rounded border bg-rose-50 dark:bg-rose-950/30 p-2">
-                <p className="text-[10px] text-rose-700 font-semibold">Ditolak</p>
-                <p className="text-base font-bold text-rose-700 dark:text-rose-400">
+              <div className="rounded border bg-rose-50 dark:bg-rose-950/30 p-3">
+                <p className="text-sm text-rose-700 font-semibold">Ditolak</p>
+                <p className="text-2xl font-bold text-rose-700 dark:text-rose-400">
                   {ppkResume.totalRejectedCount}
                 </p>
               </div>
-              <div className="rounded border bg-amber-50 dark:bg-amber-950/30 p-2">
-                <p className="text-[10px] text-amber-700 font-semibold">Pending</p>
-                <p className="text-base font-bold text-amber-700 dark:text-amber-400">
+              <div className="rounded border bg-amber-50 dark:bg-amber-950/30 p-3">
+                <p className="text-sm text-amber-700 font-semibold">Pending</p>
+                <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
                   {ppkResume.totalPendingCount}
                 </p>
               </div>
             </div>
 
             {/* Nominal & efisiensi - single row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1 border-t">
-              <div className="rounded border p-2">
-                <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                  <Wallet className="w-3 h-3" /> Ajuan vs Disetujui
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t">
+              <div className="rounded border p-3">
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Wallet className="w-4 h-4" /> Ajuan vs Disetujui
                 </p>
-                <p className="text-xs font-mono font-semibold mt-0.5">
-                  Rp {(grandTotalAjuan/1000000).toFixed(1)}J → <span className="text-emerald-600">Rp {(grandTotalDisetujui/1000000).toFixed(1)}J</span>
+                <p className="text-sm font-mono font-semibold mt-1">
+                  Rp {(grandTotalAjuan/1000000).toFixed(1)} Juta → <span className="text-emerald-600">Rp {(grandTotalDisetujui/1000000).toFixed(1)} Juta</span>
                 </p>
-                <p className="text-[9px] text-red-600">Selisih: Rp {(ppkResume.selisih/1000000).toFixed(1)}J</p>
+                <p className="text-xs text-red-600 mt-1">Selisih: Rp {(ppkResume.selisih/1000000).toFixed(1)} Juta</p>
               </div>
-              <div className="rounded border p-2">
-                <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                  <TrendingUp className="w-3 h-3" /> Efisiensi
+              <div className="rounded border p-3">
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="w-4 h-4" /> Efisiensi
                 </p>
-                <p className="text-xl font-bold">{ppkResume.efisiensiAnggaran}%</p>
+                <p className="text-2xl font-bold">{ppkResume.efisiensiAnggaran}%</p>
               </div>
-              <div className="rounded border p-2">
-                <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Perhatian
+              <div className="rounded border p-3">
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" /> Perhatian
                 </p>
-                <p className="text-xl font-bold text-amber-700">
+                <p className="text-2xl font-bold text-amber-700">
                   {ppkResume.namaDisetujui0.length + ppkResume.namaDisetujuiMultiKegiatan.length + ppkResume.namaDisetujuiMelebihi.length}
                 </p>
               </div>
@@ -285,14 +285,14 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
             {/* Alert boxes - compact */}
             <div className="space-y-2 pt-2">
               {/* Diajukan tetapi Disetujui 0 */}
-              <div className="rounded border border-rose-200 bg-rose-50/50 dark:bg-rose-950/20 p-2">
-                <p className="text-xs font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-1">
-                  <XCircle className="w-3 h-3" />
+              <div className="rounded border border-rose-200 bg-rose-50/50 dark:bg-rose-950/20 p-3">
+                <p className="text-sm font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-1">
+                  <XCircle className="w-4 h-4" />
                   Diajukan tapi Rp 0
-                  <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">{ppkResume.namaDisetujui0.length}</Badge>
+                  <Badge variant="destructive" className="ml-auto text-xs px-2 py-0.5">{ppkResume.namaDisetujui0.length}</Badge>
                 </p>
                 {ppkResume.namaDisetujui0.length > 0 && (
-                  <ul className="text-[10px] space-y-0.5 mt-1 max-h-20 overflow-y-auto">
+                  <ul className="text-xs space-y-0.5 mt-2 max-h-20 overflow-y-auto">
                     {ppkResume.namaDisetujui0.map((n, i) => (
                       <li key={i} className="flex justify-between gap-2">
                         <span className="truncate">{n.tipe === 'Organik' ? '🟢' : '🔵'} {n.nama}</span>
@@ -304,16 +304,16 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
               </div>
 
               {/* Disetujui multi-kegiatan */}
-              <div className="rounded border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-2">
-                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
+              <div className="rounded border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
                   Multi Kegiatan
-                  <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 border-amber-500 text-amber-700">
+                  <Badge variant="outline" className="ml-auto text-xs px-2 py-0.5 border-amber-500 text-amber-700">
                     {ppkResume.namaDisetujuiMultiKegiatan.length}
                   </Badge>
                 </p>
                 {ppkResume.namaDisetujuiMultiKegiatan.length > 0 && (
-                  <ul className="text-[10px] space-y-0.5 mt-1 max-h-20 overflow-y-auto">
+                  <ul className="text-xs space-y-0.5 mt-2 max-h-20 overflow-y-auto">
                     {ppkResume.namaDisetujuiMultiKegiatan.map((n, i) => (
                       <li key={i} className="flex justify-between gap-2">
                         <span className="truncate">{n.tipe === 'Organik' ? '🟢' : '🔵'} {n.nama}</span>
@@ -325,16 +325,16 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
               </div>
 
               {/* Disetujui melebihi 150rb */}
-              <div className="rounded border border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 p-2">
-                <p className="text-xs font-semibold text-orange-800 dark:text-orange-300 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
+              <div className="rounded border border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 p-3">
+                <p className="text-sm font-semibold text-orange-800 dark:text-orange-300 flex items-center gap-1">
+                  <TrendingUp className="w-4 h-4" />
                   Melebihi Rp 150K
-                  <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 border-orange-500 text-orange-700">
+                  <Badge variant="outline" className="ml-auto text-xs px-2 py-0.5 border-orange-500 text-orange-700">
                     {ppkResume.namaDisetujuiMelebihi.length}
                   </Badge>
                 </p>
                 {ppkResume.namaDisetujuiMelebihi.length > 0 && (
-                  <ul className="text-[10px] space-y-0.5 mt-1 max-h-20 overflow-y-auto">
+                  <ul className="text-xs space-y-0.5 mt-2 max-h-20 overflow-y-auto">
                     {ppkResume.namaDisetujuiMelebihi.map((n, i) => (
                       <li key={i} className="flex justify-between gap-2">
                         <span className="truncate">{n.tipe === 'Organik' ? '🟢' : '🔵'} {n.nama}</span>
