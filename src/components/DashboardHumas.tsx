@@ -483,16 +483,6 @@ const DashboardHumas = ({ filterTahun }: DashboardHumasProps) => {
                   <ExternalLink className="h-3 w-3 text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </a>
-
-              {/* Plan Details */}
-              <a href="https://docs.google.com/spreadsheets/d/1F1-RkAR6s_VO7yxC5qBP8LVcPMxpKeilm2aU1wrXoBc/edit?gid=197985790#gid=197985790" target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden rounded-lg p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 hover:shadow-lg hover:scale-105 transition-all duration-300">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-                <div className="relative flex flex-col items-center gap-2">
-                  <Sheet className="h-6 w-6 text-indigo-600 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-semibold text-center text-indigo-900 group-hover:text-indigo-700">Plan Details</span>
-                  <ExternalLink className="h-3 w-3 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </a>
             </div>
           </CardContent>
         </Card>
