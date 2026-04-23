@@ -186,32 +186,32 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
   }
 
   return (
-    <div className="space-y-3">
-      {/* Summary Cards - Compact */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground truncate">Total Petugas</p>
+    <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">Total Petugas</p>
             <p className="text-2xl font-bold">{persons.length}</p>
-            <p className="text-sm text-muted-foreground line-clamp-1">Organik: {totalOrganik} Mitra: {totalMitra}</p>
+            <p className="text-xs text-muted-foreground">Organik: {totalOrganik} | Mitra: {totalMitra}</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
+        <Card>
+          <CardContent className="pt-4">
             <p className="text-sm text-muted-foreground">Total Kegiatan</p>
             <p className="text-2xl font-bold">{byKegiatan.length}</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground truncate">Nominal Ajuan</p>
-            <p className="text-lg font-bold font-mono">Rp {(grandTotalAjuan/1000000).toFixed(1)} Juta</p>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">Total Nominal Ajuan</p>
+            <p className="text-2xl font-bold">Rp {grandTotalAjuan.toLocaleString('id-ID')}</p>
           </CardContent>
         </Card>
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Disetujui PPK</p>
-            <p className="text-lg font-bold font-mono text-green-600">Rp {(grandTotalDisetujui/1000000).toFixed(1)} Juta</p>
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">Total Disetujui PPK</p>
+            <p className="text-2xl font-bold text-green-600">Rp {grandTotalDisetujui.toLocaleString('id-ID')}</p>
           </CardContent>
         </Card>
       </div>
@@ -219,181 +219,210 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
       {/* PPK Resume Card — visible only for PPK */}
       {isPPK && (
         <Card className="border-primary/30 shadow-md">
-          <CardHeader className="p-4 bg-primary/5 border-b">
+          <CardHeader className="pb-3 bg-primary/5 border-b">
             <CardTitle className="text-base flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-primary" />
-              Resume PPK — {bulanNama}
+              Resume PPK — Analisis Persetujuan {bulanNama}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 space-y-3">
-            {/* Top metrics - 2x2 grid */}
+          <CardContent className="pt-4 space-y-4">
+            {/* Top metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded border bg-muted/30 p-3">
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Layers className="w-4 h-4" /> Diajukan
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Layers className="w-3 h-3" /> Jumlah Diajukan
                 </p>
-                <p className="text-2xl font-bold">{ppkResume.totalAjuanCount}</p>
+                <p className="text-xl font-bold">{ppkResume.totalAjuanCount}</p>
+                <p className="text-[11px] text-muted-foreground">entri pengajuan</p>
               </div>
-              <div className="rounded border bg-emerald-50 dark:bg-emerald-950/30 p-3">
-                <p className="text-sm text-emerald-700 font-semibold">Disetujui</p>
-                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+              <div className="rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Disetujui
+                </p>
+                <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">
                   {ppkResume.totalDisetujuiCount}
                 </p>
-                <p className="text-xs text-emerald-600">{ppkResume.persetujuanRate}%</p>
-              </div>
-              <div className="rounded border bg-rose-50 dark:bg-rose-950/30 p-3">
-                <p className="text-sm text-rose-700 font-semibold">Ditolak</p>
-                <p className="text-2xl font-bold text-rose-700 dark:text-rose-400">
-                  {ppkResume.totalRejectedCount}
+                <p className="text-[11px] text-muted-foreground">
+                  ({ppkResume.persetujuanRate}% dari ajuan)
                 </p>
               </div>
-              <div className="rounded border bg-amber-50 dark:bg-amber-950/30 p-3">
-                <p className="text-sm text-amber-700 font-semibold">Pending</p>
-                <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+              <div className="rounded-lg border bg-rose-50 dark:bg-rose-950/30 p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <XCircle className="w-3 h-3 text-rose-600" /> Ditolak
+                </p>
+                <p className="text-xl font-bold text-rose-700 dark:text-rose-400">
+                  {ppkResume.totalRejectedCount}
+                </p>
+                <p className="text-[11px] text-muted-foreground">entri</p>
+              </div>
+              <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Belum Diproses
+                </p>
+                <p className="text-xl font-bold text-amber-700 dark:text-amber-400">
                   {ppkResume.totalPendingCount}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {ppkResume.orangBelumDiproses} orang menunggu
                 </p>
               </div>
             </div>
 
-            {/* Nominal & efisiensi - single row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t">
-              <div className="rounded border p-3">
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Wallet className="w-4 h-4" /> Ajuan vs Disetujui
+            {/* Nominal & efisiensi */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Wallet className="w-3 h-3" /> Total Ajuan vs Disetujui
                 </p>
-                <p className="text-sm font-mono font-semibold mt-1">
-                  Rp {(grandTotalAjuan/1000000).toFixed(1)} Juta → <span className="text-emerald-600">Rp {(grandTotalDisetujui/1000000).toFixed(1)} Juta</span>
+                <p className="text-sm font-mono mt-1">
+                  Rp {grandTotalAjuan.toLocaleString('id-ID')} → <span className="text-emerald-600 font-semibold">Rp {grandTotalDisetujui.toLocaleString('id-ID')}</span>
                 </p>
-                <p className="text-xs text-red-600 mt-1">Selisih: Rp {(ppkResume.selisih/1000000).toFixed(1)} Juta</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Selisih: Rp {ppkResume.selisih.toLocaleString('id-ID')}
+                </p>
               </div>
-              <div className="rounded border p-3">
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <TrendingUp className="w-4 h-4" /> Efisiensi
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" /> Efisiensi Anggaran
                 </p>
                 <p className="text-2xl font-bold">{ppkResume.efisiensiAnggaran}%</p>
+                <p className="text-[11px] text-muted-foreground">nominal disetujui / ajuan</p>
               </div>
-              <div className="rounded border p-3">
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" /> Perhatian
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Item Perhatian
                 </p>
                 <p className="text-2xl font-bold text-amber-700">
                   {ppkResume.namaDisetujui0.length + ppkResume.namaDisetujuiMultiKegiatan.length + ppkResume.namaDisetujuiMelebihi.length}
                 </p>
+                <p className="text-[11px] text-muted-foreground">total temuan</p>
               </div>
             </div>
 
-            {/* Alert boxes - compact */}
-            <div className="space-y-2 pt-2">
-              {/* Diajukan tetapi Disetujui 0 */}
-              <div className="rounded border border-rose-200 bg-rose-50/50 dark:bg-rose-950/20 p-3">
-                <p className="text-sm font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-1">
-                  <XCircle className="w-4 h-4" />
-                  Diajukan tapi Rp 0
-                  <Badge variant="destructive" className="ml-auto text-xs px-2 py-0.5">{ppkResume.namaDisetujui0.length}</Badge>
-                </p>
-                {ppkResume.namaDisetujui0.length > 0 && (
-                  <ul className="text-xs space-y-0.5 mt-2 max-h-20 overflow-y-auto">
-                    {ppkResume.namaDisetujui0.map((n, i) => (
-                      <li key={i} className="flex justify-between gap-2">
-                        <span className="truncate">{n.tipe === 'Organik' ? '🟢' : '🔵'} {n.nama}</span>
-                        <span className="font-mono shrink-0">Rp {(n.ajuan/1000).toFixed(0)}K</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+            {/* Daftar nama disetujui 0 */}
+            <div className="rounded-lg border border-rose-200 bg-rose-50/50 dark:bg-rose-950/20 p-3">
+              <p className="text-sm font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-2 mb-2">
+                <XCircle className="w-4 h-4" />
+                Diajukan tetapi Disetujui Rp 0
+                <Badge variant="destructive" className="ml-auto">{ppkResume.namaDisetujui0.length}</Badge>
+              </p>
+              {ppkResume.namaDisetujui0.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Tidak ada — semua ajuan telah mendapat persetujuan ✓</p>
+              ) : (
+                <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
+                  {ppkResume.namaDisetujui0.map((n, i) => (
+                    <li key={i} className="flex justify-between border-b border-rose-100 dark:border-rose-900 py-1">
+                      <span><Badge variant="outline" className="mr-2 text-[10px]">{n.tipe}</Badge>{n.nama}</span>
+                      <span className="font-mono text-muted-foreground">Ajuan: Rp {n.ajuan.toLocaleString('id-ID')}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
-              {/* Disetujui multi-kegiatan */}
-              <div className="rounded border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-3">
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4" />
-                  Multi Kegiatan
-                  <Badge variant="outline" className="ml-auto text-xs px-2 py-0.5 border-amber-500 text-amber-700">
-                    {ppkResume.namaDisetujuiMultiKegiatan.length}
-                  </Badge>
-                </p>
-                {ppkResume.namaDisetujuiMultiKegiatan.length > 0 && (
-                  <ul className="text-xs space-y-0.5 mt-2 max-h-20 overflow-y-auto">
-                    {ppkResume.namaDisetujuiMultiKegiatan.map((n, i) => (
-                      <li key={i} className="flex justify-between gap-2">
-                        <span className="truncate">{n.tipe === 'Organik' ? '🟢' : '🔵'} {n.nama}</span>
-                        <span className="font-mono shrink-0">Rp {(n.total/1000).toFixed(0)}K</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+            {/* Daftar nama disetujui multi-kegiatan */}
+            <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4" />
+                Disetujui Lebih dari 1 Kegiatan (potensi duplikasi)
+                <Badge variant="outline" className="ml-auto border-amber-500 text-amber-700">
+                  {ppkResume.namaDisetujuiMultiKegiatan.length}
+                </Badge>
+              </p>
+              {ppkResume.namaDisetujuiMultiKegiatan.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Tidak ada — sesuai aturan 1 orang / 1 kegiatan / bulan ✓</p>
+              ) : (
+                <ul className="text-xs space-y-1 max-h-40 overflow-y-auto">
+                  {ppkResume.namaDisetujuiMultiKegiatan.map((n, i) => (
+                    <li key={i} className="border-b border-amber-100 dark:border-amber-900 py-1">
+                      <div className="flex justify-between">
+                        <span><Badge variant="outline" className="mr-2 text-[10px]">{n.tipe}</Badge><strong>{n.nama}</strong></span>
+                        <span className="font-mono">Total: Rp {n.total.toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="text-muted-foreground pl-1 text-[11px]">
+                        Kegiatan: {n.kegiatan.join(' • ')}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
-              {/* Disetujui melebihi 150rb */}
-              <div className="rounded border border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 p-3">
-                <p className="text-sm font-semibold text-orange-800 dark:text-orange-300 flex items-center gap-1">
-                  <TrendingUp className="w-4 h-4" />
-                  Melebihi Rp 150K
-                  <Badge variant="outline" className="ml-auto text-xs px-2 py-0.5 border-orange-500 text-orange-700">
-                    {ppkResume.namaDisetujuiMelebihi.length}
-                  </Badge>
-                </p>
-                {ppkResume.namaDisetujuiMelebihi.length > 0 && (
-                  <ul className="text-xs space-y-0.5 mt-2 max-h-20 overflow-y-auto">
-                    {ppkResume.namaDisetujuiMelebihi.map((n, i) => (
-                      <li key={i} className="flex justify-between gap-2">
-                        <span className="truncate">{n.tipe === 'Organik' ? '🟢' : '🔵'} {n.nama}</span>
-                        <span className="font-mono text-rose-600 shrink-0">+Rp {(n.kelebihan/1000).toFixed(0)}K</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+            {/* Daftar nama disetujui melebihi 150rb */}
+            <div className="rounded-lg border border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 p-3">
+              <p className="text-sm font-semibold text-orange-800 dark:text-orange-300 flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4" />
+                Disetujui Melebihi Rp 150.000 / orang
+                <Badge variant="outline" className="ml-auto border-orange-500 text-orange-700">
+                  {ppkResume.namaDisetujuiMelebihi.length}
+                </Badge>
+              </p>
+              {ppkResume.namaDisetujuiMelebihi.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Tidak ada — semua persetujuan dalam batas wajar ✓</p>
+              ) : (
+                <ul className="text-xs space-y-1 max-h-40 overflow-y-auto">
+                  {ppkResume.namaDisetujuiMelebihi.map((n, i) => (
+                    <li key={i} className="flex justify-between border-b border-orange-100 dark:border-orange-900 py-1">
+                      <span><Badge variant="outline" className="mr-2 text-[10px]">{n.tipe}</Badge>{n.nama}</span>
+                      <span className="font-mono">
+                        Rp {n.total.toLocaleString('id-ID')}{' '}
+                        <span className="text-rose-600">(+Rp {n.kelebihan.toLocaleString('id-ID')})</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* By Kegiatan */}
-      <Card className="shadow-sm">
-        <CardHeader className="p-3 border-b">
-          <CardTitle className="text-sm">Per Kegiatan — {bulanNama}</CardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Breakdown per Kegiatan — {bulanNama}</CardTitle>
         </CardHeader>
-        <CardContent className="p-3">
+        <CardContent>
           {byKegiatan.length === 0 ? (
-            <p className="text-center text-muted-foreground py-2 text-sm">Tidak ada data</p>
+            <p className="text-center text-muted-foreground py-4">Tidak ada data</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/50 text-[11px]">
+              <table className="w-full text-sm">
+                <thead className="bg-muted">
                   <tr>
-                    <th className="px-2 py-1 text-left">Kegiatan</th>
-                    <th className="px-2 py-1 text-right">Org</th>
-                    <th className="px-2 py-1 text-right">OK</th>
-                    <th className="px-2 py-1 text-right">Ajuan</th>
-                    <th className="px-2 py-1 text-right">Disetujui</th>
+                    <th className="px-4 py-2 text-left">Kegiatan</th>
+                    <th className="px-4 py-2 text-right">Jml Petugas</th>
+                    <th className="px-4 py-2 text-right">Disetujui (org)</th>
+                    <th className="px-4 py-2 text-right">Total Ajuan</th>
+                    <th className="px-4 py-2 text-right">Total Disetujui</th>
                   </tr>
                 </thead>
                 <tbody>
                   {byKegiatan.map(k => (
-                    <tr key={k.kegiatan} className="border-b hover:bg-muted/50 text-[11px]">
-                      <td className="px-2 py-1 font-medium truncate">{k.kegiatan}</td>
-                      <td className="px-2 py-1 text-right">{k.countOrang}</td>
-                      <td className="px-2 py-1 text-right">{k.countApproved}</td>
-                      <td className="px-2 py-1 text-right font-mono">Rp {(k.totalAjuan/1000000).toFixed(1)}J</td>
-                      <td className="px-2 py-1 text-right font-mono text-green-600 font-semibold">Rp {(k.totalDisetujui/1000000).toFixed(1)}J</td>
+                    <tr key={k.kegiatan} className="border-b hover:bg-muted/50">
+                      <td className="px-4 py-2 font-medium">{k.kegiatan}</td>
+                      <td className="px-4 py-2 text-right">{k.countOrang}</td>
+                      <td className="px-4 py-2 text-right">{k.countApproved}</td>
+                      <td className="px-4 py-2 text-right font-mono">Rp {k.totalAjuan.toLocaleString('id-ID')}</td>
+                      <td className="px-4 py-2 text-right font-mono text-green-600 font-semibold">Rp {k.totalDisetujui.toLocaleString('id-ID')}</td>
                     </tr>
                   ))}
-                  <tr className="bg-muted/50 font-semibold border-t text-[11px]">
-                    <td className="px-2 py-1 text-left">TOTAL</td>
-                    <td className="px-2 py-1 text-right">{byKegiatan.reduce((sum, k) => sum + k.countOrang, 0)}</td>
-                    <td className="px-2 py-1 text-right">{byKegiatan.reduce((sum, k) => sum + k.countApproved, 0)}</td>
-                    <td className="px-2 py-1 text-right font-mono">Rp {(byKegiatan.reduce((sum, k) => sum + k.totalAjuan, 0)/1000000).toFixed(1)}J</td>
-                    <td className="px-2 py-1 text-right font-mono text-green-600">Rp {(byKegiatan.reduce((sum, k) => sum + k.totalDisetujui, 0)/1000000).toFixed(1)}J</td>
+                  {/* Total Row */}
+                  <tr className="bg-muted font-semibold border-t-2">
+                    <td className="px-4 py-2 text-left">JUMLAH</td>
+                    <td className="px-4 py-2 text-right">{byKegiatan.reduce((sum, k) => sum + k.countOrang, 0)}</td>
+                    <td className="px-4 py-2 text-right">{byKegiatan.reduce((sum, k) => sum + k.countApproved, 0)}</td>
+                    <td className="px-4 py-2 text-right font-mono">Rp {byKegiatan.reduce((sum, k) => sum + k.totalAjuan, 0).toLocaleString('id-ID')}</td>
+                    <td className="px-4 py-2 text-right font-mono text-green-600">Rp {byKegiatan.reduce((sum, k) => sum + k.totalDisetujui, 0).toLocaleString('id-ID')}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           )}
           {byKegiatan.length > 0 && (
-            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-              <p className="text-muted-foreground text-[10px]">Total Terbilang:</p>
-              <p className="font-semibold text-blue-900 capitalize line-clamp-2 text-[11px] mt-0.5">
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+              <p className="text-muted-foreground">Terbilang Total Disetujui:</p>
+              <p className="font-semibold text-blue-900 capitalize mt-1">
                 {cleanTerbilang(terbilangRupiah(byKegiatan.reduce((sum, k) => sum + k.totalDisetujui, 0)))}
               </p>
             </div>
@@ -402,61 +431,89 @@ export const LaporanPulsa: React.FC<LaporanPulsaProps> = ({ bulan, tahun }) => {
       </Card>
 
       {/* By Person */}
-      <Card className="shadow-sm">
-        <CardHeader className="p-3 border-b">
-          <CardTitle className="text-sm">Daftar Petugas — {bulanNama}</CardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Daftar Petugas — {bulanNama}</CardTitle>
         </CardHeader>
-        <CardContent className="p-3">
+        <CardContent>
           {persons.length === 0 ? (
-            <p className="text-center text-muted-foreground py-2 text-sm">Tidak ada data</p>
+            <p className="text-center text-muted-foreground py-4">Tidak ada data</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/50 text-[11px]">
+              <table className="w-full text-sm">
+                <thead className="bg-muted">
                   <tr>
-                    <th className="px-2 py-1 text-left">Nama</th>
-                    <th className="px-2 py-1 text-center">T</th>
-                    <th className="px-2 py-1 text-left">Kegiatan / Nominal</th>
-                    <th className="px-2 py-1 text-right">Ajuan</th>
-                    <th className="px-2 py-1 text-right">OK</th>
+                    <th className="px-4 py-2 text-left">No</th>
+                    <th className="px-4 py-2 text-left">Nama</th>
+                    <th className="px-4 py-2 text-center">Tipe</th>
+                    <th className="px-4 py-2 text-left">Kegiatan</th>
+                    <th className="px-4 py-2 text-right">Total Ajuan</th>
+                    <th className="px-4 py-2 text-right">Total Disetujui</th>
+                    <th className="px-4 py-2 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {persons.map((p, idx) => {
+                    // Hitung total disetujui dari entries yang approved
                     const totalDisetujui = p.entries
                       .filter((e): e is NonNullable<typeof e> => e !== null)
                       .filter(e => ['approved', 'approved_ppk', 'completed'].includes(e.status))
                       .reduce((sum, e) => sum + e.nominal, 0);
                     
-                    const validEntries = p.entries.filter((e): e is NonNullable<typeof e> => e !== null);
-                    const statusSummary = validEntries.map(e => {
-                      if (['approved', 'approved_ppk', 'completed'].includes(e.status)) return '✓';
-                      if (['rejected', 'rejected_ppk'].includes(e.status)) return '✕';
-                      if (['pending', 'pending_ppk'].includes(e.status)) return '⏳';
-                      return '−';
-                    }).join('');
-
                     return (
-                    <tr key={p.nama} className="border-b hover:bg-muted/50 text-[11px]">
-                      <td className="px-2 py-1 font-medium truncate">{p.nama}</td>
-                      <td className="px-2 py-1 text-center text-[10px]">{p.tipe === 'Organik' ? 'O' : 'M'}</td>
-                      <td className="px-2 py-1 text-[10px]">
-                        {validEntries.map((e, i) => {
-                          const icon = (['approved', 'approved_ppk', 'completed'].includes(e.status) ? '✓' : 
-                                       (['rejected', 'rejected_ppk'].includes(e.status) ? '✕' : 
-                                        (['pending', 'pending_ppk'].includes(e.status) ? '⏳' : '−')));
-                          return (
-                            <div key={i} className="truncate">
-                              {icon} {e.kegiatan} (Rp {(e.nominal/1000).toFixed(0)}K)
-                            </div>
-                          );
+                    <tr key={p.nama} className="border-b hover:bg-muted/50">
+                      <td className="px-4 py-2">{idx + 1}</td>
+                      <td className="px-4 py-2 font-medium">{p.nama}</td>
+                      <td className="px-4 py-2 text-center">
+                        <Badge variant={p.tipe === 'Organik' ? 'default' : 'secondary'}>{p.tipe}</Badge>
+                      </td>
+                      <td className="px-4 py-2">
+                        {p.entries
+                          .filter((e): e is NonNullable<typeof e> => e !== null)
+                          .map((e, i) => {
+                            const statusIcon = (() => {
+                              if (['approved', 'approved_ppk', 'completed'].includes(e.status)) {
+                                return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 mr-1 text-xs">✓</span>;
+                              }
+                              if (['rejected', 'rejected_ppk'].includes(e.status)) {
+                                return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 mr-1 text-xs">❌</span>;
+                              }
+                              if (['pending', 'pending_ppk'].includes(e.status)) {
+                                return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 mr-1 text-xs">⏳</span>;
+                              }
+                              return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 mr-1 text-xs">-</span>;
+                            })();
+                            return (
+                              <div key={i} className="text-xs flex items-center mb-1">
+                                {statusIcon}
+                                <span>{e.kegiatan} — Rp {e.nominal.toLocaleString('id-ID')}</span>
+                              </div>
+                            );
+                          })}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono font-semibold">
+                        Rp {p.total.toLocaleString('id-ID')}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono font-semibold text-green-600">
+                        Rp {totalDisetujui.toLocaleString('id-ID')}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        {p.entries
+                          .filter((e): e is NonNullable<typeof e> => e !== null)
+                          .map((e, i) => {
+                          const badge = (() => {
+                            if (['approved', 'approved_ppk', 'completed'].includes(e.status))
+                              return { label: '✓', variant: 'default' as const, sizeClass: 'text-xs px-1.5 py-0.5' };
+                            if (['rejected', 'rejected_ppk'].includes(e.status))
+                              return { label: '✕', variant: 'destructive' as const, textColor: 'text-white font-bold', sizeClass: 'text-xs px-1.5 py-0.5' };
+                            if (['pending', 'pending_ppk'].includes(e.status))
+                              return { label: '⏳', variant: 'outline' as const, sizeClass: 'text-xs px-1.5 py-0.5' };
+                            return { label: 'Draft', variant: 'secondary' as const, sizeClass: 'text-xs px-2' };
+                          })();
+                          const extraClass = badge.textColor ? badge.textColor : '';
+                          const sizeClass = badge.sizeClass || 'text-xs mx-0.5';
+                          return <Badge key={i} variant={badge.variant} className={`${sizeClass} mx-0.5 ${extraClass}`}>{badge.label}</Badge>;
                         })}
-                      </td>
-                      <td className="px-2 py-1 text-right font-mono font-semibold text-[10px]">
-                        Rp {(p.total/1000).toFixed(0)}K
-                      </td>
-                      <td className="px-2 py-1 text-right font-mono font-semibold text-green-600 text-[10px]">
-                        Rp {(totalDisetujui/1000).toFixed(0)}K
                       </td>
                     </tr>
                     );
