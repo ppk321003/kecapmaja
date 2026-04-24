@@ -2,6 +2,15 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Search, ChevronDown, User, Users, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export interface Person {
   id: string;
@@ -29,6 +38,7 @@ export const PersonMultiSelect: React.FC<PersonMultiSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -107,6 +117,41 @@ export const PersonMultiSelect: React.FC<PersonMultiSelectProps> = ({
         </div>
         <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
       </button>
+
+      {/* Selected Names Display - BARU */}
+      {selectedOptions.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2 p-2 bg-muted/30 rounded-md border border-dashed border-gray-300">
+          {selectedOptions.map((option) => (
+            <div
+              key={option.id}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded text-sm font-medium",
+                type === 'organik' 
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-green-100 text-green-700"
+              )}
+            >
+              <span>{option.name}</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setDeleteConfirm({ id: option.id, name: option.name });
+                }}
+                className={cn(
+                  "ml-1 font-bold hover:opacity-70 transition-opacity",
+                  type === 'organik' 
+                    ? "text-blue-600 hover:text-blue-800"
+                    : "text-green-600 hover:text-green-800"
+                )}
+                title="Hapus"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Dropdown Content */}
       {isOpen && (
@@ -190,6 +235,36 @@ export const PersonMultiSelect: React.FC<PersonMultiSelectProps> = ({
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirm !== null} onOpenChange={(open) => {
+        if (!open) setDeleteConfirm(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Nama?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda akan menghapus <span className="font-medium text-foreground">{deleteConfirm?.name}</span> dari daftar. Lanjutkan?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel onClick={() => setDeleteConfirm(null)}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deleteConfirm) {
+                  handleSelect(deleteConfirm.id);
+                  setDeleteConfirm(null);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Hapus
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
