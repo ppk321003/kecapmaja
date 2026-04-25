@@ -55,6 +55,7 @@ const keuanganItems = [
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3, conditional: "showBahanRevisiAnggaran" },
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
+  { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
 ];
 
 // MENU GROUP: PENGADAAN
@@ -67,7 +68,6 @@ const pengadaanItems = [
 const kepegawaianItems = [
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
   { title: "Padamel | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
-  { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
 ];
 
 // MENU GROUP: e-DOKUMEN SUB ITEMS
