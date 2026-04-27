@@ -17,6 +17,7 @@ import { CheckCircle2, Loader2, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import bpsLogo from "@/assets/bps-logo.png";
+import { generateAntrianNumber } from "@/utils/generateAntrianNumber";
 
 const TAMU_SPREADSHEET_ID = "1Q9kPlXg18BvAtnbM-cpoQ0xud1zC3rpA6CDa3EZcRGY";
 const TAMU_SHEET = "Sheet1";
@@ -122,6 +123,8 @@ const ETamu = () => {
   const [success, setSuccess] = useState(false);
   const [organikList, setOrganikList] = useState<Organik[]>([]);
   const [loadingOrganik, setLoadingOrganik] = useState(true);
+  const [existingAntrianData, setExistingAntrianData] = useState<string[][]>([]);
+  const [generatedAntrian, setGeneratedAntrian] = useState<string>("");
 
   // Fetch dropdown organik (filter kode satker 3210) + No HP + Jabatan
   useEffect(() => {
@@ -179,6 +182,29 @@ const ETamu = () => {
     fetchOrganik();
   }, []);
 
+  // Fetch existing antrian data untuk counting nomor urut
+  useEffect(() => {
+    const fetchAntrianData = async () => {
+      try {
+        const { data: response, error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: TAMU_SPREADSHEET_ID,
+            operation: "read",
+            range: TAMU_SHEET,
+          },
+        });
+        if (error) throw error;
+        const rows: any[][] = response?.values || [];
+        if (rows.length > 1) {
+          setExistingAntrianData(rows.slice(1)); // Skip header row
+        }
+      } catch (err) {
+        console.error("Gagal memuat data antrian:", err);
+      }
+    };
+    fetchAntrianData();
+  }, []);
+
   const handleChange = (key: keyof FormState, value: string | string[]) => {
     setForm((p) => ({ ...p, [key]: value }));
     if (errors[key]) setErrors((p) => ({ ...p, [key]: undefined }));
@@ -225,7 +251,11 @@ const ETamu = () => {
         kepentinganText += " - " + parsed.data.lainnyaText.trim();
       }
 
-      // Kolom A-G existing + H kosong (placeholder) + I-L baru
+      // Generate nomor antrian
+      const nomorAntrian = generateAntrianNumber(parsed.data.kepentinganList, existingAntrianData);
+      setGeneratedAntrian(nomorAntrian);
+
+      // Kolom A-G existing + H kosong (placeholder) + I-L baru + M antrian
       const row = [
         timestamp,                    // A
         parsed.data.nama,             // B
@@ -239,6 +269,7 @@ const ETamu = () => {
         parsed.data.email,            // J
         parsed.data.umur,             // K
         parsed.data.pendidikan,       // L
+        nomorAntrian,                 // M (nomor antrian)
       ];
 
       const { error } = await supabase.functions.invoke("google-sheets", {
@@ -346,6 +377,22 @@ const ETamu = () => {
                   tercatat pada sistem <span className="font-semibold text-foreground">e-Tamu BPS Kabupaten Majalengka</span>.
                   Mohon berkenan menunggu sejenak, petugas yang dituju akan segera melayani Anda.
                 </p>
+                
+                {/* Nomor Antrian */}
+                {generatedAntrian && (
+                  <div className="mt-6 w-full max-w-md rounded-lg border-2 border-blue-400 bg-gradient-to-br from-blue-50 to-blue-100 px-6 py-5 text-center shadow-md">
+                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">
+                      Nomor Antrian Anda
+                    </p>
+                    <div className="text-4xl font-bold text-blue-700 tracking-widest font-mono">
+                      {generatedAntrian}
+                    </div>
+                    <p className="mt-3 text-xs text-blue-600">
+                      Silakan tunjukkan nomor ini kepada petugas
+                    </p>
+                  </div>
+                )}
+                
                 <div className="mt-5 w-full max-w-md rounded-lg border border-border bg-muted/40 px-4 py-3 text-left">
                   <p className="text-xs leading-relaxed text-muted-foreground">
                     <span className="font-semibold text-foreground">Salam Hormat,</span>
