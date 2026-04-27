@@ -22,9 +22,9 @@ export const ANTRIAN_KODE: AntrianMapping = {
 
 /**
  * Generate nomor antrian berdasarkan kategori kepentingan
- * @param kepentinganList - array id kategori (contoh: ['perpustakaan'])
+ * @param kepentinganList - array id kategori (contoh: ['perpustakaan', 'konsultasi'])
  * @param existingData - array data existing dari sheet untuk counting
- * @returns nomor antrian (contoh: LP-2604-001)
+ * @returns nomor antrian (contoh: LP-KS-2604-001 untuk multiple, atau LP-2604-001 untuk single)
  */
 export const generateAntrianNumber = (
   kepentinganList: string[],
@@ -34,9 +34,13 @@ export const generateAntrianNumber = (
     return "";
   }
 
-  // Ambil kategori utama (yang pertama dipilih)
-  const kategori = kepentinganList[0];
-  const kode = ANTRIAN_KODE[kategori] || "L";
+  // Map semua kategori ke kode (tidak hanya yang pertama)
+  const kodeList = kepentinganList
+    .map((kat) => ANTRIAN_KODE[kat] || "L")
+    .filter((kode, index, arr) => arr.indexOf(kode) === index); // Remove duplicates
+  
+  // Gabungkan semua kode dengan "-"
+  const kodesGabung = kodeList.join("-");
 
   // Format YYMM
   const now = new Date();
@@ -49,13 +53,14 @@ export const generateAntrianNumber = (
 
   if (existingData && existingData.length > 0) {
     // Asumsi kolom antrian ada di index 12 (kolom M = 13, tapi array 0-indexed = 12)
-    // Filter yang sesuai kode dan tahun-bulan yang sama
-    const prefix = `${kode}-${yearMonth}`;
+    // Filter yang sesuai dengan gabungan kode dan tahun-bulan yang sama
+    // Cari entries yang berakhir dengan "-YYMM-NOURUT"
+    const yearMonthPattern = `-${yearMonth}-`;
     
     const matching = existingData.filter((row) => {
       if (row[12]) {
         const antrianStr = String(row[12]).trim();
-        return antrianStr.startsWith(prefix);
+        return antrianStr.includes(yearMonthPattern);
       }
       return false;
     });
@@ -64,13 +69,15 @@ export const generateAntrianNumber = (
       // Extract nomor urut dari entry terakhir
       const lastEntry = matching[matching.length - 1];
       const lastAntrianStr = String(lastEntry[12]).trim();
-      const lastNomor = parseInt(lastAntrianStr.split("-")[2] || "0", 10);
+      const parts = lastAntrianStr.split("-");
+      // Nomor urut adalah bagian paling akhir
+      const lastNomor = parseInt(parts[parts.length - 1] || "0", 10);
       nomor = lastNomor + 1;
     }
   }
 
   const nomorStr = String(nomor).padStart(3, "0");
-  return `${kode}-${yearMonth}-${nomorStr}`;
+  return `${kodesGabung}-${yearMonth}-${nomorStr}`;
 };
 
 /**
