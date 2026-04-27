@@ -1906,7 +1906,7 @@ function autoSendBukuTamuSingle(rowNum) {
     }
     
     // Generate nomor antrian
-    const nomorAntrian = generateAntrianNumber(entry.kepentingan, allData);
+    nomorAntrian = generateAntrianNumber(entry.kepentingan, allData);
     console.log(`📊 Generated antrian: ${nomorAntrian}`);
     
     updateCell(sheet, rowNum, 8, "Processing...");
