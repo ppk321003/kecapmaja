@@ -20,14 +20,17 @@ interface ManualWABroadcastProps {
   userRole: string[];
   ppkName: string;
   allEmployees: Karyawan[];
+  allMitra?: Karyawan[];
 }
 
 type RecipientMode = 'manual';
+type RecipientType = 'organik' | 'mitra';
 
 export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   userRole,
   ppkName,
   allEmployees,
+  allMitra = [],
 }) => {
   const { toast } = useToast();
 
@@ -47,6 +50,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
   // State
   const [recipientMode, setRecipientMode] = useState<RecipientMode>('manual');
+  const [recipientType, setRecipientType] = useState<RecipientType>('organik');
   const [selectedNips, setSelectedNips] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -70,9 +74,15 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Active recipient pool based on type
+  const activePool = useMemo(
+    () => (recipientType === 'mitra' ? allMitra : allEmployees),
+    [recipientType, allEmployees, allMitra]
+  );
+
   // Computed
   const filteredEmployees = useMemo(() => {
-    return allEmployees.filter((emp) => {
+    return activePool.filter((emp) => {
       // Search
       if (
         searchQuery &&
@@ -83,9 +93,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
       }
       return true;
     });
-  }, [searchQuery, allEmployees]);
+  }, [searchQuery, activePool]);
 
-  const recipients = Array.from(selectedNips).map((nip) => allEmployees.find((e) => e.nip === nip)).filter(Boolean) as Karyawan[];
+  const recipients = Array.from(selectedNips).map((nip) => activePool.find((e) => e.nip === nip)).filter(Boolean) as Karyawan[];
 
   // Test modal filtered employees
   const testFilteredEmployees = useMemo(() => {
