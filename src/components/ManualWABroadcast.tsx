@@ -364,6 +364,45 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
               className="w-full"
             />
 
+            {/* Select All / Clear */}
+            {filteredEmployees.length > 0 && (() => {
+              const allSelected = filteredEmployees.every((e) => selectedNips.has(e.nip));
+              const someSelected = filteredEmployees.some((e) => selectedNips.has(e.nip));
+              return (
+                <div className="flex items-center justify-between px-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = !allSelected && someSelected;
+                      }}
+                      onChange={(e) => {
+                        const newSet = new Set(selectedNips);
+                        if (e.target.checked) {
+                          filteredEmployees.forEach((emp) => newSet.add(emp.nip));
+                        } else {
+                          filteredEmployees.forEach((emp) => newSet.delete(emp.nip));
+                        }
+                        setSelectedNips(newSet);
+                      }}
+                      className="w-4 h-4"
+                    />
+                    Pilih semua{searchQuery ? ' (hasil pencarian)' : ''} ({filteredEmployees.length})
+                  </label>
+                  {selectedNips.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedNips(new Set())}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Hapus semua pilihan
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-2">
               {filteredEmployees.length === 0 ? (
                 <p className="text-gray-500 text-sm">Tidak ada karyawan ditemukan</p>
