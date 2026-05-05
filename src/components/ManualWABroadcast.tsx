@@ -20,14 +20,17 @@ interface ManualWABroadcastProps {
   userRole: string[];
   ppkName: string;
   allEmployees: Karyawan[];
+  allMitra?: Karyawan[];
 }
 
 type RecipientMode = 'manual';
+type RecipientType = 'organik' | 'mitra';
 
 export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   userRole,
   ppkName,
   allEmployees,
+  allMitra = [],
 }) => {
   const { toast } = useToast();
 
@@ -47,6 +50,7 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
 
   // State
   const [recipientMode, setRecipientMode] = useState<RecipientMode>('manual');
+  const [recipientType, setRecipientType] = useState<RecipientType>('organik');
   const [selectedNips, setSelectedNips] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -70,9 +74,15 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Active recipient pool based on type
+  const activePool = useMemo(
+    () => (recipientType === 'mitra' ? allMitra : allEmployees),
+    [recipientType, allEmployees, allMitra]
+  );
+
   // Computed
   const filteredEmployees = useMemo(() => {
-    return allEmployees.filter((emp) => {
+    return activePool.filter((emp) => {
       // Search
       if (
         searchQuery &&
@@ -83,9 +93,9 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
       }
       return true;
     });
-  }, [searchQuery, allEmployees]);
+  }, [searchQuery, activePool]);
 
-  const recipients = Array.from(selectedNips).map((nip) => allEmployees.find((e) => e.nip === nip)).filter(Boolean) as Karyawan[];
+  const recipients = Array.from(selectedNips).map((nip) => activePool.find((e) => e.nip === nip)).filter(Boolean) as Karyawan[];
 
   // Test modal filtered employees
   const testFilteredEmployees = useMemo(() => {
@@ -305,17 +315,93 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           <CardTitle className="flex items-center gap-2">
             👥 Pilih Penerima
           </CardTitle>
-          <CardDescription>Pilih manual atau gunakan filter untuk bulk selection</CardDescription>
+          <CardDescription>Pilih jenis penerima, lalu pilih nama secara manual</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Recipient Type Toggle */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Jenis Penerima:</label>
+            <div className="inline-flex rounded-lg border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  setRecipientType('organik');
+                  setSelectedNips(new Set());
+                  setSearchQuery('');
+                }}
+                className={`px-4 py-2 text-sm font-medium transition ${
+                  recipientType === 'organik'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Organik BPS ({allEmployees.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRecipientType('mitra');
+                  setSelectedNips(new Set());
+                  setSearchQuery('');
+                }}
+                className={`px-4 py-2 text-sm font-medium transition border-l ${
+                  recipientType === 'mitra'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Mitra Statistik ({allMitra.length})
+              </button>
+            </div>
+          </div>
+
           {/* Manual Selection */}
           <div className="space-y-3">
             <Input
-              placeholder="Cari nama atau NIP..."
+              placeholder={recipientType === 'mitra' ? 'Cari nama atau NIK...' : 'Cari nama atau NIP...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full"
             />
+
+            {/* Select All / Clear */}
+            {filteredEmployees.length > 0 && (() => {
+              const allSelected = filteredEmployees.every((e) => selectedNips.has(e.nip));
+              const someSelected = filteredEmployees.some((e) => selectedNips.has(e.nip));
+              return (
+                <div className="flex items-center justify-between px-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = !allSelected && someSelected;
+                      }}
+                      onChange={(e) => {
+                        const newSet = new Set(selectedNips);
+                        if (e.target.checked) {
+                          filteredEmployees.forEach((emp) => newSet.add(emp.nip));
+                        } else {
+                          filteredEmployees.forEach((emp) => newSet.delete(emp.nip));
+                        }
+                        setSelectedNips(newSet);
+                      }}
+                      className="w-4 h-4"
+                    />
+                    Pilih semua{searchQuery ? ' (hasil pencarian)' : ''} ({filteredEmployees.length})
+                  </label>
+                  {selectedNips.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedNips(new Set())}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Hapus semua pilihan
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-2">
               {filteredEmployees.length === 0 ? (
