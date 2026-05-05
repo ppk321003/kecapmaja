@@ -1880,7 +1880,7 @@ function autoSendBukuTamuSingle(rowNum) {
     const allData = sheet.getDataRange().getValues();
     
     const row = sheet.getRange(rowNum, 1, 1, 13).getValues()[0]; // Read 13 columns
-    const [timestamp, nama, asal, noHp, kepentingan, tujuan, noHpTujuan, status, , , , , nomorAntrian] = row.map(cell => cell ? cell.toString().trim() : "");
+    const [timestamp, nama, asal, noHp, kepentingan, tujuan, noHpTujuan, status, , , , , ] = row.map(cell => cell ? cell.toString().trim() : "");
     
     if (!nama || !noHp) {
       console.log(`⚠️ Data required tidak lengkap di row ${rowNum}`);
@@ -1906,7 +1906,7 @@ function autoSendBukuTamuSingle(rowNum) {
     }
     
     // Generate nomor antrian
-    nomorAntrian = generateAntrianNumber(entry.kepentingan, allData);
+    let nomorAntrian = generateAntrianNumber(entry.kepentingan, allData);
     console.log(`📊 Generated antrian: ${nomorAntrian}`);
     
     updateCell(sheet, rowNum, 8, "Processing...");
