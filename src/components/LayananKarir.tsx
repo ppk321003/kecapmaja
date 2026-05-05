@@ -24,6 +24,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
   );
 
   const [allEmployees, setAllEmployees] = useState<Karyawan[]>([]);
+  const [allMitra, setAllMitra] = useState<Karyawan[]>([]);
   const [ppkName, setPpkName] = useState<string>(user?.username || 'PPK');
 
   // Fetch all employees for broadcast feature
@@ -102,6 +103,72 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
 
     if (isPPK && !satkerConfig?.isLoading) {
       fetchEmployees();
+    }
+  }, [isPPK, satkerConfig]);
+
+  // Fetch Mitra Statistik for broadcast feature
+  useEffect(() => {
+    const fetchMitra = async () => {
+      try {
+        const spreadsheetId = satkerConfig?.getUserSatkerSheetId('masterorganik');
+        if (!spreadsheetId) return;
+
+        const { data, error } = await supabase.functions.invoke('google-sheets', {
+          body: {
+            spreadsheetId,
+            operation: 'read',
+            range: 'MASTER.MITRA!A:Z'
+          }
+        });
+
+        if (!error && data?.values && Array.isArray(data.values)) {
+          const rows = data.values;
+          const headers: string[] = (rows[0] || []).map((h: any) => (h?.toString() || '').toLowerCase().trim());
+          const idxOf = (...names: string[]) => {
+            for (const n of names) {
+              const i = headers.indexOf(n);
+              if (i >= 0) return i;
+            }
+            return -1;
+          };
+          const iNik = idxOf('nik');
+          const iNama = idxOf('nama');
+          const iPekerjaan = idxOf('pekerjaan', 'jabatan');
+          const iKecamatan = idxOf('kecamatan', 'alamat');
+          const iHp = idxOf('no. hp', 'no hp', 'nohp', 'no.hp', 'no_hp', 'telepon', 'no telepon');
+
+          const mitra = rows.slice(1)
+            .filter((row: any[]) => row && (row[iNama] || row[iNik]))
+            .map((row: any[]) => ({
+              nip: (iNik >= 0 ? row[iNik] : '')?.toString() || '',
+              nama: (iNama >= 0 ? row[iNama] : '')?.toString() || '',
+              pangkat: '',
+              golongan: 'Mitra',
+              jabatan: (iPekerjaan >= 0 ? row[iPekerjaan] : '')?.toString() || 'Mitra Statistik',
+              kategori: 'Reguler' as const,
+              tglPenghitunganAkTerakhir: '',
+              akKumulatif: 0,
+              unitKerja: (iKecamatan >= 0 ? row[iKecamatan] : '')?.toString() || '',
+              tmtJabatan: '',
+              tmtPangkat: '',
+              pendidikan: '',
+              tempatLahir: '',
+              tanggalLahir: '',
+              jenisKelamin: 'L' as const,
+              telepon: (iHp >= 0 ? row[iHp] : '')?.toString() || '',
+              no_hp: (iHp >= 0 ? row[iHp] : '')?.toString() || '',
+            })) as Karyawan[];
+
+          console.log('[LayananKarir] ✅ Fetched mitra for broadcast:', { count: mitra.length, sample: mitra[0] });
+          setAllMitra(mitra);
+        }
+      } catch (err) {
+        console.error('[LayananKarir] ❌ Exception fetching mitra:', err);
+      }
+    };
+
+    if (isPPK && !satkerConfig?.isLoading) {
+      fetchMitra();
     }
   }, [isPPK, satkerConfig]);
 
@@ -219,6 +286,7 @@ const LayananKarir: React.FC<LayananKarirProps> = ({ karyawan }) => {
           <div className="w-full">
             <ManualWABroadcast 
               allEmployees={allEmployees}
+              allMitra={allMitra}
               userRole={userRole}
               ppkName={ppkName}
             />
