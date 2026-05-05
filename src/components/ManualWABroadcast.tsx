@@ -315,13 +315,50 @@ export const ManualWABroadcast: React.FC<ManualWABroadcastProps> = ({
           <CardTitle className="flex items-center gap-2">
             👥 Pilih Penerima
           </CardTitle>
-          <CardDescription>Pilih manual atau gunakan filter untuk bulk selection</CardDescription>
+          <CardDescription>Pilih jenis penerima, lalu pilih nama secara manual</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Recipient Type Toggle */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Jenis Penerima:</label>
+            <div className="inline-flex rounded-lg border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  setRecipientType('organik');
+                  setSelectedNips(new Set());
+                  setSearchQuery('');
+                }}
+                className={`px-4 py-2 text-sm font-medium transition ${
+                  recipientType === 'organik'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Organik BPS ({allEmployees.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRecipientType('mitra');
+                  setSelectedNips(new Set());
+                  setSearchQuery('');
+                }}
+                className={`px-4 py-2 text-sm font-medium transition border-l ${
+                  recipientType === 'mitra'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Mitra Statistik ({allMitra.length})
+              </button>
+            </div>
+          </div>
+
           {/* Manual Selection */}
           <div className="space-y-3">
             <Input
-              placeholder="Cari nama atau NIP..."
+              placeholder={recipientType === 'mitra' ? 'Cari nama atau NIK...' : 'Cari nama atau NIP...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full"
