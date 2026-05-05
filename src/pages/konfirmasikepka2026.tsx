@@ -50,6 +50,7 @@ const COL = {
   lintasKecamatan: colIdx("AQ"),  // AQ - Apakah Anda bersedia bekerja Lintas Kecamatan?
   lintasDesa: colIdx("AR"),  // AR - Apakah Anda bersedia bekerja Lintas Desa?
   tidakMengalihkan: colIdx("AV"),  // AV - Apakah anda bersedia tidak mengalihkan pekerjaan?
+  pertanyaan: colIdx("AI"),  // AI - Link gambar pertanyaan Google Drive
 };
 
 type Row = string[];
@@ -159,13 +160,27 @@ export default function KonfirmasiKepka2026() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
     
-    const umurData = Array.from(umurMap.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => {
-        const aNum = parseInt(a.name);
-        const bNum = parseInt(b.name);
-        return isNaN(aNum) || isNaN(bNum) ? 0 : aNum - bNum;
-      });
+    // Group umur into ranges
+    const categorizeUmur = (umurStr: string): string => {
+      const umurNum = parseInt(umurStr);
+      if (isNaN(umurNum)) return "Tidak ada data";
+      if (umurNum < 20) return "<20";
+      if (umurNum <= 30) return "21-30";
+      if (umurNum <= 40) return "31-40";
+      if (umurNum <= 50) return "41-50";
+      return ">50";
+    };
+    
+    const umurRangeMap = new Map<string, number>();
+    umurMap.forEach((count, umurStr) => {
+      const range = categorizeUmur(umurStr);
+      umurRangeMap.set(range, (umurRangeMap.get(range) || 0) + count);
+    });
+    
+    const umurRangeOrder = ["<20", "21-30", "31-40", "41-50", ">50"];
+    const umurData = umurRangeOrder
+      .filter(range => umurRangeMap.has(range))
+      .map(range => ({ name: range, value: umurRangeMap.get(range) || 0 }));
     
     const pekerjaanData = Array.from(pekerjaanMap.entries())
       .map(([name, value]) => ({ name: name.substring(0, 20), value }))
@@ -583,10 +598,19 @@ export default function KonfirmasiKepka2026() {
                 {headers.map((h, i) => {
                   const val = detailRow[i];
                   if (!h && !val) return null;
+                  const isGDriveLink = val && typeof val === "string" && val.includes("drive.google.com");
                   return (
                     <div key={i} className="border-b pb-2">
                       <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h || `Kolom ${i + 1}`}</div>
-                      <div className="text-sm break-words mt-1">{val || <span className="text-muted-foreground italic">-</span>}</div>
+                      <div className="text-sm break-words mt-1">
+                        {isGDriveLink ? (
+                          <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline font-medium">
+                            📸 Klik untuk melihat gambar
+                          </a>
+                        ) : (
+                          val || <span className="text-muted-foreground italic">-</span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
