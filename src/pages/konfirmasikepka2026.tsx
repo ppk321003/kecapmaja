@@ -37,7 +37,9 @@ const colIdx = (letter: string): number => {
 
 const COL = {
   email: colIdx("B"),    // B
+  kegiatanRutin: colIdx("C"),  // C - Kegiatan Rutin yang sudah diikuti tahun 2026
   sensusEkonomi: colIdx("E"),  // E - Sensus Ekonomi 2026
+  pendidikan: colIdx("J"),  // J - Pendidikan terakhir yang ditamatkan
   nama: colIdx("F"),     // F
   sobatId: colIdx("G"),  // G
   kec: colIdx("M"),      // M
@@ -118,6 +120,8 @@ export default function KonfirmasiKepka2026() {
     const lintasKecMap = new Map<string, number>();
     const lintasDesaMap = new Map<string, number>();
     const tidakMengalihMap = new Map<string, number>();
+    const pendidikanMap = new Map<string, number>();
+    const kegiatanRutinMap = new Map<string, number>();
     
     rows.forEach(r => {
       const s = r[COL.status] || "";
@@ -154,6 +158,15 @@ export default function KonfirmasiKepka2026() {
       // Tidak Mengalihkan
       const tidakMeng = (r[COL.tidakMengalihkan] || "(Tidak diisi)").toString().trim();
       if (tidakMeng) tidakMengalihMap.set(tidakMeng, (tidakMengalihMap.get(tidakMeng) || 0) + 1);
+      
+      // Pendidikan
+      const pendidikan = (r[COL.pendidikan] || "(Tidak diisi)").toString().trim();
+      if (pendidikan) pendidikanMap.set(pendidikan, (pendidikanMap.get(pendidikan) || 0) + 1);
+      
+      // Kegiatan Rutin
+      const kegiatanRaw = (r[COL.kegiatanRutin] || "").toString().trim();
+      const kegiatanKat = kegiatanRaw === "" || kegiatanRaw === "_" || kegiatanRaw === "-" ? "Non Rutin" : "Mitra Rutin";
+      kegiatanRutinMap.set(kegiatanKat, (kegiatanRutinMap.get(kegiatanKat) || 0) + 1);
     });
     
     const perKec = Array.from(kecMap.entries())
@@ -208,12 +221,23 @@ export default function KonfirmasiKepka2026() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
     
+    const pendidikanData = Array.from(pendidikanMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+    
+    const kegiatanRutinData = Array.from(kegiatanRutinMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
     return { 
       total, verified, mismatch, other, perKec,
       umurData, pekerjaanData, androidData, prioritasData,
       lintasKecData, lintasDesaData, tidakMengalihData,
+      pendidikanData, kegiatanRutinData,
       umurMap, pekerjaanMap, androidMap, prioritasMap,
-      lintasKecMap, lintasDesaMap, tidakMengalihMap
+      lintasKecMap, lintasDesaMap, tidakMengalihMap,
+      pendidikanMap, kegiatanRutinMap
     };
   }, [rows]);
 
@@ -462,6 +486,38 @@ export default function KonfirmasiKepka2026() {
                           <Tooltip />
                           <Bar dataKey="value" fill="#06b6d4" radius={[4, 4, 0, 0]} />
                         </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle className="text-lg">Pendidikan Terakhir Responden</CardTitle></CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={stats.pendidikanData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={80} />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle className="text-lg">Status Kegiatan Rutin 2026</CardTitle></CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={stats.kegiatanRutinData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                            {stats.kegiatanRutinData.map((_, i) => (
+                              <Cell key={i} fill={i === 0 ? "#10b981" : "#ef4444"} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>
