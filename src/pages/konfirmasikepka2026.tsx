@@ -111,7 +111,7 @@ export default function KonfirmasiKepka2026() {
 
   const stats = useMemo(() => {
     const total = rows.length;
-    let verified = 0, mismatch = 0, other = 0;
+    let verified = 0, mismatch = 0, notVerified = 0;
     const kecMap = new Map<string, number>();
     const umurMap = new Map<string, number>();
     const pekerjaanMap = new Map<string, number>();
@@ -127,41 +127,41 @@ export default function KonfirmasiKepka2026() {
       const s = r[COL.status] || "";
       if (isVerified(s)) verified++;
       else if (isMismatch(s)) mismatch++;
-      else other++;
+      else notVerified++;
       const k = (r[COL.kec] || "(Tidak diisi)").trim() || "(Tidak diisi)";
       kecMap.set(k, (kecMap.get(k) || 0) + 1);
       
       // Umur
-      const umur = (r[COL.umur] || "(Tidak diisi)").toString().trim();
-      if (umur) umurMap.set(umur, (umurMap.get(umur) || 0) + 1);
+      const umur = (r[COL.umur] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      umurMap.set(umur, (umurMap.get(umur) || 0) + 1);
       
       // Pekerjaan
-      const pekerjaan = (r[COL.pekerjaan] || "(Tidak diisi)").toString().trim();
-      if (pekerjaan) pekerjaanMap.set(pekerjaan, (pekerjaanMap.get(pekerjaan) || 0) + 1);
+      const pekerjaan = (r[COL.pekerjaan] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      pekerjaanMap.set(pekerjaan, (pekerjaanMap.get(pekerjaan) || 0) + 1);
       
       // Android Version
-      const android = (r[COL.androidVersion] || "(Tidak diisi)").toString().trim();
-      if (android) androidMap.set(android, (androidMap.get(android) || 0) + 1);
+      const android = (r[COL.androidVersion] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      androidMap.set(android, (androidMap.get(android) || 0) + 1);
       
       // Prioritas Pekerjaan BPS
-      const prioritas = (r[COL.prioritasKejaanBPS] || "(Tidak diisi)").toString().trim();
-      if (prioritas) prioritasMap.set(prioritas, (prioritasMap.get(prioritas) || 0) + 1);
+      const prioritas = (r[COL.prioritasKejaanBPS] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      prioritasMap.set(prioritas, (prioritasMap.get(prioritas) || 0) + 1);
       
       // Lintas Kecamatan
-      const linKec = (r[COL.lintasKecamatan] || "(Tidak diisi)").toString().trim();
-      if (linKec) lintasKecMap.set(linKec, (lintasKecMap.get(linKec) || 0) + 1);
+      const linKec = (r[COL.lintasKecamatan] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      lintasKecMap.set(linKec, (lintasKecMap.get(linKec) || 0) + 1);
       
       // Lintas Desa
-      const linDesa = (r[COL.lintasDesa] || "(Tidak diisi)").toString().trim();
-      if (linDesa) lintasDesaMap.set(linDesa, (lintasDesaMap.get(linDesa) || 0) + 1);
+      const linDesa = (r[COL.lintasDesa] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      lintasDesaMap.set(linDesa, (lintasDesaMap.get(linDesa) || 0) + 1);
       
       // Tidak Mengalihkan
-      const tidakMeng = (r[COL.tidakMengalihkan] || "(Tidak diisi)").toString().trim();
-      if (tidakMeng) tidakMengalihMap.set(tidakMeng, (tidakMengalihMap.get(tidakMeng) || 0) + 1);
+      const tidakMeng = (r[COL.tidakMengalihkan] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      tidakMengalihMap.set(tidakMeng, (tidakMengalihMap.get(tidakMeng) || 0) + 1);
       
       // Pendidikan
-      const pendidikan = (r[COL.pendidikan] || "(Tidak diisi)").toString().trim();
-      if (pendidikan) pendidikanMap.set(pendidikan, (pendidikanMap.get(pendidikan) || 0) + 1);
+      const pendidikan = (r[COL.pendidikan] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      pendidikanMap.set(pendidikan, (pendidikanMap.get(pendidikan) || 0) + 1);
       
       // Kegiatan Rutin
       const kegiatanRaw = (r[COL.kegiatanRutin] || "").toString().trim();
@@ -231,7 +231,7 @@ export default function KonfirmasiKepka2026() {
       .sort((a, b) => b.value - a.value);
     
     return { 
-      total, verified, mismatch, other, perKec,
+      total, verified, mismatch, notVerified, perKec,
       umurData, pekerjaanData, androidData, prioritasData,
       lintasKecData, lintasDesaData, tidakMengalihData,
       pendidikanData, kegiatanRutinData,
@@ -253,7 +253,7 @@ export default function KonfirmasiKepka2026() {
         const s = r[COL.status] || "";
         if (filterStatus === "verified" && !isVerified(s)) return false;
         if (filterStatus === "mismatch" && !isMismatch(s)) return false;
-        if (filterStatus === "other" && (isVerified(s) || isMismatch(s))) return false;
+        if (filterStatus === "notVerified" && (isVerified(s) || isMismatch(s))) return false;
       }
       if (filterKec !== "all" && (r[COL.kec] || "").trim() !== filterKec) return false;
       if (q) {
@@ -299,7 +299,7 @@ export default function KonfirmasiKepka2026() {
   const pieData = [
     { name: "Terverifikasi", value: stats.verified, color: "#10b981" },
     { name: "Tidak Cocok", value: stats.mismatch, color: "#ef4444" },
-    { name: "Lainnya", value: stats.other, color: "#94a3b8" },
+    { name: "Belum Terverifikasi", value: stats.notVerified, color: "#f59e0b" },
   ].filter(d => d.value > 0);
 
   return (
@@ -326,7 +326,7 @@ export default function KonfirmasiKepka2026() {
               <Card><CardContent className="py-10 text-center text-red-600">{error}</CardContent></Card>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card className="border-l-4 border-l-blue-500 shadow-sm">
                     <CardHeader className="pb-2"><CardDescription>Total Responden</CardDescription>
                       <CardTitle className="text-3xl flex items-center gap-2"><Users className="h-6 w-6 text-blue-500" />{stats.total.toLocaleString("id-ID")}</CardTitle>
@@ -346,6 +346,14 @@ export default function KonfirmasiKepka2026() {
                     </CardHeader>
                     <CardContent className="pt-0 text-xs text-muted-foreground">
                       {stats.total > 0 ? `${((stats.mismatch / stats.total) * 100).toFixed(1)}% dari total` : "-"}
+                    </CardContent>
+                  </Card>
+                  <Card className="border-l-4 border-l-amber-500 shadow-sm">
+                    <CardHeader className="pb-2"><CardDescription>Belum Terverifikasi</CardDescription>
+                      <CardTitle className="text-3xl flex items-center gap-2 text-amber-600">{stats.notVerified.toLocaleString("id-ID")}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0 text-xs text-muted-foreground">
+                      {stats.total > 0 ? `${((stats.notVerified / stats.total) * 100).toFixed(1)}% dari total` : "-"}
                     </CardContent>
                   </Card>
                 </div>
@@ -550,7 +558,7 @@ export default function KonfirmasiKepka2026() {
                       <SelectItem value="all">Semua Status</SelectItem>
                       <SelectItem value="verified">Terverifikasi</SelectItem>
                       <SelectItem value="mismatch">Tidak Cocok</SelectItem>
-                      <SelectItem value="other">Lainnya</SelectItem>
+                      <SelectItem value="notVerified">Belum Terverifikasi</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={filterKec} onValueChange={setFilterKec}>
