@@ -37,18 +37,30 @@ const colIdx = (letter: string): number => {
 
 const COL = {
   email: colIdx("B"),    // B
+  sensusEkonomi: colIdx("E"),  // E - Sensus Ekonomi 2026
   nama: colIdx("F"),     // F
   sobatId: colIdx("G"),  // G
   kec: colIdx("M"),      // M
   desa: colIdx("N"),     // N
   status: colIdx("BD"),  // BD
+  umur: colIdx("L"),     // L - Umur saat ini
+  pekerjaan: colIdx("R"),  // R - Apakah Anda Bekerja Sebagai...
+  androidVersion: colIdx("Y"),  // Y - Apa Versi Android Smartphone Android Anda?
+  prioritasKejaanBPS: colIdx("AM"),  // AM - Apakah Anda bersedia Memprioritaskan Pekerjaan BPS?
+  lintasKecamatan: colIdx("AQ"),  // AQ - Apakah Anda bersedia bekerja Lintas Kecamatan?
+  lintasDesa: colIdx("AR"),  // AR - Apakah Anda bersedia bekerja Lintas Desa?
+  tidakMengalihkan: colIdx("AV"),  // AV - Apakah anda bersedia tidak mengalihkan pekerjaan?
 };
 
 type Row = string[];
 
+const isNotVerified = (status: string) => {
+  const s = (status || "").toLowerCase().trim();
+  return s.includes("belum") && s.includes("verifikasi");
+};
 const isVerified = (status: string) => {
   const s = (status || "").toLowerCase().trim();
-  return s.includes("verifikasi") || s.includes("cocok") && !s.includes("tidak") || s.includes("valid") || s === "ok" || s === "terverifikasi";
+  return !isNotVerified(s) && (s.includes("verifikasi") || s.includes("cocok") && !s.includes("tidak") || s.includes("valid") || s === "ok" || s === "terverifikasi");
 };
 const isMismatch = (status: string) => {
   const s = (status || "").toLowerCase().trim();
@@ -98,6 +110,14 @@ export default function KonfirmasiKepka2026() {
     const total = rows.length;
     let verified = 0, mismatch = 0, other = 0;
     const kecMap = new Map<string, number>();
+    const umurMap = new Map<string, number>();
+    const pekerjaanMap = new Map<string, number>();
+    const androidMap = new Map<string, number>();
+    const prioritasMap = new Map<string, number>();
+    const lintasKecMap = new Map<string, number>();
+    const lintasDesaMap = new Map<string, number>();
+    const tidakMengalihMap = new Map<string, number>();
+    
     rows.forEach(r => {
       const s = r[COL.status] || "";
       if (isVerified(s)) verified++;
@@ -105,11 +125,81 @@ export default function KonfirmasiKepka2026() {
       else other++;
       const k = (r[COL.kec] || "(Tidak diisi)").trim() || "(Tidak diisi)";
       kecMap.set(k, (kecMap.get(k) || 0) + 1);
+      
+      // Umur
+      const umur = (r[COL.umur] || "(Tidak diisi)").toString().trim();
+      if (umur) umurMap.set(umur, (umurMap.get(umur) || 0) + 1);
+      
+      // Pekerjaan
+      const pekerjaan = (r[COL.pekerjaan] || "(Tidak diisi)").toString().trim();
+      if (pekerjaan) pekerjaanMap.set(pekerjaan, (pekerjaanMap.get(pekerjaan) || 0) + 1);
+      
+      // Android Version
+      const android = (r[COL.androidVersion] || "(Tidak diisi)").toString().trim();
+      if (android) androidMap.set(android, (androidMap.get(android) || 0) + 1);
+      
+      // Prioritas Pekerjaan BPS
+      const prioritas = (r[COL.prioritasKejaanBPS] || "(Tidak diisi)").toString().trim();
+      if (prioritas) prioritasMap.set(prioritas, (prioritasMap.get(prioritas) || 0) + 1);
+      
+      // Lintas Kecamatan
+      const linKec = (r[COL.lintasKecamatan] || "(Tidak diisi)").toString().trim();
+      if (linKec) lintasKecMap.set(linKec, (lintasKecMap.get(linKec) || 0) + 1);
+      
+      // Lintas Desa
+      const linDesa = (r[COL.lintasDesa] || "(Tidak diisi)").toString().trim();
+      if (linDesa) lintasDesaMap.set(linDesa, (lintasDesaMap.get(linDesa) || 0) + 1);
+      
+      // Tidak Mengalihkan
+      const tidakMeng = (r[COL.tidakMengalihkan] || "(Tidak diisi)").toString().trim();
+      if (tidakMeng) tidakMengalihMap.set(tidakMeng, (tidakMengalihMap.get(tidakMeng) || 0) + 1);
     });
+    
     const perKec = Array.from(kecMap.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-    return { total, verified, mismatch, other, perKec };
+    
+    const umurData = Array.from(umurMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => {
+        const aNum = parseInt(a.name);
+        const bNum = parseInt(b.name);
+        return isNaN(aNum) || isNaN(bNum) ? 0 : aNum - bNum;
+      });
+    
+    const pekerjaanData = Array.from(pekerjaanMap.entries())
+      .map(([name, value]) => ({ name: name.substring(0, 20), value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+    
+    const androidData = Array.from(androidMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+    
+    const prioritasData = Array.from(prioritasMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    const lintasKecData = Array.from(lintasKecMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    const lintasDesaData = Array.from(lintasDesaMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    const tidakMengalihData = Array.from(tidakMengalihMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    return { 
+      total, verified, mismatch, other, perKec,
+      umurData, pekerjaanData, androidData, prioritasData,
+      lintasKecData, lintasDesaData, tidakMengalihData,
+      umurMap, pekerjaanMap, androidMap, prioritasMap,
+      lintasKecMap, lintasDesaMap, tidakMengalihMap
+    };
   }, [rows]);
 
   const kecOptions = useMemo(
@@ -157,6 +247,9 @@ export default function KonfirmasiKepka2026() {
   const StatusBadge = ({ status }: { status: string }) => {
     if (isVerified(status)) {
       return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100"><CheckCircle2 className="h-3 w-3 mr-1" />{status || "Terverifikasi"}</Badge>;
+    }
+    if (isNotVerified(status)) {
+      return <Badge className="bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100">{status || "Belum Terverifikasi"}</Badge>;
     }
     if (isMismatch(status)) {
       return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100"><XCircle className="h-3 w-3 mr-1" />{status || "Tidak cocok"}</Badge>;
@@ -218,6 +311,81 @@ export default function KonfirmasiKepka2026() {
                   </Card>
                 </div>
 
+                {/* Analysis Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Prioritas Pekerjaan BPS */}
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardDescription className="text-xs">Prioritas Pekerjaan BPS</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {stats.prioritasData.slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between">
+                            <span className="text-xs truncate">{item.name}</span>
+                            <span className="text-xs font-semibold text-blue-600">{item.value}</span>
+                          </div>
+                        ))}
+                        {stats.prioritasData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Lintas Kecamatan */}
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardDescription className="text-xs">Lintas Kecamatan</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {stats.lintasKecData.slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between">
+                            <span className="text-xs truncate">{item.name}</span>
+                            <span className="text-xs font-semibold text-purple-600">{item.value}</span>
+                          </div>
+                        ))}
+                        {stats.lintasKecData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Lintas Desa */}
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardDescription className="text-xs">Lintas Desa</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {stats.lintasDesaData.slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between">
+                            <span className="text-xs truncate">{item.name}</span>
+                            <span className="text-xs font-semibold text-indigo-600">{item.value}</span>
+                          </div>
+                        ))}
+                        {stats.lintasDesaData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Tidak Mengalihkan */}
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardDescription className="text-xs">Tidak Mengalihkan Pekerjaan</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {stats.tidakMengalihData.slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between">
+                            <span className="text-xs truncate">{item.name}</span>
+                            <span className="text-xs font-semibold text-cyan-600">{item.value}</span>
+                          </div>
+                        ))}
+                        {stats.tidakMengalihData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card>
                     <CardHeader><CardTitle className="text-lg">Distribusi Status Verifikasi</CardTitle></CardHeader>
@@ -245,6 +413,39 @@ export default function KonfirmasiKepka2026() {
                           <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]}>
                             {stats.perKec.slice(0, 10).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                           </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Additional Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader><CardTitle className="text-lg">Distribusi Umur Responden</CardTitle></CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={stats.umurData.slice(0, 15)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={80} />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle className="text-lg">Versi Android Smartphone</CardTitle></CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={stats.androidData.slice(0, 10)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={80} />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="value" fill="#06b6d4" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </CardContent>
@@ -321,14 +522,15 @@ export default function KonfirmasiKepka2026() {
                             <TableHead className="cursor-pointer" onClick={() => toggleSort("sobatId")}>Sobat ID</TableHead>
                             <TableHead className="cursor-pointer" onClick={() => toggleSort("email")}>Email</TableHead>
                             <TableHead>Status NIK</TableHead>
+                            <TableHead>Sensus Ekonomi 2026</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {pageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : pageRows.map((r, i) => (
-                            <TableRow key={i} className={isVerified(r[COL.status]) ? "bg-emerald-50/30" : isMismatch(r[COL.status]) ? "bg-red-50/30" : ""}>
+                            <TableRow key={i} className={isNotVerified(r[COL.status]) ? "bg-orange-50/30" : isVerified(r[COL.status]) ? "bg-emerald-50/30" : isMismatch(r[COL.status]) ? "bg-red-50/30" : ""}>
                               <TableCell className="text-muted-foreground">{(currentPage - 1) * pageSize + i + 1}</TableCell>
                               <TableCell className="font-medium">{r[COL.nama] || "-"}</TableCell>
                               <TableCell>{r[COL.kec] || "-"}</TableCell>
@@ -336,6 +538,7 @@ export default function KonfirmasiKepka2026() {
                               <TableCell className="font-mono text-xs">{r[COL.sobatId] || "-"}</TableCell>
                               <TableCell className="text-xs">{r[COL.email] || "-"}</TableCell>
                               <TableCell><StatusBadge status={r[COL.status] || ""} /></TableCell>
+                              <TableCell>{r[COL.sensusEkonomi] || "-"}</TableCell>
                               <TableCell className="text-right">
                                 <Button size="icon" variant="ghost" onClick={() => setDetailRow(r)} title="Lihat detail">
                                   <Eye className="h-4 w-4" />
