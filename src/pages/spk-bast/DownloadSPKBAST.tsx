@@ -157,11 +157,11 @@ export default function DownloadSPKBAST() {
       const namaPetugasIndex = getHeaderIndex(['nama petugas', 'petugas']);
       const nikIndex = getHeaderIndex(['nik', 'nip']);
       const linkIndex = getHeaderIndex(['link', 'url']);
-      const hargaSatuanIndex = 9; // Kolom J
-      const targetIndex = 14; // Kolom O
-      const realisasiIndex = 15; // Kolom P
-      const nilaiRealisasiIndex = getHeaderIndex(['nilai realisasi']);
-      const nilaiPerjanjianIndex = getHeaderIndex(['nilai perjanjian', 'total realisasi', 'nilai kontrak']);
+      const hargaSatuanIndex = 9; // Kolom J: Harga Satuan
+      const targetIndex = 14; // Kolom O: Target
+      const realisasiIndex = 15; // Kolom P: Realisasi
+      const nilaiRealisasiIndex = 16; // Kolom Q: Nilai Realisasi (per petugas atau total)
+      const totalRealisasiIndex = 17; // Kolom R: Total Realisasi (numeric)
 
       const dataStartIndex = 1;
       const parsedData: SPKData[] = [];
@@ -202,8 +202,8 @@ export default function DownloadSPKBAST() {
           const hargaSatuanRaw = row[hargaSatuanIndex]?.toString()?.trim() || '';
           const targetRaw = row[targetIndex]?.toString()?.trim() || '';
           const realisasiRaw = row[realisasiIndex]?.toString()?.trim() || '';
-          const nilaiPerjanjianRaw = nilaiPerjanjianIndex >= 0 ? row[nilaiPerjanjianIndex]?.toString()?.trim() || '' : '';
           const nilaiRealisasiRaw = nilaiRealisasiIndex >= 0 ? row[nilaiRealisasiIndex]?.toString()?.trim() || '' : '';
+          const totalRealisasiRaw = totalRealisasiIndex >= 0 ? row[totalRealisasiIndex]?.toString()?.trim() || '' : '';
 
           if (!periodeRaw) continue;
           const periodeMatch = periodeRaw.match(/([A-Za-z]{3,})\s+(\d{4})/);
@@ -236,7 +236,14 @@ export default function DownloadSPKBAST() {
             existing.link = link;
           }
 
-          const parseNilai = (str: string): number => {
+          // Helper: Parse single nilai (sederhana - hanya parseFloat)
+          const parseSingleNilai = (str: string): number => {
+            return parseFloat(str) || 0;
+          };
+
+          // Helper: Parse nilai yang dipisah | dan hitung total setelah dikalikan hargaSatuan
+          // (sama seperti calculateRealisasiLikeEntri di Dashboard.tsx)
+          const parseNilaiDenganMultiplier = (str: string, multiplier: number): number => {
             if (!str) return 0;
             const segments = str
               .split(/\||;|\n/)
@@ -244,23 +251,24 @@ export default function DownloadSPKBAST() {
               .filter(Boolean);
 
             return segments.reduce((sum, segment) => {
-              let cleaned = segment.replace(/[^\d,.]/g, '');
-              cleaned = cleaned.replace(/\./g, '');
-              cleaned = cleaned.replace(',', '.');
-              const parsed = parseFloat(cleaned);
-              return sum + (isNaN(parsed) ? 0 : parsed);
+              const value = parseSingleNilai(segment);
+              return sum + Math.round(value * multiplier);
             }, 0);
           };
 
-          const parsedHargaSatuan = parseNilai(hargaSatuanRaw);
-          const parsedTarget = parseNilai(targetRaw);
-          const parsedRealisasi = parseNilai(realisasiRaw);
+          const hargaSatuan = parseSingleNilai(hargaSatuanRaw);
 
-          const nilaiPerjanjian = parsedTarget > 0 ? parsedTarget * parsedHargaSatuan : parseNilai(nilaiPerjanjianRaw);
-          const nilaiRealisasi = parsedRealisasi > 0 ? parsedRealisasi * parsedHargaSatuan : parseNilai(nilaiRealisasiRaw);
+          // PERBAIKAN: Hitung Nilai Perjanjian dari Target (Kolom O) × Harga Satuan (Kolom J)
+          // Setiap item dalam Target (dipisah |) dikalikan dengan Harga Satuan, lalu sum
+          const nilaiPerjanjian = parseNilaiDenganMultiplier(targetRaw, hargaSatuan);
+          
+          // PERBAIKAN: Hitung Nilai Realisasi dari Realisasi (Kolom P) × Harga Satuan (Kolom J)
+          // Setiap item dalam Realisasi (dipisah |) dikalikan dengan Harga Satuan, lalu sum
+          const nilaiRealisasi = parseNilaiDenganMultiplier(realisasiRaw, hargaSatuan);
 
-          existing.nilaiPerjanjian = Math.max(existing.nilaiPerjanjian, nilaiPerjanjian);
-          existing.nilaiRealisasi = Math.max(existing.nilaiRealisasi, nilaiRealisasi);
+          // PERBAIKAN: Agregasi per bulan menggunakan SUM (bukan MAX) seperti di Dashboard.tsx
+          existing.nilaiPerjanjian += nilaiPerjanjian;
+          existing.nilaiRealisasi += nilaiRealisasi;
 
           monthlyAggregation.set(key, existing);
         } catch (parseError) {
