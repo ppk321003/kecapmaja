@@ -23,7 +23,7 @@ import {
 
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
-const RANGE = `${SHEET_NAME}!A1:BD`;
+const RANGE = `${SHEET_NAME}!A1:BE`;
 
 const COLORS = ["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 
@@ -191,6 +191,7 @@ export default function KonfirmasiKepka2026() {
     const tidakMengalihMap = new Map<string, number>();
     const pendidikanMap = new Map<string, number>();
     const kegiatanRutinMap = new Map<string, number>();
+    const rekomendasiMap = new Map<string, number>();
     
     rows.forEach(r => {
       const s = r[COL.status] || "";
@@ -236,6 +237,11 @@ export default function KonfirmasiKepka2026() {
       const kegiatanRaw = (r[COL.kegiatanRutin] || "").toString().trim();
       const kegiatanKat = kegiatanRaw === "" || kegiatanRaw === "_" || kegiatanRaw === "-" ? "Non Rutin" : "Mitra Rutin";
       kegiatanRutinMap.set(kegiatanKat, (kegiatanRutinMap.get(kegiatanKat) || 0) + 1);
+      
+      // Rekomendasi
+      const rekoRaw = (r[COL.rekomendasi] || "").toString().trim();
+      const rekoKat = rekoRaw === "" ? "Belum ditentukan" : rekoRaw;
+      rekomendasiMap.set(rekoKat, (rekomendasiMap.get(rekoKat) || 0) + 1);
     });
     
     const perKec = Array.from(kecMap.entries())
@@ -299,14 +305,18 @@ export default function KonfirmasiKepka2026() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
     
+    const rekomendasiData = Array.from(rekomendasiMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
     return { 
       total, verified, mismatch, notVerified, perKec,
       umurData, pekerjaanData, androidData, prioritasData,
       lintasKecData, lintasDesaData, tidakMengalihData,
-      pendidikanData, kegiatanRutinData,
+      pendidikanData, kegiatanRutinData, rekomendasiData,
       umurMap, pekerjaanMap, androidMap, prioritasMap,
       lintasKecMap, lintasDesaMap, tidakMengalihMap,
-      pendidikanMap, kegiatanRutinMap
+      pendidikanMap, kegiatanRutinMap, rekomendasiMap
     };
   }, [rows]);
 
@@ -565,84 +575,145 @@ export default function KonfirmasiKepka2026() {
                   </Card>
                 </div>
 
-                {/* Analysis Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Prioritas Pekerjaan BPS */}
-                  <Card className="shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardDescription className="text-xs">Prioritas Pekerjaan BPS</CardDescription>
+                {/* Analysis Cards - Row 1 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                  {/* Rekomendasi SE2026 */}
+                  <Card className="shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-orange-50 to-orange-50">
+                    <CardHeader className="pb-3">
+                      <CardDescription className="text-xs font-semibold text-orange-800">⭐ Rekomendasi SE2026</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        {stats.prioritasData.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between">
-                            <span className="text-xs truncate">{item.name}</span>
-                            <span className="text-xs font-semibold text-blue-600">{item.value}</span>
-                          </div>
-                        ))}
-                        {stats.prioritasData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
+                      <div className="space-y-3">
+                        {stats.rekomendasiData.map((item, idx) => {
+                          const pct = stats.total > 0 ? (item.value / stats.total) * 100 : 0;
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium truncate">{item.name}</span>
+                                <span className="text-xs font-bold text-orange-700">{item.value}</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-orange-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-orange-600" style={{width: `${pct}%`}}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {stats.rekomendasiData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Lintas Kecamatan */}
-                  <Card className="shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardDescription className="text-xs">Lintas Kecamatan</CardDescription>
+                  {/* Prioritas Pekerjaan BPS */}
+                  <Card className="shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-blue-50 to-blue-50">
+                    <CardHeader className="pb-3">
+                      <CardDescription className="text-xs font-semibold text-blue-700">📋 Prioritas Pekerjaan BPS</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        {stats.lintasKecData.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between">
-                            <span className="text-xs truncate">{item.name}</span>
-                            <span className="text-xs font-semibold text-purple-600">{item.value}</span>
-                          </div>
-                        ))}
+                      <div className="space-y-3">
+                        {stats.prioritasData.map((item, idx) => {
+                          const pct = stats.total > 0 ? (item.value / stats.total) * 100 : 0;
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium truncate">{item.name}</span>
+                                <span className="text-xs font-bold text-blue-600">{item.value}</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500" style={{width: `${pct}%`}}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {stats.prioritasData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Analysis Cards - Row 2 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Lintas Kecamatan */}
+                  <Card className="shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-purple-50 to-purple-50">
+                    <CardHeader className="pb-3">
+                      <CardDescription className="text-xs font-semibold text-purple-700">🗺️ Lintas Kecamatan</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {stats.lintasKecData.map((item, idx) => {
+                          const pct = stats.total > 0 ? (item.value / stats.total) * 100 : 0;
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium truncate">{item.name}</span>
+                                <span className="text-xs font-bold text-purple-600">{item.value}</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-purple-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-purple-500" style={{width: `${pct}%`}}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
                         {stats.lintasKecData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
                       </div>
                     </CardContent>
                   </Card>
 
                   {/* Lintas Desa */}
-                  <Card className="shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardDescription className="text-xs">Lintas Desa</CardDescription>
+                  <Card className="shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-indigo-50 to-indigo-50">
+                    <CardHeader className="pb-3">
+                      <CardDescription className="text-xs font-semibold text-indigo-700">🏘️ Lintas Desa</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        {stats.lintasDesaData.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between">
-                            <span className="text-xs truncate">{item.name}</span>
-                            <span className="text-xs font-semibold text-indigo-600">{item.value}</span>
-                          </div>
-                        ))}
+                      <div className="space-y-3">
+                        {stats.lintasDesaData.map((item, idx) => {
+                          const pct = stats.total > 0 ? (item.value / stats.total) * 100 : 0;
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium truncate">{item.name}</span>
+                                <span className="text-xs font-bold text-indigo-600">{item.value}</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-indigo-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500" style={{width: `${pct}%`}}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
                         {stats.lintasDesaData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
                       </div>
                     </CardContent>
                   </Card>
 
                   {/* Tidak Mengalihkan */}
-                  <Card className="shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardDescription className="text-xs">Tidak Mengalihkan Pekerjaan</CardDescription>
+                  <Card className="shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-cyan-50 to-cyan-50">
+                    <CardHeader className="pb-3">
+                      <CardDescription className="text-xs font-semibold text-cyan-700">✅ Tidak Mengalihkan Pekerjaan</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        {stats.tidakMengalihData.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between">
-                            <span className="text-xs truncate">{item.name}</span>
-                            <span className="text-xs font-semibold text-cyan-600">{item.value}</span>
-                          </div>
-                        ))}
+                      <div className="space-y-3">
+                        {stats.tidakMengalihData.map((item, idx) => {
+                          const pct = stats.total > 0 ? (item.value / stats.total) * 100 : 0;
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium truncate">{item.name}</span>
+                                <span className="text-xs font-bold text-cyan-600">{item.value}</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-cyan-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-cyan-500" style={{width: `${pct}%`}}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
                         {stats.tidakMengalihData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
                       </div>
                     </CardContent>
                   </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader><CardTitle className="text-lg">Distribusi Status Verifikasi</CardTitle></CardHeader>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+                  <Card className="shadow-md">
+                    <CardHeader><CardTitle className="text-sm font-bold">📊 Distribusi Status Verifikasi</CardTitle></CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
