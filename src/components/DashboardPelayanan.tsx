@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,6 +19,376 @@ import {
   Line,
 } from "recharts";
 import { Users, UserCheck, CalendarDays, TrendingUp, GraduationCap, Building2 } from "lucide-react";
+
+// Word Cloud Component
+interface WordCloudProps {
+  data: Array<{ name: string; value: number }>;
+}
+
+interface WordCloudItem {
+  name: string;
+  value: number;
+  fontSize: number;
+  fontWeight: number;
+  x: number;
+  y: number;
+  color: string;
+  tier: number;
+  originalIdx: number;
+}
+
+const WordCloud = ({ data }: WordCloudProps) => {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Color palette: 3 warna utama dengan shade variations (reference inspired)
+  const PALETTE = [
+    // Blue series (primary)
+    "rgb(3, 105, 161)",     // Deep Blue
+    "rgb(14, 165, 233)",    // Sky Blue
+    "rgb(59, 130, 246)",    // Medium Blue
+    "rgb(96, 165, 250)",    // Light Blue
+    
+    // Orange series (secondary)
+    "rgb(194, 65, 12)",     // Deep Orange
+    "rgb(249, 115, 22)",    // Medium Orange
+    "rgb(251, 146, 60)",    // Light Orange
+    
+    // Gray series (tertiary)
+    "rgb(51, 65, 85)",      // Slate Gray
+    "rgb(100, 116, 139)",   // Medium Gray
+    "rgb(148, 163, 184)",   // Light Gray
+    
+    // Additional neutrals
+    "rgb(71, 85, 105)",     // Darker Slate
+    "rgb(120, 113, 108)",   // Taupe
+    "rgb(156, 163, 175)",   // Lighter Slate
+    "rgb(203, 213, 225)",   // Very Light Slate
+  ];
+
+  // Helper: Normalisasi text (cleanup typo & duplikasi)
+  const normalizeText = (text: string): string => {
+    if (!text) return "";
+    
+    // Mapping typo/singkatan ke full form
+    const mappings: Record<string, string> = {
+      "petuga": "petugas",
+      "banso": "bansos",
+      "pendaftaran petuga": "pendaftaran petugas",
+      "perekrutan petuga": "perekrutan petugas",
+      "pendaftaran s": "pendaftaran sensus",
+      "bps jabar": "bps jawa barat",
+      "se2026": "sensus ekonomi 2026",
+    };
+
+    let normalized = text.trim().toLowerCase();
+    
+    // Apply mappings
+    for (const [from, to] of Object.entries(mappings)) {
+      normalized = normalized.replace(new RegExp(`^${from}$`, "i"), to);
+    }
+
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
+
+  // Helper: Measure text width
+  const measureText = (text: string, fontSize: number): number => {
+    const canvas = canvasRef.current || document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return text.length * 8;
+
+    ctx.font = `700 ${fontSize}px serif`;
+    const metrics = ctx.measureText(text);
+    return metrics.width + 20; // padding
+  };
+
+  // Calculate font size dengan smooth scaling (linear interpolation)
+  const getZoomProperties = (idx: number, totalItems: number) => {
+    const MAX_FONT = 58;
+    const MIN_FONT = 12;
+    
+    if (idx === 0) {
+      // Top 1: PALING BESAR, absolutely center
+      return { fontSize: MAX_FONT, fontWeight: 700, tier: 1 };
+    } else if (idx === 1) {
+      // Top 2: 85% of max
+      return { fontSize: Math.round(MAX_FONT * 0.85), fontWeight: 700, tier: 2 };
+    } else if (idx < 5) {
+      // Top 3-5: Linear decrease 70%-55%
+      const ratio = 0.70 - (idx - 2) * 0.05;
+      return { fontSize: Math.round(MAX_FONT * ratio), fontWeight: 700, tier: 2 };
+    } else if (idx < 10) {
+      // Top 6-10: Linear decrease 50%-30%
+      const ratio = 0.50 - (idx - 5) * 0.04;
+      return { fontSize: Math.round(MAX_FONT * ratio), fontWeight: 600, tier: 3 };
+    } else if (idx < 20) {
+      // Top 11-20: Linear decrease 28%-18%
+      const ratio = 0.28 - (idx - 10) * 0.01;
+      return { fontSize: Math.round(MAX_FONT * ratio), fontWeight: 500, tier: 4 };
+    } else {
+      // Top 21+: Min size 12px
+      return { fontSize: MIN_FONT, fontWeight: 400, tier: 4 };
+    }
+  };
+
+  // Helper: Check collision
+  const checkCollision = (
+    x1: number,
+    y1: number,
+    w1: number,
+    h1: number,
+    x2: number,
+    y2: number,
+    w2: number,
+    h2: number,
+    padding: number,
+  ): boolean => {
+    return !(
+      x1 + w1 / 2 + padding < x2 - w2 / 2 ||
+      x1 - w1 / 2 - padding > x2 + w2 / 2 ||
+      y1 + h1 / 2 + padding < y2 - h2 / 2 ||
+      y1 - h1 / 2 - padding > y2 + h2 / 2
+    );
+  };
+
+  // Spiral collision detection - OPTIMIZED untuk spread distribution
+  const calculatePosition = (
+    items: WordCloudItem[],
+    index: number,
+    canvasWidth: number,
+    canvasHeight: number,
+  ): { x: number; y: number } => {
+    const MAX_ATTEMPTS = 400;
+    const MIN_PADDING = 20; // Adequate padding
+    const MAX_RADIUS = Math.min(canvasWidth, canvasHeight) * 0.45;
+
+    // Top 1: Slightly off-center untuk natural positioning (reference: "lainnya")
+    if (index === 0) {
+      // Bisa offset sedikit untuk aesthetic appeal
+      return { x: -15, y: -25 };
+    }
+
+    // Top 2-3: Dekat top 1 tapi dengan jarak terukur
+    if (index <= 2) {
+      const angle = (index - 1) * Math.PI;
+      const radius = 80;
+      return {
+        x: radius * Math.cos(angle),
+        y: radius * Math.sin(angle),
+      };
+    }
+
+    const currentItem = items[index];
+    const w1 = measureText(currentItem.name, currentItem.fontSize);
+    const h1 = currentItem.fontSize + 14;
+
+    // Untuk kata ke-4 dan seterusnya: gunakan spiral yang lebih agresif spread
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      // Spiral Archimedean: r = a + b*θ
+      // Dengan adjustment untuk spread lebih luas
+      const anglePerStep = Math.PI / 2.2; // Angle increment
+      const theta = attempt * anglePerStep;
+      
+      // Gradual radius growth untuk spreading
+      const radiusMultiplier = 1 + (attempt / MAX_ATTEMPTS) * 0.8;
+      const baseRadius = 90 + attempt * 1.5;
+      const radius = baseRadius * radiusMultiplier;
+      
+      // Batas maksimum radius
+      if (radius > MAX_RADIUS) continue;
+      
+      const x = radius * Math.cos(theta);
+      const y = radius * Math.sin(theta);
+
+      // Bounds check dengan margin
+      if (Math.abs(x) + w1 / 2 > canvasWidth / 2 - 10 || Math.abs(y) + h1 / 2 > canvasHeight / 2 - 10) {
+        continue;
+      }
+
+      let hasCollision = false;
+      for (let i = 0; i < index; i++) {
+        const prevItem = items[i];
+        const prevW = measureText(prevItem.name, prevItem.fontSize);
+        const prevH = prevItem.fontSize + 14;
+
+        if (
+          checkCollision(x, y, w1, h1, prevItem.x, prevItem.y, prevW, prevH, MIN_PADDING)
+        ) {
+          hasCollision = true;
+          break;
+        }
+      }
+
+      if (!hasCollision) {
+        return { x, y };
+      }
+    }
+
+    // Fallback: Radial distribution untuk overflow items
+    const angleStep = (2 * Math.PI) / Math.max(12, items.length);
+    const fallbackAngle = angleStep * index;
+    const fallbackRadius = MAX_RADIUS * 0.92;
+
+    return {
+      x: fallbackRadius * Math.cos(fallbackAngle),
+      y: fallbackRadius * Math.sin(fallbackAngle),
+    };
+  };
+
+  // Main positioning dengan text normalization & shade-based colors
+  const processedData = useMemo(() => {
+    if (data.length === 0) return [];
+
+    // Step 1: Normalize & deduplicate text
+    const normalizedMap = new Map<string, number>();
+    data.forEach((item) => {
+      const normalized = normalizeText(item.name);
+      normalizedMap.set(normalized, (normalizedMap.get(normalized) || 0) + item.value);
+    });
+
+    // Step 2: Convert map to array and sort
+    const normalized = Array.from(normalizedMap).map(([name, value]) => ({ name, value }));
+    const sorted = normalized.sort((a, b) => b.value - a.value);
+
+    // Canvas size lebih besar untuk better spread
+    const canvasWidth = 1000;
+    const canvasHeight = 620;
+
+    // Step 3: Create items dengan smooth font scaling
+    const items: WordCloudItem[] = sorted.map((item, idx) => {
+      const { fontSize, fontWeight, tier } = getZoomProperties(idx, sorted.length);
+      const colorIdx = idx % PALETTE.length; // Cycle through shade palette
+      const color = PALETTE[colorIdx];
+
+      return {
+        ...item,
+        fontSize: Math.max(fontSize, 12),
+        fontWeight,
+        x: 0,
+        y: 0,
+        color,
+        tier,
+        originalIdx: idx,
+      };
+    });
+
+    // Step 4: Calculate positions dengan collision detection
+    const finalItems = items.map((item, idx) => {
+      const { x, y } = calculatePosition(items, idx, canvasWidth, canvasHeight);
+      return {
+        ...item,
+        x,
+        y,
+      };
+    });
+
+    return finalItems;
+  }, [data]);
+
+  if (processedData.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-12">Tidak ada data</p>;
+  }
+
+  // SVG dimensions LARGER untuk better spread
+  const SVG_WIDTH = 1000;
+  const SVG_HEIGHT = 620;
+  const CENTER_X = SVG_WIDTH / 2;
+  const CENTER_Y = SVG_HEIGHT / 2;
+
+  return (
+    <div className="relative w-full flex items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100 rounded-lg">
+      <canvas ref={canvasRef} style={{ display: "none" }} />
+
+      <svg
+        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+        preserveAspectRatio="xMidYMid meet"
+        className="w-full h-auto"
+        style={{ maxHeight: "600px" }}
+      >
+        <defs>
+          {processedData.map((_, idx) => (
+            <filter key={`shadow-${idx}`} id={`shadow-${idx}`}>
+              <feDropShadow dx="0" dy="2" stdDeviation="4" floodOpacity="0.3" />
+            </filter>
+          ))}
+        </defs>
+        
+        <g transform={`translate(${CENTER_X},${CENTER_Y})`}>
+          {processedData.map((item, idx) => (
+            <g
+              key={idx}
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              className="cursor-pointer transition-all duration-200"
+            >
+              <text
+                textAnchor="middle"
+                transform={`translate(${item.x.toFixed(0)},${item.y.toFixed(0)})`}
+                style={{
+                  fontFamily: "serif",
+                  fontStyle: "normal",
+                  fontWeight: item.fontWeight,
+                  fontSize: `${item.fontSize}px`,
+                  fill: item.color,
+                  opacity: hoveredIdx === idx ? 1 : 0.88,
+                  filter: hoveredIdx === idx ? "drop-shadow(0 2px 4px rgba(0,0,0,0.2))" : "none",
+                  transition: "opacity 150ms ease-out, filter 150ms ease-out",
+                  userSelect: "none",
+                  paintOrder: "stroke",
+                  stroke: "rgba(255,255,255,0.3)",
+                  strokeWidth: "0.5px",
+                }}
+              >
+                {item.name}
+              </text>
+
+              {/* Interactive Tooltip on hover */}
+              {hoveredIdx === idx && (
+                <g>
+                  <rect
+                    x={item.x - 60}
+                    y={item.y - 70}
+                    width="120"
+                    height="50"
+                    fill="rgb(15, 23, 42)"
+                    rx="6"
+                    opacity="0.95"
+                    filter={`url(#shadow-${idx})`}
+                  />
+                  <text
+                    textAnchor="middle"
+                    x={item.x}
+                    y={item.y - 50}
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      fill: item.color,
+                      fontFamily: "sans-serif",
+                    }}
+                  >
+                    {item.value}x
+                  </text>
+                  <text
+                    textAnchor="middle"
+                    x={item.x}
+                    y={item.y - 32}
+                    style={{
+                      fontSize: "11px",
+                      fill: "rgb(148, 163, 184)",
+                      fontFamily: "sans-serif",
+                    }}
+                  >
+                    Tier {item.tier}
+                  </text>
+                </g>
+              )}
+            </g>
+          ))}
+        </g>
+      </svg>
+    </div>
+  );
+};
 
 const TAMU_SPREADSHEET_ID = "1Q9kPlXg18BvAtnbM-cpoQ0xud1zC3rpA6CDa3EZcRGY";
 const TAMU_SHEET = "Sheet1";
@@ -189,7 +559,7 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
       .sort((a, b) => b.value - a.value);
   }, [filtered]);
 
-  // Kepentingan
+  // Kepentingan (dengan perlakuan khusus untuk "Lainnya - ")
   const kepentinganData = useMemo(() => {
     const map: Record<string, number> = {};
     filtered.forEach((r) => {
@@ -200,6 +570,30 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
       } else {
         items.forEach((it) => {
           map[it] = (map[it] || 0) + 1;
+        });
+      }
+    });
+    return Object.entries(map)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [filtered]);
+
+  // Kepentingan dengan perlakuan khusus untuk "Lainnya - "
+  const kepentinganRefinedData = useMemo(() => {
+    const map: Record<string, number> = {};
+    filtered.forEach((r) => {
+      // Bisa multi kepentingan (comma-separated) – split kalau ada
+      const items = r.kepentingan.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+      if (items.length === 0) {
+        map["Tidak diisi"] = (map["Tidak diisi"] || 0) + 1;
+      } else {
+        items.forEach((it) => {
+          // Jika dimulai dengan "Lainnya - ", ambil hanya bagian setelahnya
+          let displayName = it;
+          if (it.startsWith("Lainnya - ")) {
+            displayName = it.substring(10); // "Lainnya - ".length = 10
+          }
+          map[displayName] = (map[displayName] || 0) + 1;
         });
       }
     });
@@ -355,6 +749,17 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
               />
             </LineChart>
           </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Kepentingan (Word Cloud Card) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Kepentingan Tamu</CardTitle>
+          <CardDescription>Layanan dan aktivitas utama yang dicari tamu</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WordCloud data={kepentinganRefinedData} />
         </CardContent>
       </Card>
 
