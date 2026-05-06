@@ -798,6 +798,140 @@ export default function KonfirmasiKepka2026() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* MITRA KEPKA 2026 */}
+          <TabsContent value="mitra" className="space-y-4 mt-6">
+            <Card className="border-t-4 border-t-emerald-500">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5 text-emerald-600" />
+                  Mitra KEPKA 2026
+                </CardTitle>
+                <CardDescription>Monitoring data Mitra dari sheet MASTER.MITRA — cari, filter, dan lihat detail status pengiriman.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Mini stat strip — pembeda visual dari tab Detail Responden */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
+                    <div className="text-xs text-emerald-700/70">Total Mitra</div>
+                    <div className="text-2xl font-bold text-emerald-700">{mitriStats.total.toLocaleString("id-ID")}</div>
+                  </div>
+                  <div className="rounded-lg bg-teal-50 border border-teal-100 p-3">
+                    <div className="text-xs text-teal-700/70">Terkirim</div>
+                    <div className="text-2xl font-bold text-teal-700">{mitriStats.sent.toLocaleString("id-ID")}</div>
+                  </div>
+                  <div className="rounded-lg bg-amber-50 border border-amber-100 p-3">
+                    <div className="text-xs text-amber-700/70">Menunggu</div>
+                    <div className="text-2xl font-bold text-amber-700">{mitriStats.pending.toLocaleString("id-ID")}</div>
+                  </div>
+                  <div className="rounded-lg bg-rose-50 border border-rose-100 p-3">
+                    <div className="text-xs text-rose-700/70">Gagal</div>
+                    <div className="text-2xl font-bold text-rose-700">{mitriStats.failed.toLocaleString("id-ID")}</div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Cari nama, pekerjaan, kecamatan, no. HP..."
+                      value={mitriSearch}
+                      onChange={(e) => setMitriSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select value={mitriFilterStatus} onValueChange={setMitriFilterStatus}>
+                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status Kirim" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      {mitriStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={mitriFilterKec} onValueChange={setMitriFilterKec}>
+                    <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Kecamatan" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Kecamatan</SelectItem>
+                      {mitriKecOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={String(mitriPageSize)} onValueChange={(v) => setMitriPageSize(Number(v))}>
+                    <SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="20">20 / hal</SelectItem>
+                      <SelectItem value="50">50 / hal</SelectItem>
+                      <SelectItem value="100">100 / hal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {mitriLoading ? (
+                  <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-emerald-600" /></div>
+                ) : mitriError ? (
+                  <div className="py-10 text-center text-red-600">{mitriError}</div>
+                ) : (
+                  <>
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-emerald-50/60">
+                            <TableHead className="w-12">#</TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("nama")}>
+                              <div className="flex items-center gap-1">Nama <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("pekerjaan")}>
+                              <div className="flex items-center gap-1">Pekerjaan <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("kec")}>
+                              <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
+                            <TableHead>No. HP</TableHead>
+                            <TableHead>Status Kirim</TableHead>
+                            <TableHead className="text-right">Aksi</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {mitriPageRows.length === 0 ? (
+                            <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                          ) : mitriPageRows.map((r, i) => {
+                            const st = r[COL_MITRA.statusKirim] || "";
+                            const rowBg = isSent(st) ? "bg-emerald-50/30" : isFailed(st) ? "bg-red-50/30" : isPending(st) ? "bg-amber-50/20" : "";
+                            return (
+                              <TableRow key={i} className={rowBg}>
+                                <TableCell className="text-muted-foreground">{(mitriCurrentPage - 1) * mitriPageSize + i + 1}</TableCell>
+                                <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
+                                <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
+                                <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
+                                <TableCell className="font-mono text-xs">{r[COL_MITRA.noHp] || "-"}</TableCell>
+                                <TableCell><MitriStatusBadge status={st} /></TableCell>
+                                <TableCell className="text-right">
+                                  <Button size="icon" variant="ghost" onClick={() => setMitriDetailRow(r)} title="Lihat detail">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-sm">
+                      <div className="text-muted-foreground">
+                        Menampilkan {(mitriCurrentPage - 1) * mitriPageSize + 1}-{Math.min(mitriCurrentPage * mitriPageSize, mitriFiltered.length)} dari {mitriFiltered.length} mitra
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" disabled={mitriCurrentPage <= 1} onClick={() => setMitriPage(1)}>«</Button>
+                        <Button size="sm" variant="outline" disabled={mitriCurrentPage <= 1} onClick={() => setMitriPage(p => p - 1)}>‹</Button>
+                        <span className="px-2">Hal {mitriCurrentPage} / {mitriTotalPages}</span>
+                        <Button size="sm" variant="outline" disabled={mitriCurrentPage >= mitriTotalPages} onClick={() => setMitriPage(p => p + 1)}>›</Button>
+                        <Button size="sm" variant="outline" disabled={mitriCurrentPage >= mitriTotalPages} onClick={() => setMitriPage(mitriTotalPages)}>»</Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
         {/* Detail Dialog */}
@@ -826,6 +960,37 @@ export default function KonfirmasiKepka2026() {
                         ) : (
                           val || <span className="text-muted-foreground italic">-</span>
                         )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Mitra Detail Dialog */}
+        <Dialog open={!!mitriDetailRow} onOpenChange={(o) => !o && setMitriDetailRow(null)}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-emerald-600" />
+                Detail Mitra
+              </DialogTitle>
+              <DialogDescription>
+                {mitriDetailRow ? (mitriDetailRow[COL_MITRA.nama] || "-") : ""}
+              </DialogDescription>
+            </DialogHeader>
+            {mitriDetailRow && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                {mitriHeaders.map((h, i) => {
+                  const val = mitriDetailRow[i];
+                  if (!h && !val) return null;
+                  return (
+                    <div key={i} className="border-b pb-2">
+                      <div className="text-xs font-semibold text-emerald-700/80 uppercase tracking-wide">{h || `Kolom ${i + 1}`}</div>
+                      <div className="text-sm break-words mt-1">
+                        {val || <span className="text-muted-foreground italic">-</span>}
                       </div>
                     </div>
                   );
