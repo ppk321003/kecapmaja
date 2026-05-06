@@ -14,7 +14,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Eye, Search, CheckCircle2, XCircle, Users, Loader2, ArrowUpDown } from "lucide-react";
+import { Eye, Search, CheckCircle2, XCircle, Users, Loader2, ArrowUpDown, Check, X, Loader } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -53,6 +54,7 @@ const COL = {
   lintasDesa: colIdx("AR"),  // AR - Apakah Anda bersedia bekerja Lintas Desa?
   tidakMengalihkan: colIdx("AV"),  // AV - Apakah anda bersedia tidak mengalihkan pekerjaan?
   pertanyaan: colIdx("AI"),  // AI - Link gambar pertanyaan Google Drive
+  rekomendasi: colIdx("BE"), // BE - Rekomendasi / Non Rekomendasi
 };
 
 // Column mapping untuk MASTER.MITRA
@@ -94,6 +96,7 @@ const isPending = (status: string) => {
 };
 
 export default function KonfirmasiKepka2026() {
+  const { toast } = useToast();
   // Responden Sheet
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -126,6 +129,8 @@ export default function KonfirmasiKepka2026() {
 
   const [detailRow, setDetailRow] = useState<Row | null>(null);
   const [mitriDetailRow, setMitriDetailRow] = useState<Row | null>(null);
+  const [savingRow, setSavingRow] = useState<number | null>(null);
+  const [confirmChange, setConfirmChange] = useState<{ row: Row; next: "Rekomendasi" | "Non Rekomendasi" | "" } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -424,6 +429,51 @@ export default function KonfirmasiKepka2026() {
   const toggleMitriSort = (key: keyof typeof COL_MITRA) => {
     if (mitriSortKey === key) setMitriSortDir(d => d === "asc" ? "desc" : "asc");
     else { setMitriSortKey(key); setMitriSortDir("asc"); }
+  };
+
+  const applyRekomendasi = async (row: Row, value: "Rekomendasi" | "Non Rekomendasi" | "") => {
+    const origIdx = rows.indexOf(row);
+    if (origIdx < 0) return;
+    const sheetRow = origIdx + 2;
+    setSavingRow(sheetRow);
+    try {
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "update",
+          range: `${SHEET_NAME}!BE${sheetRow}`,
+          values: [[value]],
+        },
+      });
+      if (error) throw error;
+      setRows(prev => prev.map((r, i) => {
+        if (i !== origIdx) return r;
+        const copy = [...r];
+        while (copy.length <= COL.rekomendasi) copy.push("");
+        copy[COL.rekomendasi] = value;
+        return copy;
+      }));
+      toast({ title: "Tersimpan", description: value ? `Ditandai sebagai "${value}"` : "Pilihan dikosongkan" });
+    } catch (e: any) {
+      toast({ title: "Gagal menyimpan", description: e?.message || "Terjadi kesalahan", variant: "destructive" });
+    } finally {
+      setSavingRow(null);
+    }
+  };
+
+  const handleRekomendasiClick = (row: Row, next: "Rekomendasi" | "Non Rekomendasi") => {
+    const current = (row[COL.rekomendasi] || "").trim();
+    if (current === next) {
+      // Klik ulang pada pilihan yang sama → kosongkan (dengan konfirmasi)
+      setConfirmChange({ row, next: "" });
+      return;
+    }
+    if (current && current !== next) {
+      // Mitigasi: user berubah pilihan
+      setConfirmChange({ row, next });
+      return;
+    }
+    applyRekomendasi(row, next);
   };
 
   const StatusBadge = ({ status }: { status: string }) => {
@@ -776,9 +826,39 @@ export default function KonfirmasiKepka2026() {
                               <TableCell><StatusBadge status={r[COL.status] || ""} /></TableCell>
                               <TableCell>{r[COL.sensusEkonomi] || "-"}</TableCell>
                               <TableCell className="text-right">
-                                <Button size="icon" variant="ghost" onClick={() => setDetailRow(r)} title="Lihat detail">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
+                                {(() => {
+                                  const rek = (r[COL.rekomendasi] || "").trim();
+                                  const origIdx = rows.indexOf(r);
+                                  const sheetRow = origIdx + 2;
+                                  const isSaving = savingRow === sheetRow;
+                                  return (
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button
+                                        size="icon"
+                                        variant={rek === "Rekomendasi" ? "default" : "ghost"}
+                                        className={rek === "Rekomendasi" ? "bg-emerald-600 hover:bg-emerald-700 text-white h-8 w-8" : "h-8 w-8 text-emerald-600 hover:bg-emerald-50"}
+                                        disabled={isSaving}
+                                        onClick={() => handleRekomendasiClick(r, "Rekomendasi")}
+                                        title={rek === "Rekomendasi" ? "Klik untuk batalkan Rekomendasi" : "Tandai Rekomendasi"}
+                                      >
+                                        {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant={rek === "Non Rekomendasi" ? "default" : "ghost"}
+                                        className={rek === "Non Rekomendasi" ? "bg-red-600 hover:bg-red-700 text-white h-8 w-8" : "h-8 w-8 text-red-600 hover:bg-red-50"}
+                                        disabled={isSaving}
+                                        onClick={() => handleRekomendasiClick(r, "Non Rekomendasi")}
+                                        title={rek === "Non Rekomendasi" ? "Klik untuk batalkan Non Rekomendasi" : "Tandai Non Rekomendasi"}
+                                      >
+                                        {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                                      </Button>
+                                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDetailRow(r)} title="Lihat detail">
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  );
+                                })()}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -1007,6 +1087,36 @@ export default function KonfirmasiKepka2026() {
                 })}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Confirm change Rekomendasi */}
+        <Dialog open={!!confirmChange} onOpenChange={(o) => !o && setConfirmChange(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Konfirmasi Perubahan</DialogTitle>
+              <DialogDescription>
+                {confirmChange && (() => {
+                  const cur = (confirmChange.row[COL.rekomendasi] || "").trim() || "(kosong)";
+                  const nxt = confirmChange.next || "(kosong)";
+                  const nama = confirmChange.row[COL.nama] || "-";
+                  return `Ubah pilihan untuk "${nama}" dari "${cur}" menjadi "${nxt}"?`;
+                })()}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setConfirmChange(null)}>Batal</Button>
+              <Button
+                onClick={async () => {
+                  if (!confirmChange) return;
+                  const { row, next } = confirmChange;
+                  setConfirmChange(null);
+                  await applyRekomendasi(row, next);
+                }}
+              >
+                Ya, Ubah
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
