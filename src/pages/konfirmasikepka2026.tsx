@@ -1089,6 +1089,36 @@ export default function KonfirmasiKepka2026() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Confirm change Rekomendasi */}
+        <Dialog open={!!confirmChange} onOpenChange={(o) => !o && setConfirmChange(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Konfirmasi Perubahan</DialogTitle>
+              <DialogDescription>
+                {confirmChange && (() => {
+                  const cur = (confirmChange.row[COL.rekomendasi] || "").trim() || "(kosong)";
+                  const nxt = confirmChange.next || "(kosong)";
+                  const nama = confirmChange.row[COL.nama] || "-";
+                  return `Ubah pilihan untuk "${nama}" dari "${cur}" menjadi "${nxt}"?`;
+                })()}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setConfirmChange(null)}>Batal</Button>
+              <Button
+                onClick={async () => {
+                  if (!confirmChange) return;
+                  const { row, next } = confirmChange;
+                  setConfirmChange(null);
+                  await applyRekomendasi(row, next);
+                }}
+              >
+                Ya, Ubah
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
