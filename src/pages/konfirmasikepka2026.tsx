@@ -387,7 +387,12 @@ export default function KonfirmasiKepka2026() {
   const mitriFiltered = useMemo(() => {
     const q = mitriSearch.toLowerCase().trim();
     let out = mitriRows.filter(r => {
-      if (mitriFilterStatus !== "all" && (r[COL_MITRA.statusKirim] || "").trim() !== mitriFilterStatus) return false;
+      if (mitriFilterStatus !== "all") {
+        const st = (r[COL_MITRA.statusKirim] || "").trim();
+        if (mitriFilterStatus === "__blank__") {
+          if (st !== "") return false;
+        } else if (st !== mitriFilterStatus) return false;
+      }
       if (mitriFilterKec !== "all" && (r[COL_MITRA.kec] || "").trim() !== mitriFilterKec) return false;
       if (q) {
         return r.some(c => (c || "").toString().toLowerCase().includes(q));
@@ -840,13 +845,14 @@ export default function KonfirmasiKepka2026() {
                       className="pl-9"
                     />
                   </div>
-                  <Select value={mitriFilterStatus} onValueChange={setMitriFilterStatus}>
-                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status Kirim" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Status</SelectItem>
-                      {mitriStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                   <Select value={mitriFilterStatus} onValueChange={setMitriFilterStatus}>
+                     <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status Kirim" /></SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="all">Semua Status</SelectItem>
+                       <SelectItem value="__blank__">(Belum Diisi / Kosong)</SelectItem>
+                       {mitriStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                     </SelectContent>
+                   </Select>
                   <Select value={mitriFilterKec} onValueChange={setMitriFilterKec}>
                     <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Kecamatan" /></SelectTrigger>
                     <SelectContent>
@@ -884,8 +890,12 @@ export default function KonfirmasiKepka2026() {
                             <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("kec")}>
                               <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
-                            <TableHead>No. HP</TableHead>
-                            <TableHead>Status Kirim</TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("noHp")}>
+                              <div className="flex items-center gap-1">No. HP <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("statusKirim")}>
+                              <div className="flex items-center gap-1">Status Kirim <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
