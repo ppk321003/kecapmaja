@@ -68,6 +68,7 @@ const pengadaanItems = [
 const kepegawaianItems = [
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
   { title: "Padamel | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
+  { title: "Konfirmasi KEPKA 2026", url: "/konfirmasi-kepka-2026", icon: FileCheck, conditional: "isSatker3210" },
 ];
 
 // MENU GROUP: e-DOKUMEN SUB ITEMS

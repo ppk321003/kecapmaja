@@ -115,8 +115,8 @@ const App = () => (
             <Route path="/bahan-revisi-anggaran" element={<ProtectedRoute><Layout><BahanRevisiAnggaran /></Layout></ProtectedRoute>} />
             <Route path="/layanan-umum" element={<LayananUmum />} />
             <Route path="/e-tamu" element={<ETamu />} />
-            <Route path="/konfirmasi-kepka-2026" element={<KonfirmasiKepka2026 />} />
-            <Route path="/konfirmasikepka2026" element={<KonfirmasiKepka2026 />} />
+            <Route path="/konfirmasi-kepka-2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
+            <Route path="/konfirmasikepka2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
