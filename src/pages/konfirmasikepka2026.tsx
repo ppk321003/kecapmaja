@@ -55,6 +55,15 @@ const COL = {
   pertanyaan: colIdx("AI"),  // AI - Link gambar pertanyaan Google Drive
 };
 
+// Column mapping untuk MASTER.MITRA
+const COL_MITRA = {
+  nama: colIdx("C"),        // C - Nama
+  pekerjaan: colIdx("D"),   // D - Pekerjaan
+  kec: colIdx("H"),         // H - Kecamatan
+  noHp: colIdx("I"),        // I - No. HP
+  statusKirim: colIdx("J"), // J - Status kirim
+};
+
 type Row = string[];
 
 const isNotVerified = (status: string) => {
@@ -70,12 +79,34 @@ const isMismatch = (status: string) => {
   return s.includes("tidak cocok") || s.includes("tidak sesuai") || s.includes("tidak valid") || s.includes("invalid") || s.includes("mismatch");
 };
 
+// Helper for Mitra status kirim
+const isSent = (status: string) => {
+  const s = (status || "").toLowerCase().trim();
+  return s.includes("terkirim") || s.includes("sent") || s.includes("sukses") || s === "ok";
+};
+const isFailed = (status: string) => {
+  const s = (status || "").toLowerCase().trim();
+  return s.includes("gagal") || s.includes("failed") || s.includes("error");
+};
+const isPending = (status: string) => {
+  const s = (status || "").toLowerCase().trim();
+  return s.includes("pending") || s.includes("antri") || s.includes("menunggu") || (s !== "" && !isSent(s) && !isFailed(s));
+};
+
 export default function KonfirmasiKepka2026() {
+  // Responden Sheet
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Mitra Sheet
+  const [mitriHeaders, setMitriHeaders] = useState<string[]>([]);
+  const [mitriRows, setMitriRows] = useState<Row[]>([]);
+  const [mitriLoading, setMitriLoading] = useState(true);
+  const [mitriError, setMitriError] = useState<string | null>(null);
+
+  // Responden filters & pagination
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterKec, setFilterKec] = useState<string>("all");
@@ -84,7 +115,17 @@ export default function KonfirmasiKepka2026() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
+  // Mitra filters & pagination
+  const [mitriSearch, setMitriSearch] = useState("");
+  const [mitriFilterKec, setMitriFilterKec] = useState<string>("all");
+  const [mitriFilterStatus, setMitriFilterStatus] = useState<string>("all");
+  const [mitriSortKey, setMitriSortKey] = useState<keyof typeof COL_MITRA>("nama");
+  const [mitriSortDir, setMitriSortDir] = useState<"asc" | "desc">("asc");
+  const [mitriPage, setMitriPage] = useState(1);
+  const [mitriPageSize, setMitriPageSize] = useState(20);
+
   const [detailRow, setDetailRow] = useState<Row | null>(null);
+  const [mitriDetailRow, setMitriDetailRow] = useState<Row | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -105,6 +146,29 @@ export default function KonfirmasiKepka2026() {
         setError(e.message || "Gagal memuat data");
       } finally {
         setLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setMitriLoading(true);
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "MASTER.MITRA!A1:J" },
+        });
+        if (error) throw error;
+        const values: Row[] = data?.values || [];
+        if (values.length === 0) {
+          setMitriHeaders([]); setMitriRows([]);
+        } else {
+          setMitriHeaders(values[0]);
+          setMitriRows(values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
+        }
+      } catch (e: any) {
+        setMitriError(e.message || "Gagal memuat data mitra");
+      } finally {
+        setMitriLoading(false);
       }
     })();
   }, []);
@@ -246,6 +310,47 @@ export default function KonfirmasiKepka2026() {
     [rows]
   );
 
+  // Mitra stats
+  const mitriStats = useMemo(() => {
+    const total = mitriRows.length;
+    let sent = 0, failed = 0, pending = 0;
+    const kecMap = new Map<string, number>();
+    const statusMap = new Map<string, number>();
+    
+    mitriRows.forEach(r => {
+      const st = r[COL_MITRA.statusKirim] || "";
+      if (isSent(st)) sent++;
+      else if (isFailed(st)) failed++;
+      else if (st.trim() !== "") pending++;
+      
+      const k = (r[COL_MITRA.kec] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      kecMap.set(k, (kecMap.get(k) || 0) + 1);
+      
+      const statusVal = (st || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      statusMap.set(statusVal, (statusMap.get(statusVal) || 0) + 1);
+    });
+    
+    const perKec = Array.from(kecMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    const perStatus = Array.from(statusMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    return { total, sent, failed, pending, perKec, perStatus };
+  }, [mitriRows]);
+
+  const mitriKecOptions = useMemo(
+    () => Array.from(new Set(mitriRows.map(r => (r[COL_MITRA.kec] || "").trim()).filter(Boolean))).sort(),
+    [mitriRows]
+  );
+
+  const mitriStatusOptions = useMemo(
+    () => Array.from(new Set(mitriRows.map(r => (r[COL_MITRA.statusKirim] || "").trim()).filter(Boolean))).sort(),
+    [mitriRows]
+  );
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     let out = rows.filter(r => {
@@ -278,9 +383,42 @@ export default function KonfirmasiKepka2026() {
 
   useEffect(() => { setPage(1); }, [search, filterStatus, filterKec, pageSize]);
 
+  // Mitra filtered & pagination
+  const mitriFiltered = useMemo(() => {
+    const q = mitriSearch.toLowerCase().trim();
+    let out = mitriRows.filter(r => {
+      if (mitriFilterStatus !== "all" && (r[COL_MITRA.statusKirim] || "").trim() !== mitriFilterStatus) return false;
+      if (mitriFilterKec !== "all" && (r[COL_MITRA.kec] || "").trim() !== mitriFilterKec) return false;
+      if (q) {
+        return r.some(c => (c || "").toString().toLowerCase().includes(q));
+      }
+      return true;
+    });
+    const idx = COL_MITRA[mitriSortKey];
+    out = [...out].sort((a, b) => {
+      const av = (a[idx] || "").toString().toLowerCase();
+      const bv = (b[idx] || "").toString().toLowerCase();
+      if (av < bv) return mitriSortDir === "asc" ? -1 : 1;
+      if (av > bv) return mitriSortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return out;
+  }, [mitriRows, mitriSearch, mitriFilterStatus, mitriFilterKec, mitriSortKey, mitriSortDir]);
+
+  const mitriTotalPages = Math.max(1, Math.ceil(mitriFiltered.length / mitriPageSize));
+  const mitriCurrentPage = Math.min(mitriPage, mitriTotalPages);
+  const mitriPageRows = mitriFiltered.slice((mitriCurrentPage - 1) * mitriPageSize, mitriCurrentPage * mitriPageSize);
+
+  useEffect(() => { setMitriPage(1); }, [mitriSearch, mitriFilterStatus, mitriFilterKec, mitriPageSize]);
+
   const toggleSort = (key: keyof typeof COL) => {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortKey(key); setSortDir("asc"); }
+  };
+
+  const toggleMitriSort = (key: keyof typeof COL_MITRA) => {
+    if (mitriSortKey === key) setMitriSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setMitriSortKey(key); setMitriSortDir("asc"); }
   };
 
   const StatusBadge = ({ status }: { status: string }) => {
@@ -292,6 +430,19 @@ export default function KonfirmasiKepka2026() {
     }
     if (isMismatch(status)) {
       return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100"><XCircle className="h-3 w-3 mr-1" />{status || "Tidak cocok"}</Badge>;
+    }
+    return <Badge variant="secondary">{status || "-"}</Badge>;
+  };
+
+  const MitriStatusBadge = ({ status }: { status: string }) => {
+    if (isSent(status)) {
+      return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100"><CheckCircle2 className="h-3 w-3 mr-1" />Terkirim</Badge>;
+    }
+    if (isFailed(status)) {
+      return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100"><XCircle className="h-3 w-3 mr-1" />Gagal</Badge>;
+    }
+    if (isPending(status)) {
+      return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">Menunggu</Badge>;
     }
     return <Badge variant="secondary">{status || "-"}</Badge>;
   };
@@ -309,13 +460,14 @@ export default function KonfirmasiKepka2026() {
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-800">
             Konfirmasi KEPKA 2026
           </h1>
-          <p className="text-slate-600">Dashboard & Detail Konfirmasi Responden</p>
+          <p className="text-slate-600">Dashboard, Detail Responden & Monitoring Mitra</p>
         </header>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-            <TabsTrigger value="dashboard">Dashboard Konfirmasi</TabsTrigger>
-            <TabsTrigger value="detail">Detail Konfirmasi</TabsTrigger>
+          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-3">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="detail">Detail Responden</TabsTrigger>
+            <TabsTrigger value="mitra">Mitra Kepka 2026</TabsTrigger>
           </TabsList>
 
           {/* DASHBOARD */}
@@ -367,7 +519,7 @@ export default function KonfirmasiKepka2026() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {stats.prioritasData.slice(0, 3).map((item, idx) => (
+                        {stats.prioritasData.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between">
                             <span className="text-xs truncate">{item.name}</span>
                             <span className="text-xs font-semibold text-blue-600">{item.value}</span>
@@ -385,7 +537,7 @@ export default function KonfirmasiKepka2026() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {stats.lintasKecData.slice(0, 3).map((item, idx) => (
+                        {stats.lintasKecData.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between">
                             <span className="text-xs truncate">{item.name}</span>
                             <span className="text-xs font-semibold text-purple-600">{item.value}</span>
@@ -403,7 +555,7 @@ export default function KonfirmasiKepka2026() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {stats.lintasDesaData.slice(0, 3).map((item, idx) => (
+                        {stats.lintasDesaData.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between">
                             <span className="text-xs truncate">{item.name}</span>
                             <span className="text-xs font-semibold text-indigo-600">{item.value}</span>
@@ -421,7 +573,7 @@ export default function KonfirmasiKepka2026() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {stats.tidakMengalihData.slice(0, 3).map((item, idx) => (
+                        {stats.tidakMengalihData.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between">
                             <span className="text-xs truncate">{item.name}</span>
                             <span className="text-xs font-semibold text-cyan-600">{item.value}</span>
