@@ -113,6 +113,7 @@ export default function KonfirmasiKepka2026() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterKec, setFilterKec] = useState<string>("all");
+  const [filterRekomendasi, setFilterRekomendasi] = useState<string>("all");
   const [sortKey, setSortKey] = useState<keyof typeof COL>("nama");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -325,6 +326,22 @@ export default function KonfirmasiKepka2026() {
     [rows]
   );
 
+  const rekomendasiOptions = useMemo(
+    () => {
+      const rekoSet = new Set<string>();
+      rows.forEach(r => {
+        const reko = (r[COL.rekomendasi] || "").trim();
+        if (reko === "") {
+          rekoSet.add("Belum Ditentukan");
+        } else {
+          rekoSet.add(reko);
+        }
+      });
+      return Array.from(rekoSet).sort();
+    },
+    [rows]
+  );
+
   // Mitra stats
   const mitriStats = useMemo(() => {
     const total = mitriRows.length;
@@ -376,6 +393,11 @@ export default function KonfirmasiKepka2026() {
         if (filterStatus === "notVerified" && (isVerified(s) || isMismatch(s))) return false;
       }
       if (filterKec !== "all" && (r[COL.kec] || "").trim() !== filterKec) return false;
+      if (filterRekomendasi !== "all") {
+        const reko = (r[COL.rekomendasi] || "").trim();
+        const rekoDisplay = reko === "" ? "Belum Ditentukan" : reko;
+        if (rekoDisplay !== filterRekomendasi) return false;
+      }
       if (q) {
         return r.some(c => (c || "").toString().toLowerCase().includes(q));
       }
@@ -390,13 +412,13 @@ export default function KonfirmasiKepka2026() {
       return 0;
     });
     return out;
-  }, [rows, search, filterStatus, filterKec, sortKey, sortDir]);
+  }, [rows, search, filterStatus, filterKec, filterRekomendasi, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  useEffect(() => { setPage(1); }, [search, filterStatus, filterKec, pageSize]);
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterKec, filterRekomendasi, pageSize]);
 
   // Mitra filtered & pagination
   const mitriFiltered = useMemo(() => {
@@ -844,6 +866,13 @@ export default function KonfirmasiKepka2026() {
                     <SelectContent>
                       <SelectItem value="all">Semua Kecamatan</SelectItem>
                       {kecOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterRekomendasi} onValueChange={setFilterRekomendasi}>
+                    <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Rekomendasi" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Rekomendasi</SelectItem>
+                      {rekomendasiOptions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
