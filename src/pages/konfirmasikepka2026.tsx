@@ -155,7 +155,7 @@ export default function KonfirmasiKepka2026() {
       try {
         setMitriLoading(true);
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "MASTER.MITRA!A1:J" },
+          body: { spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", operation: "read", range: "MASTER.MITRA!A1:J" },
         });
         if (error) throw error;
         const values: Row[] = data?.values || [];
