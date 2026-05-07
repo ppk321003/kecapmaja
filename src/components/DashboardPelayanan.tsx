@@ -289,7 +289,7 @@ const WordCloud = ({ data }: WordCloudProps) => {
                 textAnchor="middle"
                 transform={`translate(${item.x.toFixed(0)},${item.y.toFixed(0)})`}
                 style={{
-                  fontFamily: "serif",
+                  fontFamily: "Georgia, serif",
                   fontStyle: "normal",
                   fontWeight: item.fontWeight,
                   fontSize: `${item.fontSize}px`,
