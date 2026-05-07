@@ -43,13 +43,11 @@ const WordCloud = ({ data }: WordCloudProps) => {
   const SVG_WIDTH = 1100;
   const SVG_HEIGHT = 520;
 
-  // Vibrant palette: indigo, sky, emerald, amber, rose, violet
+  // Reference palette: slate, orange, blue (3 warna utama)
   const PALETTE = [
-    "#1e3a8a", "#2563eb", "#0ea5e9", "#0891b2",
-    "#059669", "#16a34a", "#65a30d",
-    "#d97706", "#ea580c", "#dc2626",
-    "#db2777", "#9333ea", "#7c3aed",
-    "#475569", "#334155",
+    "rgb(51, 65, 85)",   // slate
+    "rgb(194, 65, 12)",  // orange
+    "rgb(3, 105, 161)",  // blue
   ];
 
   const normalizeText = (text: string): string => {
@@ -91,12 +89,12 @@ const WordCloud = ({ data }: WordCloudProps) => {
     const max = words[0].value;
     const min = words[words.length - 1].value;
     const MIN_FS = 14;
-    const MAX_FS = 76;
+    const MAX_FS = 70;
     const sizeFor = (v: number) => {
       if (max === min) return (MIN_FS + MAX_FS) / 2;
       const t = (v - min) / (max - min);
-      // ease-out so big words are noticeably bigger
-      const eased = Math.pow(t, 0.55);
+      // strong ease-out — top words clearly dominant, long tail at MIN
+      const eased = Math.pow(t, 0.4);
       return MIN_FS + eased * (MAX_FS - MIN_FS);
     };
 
@@ -104,6 +102,7 @@ const WordCloud = ({ data }: WordCloudProps) => {
       text: w.text,
       value: w.value,
       size: sizeFor(w.value),
+      // rotate through 3 colors deterministically
       color: PALETTE[i % PALETTE.length],
     }));
 
@@ -111,13 +110,13 @@ const WordCloud = ({ data }: WordCloudProps) => {
     cloud()
       .size([SVG_WIDTH, SVG_HEIGHT])
       .words(layoutWords as any)
-      .padding(6)
-      .rotate(() => 0) // horizontal only — easier to read, matches reference
-      .font("Inter, system-ui, sans-serif")
-      .fontWeight((d: any) => (d.size > 40 ? 800 : d.size > 24 ? 700 : 600))
+      .padding(3)
+      .rotate(() => 0) // horizontal only, like reference
+      .font("Georgia, 'Times New Roman', serif")
+      .fontWeight(() => 400)
       .fontSize((d: any) => d.size)
       .spiral("archimedean")
-      .random(() => 0.5) // deterministic
+      .random(() => 0.5) // deterministic placement
       .on("end", (out: any[]) => {
         if (cancelled) return;
         setPlaced(
@@ -163,14 +162,14 @@ const WordCloud = ({ data }: WordCloudProps) => {
                 textAnchor="middle"
                 transform={`translate(${w.x},${w.y}) rotate(${w.rotate})`}
                 style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontWeight: w.size > 40 ? 800 : w.size > 24 ? 700 : 600,
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                  fontStyle: "normal",
+                  fontWeight: 400,
                   fontSize: `${w.size}px`,
                   fill: w.color,
                   opacity: hoveredIdx === null || hoveredIdx === idx ? 1 : 0.35,
                   transition: "opacity 150ms ease-out",
                   userSelect: "none",
-                  letterSpacing: "-0.01em",
                 }}
               >
                 {w.text}
