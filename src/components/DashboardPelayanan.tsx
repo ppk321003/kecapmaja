@@ -162,14 +162,14 @@ const WordCloud = ({ data }: WordCloudProps) => {
                 textAnchor="middle"
                 transform={`translate(${w.x},${w.y}) rotate(${w.rotate})`}
                 style={{
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  fontWeight: w.size > 40 ? 800 : w.size > 24 ? 700 : 600,
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                  fontStyle: "normal",
+                  fontWeight: 400,
                   fontSize: `${w.size}px`,
                   fill: w.color,
                   opacity: hoveredIdx === null || hoveredIdx === idx ? 1 : 0.35,
                   transition: "opacity 150ms ease-out",
                   userSelect: "none",
-                  letterSpacing: "-0.01em",
                 }}
               >
                 {w.text}
