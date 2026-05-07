@@ -254,8 +254,8 @@ const WordCloud = ({ data }: WordCloudProps) => {
   }
 
   // SVG dimensions LARGER untuk better spread
-  const SVG_WIDTH = 1000;
-  const SVG_HEIGHT = 620;
+  const SVG_WIDTH = 1100;
+  const SVG_HEIGHT = 560;
   const CENTER_X = SVG_WIDTH / 2;
   const CENTER_Y = SVG_HEIGHT / 2;
 
