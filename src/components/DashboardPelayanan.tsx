@@ -348,7 +348,28 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
       const k = r.umur || "Tidak diisi";
       map[k] = (map[k] || 0) + 1;
     });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    
+    // Sort urutan umur dari muda ke tua
+    const umurOrder = [
+      "17 - 25 tahun",
+      "26 - 34 tahun",
+      "35 - 44 tahun",
+      "45 - 54 tahun",
+      "55 - 65 tahun",
+      "Tidak diisi"
+    ];
+    
+    const result = Object.entries(map)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => {
+        const indexA = umurOrder.indexOf(a.name);
+        const indexB = umurOrder.indexOf(b.name);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+      });
+    
+    return result;
   }, [filtered]);
 
   // Distribusi Pendidikan
