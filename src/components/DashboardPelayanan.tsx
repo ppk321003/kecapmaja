@@ -41,13 +41,20 @@ const WordCloud = ({ data }: WordCloudProps) => {
   const [placed, setPlaced] = useState<PlacedWord[]>([]);
 
   const SVG_WIDTH = 1100;
-  const SVG_HEIGHT = 520;
+  const SVG_HEIGHT = 420;
 
-  // Reference palette: slate, orange, blue (3 warna utama)
+  // 10 warna berbeda dengan blue cerah untuk top words
   const PALETTE = [
-    "rgb(51, 65, 85)",   // slate
-    "rgb(194, 65, 12)",  // orange
-    "rgb(3, 105, 161)",  // blue
+    "rgb(14, 165, 233)",    // blue (bright - untuk top words)
+    "rgb(59, 130, 246)",    // blue (medium)
+    "rgb(3, 105, 161)",     // blue (deep)
+    "rgb(6, 182, 212)",     // cyan (bright teal)
+    "rgb(194, 65, 12)",     // orange (deep)
+    "rgb(249, 115, 22)",    // orange (bright)
+    "rgb(217, 119, 6)",     // amber (golden)
+    "rgb(225, 29, 72)",     // rose (pink-red)
+    "rgb(168, 85, 247)",    // purple (vibrant)
+    "rgb(34, 197, 94)",     // green (emerald)
   ];
 
   const normalizeText = (text: string): string => {
@@ -88,8 +95,8 @@ const WordCloud = ({ data }: WordCloudProps) => {
     }
     const max = words[0].value;
     const min = words[words.length - 1].value;
-    const MIN_FS = 14;
-    const MAX_FS = 70;
+    const MIN_FS = 18;
+    const MAX_FS = 90;
     const sizeFor = (v: number) => {
       if (max === min) return (MIN_FS + MAX_FS) / 2;
       const t = (v - min) / (max - min);
@@ -110,7 +117,7 @@ const WordCloud = ({ data }: WordCloudProps) => {
     cloud()
       .size([SVG_WIDTH, SVG_HEIGHT])
       .words(layoutWords as any)
-      .padding(3)
+      .padding(1)
       .rotate(() => 0) // horizontal only, like reference
       .font("Georgia, 'Times New Roman', serif")
       .fontWeight(() => 400)
@@ -148,7 +155,7 @@ const WordCloud = ({ data }: WordCloudProps) => {
         viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
         preserveAspectRatio="xMidYMid meet"
         className="w-full h-auto"
-        style={{ maxHeight: "560px" }}
+        style={{ maxHeight: "450px" }}
       >
         <g transform={`translate(${SVG_WIDTH / 2},${SVG_HEIGHT / 2})`}>
           {placed.map((w, idx) => (
@@ -358,21 +365,38 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
 
   // Kepentingan (dengan perlakuan khusus untuk "Lainnya - ")
   const kepentinganData = useMemo(() => {
-    const map: Record<string, number> = {};
+    const regularMap: Record<string, number> = {};
+    let lainnyaTotal = 0;
+
     filtered.forEach((r) => {
       // Bisa multi kepentingan (comma-separated) – split kalau ada
       const items = r.kepentingan.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
       if (items.length === 0) {
-        map["Tidak diisi"] = (map["Tidak diisi"] || 0) + 1;
+        regularMap["Tidak diisi"] = (regularMap["Tidak diisi"] || 0) + 1;
       } else {
         items.forEach((it) => {
-          map[it] = (map[it] || 0) + 1;
+          // Jika dimulai dengan "Lainnya - ", kelompokkan ke lainnyaTotal
+          if (it.startsWith("Lainnya - ") || it === "Lainnya") {
+            lainnyaTotal++;
+          } else {
+            regularMap[it] = (regularMap[it] || 0) + 1;
+          }
         });
       }
     });
-    return Object.entries(map)
+
+    // Sort item regular dan ambil top 5
+    const sortedRegular = Object.entries(regularMap)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    // Tambahkan kategori "Lainnya" jika ada
+    if (lainnyaTotal > 0) {
+      return [...sortedRegular, { name: "Lainnya", value: lainnyaTotal }];
+    }
+
+    return sortedRegular;
   }, [filtered]);
 
   // Kepentingan dengan perlakuan khusus untuk "Lainnya - "
@@ -399,7 +423,7 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
       .sort((a, b) => b.value - a.value);
   }, [filtered]);
 
-  // Top 10 Instansi
+  // Top 5 Instansi
   const topInstansi = useMemo(() => {
     const map: Record<string, number> = {};
     filtered.forEach((r) => {
@@ -408,10 +432,10 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
     return Object.entries(map)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
+      .slice(0, 5);
   }, [filtered]);
 
-  // Top 10 Tujuan (pegawai yang paling sering dituju)
+  // Top 5 Tujuan (pegawai yang paling sering dituju)
   const topTujuan = useMemo(() => {
     const map: Record<string, number> = {};
     filtered.forEach((r) => {
@@ -420,7 +444,7 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
     return Object.entries(map)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
+      .slice(0, 5);
   }, [filtered]);
 
   if (loading) {
@@ -663,7 +687,7 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Top 10 Instansi/Asal Tamu</CardTitle>
+            <CardTitle>Top 5 Instansi/Asal Tamu</CardTitle>
             <CardDescription>Instansi yang paling sering berkunjung</CardDescription>
           </CardHeader>
           <CardContent>
@@ -685,7 +709,7 @@ const DashboardPelayanan = ({ filterTahun }: DashboardPelayananProps) => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Top 10 Pegawai Dituju</CardTitle>
+            <CardTitle>Top 5 Pegawai Dituju</CardTitle>
             <CardDescription>Pegawai yang paling sering ditemui tamu</CardDescription>
           </CardHeader>
           <CardContent>
