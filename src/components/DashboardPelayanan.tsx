@@ -95,11 +95,11 @@ const WordCloud = ({ data }: WordCloudProps) => {
   const measureText = (text: string, fontSize: number): number => {
     const canvas = canvasRef.current || document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    if (!ctx) return text.length * 8;
+    if (!ctx) return text.length * fontSize * 0.6;
 
-    ctx.font = `700 ${fontSize}px serif`;
+    ctx.font = `700 ${fontSize}px Georgia, serif`;
     const metrics = ctx.measureText(text);
-    return metrics.width + 20; // padding
+    return metrics.width;
   };
 
   // Calculate font size dengan smooth scaling (linear interpolation)
@@ -131,108 +131,72 @@ const WordCloud = ({ data }: WordCloudProps) => {
     }
   };
 
-  // Helper: Check collision
-  const checkCollision = (
-    x1: number,
-    y1: number,
-    w1: number,
-    h1: number,
-    x2: number,
-    y2: number,
-    w2: number,
-    h2: number,
-    padding: number,
+  // AABB collision check (rect vs rect with padding)
+  const rectsOverlap = (
+    a: { x: number; y: number; w: number; h: number },
+    b: { x: number; y: number; w: number; h: number },
+    padX: number,
+    padY: number,
   ): boolean => {
     return !(
-      x1 + w1 / 2 + padding < x2 - w2 / 2 ||
-      x1 - w1 / 2 - padding > x2 + w2 / 2 ||
-      y1 + h1 / 2 + padding < y2 - h2 / 2 ||
-      y1 - h1 / 2 - padding > y2 + h2 / 2
+      a.x + a.w / 2 + padX <= b.x - b.w / 2 ||
+      a.x - a.w / 2 - padX >= b.x + b.w / 2 ||
+      a.y + a.h / 2 + padY <= b.y - b.h / 2 ||
+      a.y - a.h / 2 - padY >= b.y + b.h / 2
     );
   };
 
-  // Spiral collision detection - OPTIMIZED untuk spread distribution
+  // Archimedean spiral placement starting from center.
+  // Every word (including #1) is placed via spiral so no two words ever overlap.
   const calculatePosition = (
     items: WordCloudItem[],
     index: number,
     canvasWidth: number,
     canvasHeight: number,
   ): { x: number; y: number } => {
-    const MAX_ATTEMPTS = 400;
-    const MIN_PADDING = 20; // Adequate padding
-    const MAX_RADIUS = Math.min(canvasWidth, canvasHeight) * 0.45;
+    const current = items[index];
+    const w = measureText(current.name, current.fontSize);
+    const h = current.fontSize * 1.05;
+    const padX = 8;
+    const padY = 4;
 
-    // Top 1: Slightly off-center untuk natural positioning (reference: "lainnya")
-    if (index === 0) {
-      // Bisa offset sedikit untuk aesthetic appeal
-      return { x: -15, y: -25 };
-    }
+    const placed = items.slice(0, index).map((it) => ({
+      x: it.x,
+      y: it.y,
+      w: measureText(it.name, it.fontSize),
+      h: it.fontSize * 1.05,
+    }));
 
-    // Top 2-3: Dekat top 1 tapi dengan jarak terukur
-    if (index <= 2) {
-      const angle = (index - 1) * Math.PI;
-      const radius = 80;
-      return {
-        x: radius * Math.cos(angle),
-        y: radius * Math.sin(angle),
-      };
-    }
-
-    const currentItem = items[index];
-    const w1 = measureText(currentItem.name, currentItem.fontSize);
-    const h1 = currentItem.fontSize + 14;
-
-    // Untuk kata ke-4 dan seterusnya: gunakan spiral yang lebih agresif spread
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      // Spiral Archimedean: r = a + b*θ
-      // Dengan adjustment untuk spread lebih luas
-      const anglePerStep = Math.PI / 2.2; // Angle increment
-      const theta = attempt * anglePerStep;
-      
-      // Gradual radius growth untuk spreading
-      const radiusMultiplier = 1 + (attempt / MAX_ATTEMPTS) * 0.8;
-      const baseRadius = 90 + attempt * 1.5;
-      const radius = baseRadius * radiusMultiplier;
-      
-      // Batas maksimum radius
-      if (radius > MAX_RADIUS) continue;
-      
-      const x = radius * Math.cos(theta);
-      const y = radius * Math.sin(theta);
-
-      // Bounds check dengan margin
-      if (Math.abs(x) + w1 / 2 > canvasWidth / 2 - 10 || Math.abs(y) + h1 / 2 > canvasHeight / 2 - 10) {
-        continue;
+    const tryPos = (x: number, y: number) => {
+      // bounds
+      if (x - w / 2 < -canvasWidth / 2 + 10) return false;
+      if (x + w / 2 > canvasWidth / 2 - 10) return false;
+      if (y - h / 2 < -canvasHeight / 2 + 10) return false;
+      if (y + h / 2 > canvasHeight / 2 - 10) return false;
+      const me = { x, y, w, h };
+      for (const p of placed) {
+        if (rectsOverlap(me, p, padX, padY)) return false;
       }
-
-      let hasCollision = false;
-      for (let i = 0; i < index; i++) {
-        const prevItem = items[i];
-        const prevW = measureText(prevItem.name, prevItem.fontSize);
-        const prevH = prevItem.fontSize + 14;
-
-        if (
-          checkCollision(x, y, w1, h1, prevItem.x, prevItem.y, prevW, prevH, MIN_PADDING)
-        ) {
-          hasCollision = true;
-          break;
-        }
-      }
-
-      if (!hasCollision) {
-        return { x, y };
-      }
-    }
-
-    // Fallback: Radial distribution untuk overflow items
-    const angleStep = (2 * Math.PI) / Math.max(12, items.length);
-    const fallbackAngle = angleStep * index;
-    const fallbackRadius = MAX_RADIUS * 0.92;
-
-    return {
-      x: fallbackRadius * Math.cos(fallbackAngle),
-      y: fallbackRadius * Math.sin(fallbackAngle),
+      return true;
     };
+
+    // First word: try center
+    if (index === 0 && tryPos(0, 0)) return { x: 0, y: 0 };
+
+    // Archimedean spiral: r = a * theta, step in arc-length units
+    const a = 4; // tightness
+    const step = 0.18; // angle step
+    const maxTheta = 60 * Math.PI;
+    for (let theta = 0.1; theta < maxTheta; theta += step) {
+      const r = a * theta;
+      if (r > Math.max(canvasWidth, canvasHeight)) break;
+      const x = r * Math.cos(theta);
+      const y = r * Math.sin(theta) * 0.62; // ellipse aspect for landscape canvas
+      if (tryPos(x, y)) return { x, y };
+    }
+
+    // Fallback: place far below (will likely be clipped); shouldn't happen often
+    return { x: 0, y: canvasHeight / 2 + 100 };
   };
 
   // Main positioning dengan text normalization & shade-based colors
@@ -251,8 +215,8 @@ const WordCloud = ({ data }: WordCloudProps) => {
     const sorted = normalized.sort((a, b) => b.value - a.value);
 
     // Canvas size lebih besar untuk better spread
-    const canvasWidth = 1000;
-    const canvasHeight = 620;
+    const canvasWidth = 1100;
+    const canvasHeight = 560;
 
     // Step 3: Create items dengan smooth font scaling
     const items: WordCloudItem[] = sorted.map((item, idx) => {
