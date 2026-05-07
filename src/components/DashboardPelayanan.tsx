@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import cloud from "d3-cloud";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,57 +21,39 @@ import {
 } from "recharts";
 import { Users, UserCheck, CalendarDays, TrendingUp, GraduationCap, Building2 } from "lucide-react";
 
-// Word Cloud Component
+// Word Cloud Component (powered by d3-cloud — guaranteed no-overlap)
 interface WordCloudProps {
   data: Array<{ name: string; value: number }>;
 }
 
-interface WordCloudItem {
-  name: string;
+interface PlacedWord {
+  text: string;
   value: number;
-  fontSize: number;
-  fontWeight: number;
+  size: number;
   x: number;
   y: number;
+  rotate: number;
   color: string;
-  tier: number;
-  originalIdx: number;
 }
 
 const WordCloud = ({ data }: WordCloudProps) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [placed, setPlaced] = useState<PlacedWord[]>([]);
 
-  // Color palette: 3 warna utama dengan shade variations (reference inspired)
+  const SVG_WIDTH = 1100;
+  const SVG_HEIGHT = 520;
+
+  // Vibrant palette: indigo, sky, emerald, amber, rose, violet
   const PALETTE = [
-    // Blue series (primary)
-    "rgb(3, 105, 161)",     // Deep Blue
-    "rgb(14, 165, 233)",    // Sky Blue
-    "rgb(59, 130, 246)",    // Medium Blue
-    "rgb(96, 165, 250)",    // Light Blue
-    
-    // Orange series (secondary)
-    "rgb(194, 65, 12)",     // Deep Orange
-    "rgb(249, 115, 22)",    // Medium Orange
-    "rgb(251, 146, 60)",    // Light Orange
-    
-    // Gray series (tertiary)
-    "rgb(51, 65, 85)",      // Slate Gray
-    "rgb(100, 116, 139)",   // Medium Gray
-    "rgb(148, 163, 184)",   // Light Gray
-    
-    // Additional neutrals
-    "rgb(71, 85, 105)",     // Darker Slate
-    "rgb(120, 113, 108)",   // Taupe
-    "rgb(156, 163, 175)",   // Lighter Slate
-    "rgb(203, 213, 225)",   // Very Light Slate
+    "#1e3a8a", "#2563eb", "#0ea5e9", "#0891b2",
+    "#059669", "#16a34a", "#65a30d",
+    "#d97706", "#ea580c", "#dc2626",
+    "#db2777", "#9333ea", "#7c3aed",
+    "#475569", "#334155",
   ];
 
-  // Helper: Normalisasi text (cleanup typo & duplikasi)
   const normalizeText = (text: string): string => {
     if (!text) return "";
-    
-    // Mapping typo/singkatan ke full form
     const mappings: Record<string, string> = {
       "petuga": "petugas",
       "banso": "bansos",
@@ -80,276 +63,127 @@ const WordCloud = ({ data }: WordCloudProps) => {
       "bps jabar": "bps jawa barat",
       "se2026": "sensus ekonomi 2026",
     };
-
-    let normalized = text.trim().toLowerCase();
-    
-    // Apply mappings
+    let n = text.trim().toLowerCase();
     for (const [from, to] of Object.entries(mappings)) {
-      normalized = normalized.replace(new RegExp(`^${from}$`, "i"), to);
+      n = n.replace(new RegExp(`^${from}$`, "i"), to);
     }
-
-    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    return n.charAt(0).toUpperCase() + n.slice(1);
   };
 
-  // Helper: Measure text width
-  const measureText = (text: string, fontSize: number): number => {
-    const canvas = canvasRef.current || document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return text.length * fontSize * 0.6;
-
-    ctx.font = `700 ${fontSize}px Georgia, serif`;
-    const metrics = ctx.measureText(text);
-    return metrics.width;
-  };
-
-  // Calculate font size dengan smooth scaling (linear interpolation)
-  const getZoomProperties = (idx: number, totalItems: number) => {
-    const MAX_FONT = 58;
-    const MIN_FONT = 12;
-    
-    if (idx === 0) {
-      // Top 1: PALING BESAR, absolutely center
-      return { fontSize: MAX_FONT, fontWeight: 700, tier: 1 };
-    } else if (idx === 1) {
-      // Top 2: 85% of max
-      return { fontSize: Math.round(MAX_FONT * 0.85), fontWeight: 700, tier: 2 };
-    } else if (idx < 5) {
-      // Top 3-5: Linear decrease 70%-55%
-      const ratio = 0.70 - (idx - 2) * 0.05;
-      return { fontSize: Math.round(MAX_FONT * ratio), fontWeight: 700, tier: 2 };
-    } else if (idx < 10) {
-      // Top 6-10: Linear decrease 50%-30%
-      const ratio = 0.50 - (idx - 5) * 0.04;
-      return { fontSize: Math.round(MAX_FONT * ratio), fontWeight: 600, tier: 3 };
-    } else if (idx < 20) {
-      // Top 11-20: Linear decrease 28%-18%
-      const ratio = 0.28 - (idx - 10) * 0.01;
-      return { fontSize: Math.round(MAX_FONT * ratio), fontWeight: 500, tier: 4 };
-    } else {
-      // Top 21+: Min size 12px
-      return { fontSize: MIN_FONT, fontWeight: 400, tier: 4 };
-    }
-  };
-
-  // AABB collision check (rect vs rect with padding)
-  const rectsOverlap = (
-    a: { x: number; y: number; w: number; h: number },
-    b: { x: number; y: number; w: number; h: number },
-    padX: number,
-    padY: number,
-  ): boolean => {
-    return !(
-      a.x + a.w / 2 + padX <= b.x - b.w / 2 ||
-      a.x - a.w / 2 - padX >= b.x + b.w / 2 ||
-      a.y + a.h / 2 + padY <= b.y - b.h / 2 ||
-      a.y - a.h / 2 - padY >= b.y + b.h / 2
-    );
-  };
-
-  // Archimedean spiral placement starting from center.
-  // Every word (including #1) is placed via spiral so no two words ever overlap.
-  const calculatePosition = (
-    items: WordCloudItem[],
-    index: number,
-    canvasWidth: number,
-    canvasHeight: number,
-  ): { x: number; y: number } => {
-    const current = items[index];
-    const w = measureText(current.name, current.fontSize);
-    const h = current.fontSize * 1.05;
-    const padX = 8;
-    const padY = 4;
-
-    const placed = items.slice(0, index).map((it) => ({
-      x: it.x,
-      y: it.y,
-      w: measureText(it.name, it.fontSize),
-      h: it.fontSize * 1.05,
-    }));
-
-    const tryPos = (x: number, y: number) => {
-      // bounds
-      if (x - w / 2 < -canvasWidth / 2 + 10) return false;
-      if (x + w / 2 > canvasWidth / 2 - 10) return false;
-      if (y - h / 2 < -canvasHeight / 2 + 10) return false;
-      if (y + h / 2 > canvasHeight / 2 - 10) return false;
-      const me = { x, y, w, h };
-      for (const p of placed) {
-        if (rectsOverlap(me, p, padX, padY)) return false;
-      }
-      return true;
-    };
-
-    // First word: try center
-    if (index === 0 && tryPos(0, 0)) return { x: 0, y: 0 };
-
-    // Archimedean spiral: r = a * theta, step in arc-length units
-    const a = 4; // tightness
-    const step = 0.18; // angle step
-    const maxTheta = 60 * Math.PI;
-    for (let theta = 0.1; theta < maxTheta; theta += step) {
-      const r = a * theta;
-      if (r > Math.max(canvasWidth, canvasHeight)) break;
-      const x = r * Math.cos(theta);
-      const y = r * Math.sin(theta) * 0.62; // ellipse aspect for landscape canvas
-      if (tryPos(x, y)) return { x, y };
-    }
-
-    // Fallback: place far below (will likely be clipped); shouldn't happen often
-    return { x: 0, y: canvasHeight / 2 + 100 };
-  };
-
-  // Main positioning dengan text normalization & shade-based colors
-  const processedData = useMemo(() => {
-    if (data.length === 0) return [];
-
-    // Step 1: Normalize & deduplicate text
-    const normalizedMap = new Map<string, number>();
-    data.forEach((item) => {
-      const normalized = normalizeText(item.name);
-      normalizedMap.set(normalized, (normalizedMap.get(normalized) || 0) + item.value);
+  const words = useMemo(() => {
+    if (data.length === 0) return [] as Array<{ text: string; value: number }>;
+    const map = new Map<string, number>();
+    data.forEach((d) => {
+      const k = normalizeText(d.name);
+      if (!k) return;
+      map.set(k, (map.get(k) || 0) + d.value);
     });
-
-    // Step 2: Convert map to array and sort
-    const normalized = Array.from(normalizedMap).map(([name, value]) => ({ name, value }));
-    const sorted = normalized.sort((a, b) => b.value - a.value);
-
-    // Canvas size lebih besar untuk better spread
-    const canvasWidth = 1100;
-    const canvasHeight = 560;
-
-    // Step 3: Create items dengan smooth font scaling
-    const items: WordCloudItem[] = sorted.map((item, idx) => {
-      const { fontSize, fontWeight, tier } = getZoomProperties(idx, sorted.length);
-      const colorIdx = idx % PALETTE.length; // Cycle through shade palette
-      const color = PALETTE[colorIdx];
-
-      return {
-        ...item,
-        fontSize: Math.max(fontSize, 12),
-        fontWeight,
-        x: 0,
-        y: 0,
-        color,
-        tier,
-        originalIdx: idx,
-      };
-    });
-
-    // Step 4: Calculate positions dengan collision detection
-    const finalItems = items.map((item, idx) => {
-      const { x, y } = calculatePosition(items, idx, canvasWidth, canvasHeight);
-      return {
-        ...item,
-        x,
-        y,
-      };
-    });
-
-    return finalItems;
+    return Array.from(map, ([text, value]) => ({ text, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 60);
   }, [data]);
 
-  if (processedData.length === 0) {
+  useEffect(() => {
+    if (words.length === 0) {
+      setPlaced([]);
+      return;
+    }
+    const max = words[0].value;
+    const min = words[words.length - 1].value;
+    const MIN_FS = 14;
+    const MAX_FS = 76;
+    const sizeFor = (v: number) => {
+      if (max === min) return (MIN_FS + MAX_FS) / 2;
+      const t = (v - min) / (max - min);
+      // ease-out so big words are noticeably bigger
+      const eased = Math.pow(t, 0.55);
+      return MIN_FS + eased * (MAX_FS - MIN_FS);
+    };
+
+    const layoutWords = words.map((w, i) => ({
+      text: w.text,
+      value: w.value,
+      size: sizeFor(w.value),
+      color: PALETTE[i % PALETTE.length],
+    }));
+
+    let cancelled = false;
+    cloud()
+      .size([SVG_WIDTH, SVG_HEIGHT])
+      .words(layoutWords as any)
+      .padding(6)
+      .rotate(() => 0) // horizontal only — easier to read, matches reference
+      .font("Inter, system-ui, sans-serif")
+      .fontWeight((d: any) => (d.size > 40 ? 800 : d.size > 24 ? 700 : 600))
+      .fontSize((d: any) => d.size)
+      .spiral("archimedean")
+      .random(() => 0.5) // deterministic
+      .on("end", (out: any[]) => {
+        if (cancelled) return;
+        setPlaced(
+          out.map((d) => ({
+            text: d.text,
+            value: d.value,
+            size: d.size,
+            x: d.x,
+            y: d.y,
+            rotate: d.rotate,
+            color: d.color,
+          })),
+        );
+      })
+      .start();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [words]);
+
+  if (words.length === 0) {
     return <p className="text-sm text-muted-foreground text-center py-12">Tidak ada data</p>;
   }
 
-  // SVG dimensions LARGER untuk better spread
-  const SVG_WIDTH = 1100;
-  const SVG_HEIGHT = 560;
-  const CENTER_X = SVG_WIDTH / 2;
-  const CENTER_Y = SVG_HEIGHT / 2;
-
   return (
-    <div className="relative w-full flex items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100 rounded-lg">
-      <canvas ref={canvasRef} style={{ display: "none" }} />
-
+    <div className="relative w-full flex items-center justify-center overflow-hidden bg-white rounded-lg">
       <svg
         viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
         preserveAspectRatio="xMidYMid meet"
         className="w-full h-auto"
-        style={{ maxHeight: "600px" }}
+        style={{ maxHeight: "560px" }}
       >
-        <defs>
-          {processedData.map((_, idx) => (
-            <filter key={`shadow-${idx}`} id={`shadow-${idx}`}>
-              <feDropShadow dx="0" dy="2" stdDeviation="4" floodOpacity="0.3" />
-            </filter>
-          ))}
-        </defs>
-        
-        <g transform={`translate(${CENTER_X},${CENTER_Y})`}>
-          {processedData.map((item, idx) => (
+        <g transform={`translate(${SVG_WIDTH / 2},${SVG_HEIGHT / 2})`}>
+          {placed.map((w, idx) => (
             <g
-              key={idx}
+              key={`${w.text}-${idx}`}
               onMouseEnter={() => setHoveredIdx(idx)}
               onMouseLeave={() => setHoveredIdx(null)}
-              className="cursor-pointer transition-all duration-200"
+              style={{ cursor: "pointer" }}
             >
               <text
                 textAnchor="middle"
-                transform={`translate(${item.x.toFixed(0)},${item.y.toFixed(0)})`}
+                transform={`translate(${w.x},${w.y}) rotate(${w.rotate})`}
                 style={{
-                  fontFamily: "Georgia, serif",
-                  fontStyle: "normal",
-                  fontWeight: item.fontWeight,
-                  fontSize: `${item.fontSize}px`,
-                  fill: item.color,
-                  opacity: hoveredIdx === idx ? 1 : 0.88,
-                  filter: hoveredIdx === idx ? "drop-shadow(0 2px 4px rgba(0,0,0,0.2))" : "none",
-                  transition: "opacity 150ms ease-out, filter 150ms ease-out",
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontWeight: w.size > 40 ? 800 : w.size > 24 ? 700 : 600,
+                  fontSize: `${w.size}px`,
+                  fill: w.color,
+                  opacity: hoveredIdx === null || hoveredIdx === idx ? 1 : 0.35,
+                  transition: "opacity 150ms ease-out",
                   userSelect: "none",
-                  paintOrder: "stroke",
-                  stroke: "rgba(255,255,255,0.3)",
-                  strokeWidth: "0.5px",
+                  letterSpacing: "-0.01em",
                 }}
               >
-                {item.name}
+                {w.text}
               </text>
-
-              {/* Interactive Tooltip on hover */}
-              {hoveredIdx === idx && (
-                <g>
-                  <rect
-                    x={item.x - 60}
-                    y={item.y - 70}
-                    width="120"
-                    height="50"
-                    fill="rgb(15, 23, 42)"
-                    rx="6"
-                    opacity="0.95"
-                    filter={`url(#shadow-${idx})`}
-                  />
-                  <text
-                    textAnchor="middle"
-                    x={item.x}
-                    y={item.y - 50}
-                    style={{
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      fill: item.color,
-                      fontFamily: "sans-serif",
-                    }}
-                  >
-                    {item.value}x
-                  </text>
-                  <text
-                    textAnchor="middle"
-                    x={item.x}
-                    y={item.y - 32}
-                    style={{
-                      fontSize: "11px",
-                      fill: "rgb(148, 163, 184)",
-                      fontFamily: "sans-serif",
-                    }}
-                  >
-                    Tier {item.tier}
-                  </text>
-                </g>
-              )}
             </g>
           ))}
         </g>
       </svg>
+      {hoveredIdx !== null && placed[hoveredIdx] && (
+        <div className="absolute top-3 right-3 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg">
+          {placed[hoveredIdx].text} · {placed[hoveredIdx].value}x
+        </div>
+      )}
     </div>
   );
 };
