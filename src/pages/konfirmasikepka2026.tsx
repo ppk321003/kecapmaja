@@ -164,6 +164,19 @@ const validateResponden = (row: Row): Array<{ issue: string; severity: "error" |
     }
   }
 
+  // L: Umur - Validasi umur < 18 atau > 50
+  if (umurStr) {
+    const umurNum = parseInt(umurStr);
+    if (!isNaN(umurNum)) {
+      if (umurNum < 18) {
+        issues.push({ issue: "Umur kurang dari 18 tahun", severity: "warning" });
+      }
+      if (umurNum > 50) {
+        issues.push({ issue: "Umur lebih dari 50 tahun", severity: "warning" });
+      }
+    }
+  }
+
   // O: Kegiatan sehari-hari - Jika ADA "Bekerja penuh waktu" adalah error (mencari orang senggang)
   const kegiatanSehariHari = (row[COL.kegiatanSehariHari] || "").toLowerCase();
   if (kegiatanSehariHari && kegiatanSehariHari.includes("bekerja penuh waktu")) {
