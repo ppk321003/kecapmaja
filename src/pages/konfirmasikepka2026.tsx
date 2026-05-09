@@ -14,7 +14,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Eye, Search, CheckCircle2, XCircle, Users, Loader2, ArrowUpDown, Check, X, Loader } from "lucide-react";
+import { Eye, Search, CheckCircle2, XCircle, Users, Loader2, ArrowUpDown, Check, X, Loader, AlertCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -40,20 +40,31 @@ const COL = {
   email: colIdx("B"),    // B
   kegiatanRutin: colIdx("C"),  // C - Kegiatan Rutin yang sudah diikuti tahun 2026
   sensusEkonomi: colIdx("E"),  // E - Sensus Ekonomi 2026
-  pendidikan: colIdx("J"),  // J - Pendidikan terakhir yang ditamatkan
   nama: colIdx("F"),     // F
   sobatId: colIdx("G"),  // G
+  tanggalLahir: colIdx("K"),  // K - Tanggal Lahir
+  umur: colIdx("L"),     // L - Umur saat ini
   kec: colIdx("M"),      // M
   desa: colIdx("N"),     // N
-  status: colIdx("BD"),  // BD
-  umur: colIdx("L"),     // L - Umur saat ini
+  pendidikan: colIdx("J"),  // J - Pendidikan terakhir yang ditamatkan
+  kegiatanSehariHari: colIdx("O"),  // O - Apa kegiatan sehari-hari anda
+  bekerjaPNS: colIdx("P"),  // P - Apakah Anda Bekerja sebagai PNS atau PPPK?
+  prosesPendaftaranPNS: colIdx("Q"),  // Q - Apakah Anda Sedang Menjalani Proses Pendaftaran sebagai PNS atau PPPK?
+  smartphoneAndroid: colIdx("W"),  // W - Apakah Anda Memiliki Smartphone Android?
   pekerjaan: colIdx("R"),  // R - Apakah Anda Bekerja Sebagai...
   androidVersion: colIdx("Y"),  // Y - Apa Versi Android Smartphone Android Anda?
+  pertanyaan: colIdx("AI"),  // AI - Link gambar pertanyaan Google Drive
   prioritasKejaanBPS: colIdx("AM"),  // AM - Apakah Anda bersedia Memprioritaskan Pekerjaan BPS?
+  kontrakKerja: colIdx("AN"),  // AN - Apakah anda bersedia menandatangani kontrak kerja?
+  pelatihanBPS: colIdx("AO"),  // AO - Apakah Anda bersedia mengikuti pelatihan BPS?
+  pelatihanBPS2: colIdx("AP"),  // AP - Apakah Anda bersedia mengikuti pelatihan BPS?
   lintasKecamatan: colIdx("AQ"),  // AQ - Apakah Anda bersedia bekerja Lintas Kecamatan?
   lintasDesa: colIdx("AR"),  // AR - Apakah Anda bersedia bekerja Lintas Desa?
+  deadline: colIdx("AS"),  // AS - Apakah Anda bersedia Bekerja Mengikuti Deadline?
+  waktuTenagaPikiran: colIdx("AT"),  // AT - Apakah anda bersedia mencurahkan waktu, tenaga dan pikiran?
+  memperbaikiHasil: colIdx("AU"),  // AU - Apakah Anda bersedia Memperbaiki Hasil Pekerjaan?
   tidakMengalihkan: colIdx("AV"),  // AV - Apakah anda bersedia tidak mengalihkan pekerjaan?
-  pertanyaan: colIdx("AI"),  // AI - Link gambar pertanyaan Google Drive
+  status: colIdx("BD"),  // BD
   rekomendasi: colIdx("BE"), // BE - Rekomendasi / Non Rekomendasi
 };
 
@@ -94,6 +105,137 @@ const isNikTidakCocok = (s: string) => {
 const isVerifikasiNik = (s: string) => {
   const v = (s || "").toLowerCase().trim();
   return v === "terverifikasi" && !v.includes("belum");
+};
+
+// Validation helper functions
+const calculateAgeFromDate = (dateStr: string): number | null => {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const monthDiff = today.getMonth() - date.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : null;
+};
+
+const isYesAnswer = (val: string): boolean => {
+  const v = (val || "").toLowerCase().trim();
+  return v === "ya" || v === "yes" || v === "y";
+};
+
+const isNotAnswer = (val: string): boolean => {
+  const v = (val || "").toLowerCase().trim();
+  return v === "tidak" || v === "no" || v === "n";
+};
+
+const validateResponden = (row: Row): Array<{ issue: string; severity: "error" | "warning" }> => {
+  const issues: Array<{ issue: string; severity: "error" | "warning" }> = [];
+
+  // J: Pendidikan = SLTP/Sederajat (hanya warning)
+  const pendidikan = (row[COL.pendidikan] || "").toLowerCase().trim();
+  if (pendidikan && pendidikan.includes("sltp")) {
+    issues.push({ issue: "Pendidikan SLTP/Sederajat (minimal SMA lebih baik)", severity: "warning" });
+  }
+
+  // K & L: Tanggal Lahir vs Umur konsistensi
+  const tanggalLahir = (row[COL.tanggalLahir] || "").trim();
+  const umurStr = (row[COL.umur] || "").trim();
+  if (tanggalLahir && umurStr) {
+    const calculatedAge = calculateAgeFromDate(tanggalLahir);
+    const statedAge = parseInt(umurStr);
+    if (calculatedAge !== null && statedAge && Math.abs(calculatedAge - statedAge) > 1) {
+      issues.push({ issue: "Umur tidak sesuai tanggal lahir", severity: "error" });
+    }
+  }
+
+  // O: Kegiatan sehari-hari - Jika ADA "Bekerja penuh waktu" adalah error (mencari orang senggang)
+  const kegiatanSehariHari = (row[COL.kegiatanSehariHari] || "").toLowerCase();
+  if (kegiatanSehariHari && kegiatanSehariHari.includes("bekerja penuh waktu")) {
+    issues.push({ issue: "Memiliki pekerjaan utama (tidak senggang)", severity: "error" });
+  }
+
+  // P: Bekerja PNS/PPPK - Jika bukan "Tidak" adalah error (punya pekerjaan lain)
+  const bekerjaPNS = (row[COL.bekerjaPNS] || "").trim();
+  if (bekerjaPNS && !isNotAnswer(bekerjaPNS)) {
+    issues.push({ issue: "Memiliki pekerjaan PNS/PPPK", severity: "error" });
+  }
+
+  // Q: Proses Pendaftaran PNS/PPPK - Jika bukan "Tidak" adalah error (sedang proses)
+  const prosesPendaftaran = (row[COL.prosesPendaftaranPNS] || "").trim();
+  if (prosesPendaftaran && !isNotAnswer(prosesPendaftaran)) {
+    issues.push({ issue: "Sedang dalam proses pendaftaran PNS/PPPK", severity: "error" });
+  }
+
+  // W: Smartphone Android ≠ "Ya"
+  const smartphone = (row[COL.smartphoneAndroid] || "").trim();
+  if (smartphone && !isYesAnswer(smartphone)) {
+    issues.push({ issue: "Tidak memiliki Smartphone Android", severity: "error" });
+  }
+
+  // AM: Prioritas BPS ≠ "Ya"
+  const prioritasBPS = (row[COL.prioritasKejaanBPS] || "").trim();
+  if (prioritasBPS && !isYesAnswer(prioritasBPS)) {
+    issues.push({ issue: "Tidak bersedia prioritaskan pekerjaan BPS", severity: "error" });
+  }
+
+  // AN: Kontrak Kerja ≠ "Ya"
+  const kontrakKerja = (row[COL.kontrakKerja] || "").trim();
+  if (kontrakKerja && !isYesAnswer(kontrakKerja)) {
+    issues.push({ issue: "Tidak bersedia menandatangani kontrak kerja", severity: "error" });
+  }
+
+  // AO: Pelatihan BPS ≠ "Ya" (warning level)
+  const pelatihanBPS = (row[COL.pelatihanBPS] || "").trim();
+  if (pelatihanBPS && !isYesAnswer(pelatihanBPS)) {
+    issues.push({ issue: "Tidak bersedia mengikuti pelatihan BPS", severity: "warning" });
+  }
+
+  // AP: Pelatihan BPS 2 ≠ "Ya"
+  const pelatihanBPS2 = (row[COL.pelatihanBPS2] || "").trim();
+  if (pelatihanBPS2 && !isYesAnswer(pelatihanBPS2)) {
+    issues.push({ issue: "Tidak bersedia mengikuti pelatihan BPS (2)", severity: "error" });
+  }
+
+  // AQ: Lintas Kecamatan ≠ "Ya"
+  const lintasKec = (row[COL.lintasKecamatan] || "").trim();
+  if (lintasKec && !isYesAnswer(lintasKec)) {
+    issues.push({ issue: "Tidak bersedia bekerja lintas kecamatan", severity: "error" });
+  }
+
+  // AR: Lintas Desa ≠ "Ya"
+  const lintasDe = (row[COL.lintasDesa] || "").trim();
+  if (lintasDe && !isYesAnswer(lintasDe)) {
+    issues.push({ issue: "Tidak bersedia bekerja lintas desa", severity: "error" });
+  }
+
+  // AS: Deadline ≠ "Ya"
+  const deadline = (row[COL.deadline] || "").trim();
+  if (deadline && !isYesAnswer(deadline)) {
+    issues.push({ issue: "Tidak bersedia mengikuti deadline BPS", severity: "error" });
+  }
+
+  // AT: Waktu/Tenaga/Pikiran ≠ "Ya"
+  const waktuTenaga = (row[COL.waktuTenagaPikiran] || "").trim();
+  if (waktuTenaga && !isYesAnswer(waktuTenaga)) {
+    issues.push({ issue: "Tidak bersedia mencurahkan waktu/tenaga/pikiran", severity: "error" });
+  }
+
+  // AU: Memperbaiki Hasil ≠ "Ya"
+  const perbaikiHasil = (row[COL.memperbaikiHasil] || "").trim();
+  if (perbaikiHasil && !isYesAnswer(perbaikiHasil)) {
+    issues.push({ issue: "Tidak bersedia memperbaiki hasil kerja", severity: "error" });
+  }
+
+  // AV: Tidak Mengalihkan ≠ "Ya"
+  const tidakAlihkan = (row[COL.tidakMengalihkan] || "").trim();
+  if (tidakAlihkan && !isYesAnswer(tidakAlihkan)) {
+    issues.push({ issue: "Tidak bersedia tidak mengalihkan pekerjaan", severity: "error" });
+  }
+
+  return issues;
 };
 
 export default function KonfirmasiKepka2026() {
@@ -149,6 +291,7 @@ export default function KonfirmasiKepka2026() {
   const [mitriPageSize, setMitriPageSize] = useState(20);
 
   const [detailRow, setDetailRow] = useState<Row | null>(null);
+  const [validationDetailRow, setValidationDetailRow] = useState<Row | null>(null);
   const [mitriDetailRow, setMitriDetailRow] = useState<Row | null>(null);
   const [savingRow, setSavingRow] = useState<number | null>(null);
   const [confirmChange, setConfirmChange] = useState<{ row: Row; next: "Rekomendasi" | "Non Rekomendasi" | "" } | null>(null);
@@ -1030,12 +1173,13 @@ export default function KonfirmasiKepka2026() {
                             <TableHead className="cursor-pointer" onClick={() => toggleSort("email")}>Email</TableHead>
                             <TableHead>Status NIK</TableHead>
                             <TableHead>Sensus Ekonomi 2026</TableHead>
+                            <TableHead className="text-center">Catatan Kecap Maja</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {pageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : pageRows.map((r, i) => (
                             <TableRow key={i} className={isNotVerified(r[COL.status]) ? "bg-orange-50/30" : isVerified(r[COL.status]) ? "bg-emerald-50/30" : isMismatch(r[COL.status]) ? "bg-red-50/30" : ""}>
                               <TableCell className="text-muted-foreground">{(currentPage - 1) * pageSize + i + 1}</TableCell>
@@ -1046,39 +1190,58 @@ export default function KonfirmasiKepka2026() {
                               <TableCell className="text-xs">{r[COL.email] || "-"}</TableCell>
                               <TableCell><StatusBadge status={r[COL.status] || ""} /></TableCell>
                               <TableCell>{r[COL.sensusEkonomi] || "-"}</TableCell>
+                              {/* Catatan Kecap Maja Column */}
+                              <TableCell className="text-center">
+                                {(() => {
+                                  const validationIssues = validateResponden(r);
+                                  const hasIssues = validationIssues.length > 0;
+
+                                  return (
+                                    <button 
+                                      className="cursor-pointer hover:opacity-75 transition-opacity"
+                                      onClick={() => setValidationDetailRow(r)}
+                                      type="button"
+                                      title={hasIssues ? "Klik untuk lihat catatan" : "Tidak ada catatan"}
+                                    >
+                                      <AlertTriangle className={hasIssues ? "h-5 w-5 text-amber-600" : "h-5 w-5 text-slate-300"} />
+                                    </button>
+                                  );
+                                })()}
+                              </TableCell>
                               <TableCell className="text-right">
                                 {(() => {
                                   const rek = (r[COL.rekomendasi] || "").trim();
                                   const origIdx = rows.indexOf(r);
                                   const sheetRow = origIdx + 2;
                                   const isSaving = savingRow === sheetRow;
+
                                   return (
                                     <div className="flex items-center justify-end gap-1">
-                                      <Button
-                                        size="icon"
-                                        variant={rek === "Rekomendasi" ? "default" : "ghost"}
-                                        className={rek === "Rekomendasi" ? "bg-emerald-600 hover:bg-emerald-700 text-white h-8 w-8" : "h-8 w-8 text-emerald-600 hover:bg-emerald-50"}
-                                        disabled={isSaving}
-                                        onClick={() => handleRekomendasiClick(r, "Rekomendasi")}
-                                        title={rek === "Rekomendasi" ? "Klik untuk batalkan Rekomendasi" : "Tandai Rekomendasi"}
-                                      >
-                                        {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                      </Button>
-                                      <Button
-                                        size="icon"
-                                        variant={rek === "Non Rekomendasi" ? "default" : "ghost"}
-                                        className={rek === "Non Rekomendasi" ? "bg-red-600 hover:bg-red-700 text-white h-8 w-8" : "h-8 w-8 text-red-600 hover:bg-red-50"}
-                                        disabled={isSaving}
-                                        onClick={() => handleRekomendasiClick(r, "Non Rekomendasi")}
-                                        title={rek === "Non Rekomendasi" ? "Klik untuk batalkan Non Rekomendasi" : "Tandai Non Rekomendasi"}
-                                      >
-                                        {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                                      </Button>
-                                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDetailRow(r)} title="Lihat detail">
-                                        <Eye className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  );
+                                        <Button
+                                          size="icon"
+                                          variant={rek === "Rekomendasi" ? "default" : "ghost"}
+                                          className={rek === "Rekomendasi" ? "bg-emerald-600 hover:bg-emerald-700 text-white h-8 w-8" : "h-8 w-8 text-emerald-600 hover:bg-emerald-50"}
+                                          disabled={isSaving}
+                                          onClick={() => handleRekomendasiClick(r, "Rekomendasi")}
+                                          title={rek === "Rekomendasi" ? "Klik untuk batalkan Rekomendasi" : "Tandai Rekomendasi"}
+                                        >
+                                          {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant={rek === "Non Rekomendasi" ? "default" : "ghost"}
+                                          className={rek === "Non Rekomendasi" ? "bg-red-600 hover:bg-red-700 text-white h-8 w-8" : "h-8 w-8 text-red-600 hover:bg-red-50"}
+                                          disabled={isSaving}
+                                          onClick={() => handleRekomendasiClick(r, "Non Rekomendasi")}
+                                          title={rek === "Non Rekomendasi" ? "Klik untuk batalkan Non Rekomendasi" : "Tandai Non Rekomendasi"}
+                                        >
+                                          {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                                        </Button>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDetailRow(r)} title="Lihat detail">
+                                          <Eye className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    );
                                 })()}
                               </TableCell>
                             </TableRow>
@@ -1522,6 +1685,67 @@ export default function KonfirmasiKepka2026() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Validation Notes Dialog */}
+        <Dialog open={!!validationDetailRow} onOpenChange={(o) => !o && setValidationDetailRow(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Catatan Kecap Maja - {validationDetailRow ? (validationDetailRow[COL.nama] || "Responden") : ""}</DialogTitle>
+              <DialogDescription>Hasil validasi data responden</DialogDescription>
+            </DialogHeader>
+            {validationDetailRow && (() => {
+              const issues = validateResponden(validationDetailRow);
+              const errors = issues.filter(v => v.severity === "error");
+              const warnings = issues.filter(v => v.severity === "warning");
+              
+              return (
+                <div className="space-y-4">
+                  {errors.length === 0 && warnings.length === 0 ? (
+                    <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-emerald-700">Baik - Tidak ada isu</span>
+                    </div>
+                  ) : (
+                    <>
+                      {errors.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-red-700 flex items-center gap-2">
+                            <XCircle className="h-4 w-4" />
+                            Issue Kritis ({errors.length})
+                          </h4>
+                          <ul className="space-y-1">
+                            {errors.map((e, i) => (
+                              <li key={i} className="text-sm text-red-600 flex items-start gap-2">
+                                <span className="text-red-400 mt-0.5">•</span>
+                                {e.issue}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {warnings.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-amber-700 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            Catatan ({warnings.length})
+                          </h4>
+                          <ul className="space-y-1">
+                            {warnings.map((w, i) => (
+                              <li key={i} className="text-sm text-amber-600 flex items-start gap-2">
+                                <span className="text-amber-400 mt-0.5">•</span>
+                                {w.issue}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
 
         {/* Detail Dialog */}
         <Dialog open={!!detailRow} onOpenChange={(o) => !o && setDetailRow(null)}>
