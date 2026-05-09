@@ -177,7 +177,7 @@ export default function KonfirmasiKepka2026() {
       try {
         setMitriLoading(true);
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", operation: "read", range: "MASTER.MITRA!A1:J" },
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "Manajemen Mitra!A1:S" },
         });
         if (error) throw error;
         const values: Row[] = data?.values || [];
@@ -185,7 +185,8 @@ export default function KonfirmasiKepka2026() {
           setMitriHeaders([]); setMitriRows([]);
         } else {
           setMitriHeaders(values[0]);
-          setMitriRows(values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
+          // Baris 2 di sheet kosong → mulai data dari index 2 (baris 3)
+          setMitriRows(values.slice(2).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
         }
       } catch (e: any) {
         setMitriError(e.message || "Gagal memuat data mitra");
@@ -201,7 +202,7 @@ export default function KonfirmasiKepka2026() {
       try {
         setMtLoading(true);
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", operation: "read", range: "Mitra Tambahan!A1:J" },
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "Mitra Tambahan!A1:S" },
         });
         if (error) throw error;
         const values: Row[] = data?.values || [];
@@ -209,7 +210,7 @@ export default function KonfirmasiKepka2026() {
           setMtHeaders([]); setMtRows([]);
         } else {
           setMtHeaders(values[0]);
-          setMtRows(values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
+          setMtRows(values.slice(2).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
         }
       } catch (e: any) {
         setMtError(e.message || "Gagal memuat data mitra tambahan");
@@ -225,7 +226,7 @@ export default function KonfirmasiKepka2026() {
       try {
         setKkLoading(true);
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", operation: "read", range: "Kebutuhan Kecamatan!A1:Q" },
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "Kebutuhan Kecamatan!A1:Q" },
         });
         if (error) throw error;
         const values: Row[] = data?.values || [];
