@@ -515,6 +515,58 @@ export default function KonfirmasiKepka2026() {
 
   useEffect(() => { setMitriPage(1); }, [mitriSearch, mitriFilterStatus, mitriFilterKec, mitriPageSize]);
 
+  // Mitra Tambahan derived
+  const mtKecOptions = useMemo(
+    () => Array.from(new Set(mtRows.map(r => (r[COL_MITRA.kec] || "").trim()).filter(Boolean))).sort(),
+    [mtRows]
+  );
+  const mtStatusOptions = useMemo(
+    () => Array.from(new Set(mtRows.map(r => (r[COL_MITRA.statusKirim] || "").trim()).filter(Boolean))).sort(),
+    [mtRows]
+  );
+  const mtStats = useMemo(() => {
+    const total = mtRows.length;
+    let sent = 0, failed = 0, pending = 0;
+    mtRows.forEach(r => {
+      const st = r[COL_MITRA.statusKirim] || "";
+      if (isSent(st)) sent++;
+      else if (isFailed(st)) failed++;
+      else if (st.trim() !== "") pending++;
+    });
+    return { total, sent, failed, pending };
+  }, [mtRows]);
+  const mtFiltered = useMemo(() => {
+    const q = mtSearch.toLowerCase().trim();
+    let out = mtRows.filter(r => {
+      if (mtFilterStatus !== "all") {
+        const st = (r[COL_MITRA.statusKirim] || "").trim();
+        if (mtFilterStatus === "__blank__") {
+          if (st !== "") return false;
+        } else if (st !== mtFilterStatus) return false;
+      }
+      if (mtFilterKec !== "all" && (r[COL_MITRA.kec] || "").trim() !== mtFilterKec) return false;
+      if (q) return r.some(c => (c || "").toString().toLowerCase().includes(q));
+      return true;
+    });
+    const idx = COL_MITRA[mtSortKey];
+    out = [...out].sort((a, b) => {
+      const av = (a[idx] || "").toString().toLowerCase();
+      const bv = (b[idx] || "").toString().toLowerCase();
+      if (av < bv) return mtSortDir === "asc" ? -1 : 1;
+      if (av > bv) return mtSortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return out;
+  }, [mtRows, mtSearch, mtFilterStatus, mtFilterKec, mtSortKey, mtSortDir]);
+  const mtTotalPages = Math.max(1, Math.ceil(mtFiltered.length / mtPageSize));
+  const mtCurrentPage = Math.min(mtPage, mtTotalPages);
+  const mtPageRows = mtFiltered.slice((mtCurrentPage - 1) * mtPageSize, mtCurrentPage * mtPageSize);
+  useEffect(() => { setMtPage(1); }, [mtSearch, mtFilterStatus, mtFilterKec, mtPageSize]);
+  const toggleMtSort = (key: keyof typeof COL_MITRA) => {
+    if (mtSortKey === key) setMtSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setMtSortKey(key); setMtSortDir("asc"); }
+  };
+
   const toggleSort = (key: keyof typeof COL) => {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortKey(key); setSortDir("asc"); }
