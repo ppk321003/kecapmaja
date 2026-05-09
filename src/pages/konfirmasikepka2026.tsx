@@ -1410,8 +1410,8 @@ export default function KonfirmasiKepka2026() {
                                       <button 
                                         className={`p-1.5 rounded transition-all ${
                                           currentRek === "Non Rekomendasi"
-                                            ? "bg-emerald-600 text-white"
-                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                            ? "bg-red-600 text-white"
+                                            : "bg-red-50 text-red-500 hover:bg-red-100"
                                         }`}
                                         onClick={() => handleRekomendasiClick(r, "Non Rekomendasi")} 
                                         title="Non Rekomendasi"
@@ -1951,14 +1951,14 @@ export default function KonfirmasiKepka2026() {
                   const isGDriveLink = val && typeof val === "string" && val.includes("drive.google.com");
                   return (
                     <div key={i} className="border-b pb-2">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h || `Kolom ${i + 1}`}</div>
-                      <div className="text-sm break-words mt-1">
+                      <div className="text-xs font-semibold text-slate-900 bg-slate-100 px-3 py-2 rounded uppercase tracking-wide">{h || `Kolom ${i + 1}`}</div>
+                      <div className="text-sm break-words mt-2 bg-blue-50 px-3 py-2 rounded text-blue-900">
                         {isGDriveLink ? (
                           <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline font-medium">
                             📸 Klik untuk melihat gambar
                           </a>
                         ) : (
-                          val || <span className="text-muted-foreground italic">-</span>
+                          val || <span className="text-blue-400 italic">-</span>
                         )}
                       </div>
                     </div>
