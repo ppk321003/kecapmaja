@@ -301,6 +301,7 @@ export default function KonfirmasiKepka2026() {
   const [mtSearch, setMtSearch] = useState("");
   const [mtFilterKec, setMtFilterKec] = useState<string>("all");
   const [mtFilterStatus, setMtFilterStatus] = useState<string>("all");
+  const [mtFilterGF, setMtFilterGF] = useState<string>("all");
   const [mtSortKey, setMtSortKey] = useState<keyof typeof COL_MITRA>("nama");
   const [mtSortDir, setMtSortDir] = useState<"asc" | "desc">("asc");
   const [mtPage, setMtPage] = useState(1);
@@ -327,6 +328,7 @@ export default function KonfirmasiKepka2026() {
   const [mitriSearch, setMitriSearch] = useState("");
   const [mitriFilterKec, setMitriFilterKec] = useState<string>("all");
   const [mitriFilterStatus, setMitriFilterStatus] = useState<string>("all");
+  const [mitriFilterGF, setMitriFilterGF] = useState<string>("all");
   const [mitriSortKey, setMitriSortKey] = useState<keyof typeof COL_MITRA>("nama");
   const [mitriSortDir, setMitriSortDir] = useState<"asc" | "desc">("asc");
   const [mitriPage, setMitriPage] = useState(1);
@@ -686,6 +688,11 @@ export default function KonfirmasiKepka2026() {
         } else if (st !== mitriFilterStatus) return false;
       }
       if (mitriFilterKec !== "all" && (r[COL_MITRA.kec] || "").trim() !== mitriFilterKec) return false;
+      if (mitriFilterGF !== "all") {
+        const hasGF = checkGoogleFormStatus(r, rows);
+        const gfStatus = hasGF ? "Sudah GF" : "Belum GF";
+        if (gfStatus !== mitriFilterGF) return false;
+      }
       if (q) {
         return r.some(c => (c || "").toString().toLowerCase().includes(q));
       }
@@ -700,13 +707,13 @@ export default function KonfirmasiKepka2026() {
       return 0;
     });
     return out;
-  }, [mitriRows, mitriSearch, mitriFilterStatus, mitriFilterKec, mitriSortKey, mitriSortDir]);
+  }, [mitriRows, mitriSearch, mitriFilterStatus, mitriFilterKec, mitriFilterGF, mitriSortKey, mitriSortDir, rows]);
 
   const mitriTotalPages = Math.max(1, Math.ceil(mitriFiltered.length / mitriPageSize));
   const mitriCurrentPage = Math.min(mitriPage, mitriTotalPages);
   const mitriPageRows = mitriFiltered.slice((mitriCurrentPage - 1) * mitriPageSize, mitriCurrentPage * mitriPageSize);
 
-  useEffect(() => { setMitriPage(1); }, [mitriSearch, mitriFilterStatus, mitriFilterKec, mitriPageSize]);
+  useEffect(() => { setMitriPage(1); }, [mitriSearch, mitriFilterStatus, mitriFilterKec, mitriFilterGF, mitriPageSize]);
 
   // Mitra Tambahan derived
   const mtKecOptions = useMemo(
@@ -738,6 +745,11 @@ export default function KonfirmasiKepka2026() {
         } else if (st !== mtFilterStatus) return false;
       }
       if (mtFilterKec !== "all" && (r[COL_MITRA.kec] || "").trim() !== mtFilterKec) return false;
+      if (mtFilterGF !== "all") {
+        const hasGF = checkGoogleFormStatus(r, rows);
+        const gfStatus = hasGF ? "Sudah GF" : "Belum GF";
+        if (gfStatus !== mtFilterGF) return false;
+      }
       if (q) return r.some(c => (c || "").toString().toLowerCase().includes(q));
       return true;
     });
@@ -750,11 +762,11 @@ export default function KonfirmasiKepka2026() {
       return 0;
     });
     return out;
-  }, [mtRows, mtSearch, mtFilterStatus, mtFilterKec, mtSortKey, mtSortDir]);
+  }, [mtRows, mtSearch, mtFilterStatus, mtFilterKec, mtFilterGF, mtSortKey, mtSortDir, rows]);
   const mtTotalPages = Math.max(1, Math.ceil(mtFiltered.length / mtPageSize));
   const mtCurrentPage = Math.min(mtPage, mtTotalPages);
   const mtPageRows = mtFiltered.slice((mtCurrentPage - 1) * mtPageSize, mtCurrentPage * mtPageSize);
-  useEffect(() => { setMtPage(1); }, [mtSearch, mtFilterStatus, mtFilterKec, mtPageSize]);
+  useEffect(() => { setMtPage(1); }, [mtSearch, mtFilterStatus, mtFilterKec, mtFilterGF, mtPageSize]);
   const toggleMtSort = (key: keyof typeof COL_MITRA) => {
     if (mtSortKey === key) setMtSortDir(d => d === "asc" ? "desc" : "asc");
     else { setMtSortKey(key); setMtSortDir("asc"); }
@@ -1520,7 +1532,7 @@ export default function KonfirmasiKepka2026() {
                       className="pl-9"
                     />
                   </div>
-                   <Select value={mitriFilterStatus} onValueChange={setMitriFilterStatus}>
+                  <Select value={mitriFilterStatus} onValueChange={setMitriFilterStatus}>
                      <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status NIK" /></SelectTrigger>
                      <SelectContent>
                        <SelectItem value="all">Semua Status</SelectItem>
@@ -1528,6 +1540,14 @@ export default function KonfirmasiKepka2026() {
                        {mitriStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                      </SelectContent>
                    </Select>
+                  <Select value={mitriFilterGF} onValueChange={setMitriFilterGF}>
+                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Cek GoogleForm" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      <SelectItem value="Sudah GF">Sudah GF</SelectItem>
+                      <SelectItem value="Belum GF">Belum GF</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Select value={mitriFilterKec} onValueChange={setMitriFilterKec}>
                     <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Kecamatan" /></SelectTrigger>
                     <SelectContent>
@@ -1828,6 +1848,14 @@ export default function KonfirmasiKepka2026() {
                       <SelectItem value="all">Semua Status</SelectItem>
                       <SelectItem value="__blank__">(Belum Diisi / Kosong)</SelectItem>
                       {mtStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={mtFilterGF} onValueChange={setMtFilterGF}>
+                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Cek GoogleForm" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      <SelectItem value="Sudah GF">Sudah GF</SelectItem>
+                      <SelectItem value="Belum GF">Belum GF</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={mtFilterKec} onValueChange={setMtFilterKec}>
