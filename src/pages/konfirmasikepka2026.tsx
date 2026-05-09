@@ -109,6 +109,25 @@ export default function KonfirmasiKepka2026() {
   const [mitriLoading, setMitriLoading] = useState(true);
   const [mitriError, setMitriError] = useState<string | null>(null);
 
+  // Mitra Tambahan Sheet
+  const [mtHeaders, setMtHeaders] = useState<string[]>([]);
+  const [mtRows, setMtRows] = useState<Row[]>([]);
+  const [mtLoading, setMtLoading] = useState(true);
+  const [mtError, setMtError] = useState<string | null>(null);
+  const [mtSearch, setMtSearch] = useState("");
+  const [mtFilterKec, setMtFilterKec] = useState<string>("all");
+  const [mtFilterStatus, setMtFilterStatus] = useState<string>("all");
+  const [mtSortKey, setMtSortKey] = useState<keyof typeof COL_MITRA>("nama");
+  const [mtSortDir, setMtSortDir] = useState<"asc" | "desc">("asc");
+  const [mtPage, setMtPage] = useState(1);
+  const [mtPageSize, setMtPageSize] = useState(20);
+  const [mtDetailRow, setMtDetailRow] = useState<Row | null>(null);
+
+  // Monitoring Kecamatan Sheet (Kebutuhan Kecamatan A:Q)
+  const [kkRows, setKkRows] = useState<Row[]>([]);
+  const [kkLoading, setKkLoading] = useState(true);
+  const [kkError, setKkError] = useState<string | null>(null);
+
   // Responden filters & pagination
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
