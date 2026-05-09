@@ -1328,37 +1328,18 @@ export default function KonfirmasiKepka2026() {
                 <CardDescription>Monitoring data Mitra dari sheet Mitra Tambahan — cari, filter, dan lihat detail status pengiriman.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="rounded-lg bg-sky-50 border border-sky-100 p-3">
-                    <div className="text-xs text-sky-700/70">Total Mitra</div>
-                    <div className="text-2xl font-bold text-sky-700">{mtStats.total.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div className="rounded-lg bg-teal-50 border border-teal-100 p-3">
-                    <div className="text-xs text-teal-700/70">Terkirim</div>
-                    <div className="text-2xl font-bold text-teal-700">{mtStats.sent.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div className="rounded-lg bg-amber-50 border border-amber-100 p-3">
-                    <div className="text-xs text-amber-700/70">Menunggu</div>
-                    <div className="text-2xl font-bold text-amber-700">{mtStats.pending.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div className="rounded-lg bg-rose-50 border border-rose-100 p-3">
-                    <div className="text-xs text-rose-700/70">Gagal</div>
-                    <div className="text-2xl font-bold text-rose-700">{mtStats.failed.toLocaleString("id-ID")}</div>
-                  </div>
-                </div>
-
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Cari nama, pekerjaan, kecamatan, no. HP..."
+                      placeholder="Cari nama, pekerjaan, kecamatan, sobat ID..."
                       value={mtSearch}
                       onChange={(e) => setMtSearch(e.target.value)}
                       className="pl-9"
                     />
                   </div>
                   <Select value={mtFilterStatus} onValueChange={setMtFilterStatus}>
-                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status Kirim" /></SelectTrigger>
+                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status NIK" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Status</SelectItem>
                       <SelectItem value="__blank__">(Belum Diisi / Kosong)</SelectItem>
@@ -1394,36 +1375,40 @@ export default function KonfirmasiKepka2026() {
                           <TableRow className="bg-sky-50/60">
                             <TableHead className="w-12">#</TableHead>
                             <TableHead className="cursor-pointer" onClick={() => toggleMtSort("nama")}>
-                              <div className="flex items-center gap-1">Nama <ArrowUpDown className="h-3 w-3" /></div>
+                          <div className="flex items-center gap-1">Nama Lengkap <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("kec")}>
+                          <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("pendidikan")}>
+                          <div className="flex items-center gap-1">Pendidikan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
                             <TableHead className="cursor-pointer" onClick={() => toggleMtSort("pekerjaan")}>
                               <div className="flex items-center gap-1">Pekerjaan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("kec")}>
-                              <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("noHp")}>
-                              <div className="flex items-center gap-1">No. HP <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusKirim")}>
-                              <div className="flex items-center gap-1">Status Kirim <ArrowUpDown className="h-3 w-3" /></div>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("sobatId")}>
+                          <div className="flex items-center gap-1">Sobat ID <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusNik")}>
+                          <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {mtPageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mtPageRows.map((r, i) => {
-                            const st = r[COL_MITRA.statusKirim] || "";
-                            const rowBg = isSent(st) ? "bg-emerald-50/30" : isFailed(st) ? "bg-red-50/30" : isPending(st) ? "bg-amber-50/20" : "";
+                        const st = r[COL_MITRA.statusNik] || "";
+                        const rowBg = isNikCocok(st) ? "bg-emerald-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
                             return (
                               <TableRow key={i} className={rowBg}>
                                 <TableCell className="text-muted-foreground">{(mtCurrentPage - 1) * mtPageSize + i + 1}</TableCell>
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
-                                <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
-                                <TableCell className="font-mono text-xs">{r[COL_MITRA.noHp] || "-"}</TableCell>
+                            <TableCell>{r[COL_MITRA.pendidikan] || "-"}</TableCell>
+                            <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
+                            <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
                                 <TableCell><MitriStatusBadge status={st} /></TableCell>
                                 <TableCell className="text-right">
                                   <Button size="icon" variant="ghost" onClick={() => setMtDetailRow(r)} title="Lihat detail">
