@@ -1750,11 +1750,6 @@ export default function KonfirmasiKepka2026() {
                   
                   return (
                     <div className="space-y-4">
-                      {/* Kondisi display - di luar tabel */}
-                      <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded border border-slate-200">
-                        <span className="font-medium">Kondisi:</span> 09:00 WIB 09/05/2026
-                      </div>
-                      
                       <div className="rounded-md border overflow-x-auto">
                         <Table>
                           <TableHeader>
