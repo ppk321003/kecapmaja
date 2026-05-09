@@ -656,7 +656,7 @@ export default function KonfirmasiKepka2026() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="w-full mx-auto space-y-6">
         <header className="text-center space-y-2">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-800">
             Konfirmasi KEPKA 2026
@@ -665,10 +665,12 @@ export default function KonfirmasiKepka2026() {
         </header>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-3">
+          <TabsList className="grid w-full max-w-5xl mx-auto grid-cols-5">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="detail">Detail Responden</TabsTrigger>
-            <TabsTrigger value="mitra">Mitra Kepka 2026</TabsTrigger>
+            <TabsTrigger value="detail">Detail Responden ({rows.length})</TabsTrigger>
+            <TabsTrigger value="monitoring">Monitoring Kecamatan</TabsTrigger>
+            <TabsTrigger value="mitra">Mitra Kepka 2026 ({mitriRows.length})</TabsTrigger>
+            <TabsTrigger value="mitra-tambahan">Mitra Tambahan ({mtRows.length})</TabsTrigger>
           </TabsList>
 
           {/* DASHBOARD */}
