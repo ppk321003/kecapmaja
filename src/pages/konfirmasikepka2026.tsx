@@ -405,16 +405,16 @@ export default function KonfirmasiKepka2026() {
   // Mitra stats
   const mitriStats = useMemo(() => {
     const total = mitriRows.length;
-    let sent = 0, failed = 0, pending = 0;
+    let cocok = 0, tidakCocok = 0, blank = 0;
     const kecMap = new Map<string, number>();
     const statusMap = new Map<string, number>();
     
     mitriRows.forEach(r => {
-      const st = r[COL_MITRA.statusKirim] || "";
-      if (isSent(st)) sent++;
-      else if (isFailed(st)) failed++;
-      else if (st.trim() !== "") pending++;
-      
+      const st = r[COL_MITRA.statusNik] || "";
+      if (isNikCocok(st)) cocok++;
+      else if (isNikTidakCocok(st)) tidakCocok++;
+      else if (st.trim() === "") blank++;
+
       const k = (r[COL_MITRA.kec] || "(Tidak diisi)").trim() || "(Tidak diisi)";
       kecMap.set(k, (kecMap.get(k) || 0) + 1);
       
@@ -430,7 +430,7 @@ export default function KonfirmasiKepka2026() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
     
-    return { total, sent, failed, pending, perKec, perStatus };
+    return { total, cocok, tidakCocok, blank, perKec, perStatus };
   }, [mitriRows]);
 
   const mitriKecOptions = useMemo(
@@ -439,7 +439,7 @@ export default function KonfirmasiKepka2026() {
   );
 
   const mitriStatusOptions = useMemo(
-    () => Array.from(new Set(mitriRows.map(r => (r[COL_MITRA.statusKirim] || "").trim()).filter(Boolean))).sort(),
+    () => Array.from(new Set(mitriRows.map(r => (r[COL_MITRA.statusNik] || "").trim()).filter(Boolean))).sort(),
     [mitriRows]
   );
 
@@ -485,7 +485,7 @@ export default function KonfirmasiKepka2026() {
     const q = mitriSearch.toLowerCase().trim();
     let out = mitriRows.filter(r => {
       if (mitriFilterStatus !== "all") {
-        const st = (r[COL_MITRA.statusKirim] || "").trim();
+        const st = (r[COL_MITRA.statusNik] || "").trim();
         if (mitriFilterStatus === "__blank__") {
           if (st !== "") return false;
         } else if (st !== mitriFilterStatus) return false;
@@ -519,25 +519,25 @@ export default function KonfirmasiKepka2026() {
     [mtRows]
   );
   const mtStatusOptions = useMemo(
-    () => Array.from(new Set(mtRows.map(r => (r[COL_MITRA.statusKirim] || "").trim()).filter(Boolean))).sort(),
+    () => Array.from(new Set(mtRows.map(r => (r[COL_MITRA.statusNik] || "").trim()).filter(Boolean))).sort(),
     [mtRows]
   );
   const mtStats = useMemo(() => {
     const total = mtRows.length;
-    let sent = 0, failed = 0, pending = 0;
+    let cocok = 0, tidakCocok = 0, blank = 0;
     mtRows.forEach(r => {
-      const st = r[COL_MITRA.statusKirim] || "";
-      if (isSent(st)) sent++;
-      else if (isFailed(st)) failed++;
-      else if (st.trim() !== "") pending++;
+      const st = r[COL_MITRA.statusNik] || "";
+      if (isNikCocok(st)) cocok++;
+      else if (isNikTidakCocok(st)) tidakCocok++;
+      else if (st.trim() === "") blank++;
     });
-    return { total, sent, failed, pending };
+    return { total, cocok, tidakCocok, blank };
   }, [mtRows]);
   const mtFiltered = useMemo(() => {
     const q = mtSearch.toLowerCase().trim();
     let out = mtRows.filter(r => {
       if (mtFilterStatus !== "all") {
-        const st = (r[COL_MITRA.statusKirim] || "").trim();
+        const st = (r[COL_MITRA.statusNik] || "").trim();
         if (mtFilterStatus === "__blank__") {
           if (st !== "") return false;
         } else if (st !== mtFilterStatus) return false;
@@ -634,14 +634,14 @@ export default function KonfirmasiKepka2026() {
   };
 
   const MitriStatusBadge = ({ status }: { status: string }) => {
-    if (isSent(status)) {
-      return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100"><CheckCircle2 className="h-3 w-3 mr-1" />Terkirim</Badge>;
+    if (isNikCocok(status)) {
+      return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100"><CheckCircle2 className="h-3 w-3 mr-1" />{status || "Cocok"}</Badge>;
     }
-    if (isFailed(status)) {
-      return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100"><XCircle className="h-3 w-3 mr-1" />Gagal</Badge>;
+    if (isNikTidakCocok(status)) {
+      return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100"><XCircle className="h-3 w-3 mr-1" />{status || "Tidak Cocok"}</Badge>;
     }
-    if (isPending(status)) {
-      return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">Menunggu</Badge>;
+    if ((status || "").trim() !== "") {
+      return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">{status}</Badge>;
     }
     return <Badge variant="secondary">{status || "-"}</Badge>;
   };
