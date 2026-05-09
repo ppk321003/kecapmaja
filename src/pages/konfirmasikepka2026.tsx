@@ -1238,6 +1238,240 @@ export default function KonfirmasiKepka2026() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* MONITORING KECAMATAN */}
+          <TabsContent value="monitoring" className="space-y-4 mt-6">
+            <Card className="border-t-4 border-t-indigo-500">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5 text-indigo-600" />
+                  Monitoring Kecamatan
+                </CardTitle>
+                <CardDescription>Rekap kebutuhan, status Google Form, manajemen mitra & rekomendasi penanggung jawab per kecamatan.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {kkLoading ? (
+                  <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-indigo-600" /></div>
+                ) : kkError ? (
+                  <div className="py-10 text-center text-red-600">{kkError}</div>
+                ) : kkRows.length === 0 ? (
+                  <div className="py-10 text-center text-muted-foreground">Tidak ada data</div>
+                ) : (() => {
+                  // Column groups based on screenshot
+                  // A,B = Identitas | C-E = Kebutuhan | F-J = Status Google Form | K-L = Manajemen Mitra | M-Q = Rekomendasi
+                  const groupOf = (i: number) => {
+                    if (i <= 1) return "id";
+                    if (i <= 4) return "kebutuhan";
+                    if (i <= 9) return "status";
+                    if (i <= 11) return "manajemen";
+                    return "rekomendasi";
+                  };
+                  const groupBg: Record<string, string> = {
+                    id: "bg-slate-100",
+                    kebutuhan: "bg-orange-100",
+                    status: "bg-blue-100",
+                    manajemen: "bg-rose-100",
+                    rekomendasi: "bg-emerald-100",
+                  };
+                  const groupCellBg: Record<string, string> = {
+                    id: "",
+                    kebutuhan: "bg-orange-50/40",
+                    status: "bg-blue-50/40",
+                    manajemen: "bg-rose-50/40",
+                    rekomendasi: "bg-emerald-50/40",
+                  };
+                  const groupLabels: Array<{ label: string; span: number; bg: string }> = [
+                    { label: "Identitas Wilayah", span: 2, bg: "bg-slate-200 text-slate-700" },
+                    { label: "Kebutuhan Sensus Ekonomi 2026", span: 3, bg: "bg-orange-200 text-orange-800" },
+                    { label: "Status Google Form", span: 5, bg: "bg-blue-200 text-blue-800" },
+                    { label: "Manajemen Mitra", span: 2, bg: "bg-rose-200 text-rose-800" },
+                    { label: "Rekomendasi Penanggungjawab", span: 5, bg: "bg-emerald-200 text-emerald-800" },
+                  ];
+                  const headerRow = kkRows[0] || [];
+                  const dataRows = kkRows.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== ""));
+                  const cols = 17; // A:Q
+                  return (
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            {groupLabels.map((g, gi) => (
+                              <TableHead key={gi} colSpan={g.span} className={`text-center font-bold border ${g.bg}`}>
+                                {g.label}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                          <TableRow>
+                            {Array.from({ length: cols }).map((_, i) => (
+                              <TableHead key={i} className={`text-center text-xs font-semibold border ${groupBg[groupOf(i)]}`}>
+                                {headerRow[i] || ""}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {dataRows.map((r, ri) => {
+                            const isTotal = ri === dataRows.length - 1 && (r[1] || "").toString().toUpperCase().includes("KAB");
+                            return (
+                              <TableRow key={ri} className={isTotal ? "bg-yellow-50 font-bold" : "hover:bg-slate-50"}>
+                                {Array.from({ length: cols }).map((_, ci) => {
+                                  const v = r[ci] ?? "";
+                                  const isText = ci === 0 || ci === 1;
+                                  return (
+                                    <TableCell key={ci} className={`text-xs border ${groupCellBg[groupOf(ci)]} ${isText ? "" : "text-center font-mono"}`}>
+                                      {v || ""}
+                                    </TableCell>
+                                  );
+                                })}
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* MITRA TAMBAHAN */}
+          <TabsContent value="mitra-tambahan" className="space-y-4 mt-6">
+            <Card className="border-t-4 border-t-sky-500">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5 text-sky-600" />
+                  Mitra Tambahan
+                </CardTitle>
+                <CardDescription>Monitoring data Mitra dari sheet Mitra Tambahan — cari, filter, dan lihat detail status pengiriman.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="rounded-lg bg-sky-50 border border-sky-100 p-3">
+                    <div className="text-xs text-sky-700/70">Total Mitra</div>
+                    <div className="text-2xl font-bold text-sky-700">{mtStats.total.toLocaleString("id-ID")}</div>
+                  </div>
+                  <div className="rounded-lg bg-teal-50 border border-teal-100 p-3">
+                    <div className="text-xs text-teal-700/70">Terkirim</div>
+                    <div className="text-2xl font-bold text-teal-700">{mtStats.sent.toLocaleString("id-ID")}</div>
+                  </div>
+                  <div className="rounded-lg bg-amber-50 border border-amber-100 p-3">
+                    <div className="text-xs text-amber-700/70">Menunggu</div>
+                    <div className="text-2xl font-bold text-amber-700">{mtStats.pending.toLocaleString("id-ID")}</div>
+                  </div>
+                  <div className="rounded-lg bg-rose-50 border border-rose-100 p-3">
+                    <div className="text-xs text-rose-700/70">Gagal</div>
+                    <div className="text-2xl font-bold text-rose-700">{mtStats.failed.toLocaleString("id-ID")}</div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Cari nama, pekerjaan, kecamatan, no. HP..."
+                      value={mtSearch}
+                      onChange={(e) => setMtSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select value={mtFilterStatus} onValueChange={setMtFilterStatus}>
+                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status Kirim" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      <SelectItem value="__blank__">(Belum Diisi / Kosong)</SelectItem>
+                      {mtStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={mtFilterKec} onValueChange={setMtFilterKec}>
+                    <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Kecamatan" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Kecamatan</SelectItem>
+                      {mtKecOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={String(mtPageSize)} onValueChange={(v) => setMtPageSize(Number(v))}>
+                    <SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="20">20 / hal</SelectItem>
+                      <SelectItem value="50">50 / hal</SelectItem>
+                      <SelectItem value="100">100 / hal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {mtLoading ? (
+                  <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-sky-600" /></div>
+                ) : mtError ? (
+                  <div className="py-10 text-center text-red-600">{mtError}</div>
+                ) : (
+                  <>
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-sky-50/60">
+                            <TableHead className="w-12">#</TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("nama")}>
+                              <div className="flex items-center gap-1">Nama <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("pekerjaan")}>
+                              <div className="flex items-center gap-1">Pekerjaan <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("kec")}>
+                              <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("noHp")}>
+                              <div className="flex items-center gap-1">No. HP <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusKirim")}>
+                              <div className="flex items-center gap-1">Status Kirim <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
+                            <TableHead className="text-right">Aksi</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {mtPageRows.length === 0 ? (
+                            <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                          ) : mtPageRows.map((r, i) => {
+                            const st = r[COL_MITRA.statusKirim] || "";
+                            const rowBg = isSent(st) ? "bg-emerald-50/30" : isFailed(st) ? "bg-red-50/30" : isPending(st) ? "bg-amber-50/20" : "";
+                            return (
+                              <TableRow key={i} className={rowBg}>
+                                <TableCell className="text-muted-foreground">{(mtCurrentPage - 1) * mtPageSize + i + 1}</TableCell>
+                                <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
+                                <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
+                                <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
+                                <TableCell className="font-mono text-xs">{r[COL_MITRA.noHp] || "-"}</TableCell>
+                                <TableCell><MitriStatusBadge status={st} /></TableCell>
+                                <TableCell className="text-right">
+                                  <Button size="icon" variant="ghost" onClick={() => setMtDetailRow(r)} title="Lihat detail">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-sm">
+                      <div className="text-muted-foreground">
+                        Menampilkan {(mtCurrentPage - 1) * mtPageSize + 1}-{Math.min(mtCurrentPage * mtPageSize, mtFiltered.length)} dari {mtFiltered.length} mitra
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" disabled={mtCurrentPage <= 1} onClick={() => setMtPage(1)}>«</Button>
+                        <Button size="sm" variant="outline" disabled={mtCurrentPage <= 1} onClick={() => setMtPage(p => p - 1)}>‹</Button>
+                        <span className="px-2">Hal {mtCurrentPage} / {mtTotalPages}</span>
+                        <Button size="sm" variant="outline" disabled={mtCurrentPage >= mtTotalPages} onClick={() => setMtPage(p => p + 1)}>›</Button>
+                        <Button size="sm" variant="outline" disabled={mtCurrentPage >= mtTotalPages} onClick={() => setMtPage(mtTotalPages)}>»</Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
         {/* Detail Dialog */}
