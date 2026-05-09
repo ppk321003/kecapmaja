@@ -134,6 +134,12 @@ const isNotAnswer = (val: string): boolean => {
 const validateResponden = (row: Row): Array<{ issue: string; severity: "error" | "warning" }> => {
   const issues: Array<{ issue: string; severity: "error" | "warning" }> = [];
 
+  // E: Sensus Ekonomi 2026 - Jika menjawab "Tidak" adalah warning
+  const sensusEkon = (row[COL.sensusEkonomi] || "").trim();
+  if (sensusEkon && isNotAnswer(sensusEkon)) {
+    issues.push({ issue: "Tidak ingin mengikuti Sensus Ekonomi 2026", severity: "warning" });
+  }
+
   // J: Pendidikan = SLTP/Sederajat (hanya warning)
   const pendidikan = (row[COL.pendidikan] || "").toLowerCase().trim();
   if (pendidikan && pendidikan.includes("sltp")) {
