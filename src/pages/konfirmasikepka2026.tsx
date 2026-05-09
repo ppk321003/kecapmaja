@@ -81,6 +81,7 @@ const COL_MITRA = {
   pendidikan: colIdx("L"),  // L - Pendidikan
   pekerjaan: colIdx("M"),   // M - Pekerjaan
   sobatId: colIdx("P"),     // P - Sobat ID
+  email: colIdx("Q"),       // Q - Email
   statusNik: colIdx("R"),   // R - Status NIK
 };
 
@@ -248,6 +249,21 @@ const validateResponden = (row: Row): Array<{ issue: string; severity: "error" |
   }
 
   return issues;
+};
+
+// Helper function to check if mitra data exists in Olah sheet (Google Form)
+const checkGoogleFormStatus = (mitriRow: Row, olaRows: Row[]): boolean => {
+  const mitriEmail = (mitriRow[COL_MITRA.email] || "").trim().toLowerCase();
+  const mitriSobatId = (mitriRow[COL_MITRA.sobatId] || "").trim().toLowerCase();
+  
+  if (!mitriEmail && !mitriSobatId) return false;
+  
+  return olaRows.some(olaRow => {
+    const olaEmail = (olaRow[COL.email] || "").trim().toLowerCase();
+    const olaSobatId = (olaRow[COL.sobatId] || "").trim().toLowerCase();
+    
+    return (mitriEmail && olaEmail === mitriEmail) || (mitriSobatId && olaSobatId === mitriSobatId);
+  });
 };
 
 export default function KonfirmasiKepka2026() {
@@ -1545,12 +1561,13 @@ export default function KonfirmasiKepka2026() {
                         <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("statusNik")}>
                           <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
+                            <TableHead className="text-center">Cek GoogleForm</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {mitriPageRows.length === 0 ? (
-                        <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mitriPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
                         const rowBg = isVerifikasiNik(st) ? "bg-emerald-50" : isNikCocok(st) ? "bg-amber-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
@@ -1563,6 +1580,13 @@ export default function KonfirmasiKepka2026() {
                             <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
                             <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
                                 <TableCell><MitriStatusBadge status={st} /></TableCell>
+                                <TableCell className="text-center">
+                                  {checkGoogleFormStatus(r, rows) ? (
+                                    <Badge className="bg-green-600 text-white">Sudah GF</Badge>
+                                  ) : (
+                                    <Badge className="bg-red-600 text-white">Belum GF</Badge>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-right">
                                   <Button size="icon" variant="ghost" onClick={() => setMitriDetailRow(r)} title="Lihat detail">
                                     <Eye className="h-4 w-4" />
@@ -1839,12 +1863,13 @@ export default function KonfirmasiKepka2026() {
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusNik")}>
                           <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
+                            <TableHead className="text-center">Cek GoogleForm</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {mtPageRows.length === 0 ? (
-                        <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mtPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
                         const rowBg = isVerifikasiNik(st) ? "bg-emerald-50" : isNikCocok(st) ? "bg-amber-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
@@ -1857,6 +1882,13 @@ export default function KonfirmasiKepka2026() {
                             <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
                             <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
                                 <TableCell><MitriStatusBadge status={st} /></TableCell>
+                                <TableCell className="text-center">
+                                  {checkGoogleFormStatus(r, rows) ? (
+                                    <Badge className="bg-green-600 text-white">Sudah GF</Badge>
+                                  ) : (
+                                    <Badge className="bg-red-600 text-white">Belum GF</Badge>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-right">
                                   <Button size="icon" variant="ghost" onClick={() => setMtDetailRow(r)} title="Lihat detail">
                                     <Eye className="h-4 w-4" />
