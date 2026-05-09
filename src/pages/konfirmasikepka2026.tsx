@@ -91,6 +91,10 @@ const isNikTidakCocok = (s: string) => {
   const v = (s || "").toLowerCase().trim();
   return v.includes("tidak cocok") || v.includes("tidak sesuai") || v.includes("invalid");
 };
+const isVerifikasiNik = (s: string) => {
+  const v = (s || "").toLowerCase().trim();
+  return v === "terverifikasi" && !v.includes("belum");
+};
 
 export default function KonfirmasiKepka2026() {
   const { toast } = useToast();
@@ -634,8 +638,11 @@ export default function KonfirmasiKepka2026() {
   };
 
   const MitriStatusBadge = ({ status }: { status: string }) => {
+    if (isVerifikasiNik(status)) {
+      return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100"><CheckCircle2 className="h-3 w-3 mr-1" />{status || "Terverifikasi"}</Badge>;
+    }
     if (isNikCocok(status)) {
-      return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100"><CheckCircle2 className="h-3 w-3 mr-1" />{status || "Cocok"}</Badge>;
+      return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">{status || "Cocok (Belum Verifikasi)"}</Badge>;
     }
     if (isNikTidakCocok(status)) {
       return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100"><XCircle className="h-3 w-3 mr-1" />{status || "Tidak Cocok"}</Badge>;
@@ -1181,7 +1188,7 @@ export default function KonfirmasiKepka2026() {
                         <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mitriPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
-                        const rowBg = isNikCocok(st) ? "bg-emerald-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
+                        const rowBg = isVerifikasiNik(st) ? "bg-emerald-50" : isNikCocok(st) ? "bg-amber-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
                             return (
                               <TableRow key={i} className={rowBg}>
                                 <TableCell className="text-muted-foreground">{(mitriCurrentPage - 1) * mitriPageSize + i + 1}</TableCell>
@@ -1297,7 +1304,17 @@ export default function KonfirmasiKepka2026() {
                     const lengkap = parseInt(lengkapStr) || 0;
                     
                     if (jumlah === 0) return 0;
-                    return Math.round((lengkap / jumlah) * 100);
+                    return Math.round((lengkap / jumlah) * 10000) / 100; // Presisi 2 desimal
+                  };
+                  
+                  // Helper to format progress display
+                  const formatProgress = (percent: number): string => {
+                    if (percent % 1 === 0) {
+                      // Jika nilai tepat (integer), tampilkan tanpa desimal
+                      return `${Math.round(percent)}%`;
+                    }
+                    // Jika ada desimal, tampilkan dengan 2 digit desimal
+                    return `${percent.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
                   };
                   
                   // Helper to get progress bar color
@@ -1355,7 +1372,7 @@ export default function KonfirmasiKepka2026() {
                                                 style={{width: `${progress}%`}}
                                               ></div>
                                             </div>
-                                            <span className="text-xs font-semibold text-gray-700">{progress}%</span>
+                                            <span className="text-xs font-semibold text-gray-700">{formatProgress(progress)}</span>
                                           </div>
                                         </TableCell>
                                       );
@@ -1465,7 +1482,7 @@ export default function KonfirmasiKepka2026() {
                         <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mtPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
-                        const rowBg = isNikCocok(st) ? "bg-emerald-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
+                        const rowBg = isVerifikasiNik(st) ? "bg-emerald-50" : isNikCocok(st) ? "bg-amber-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
                             return (
                               <TableRow key={i} className={rowBg}>
                                 <TableCell className="text-muted-foreground">{(mtCurrentPage - 1) * mtPageSize + i + 1}</TableCell>
