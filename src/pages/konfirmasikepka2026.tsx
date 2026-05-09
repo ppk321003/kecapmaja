@@ -1239,14 +1239,22 @@ export default function KonfirmasiKepka2026() {
                 ) : kkRows.length === 0 ? (
                   <div className="py-10 text-center text-muted-foreground">Tidak ada data</div>
                 ) : (() => {
-                  // Column groups based on screenshot
-                  // A,B = Identitas | C-E = Kebutuhan | F-J = Status Google Form | K-L = Manajemen Mitra | M-Q = Rekomendasi
+                  // Column groups based on sheet structure
+                  // Col B = Kecamatan (Identitas: 1)
+                  // Col C-E = PPL, PML, Jumlah (Kebutuhan: 3)
+                  // Col F-J = Status Google Form (5)
+                  // Col K-L = Manajemen Mitra (2)
+                  // Col M-Q = Rekomendasi Penanggungjawab (5)
+                  // Col R = Progres (1)
+                  // Total = 1 + 3 + 5 + 2 + 5 + 1 = 17
+                  
                   const groupOf = (i: number) => {
-                    if (i <= 1) return "id";
-                    if (i <= 4) return "kebutuhan";
-                    if (i <= 9) return "status";
-                    if (i <= 11) return "manajemen";
-                    return "rekomendasi";
+                    if (i === 0) return "id";           // i=0: Kecamatan
+                    if (i <= 3) return "kebutuhan";    // i=1-3: PPL, PML, Jumlah
+                    if (i <= 8) return "status";       // i=4-8: Status Google Form
+                    if (i <= 10) return "manajemen";   // i=9-10: Manajemen Mitra
+                    if (i <= 15) return "rekomendasi"; // i=11-15: Rekomendasi
+                    return "progres";                  // i=16: Progres
                   };
                   const groupBg: Record<string, string> = {
                     id: "bg-slate-100",
@@ -1254,6 +1262,7 @@ export default function KonfirmasiKepka2026() {
                     status: "bg-blue-100",
                     manajemen: "bg-rose-100",
                     rekomendasi: "bg-emerald-100",
+                    progres: "bg-purple-100",
                   };
                   const groupCellBg: Record<string, string> = {
                     id: "",
@@ -1261,55 +1270,111 @@ export default function KonfirmasiKepka2026() {
                     status: "bg-blue-50/40",
                     manajemen: "bg-rose-50/40",
                     rekomendasi: "bg-emerald-50/40",
+                    progres: "bg-purple-50/40",
                   };
                   const groupLabels: Array<{ label: string; span: number; bg: string }> = [
-                    { label: "Identitas Wilayah", span: 2, bg: "bg-slate-200 text-slate-700" },
+                    { label: "Identitas Wilayah", span: 1, bg: "bg-slate-200 text-slate-700" },
                     { label: "Kebutuhan Sensus Ekonomi 2026", span: 3, bg: "bg-orange-200 text-orange-800" },
                     { label: "Status Google Form", span: 5, bg: "bg-blue-200 text-blue-800" },
                     { label: "Manajemen Mitra", span: 2, bg: "bg-rose-200 text-rose-800" },
                     { label: "Rekomendasi Penanggungjawab", span: 5, bg: "bg-emerald-200 text-emerald-800" },
+                    { label: "Progres", span: 1, bg: "bg-purple-200 text-purple-800" },
                   ];
-                  const headerRow = kkRows[0] || [];
-                  const dataRows = kkRows.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== ""));
-                  const cols = 17; // A:Q
+                  
+                  const headerRow = kkRows[1] || []; // Ambil header kolom individual dari baris kedua
+                  const dataRows = kkRows.slice(2).filter(r => r && r.some(c => (c || "").toString().trim() !== ""));
+                  const cols = 17; // 16 kolom dari sheet (skip A) + 1 Progres
+                  
+                  // Helper function to calculate progress percentage
+                  // Progress = Lengkap / Jumlah
+                  // Jumlah is at r[4] (E column)
+                  // Lengkap is at r[16] (Q column)
+                  const calculateProgress = (r: Row): number => {
+                    const jumlahStr = (r[4] || "").toString().trim();
+                    const lengkapStr = (r[16] || "").toString().trim();
+                    
+                    const jumlah = parseInt(jumlahStr) || 0;
+                    const lengkap = parseInt(lengkapStr) || 0;
+                    
+                    if (jumlah === 0) return 0;
+                    return Math.round((lengkap / jumlah) * 100);
+                  };
+                  
+                  // Helper to get progress bar color
+                  const getProgressColor = (percent: number): string => {
+                    if (percent < 25) return "bg-red-500";
+                    if (percent < 50) return "bg-orange-500";
+                    if (percent < 75) return "bg-blue-500";
+                    if (percent < 100) return "bg-teal-500";
+                    return "bg-emerald-500";
+                  };
+                  
                   return (
-                    <div className="rounded-md border overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            {groupLabels.map((g, gi) => (
-                              <TableHead key={gi} colSpan={g.span} className={`text-center font-bold border ${g.bg}`}>
-                                {g.label}
-                              </TableHead>
-                            ))}
-                          </TableRow>
-                          <TableRow>
-                            {Array.from({ length: cols }).map((_, i) => (
-                              <TableHead key={i} className={`text-center text-xs font-semibold border ${groupBg[groupOf(i)]}`}>
-                                {headerRow[i] || ""}
-                              </TableHead>
-                            ))}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {dataRows.map((r, ri) => {
-                            const isTotal = ri === dataRows.length - 1 && (r[1] || "").toString().toUpperCase().includes("KAB");
-                            return (
-                              <TableRow key={ri} className={isTotal ? "bg-yellow-50 font-bold" : "hover:bg-slate-50"}>
-                                {Array.from({ length: cols }).map((_, ci) => {
-                                  const v = r[ci] ?? "";
-                                  const isText = ci === 0 || ci === 1;
-                                  return (
-                                    <TableCell key={ci} className={`text-xs border ${groupCellBg[groupOf(ci)]} ${isText ? "" : "text-center font-mono"}`}>
-                                      {v || ""}
-                                    </TableCell>
-                                  );
-                                })}
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                    <div className="space-y-4">
+                      {/* Kondisi display - di luar tabel */}
+                      <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded border border-slate-200">
+                        <span className="font-medium">Kondisi:</span> 09:00 WIB 09/05/2026
+                      </div>
+                      
+                      <div className="rounded-md border overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              {groupLabels.map((g, gi) => (
+                                <TableHead key={gi} colSpan={g.span} className={`text-center font-bold border ${g.bg}`}>
+                                  {g.label}
+                                </TableHead>
+                              ))}
+                            </TableRow>
+                            <TableRow>
+                              {Array.from({ length: cols }).map((_, i) => {
+                                const sheetColIdx = i + 1; // Skip kolom 0 (Kondisi)
+                                return (
+                                  <TableHead key={i} className={`text-center text-xs font-semibold border ${groupBg[groupOf(i)]}`}>
+                                    {sheetColIdx < headerRow.length ? headerRow[sheetColIdx] : (i === cols - 1 ? "Progres" : "")}
+                                  </TableHead>
+                                );
+                              })}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {dataRows.map((r, ri) => {
+                              const isTotal = ri === dataRows.length - 1 && ((r[2] || "").toString().toUpperCase().includes("KAB"));
+                              const progress = calculateProgress(r);
+                              return (
+                                <TableRow key={ri} className={isTotal ? "bg-yellow-50 font-bold" : "hover:bg-slate-50"}>
+                                  {Array.from({ length: cols }).map((_, ci) => {
+                                    if (ci === cols - 1) {
+                                      // Progress bar cell
+                                      return (
+                                        <TableCell key={ci} className={`text-xs border ${groupCellBg[groupOf(ci)]} text-center`}>
+                                          <div className="flex flex-col items-center gap-1">
+                                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                              <div 
+                                                className={`h-full transition-all ${getProgressColor(progress)}`}
+                                                style={{width: `${progress}%`}}
+                                              ></div>
+                                            </div>
+                                            <span className="text-xs font-semibold text-gray-700">{progress}%</span>
+                                          </div>
+                                        </TableCell>
+                                      );
+                                    }
+                                    const sheetColIdx = ci + 1; // Skip kolom 0
+                                    const v = r[sheetColIdx] ?? "";
+                                    const isText = ci === 0 || ci === 1;
+                                    return (
+                                      <TableCell key={ci} className={`text-xs border ${groupCellBg[groupOf(ci)]} ${isText ? "" : "text-center font-mono"}`}>
+                                        {v || ""}
+                                      </TableCell>
+                                    );
+                                  })}
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
                   );
                 })()}
