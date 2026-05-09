@@ -23,7 +23,7 @@ import {
 
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
-const RANGE = `${SHEET_NAME}!A1:BE`;
+const RANGE = `${SHEET_NAME}!A1:BK`;
 
 const COLORS = ["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 
@@ -64,6 +64,11 @@ const COL = {
   waktuTenagaPikiran: colIdx("AT"),  // AT - Apakah anda bersedia mencurahkan waktu, tenaga dan pikiran?
   memperbaikiHasil: colIdx("AU"),  // AU - Apakah Anda bersedia Memperbaiki Hasil Pekerjaan?
   tidakMengalihkan: colIdx("AV"),  // AV - Apakah anda bersedia tidak mengalihkan pekerjaan?
+  fotoVerifikasi: colIdx("BG"),  // BG - Foto (OK/Perlu perbaikan)
+  ktpVerifikasi: colIdx("BH"),  // BH - KTP/Suket (OK/Perlu perbaikan)
+  ijazahVerifikasi: colIdx("BI"),  // BI - Ijazah (OK/Perlu perbaikan)
+  screenshotHPVerifikasi: colIdx("BJ"),  // BJ - Screenshot HP (OK/Perlu perbaikan)
+  catatanPJ: colIdx("BK"),  // BK - Catatan PJ
   status: colIdx("BD"),  // BD
   rekomendasi: colIdx("BE"), // BE - Rekomendasi / Non Rekomendasi
 };
@@ -773,6 +778,43 @@ export default function KonfirmasiKepka2026() {
     applyRekomendasi(row, next);
   };
 
+  // Handle verification field updates (Foto, KTP, Ijazah, Screenshot HP, Catatan PJ)
+  const updateVerificationField = async (row: Row, colKey: "fotoVerifikasi" | "ktpVerifikasi" | "ijazahVerifikasi" | "screenshotHPVerifikasi" | "catatanPJ", newValue: string) => {
+    const origIdx = rows.indexOf(row);
+    if (origIdx < 0) return;
+    const sheetRow = origIdx + 2;
+    setSavingRow(sheetRow);
+    try {
+      const colNum = COL[colKey];
+      let colLetter = String.fromCharCode(65 + (colNum % 26));
+      if (colNum >= 26) {
+        colLetter = String.fromCharCode(65 + Math.floor(colNum / 26) - 1) + String.fromCharCode(65 + (colNum % 26));
+      }
+
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "update",
+          range: `${SHEET_NAME}!${colLetter}${sheetRow}`,
+          values: [[newValue]],
+        },
+      });
+      if (error) throw error;
+      setRows(prev => prev.map((r, i) => {
+        if (i !== origIdx) return r;
+        const copy = [...r];
+        while (copy.length <= COL[colKey]) copy.push("");
+        copy[COL[colKey]] = newValue;
+        return copy;
+      }));
+      toast({ title: "Tersimpan", description: "Data verifikasi berhasil diperbarui" });
+    } catch (e: any) {
+      toast({ title: "Gagal menyimpan", description: e?.message || "Terjadi kesalahan", variant: "destructive" });
+    } finally {
+      setSavingRow(null);
+    }
+  };
+
   const StatusBadge = ({ status }: { status: string }) => {
     if (isVerified(status)) {
       return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100"><CheckCircle2 className="h-3 w-3 mr-1" />{status || "Terverifikasi"}</Badge>;
@@ -1173,30 +1215,159 @@ export default function KonfirmasiKepka2026() {
                               <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
                             <TableHead className="cursor-pointer" onClick={() => toggleSort("desa")}>
-                              <div className="flex items-center gap-1">Desa/Kel. <ArrowUpDown className="h-3 w-3" /></div>
+                              <div className="flex items-center gap-1">Desa <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleSort("sobatId")}>Sobat ID</TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleSort("email")}>Email</TableHead>
                             <TableHead>Status NIK</TableHead>
-                            <TableHead>Sensus Ekonomi 2026</TableHead>
+                            <TableHead className="text-center">Foto</TableHead>
+                            <TableHead className="text-center">KTP/Suket</TableHead>
+                            <TableHead className="text-center">Ijazah</TableHead>
+                            <TableHead className="text-center">Screenshot HP</TableHead>
+                            <TableHead className="min-w-40">Catatan PJ</TableHead>
                             <TableHead className="text-center">Catatan Kecap Maja</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {pageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={12} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : pageRows.map((r, i) => (
                             <TableRow key={i} className={isNotVerified(r[COL.status]) ? "bg-orange-50/30" : isVerified(r[COL.status]) ? "bg-emerald-50/30" : isMismatch(r[COL.status]) ? "bg-red-50/30" : ""}>
                               <TableCell className="text-muted-foreground">{(currentPage - 1) * pageSize + i + 1}</TableCell>
                               <TableCell className="font-medium">{r[COL.nama] || "-"}</TableCell>
                               <TableCell>{r[COL.kec] || "-"}</TableCell>
                               <TableCell>{r[COL.desa] || "-"}</TableCell>
-                              <TableCell className="font-mono text-xs">{r[COL.sobatId] || "-"}</TableCell>
-                              <TableCell className="text-xs">{r[COL.email] || "-"}</TableCell>
                               <TableCell><StatusBadge status={r[COL.status] || ""} /></TableCell>
-                              <TableCell>{r[COL.sensusEkonomi] || "-"}</TableCell>
-                              {/* Catatan Kecap Maja Column */}
+                              
+                              {/* Foto */}
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    className={`p-1.5 rounded transition-colors ${
+                                      (r[COL.fotoVerifikasi] || "") === "OK"
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                    }`}
+                                    onClick={() => updateVerificationField(r, "fotoVerifikasi", (r[COL.fotoVerifikasi] || "") === "OK" ? "" : "OK")}
+                                    title="OK"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    className={`p-1.5 rounded transition-colors ${
+                                      (r[COL.fotoVerifikasi] || "") === "Perlu perbaikan"
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                    }`}
+                                    onClick={() => updateVerificationField(r, "fotoVerifikasi", (r[COL.fotoVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
+                                    title="Perlu perbaikan"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </TableCell>
+
+                              {/* KTP/Suket */}
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    className={`p-1.5 rounded transition-colors ${
+                                      (r[COL.ktpVerifikasi] || "") === "OK"
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                    }`}
+                                    onClick={() => updateVerificationField(r, "ktpVerifikasi", (r[COL.ktpVerifikasi] || "") === "OK" ? "" : "OK")}
+                                    title="OK"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    className={`p-1.5 rounded transition-colors ${
+                                      (r[COL.ktpVerifikasi] || "") === "Perlu perbaikan"
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                    }`}
+                                    onClick={() => updateVerificationField(r, "ktpVerifikasi", (r[COL.ktpVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
+                                    title="Perlu perbaikan"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </TableCell>
+
+                              {/* Ijazah */}
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    className={`p-1.5 rounded transition-colors ${
+                                      (r[COL.ijazahVerifikasi] || "") === "OK"
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                    }`}
+                                    onClick={() => updateVerificationField(r, "ijazahVerifikasi", (r[COL.ijazahVerifikasi] || "") === "OK" ? "" : "OK")}
+                                    title="OK"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    className={`p-1.5 rounded transition-colors ${
+                                      (r[COL.ijazahVerifikasi] || "") === "Perlu perbaikan"
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                    }`}
+                                    onClick={() => updateVerificationField(r, "ijazahVerifikasi", (r[COL.ijazahVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
+                                    title="Perlu perbaikan"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </TableCell>
+
+                              {/* Screenshot HP */}
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    className={`p-1.5 rounded transition-colors ${
+                                      (r[COL.screenshotHPVerifikasi] || "") === "OK"
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                    }`}
+                                    onClick={() => updateVerificationField(r, "screenshotHPVerifikasi", (r[COL.screenshotHPVerifikasi] || "") === "OK" ? "" : "OK")}
+                                    title="OK"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    className={`p-1.5 rounded transition-colors ${
+                                      (r[COL.screenshotHPVerifikasi] || "") === "Perlu perbaikan"
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                    }`}
+                                    onClick={() => updateVerificationField(r, "screenshotHPVerifikasi", (r[COL.screenshotHPVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
+                                    title="Perlu perbaikan"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </TableCell>
+
+                              {/* Catatan PJ */}
+                              <TableCell>
+                                <Input
+                                  className="h-8 text-xs"
+                                  placeholder="Catatan PJ..."
+                                  value={r[COL.catatanPJ] || ""}
+                                  onChange={(e) => {
+                                    const copy = [...r];
+                                    copy[COL.catatanPJ] = e.target.value;
+                                    setRows(prev => prev.map((row, idx) => rows.indexOf(row) === rows.indexOf(r) ? copy : row));
+                                  }}
+                                  onBlur={() => {
+                                    updateVerificationField(r, "catatanPJ", r[COL.catatanPJ] || "");
+                                  }}
+                                />
+                              </TableCell>
+
+                              {/* Catatan Kecap Maja */}
                               <TableCell className="text-center">
                                 {(() => {
                                   const validationIssues = validateResponden(r);
@@ -1214,40 +1385,50 @@ export default function KonfirmasiKepka2026() {
                                   );
                                 })()}
                               </TableCell>
+
+                              {/* Aksi */}
                               <TableCell className="text-right">
                                 {(() => {
-                                  const rek = (r[COL.rekomendasi] || "").trim();
                                   const origIdx = rows.indexOf(r);
                                   const sheetRow = origIdx + 2;
-                                  const isSaving = savingRow === sheetRow;
+                                  const currentRek = (r[COL.rekomendasi] || "").trim();
 
                                   return (
-                                    <div className="flex items-center justify-end gap-1">
-                                        <Button
-                                          size="icon"
-                                          variant={rek === "Rekomendasi" ? "default" : "ghost"}
-                                          className={rek === "Rekomendasi" ? "bg-emerald-600 hover:bg-emerald-700 text-white h-8 w-8" : "h-8 w-8 text-emerald-600 hover:bg-emerald-50"}
-                                          disabled={isSaving}
-                                          onClick={() => handleRekomendasiClick(r, "Rekomendasi")}
-                                          title={rek === "Rekomendasi" ? "Klik untuk batalkan Rekomendasi" : "Tandai Rekomendasi"}
-                                        >
-                                          {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                        </Button>
-                                        <Button
-                                          size="icon"
-                                          variant={rek === "Non Rekomendasi" ? "default" : "ghost"}
-                                          className={rek === "Non Rekomendasi" ? "bg-red-600 hover:bg-red-700 text-white h-8 w-8" : "h-8 w-8 text-red-600 hover:bg-red-50"}
-                                          disabled={isSaving}
-                                          onClick={() => handleRekomendasiClick(r, "Non Rekomendasi")}
-                                          title={rek === "Non Rekomendasi" ? "Klik untuk batalkan Non Rekomendasi" : "Tandai Non Rekomendasi"}
-                                        >
-                                          {isSaving ? <Loader className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                                        </Button>
-                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDetailRow(r)} title="Lihat detail">
-                                          <Eye className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    );
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button 
+                                        className={`p-1.5 rounded transition-all ${
+                                          currentRek === "Rekomendasi"
+                                            ? "bg-emerald-600 text-white"
+                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                        }`}
+                                        onClick={() => handleRekomendasiClick(r, "Rekomendasi")} 
+                                        title="Rekomendasi"
+                                        type="button"
+                                      >
+                                        <Check className="h-4 w-4" />
+                                      </button>
+                                      <button 
+                                        className={`p-1.5 rounded transition-all ${
+                                          currentRek === "Non Rekomendasi"
+                                            ? "bg-emerald-600 text-white"
+                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                        }`}
+                                        onClick={() => handleRekomendasiClick(r, "Non Rekomendasi")} 
+                                        title="Non Rekomendasi"
+                                        type="button"
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </button>
+                                      <button 
+                                        className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                                        onClick={() => setDetailRow(r)} 
+                                        title="Lihat detail"
+                                        type="button"
+                                      >
+                                        <Eye className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  );
                                 })()}
                               </TableCell>
                             </TableRow>
