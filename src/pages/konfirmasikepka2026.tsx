@@ -71,6 +71,7 @@ const COL = {
   catatanPJ: colIdx("BK"),  // BK - Catatan PJ
   status: colIdx("BD"),  // BD
   rekomendasi: colIdx("BE"), // BE - Rekomendasi / Non Rekomendasi
+  statusSobat: colIdx("BF"),  // BF - Status SOBAT
 };
 
 // Column mapping untuk MASTER.MITRA
@@ -287,6 +288,7 @@ export default function KonfirmasiKepka2026() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterKec, setFilterKec] = useState<string>("all");
   const [filterRekomendasi, setFilterRekomendasi] = useState<string>("all");
+  const [filterStatusSobat, setFilterStatusSobat] = useState<string>("all");
   const [sortKey, setSortKey] = useState<keyof typeof COL>("nama");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -560,6 +562,11 @@ export default function KonfirmasiKepka2026() {
     [rows]
   );
 
+  const statusSobatOptions = useMemo(
+    () => Array.from(new Set(rows.map(r => (r[COL.statusSobat] || "").trim()).filter(Boolean))).sort(),
+    [rows]
+  );
+
   // Mitra stats
   const mitriStats = useMemo(() => {
     const total = mitriRows.length;
@@ -616,6 +623,7 @@ export default function KonfirmasiKepka2026() {
         const rekoDisplay = reko === "" ? "Belum Ditentukan" : reko;
         if (rekoDisplay !== filterRekomendasi) return false;
       }
+      if (filterStatusSobat !== "all" && (r[COL.statusSobat] || "").trim() !== filterStatusSobat) return false;
       if (q) {
         return r.some(c => (c || "").toString().toLowerCase().includes(q));
       }
@@ -630,13 +638,13 @@ export default function KonfirmasiKepka2026() {
       return 0;
     });
     return out;
-  }, [rows, search, filterStatus, filterKec, filterRekomendasi, sortKey, sortDir]);
+  }, [rows, search, filterStatus, filterKec, filterRekomendasi, filterStatusSobat, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  useEffect(() => { setPage(1); }, [search, filterStatus, filterKec, filterRekomendasi, pageSize]);
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterKec, filterRekomendasi, filterStatusSobat, pageSize]);
 
   // Mitra filtered & pagination
   const mitriFiltered = useMemo(() => {
@@ -1187,6 +1195,13 @@ export default function KonfirmasiKepka2026() {
                       {rekomendasiOptions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <Select value={filterStatusSobat} onValueChange={setFilterStatusSobat}>
+                    <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Status SOBAT" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status SOBAT</SelectItem>
+                      {statusSobatOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                   <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
                     <SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -1214,8 +1229,8 @@ export default function KonfirmasiKepka2026() {
                             <TableHead className="cursor-pointer" onClick={() => toggleSort("kec")}>
                               <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleSort("desa")}>
-                              <div className="flex items-center gap-1">Desa <ArrowUpDown className="h-3 w-3" /></div>
+                            <TableHead className="cursor-pointer" onClick={() => toggleSort("statusSobat")}>
+                              <div className="flex items-center gap-1">Status SOBAT <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
                             <TableHead>Status NIK</TableHead>
                             <TableHead className="text-center">Foto</TableHead>
@@ -1229,13 +1244,13 @@ export default function KonfirmasiKepka2026() {
                         </TableHeader>
                         <TableBody>
                           {pageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={12} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : pageRows.map((r, i) => (
                             <TableRow key={i} className={isNotVerified(r[COL.status]) ? "bg-orange-50/30" : isVerified(r[COL.status]) ? "bg-emerald-50/30" : isMismatch(r[COL.status]) ? "bg-red-50/30" : ""}>
                               <TableCell className="text-muted-foreground">{(currentPage - 1) * pageSize + i + 1}</TableCell>
                               <TableCell className="font-medium">{r[COL.nama] || "-"}</TableCell>
                               <TableCell>{r[COL.kec] || "-"}</TableCell>
-                              <TableCell>{r[COL.desa] || "-"}</TableCell>
+                              <TableCell>{r[COL.statusSobat] || "-"}</TableCell>
                               <TableCell><StatusBadge status={r[COL.status] || ""} /></TableCell>
                               
                               {/* Foto */}
