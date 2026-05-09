@@ -198,6 +198,49 @@ export default function KonfirmasiKepka2026() {
     })();
   }, []);
 
+  // Fetch Mitra Tambahan
+  useEffect(() => {
+    (async () => {
+      try {
+        setMtLoading(true);
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: { spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", operation: "read", range: "Mitra Tambahan!A1:J" },
+        });
+        if (error) throw error;
+        const values: Row[] = data?.values || [];
+        if (values.length === 0) {
+          setMtHeaders([]); setMtRows([]);
+        } else {
+          setMtHeaders(values[0]);
+          setMtRows(values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
+        }
+      } catch (e: any) {
+        setMtError(e.message || "Gagal memuat data mitra tambahan");
+      } finally {
+        setMtLoading(false);
+      }
+    })();
+  }, []);
+
+  // Fetch Kebutuhan Kecamatan
+  useEffect(() => {
+    (async () => {
+      try {
+        setKkLoading(true);
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: { spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", operation: "read", range: "Kebutuhan Kecamatan!A1:Q" },
+        });
+        if (error) throw error;
+        const values: Row[] = data?.values || [];
+        setKkRows(values);
+      } catch (e: any) {
+        setKkError(e.message || "Gagal memuat data Kebutuhan Kecamatan");
+      } finally {
+        setKkLoading(false);
+      }
+    })();
+  }, []);
+
   const stats = useMemo(() => {
     const total = rows.length;
     let verified = 0, mismatch = 0, notVerified = 0;
