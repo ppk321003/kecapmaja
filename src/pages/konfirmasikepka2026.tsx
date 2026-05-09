@@ -1540,6 +1540,37 @@ export default function KonfirmasiKepka2026() {
           </DialogContent>
         </Dialog>
 
+        {/* Mitra Tambahan Detail Dialog */}
+        <Dialog open={!!mtDetailRow} onOpenChange={(o) => !o && setMtDetailRow(null)}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-sky-600" />
+                Detail Mitra Tambahan
+              </DialogTitle>
+              <DialogDescription>
+                {mtDetailRow ? (mtDetailRow[COL_MITRA.nama] || "-") : ""}
+              </DialogDescription>
+            </DialogHeader>
+            {mtDetailRow && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                {mtHeaders.map((h, i) => {
+                  const val = mtDetailRow[i];
+                  if (!h && !val) return null;
+                  return (
+                    <div key={i} className="border-b pb-2">
+                      <div className="text-xs font-semibold text-sky-700/80 uppercase tracking-wide">{h || `Kolom ${i + 1}`}</div>
+                      <div className="text-sm break-words mt-1">
+                        {val || <span className="text-muted-foreground italic">-</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* Confirm change Rekomendasi */}
         <Dialog open={!!confirmChange} onOpenChange={(o) => !o && setConfirmChange(null)}>
           <DialogContent className="max-w-md">
