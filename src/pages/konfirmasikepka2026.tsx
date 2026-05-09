@@ -59,11 +59,12 @@ const COL = {
 
 // Column mapping untuk MASTER.MITRA
 const COL_MITRA = {
-  nama: colIdx("C"),        // C - Nama
-  pekerjaan: colIdx("D"),   // D - Pekerjaan
-  kec: colIdx("H"),         // H - Kecamatan
-  noHp: colIdx("I"),        // I - No. HP
-  statusKirim: colIdx("J"), // J - Status kirim
+  nama: colIdx("A"),        // A - Nama Lengkap
+  kec: colIdx("H"),         // H - Alamat Kecamatan
+  pendidikan: colIdx("L"),  // L - Pendidikan
+  pekerjaan: colIdx("M"),   // M - Pekerjaan
+  sobatId: colIdx("P"),     // P - Sobat ID
+  statusNik: colIdx("R"),   // R - Status NIK
 };
 
 type Row = string[];
@@ -81,18 +82,14 @@ const isMismatch = (status: string) => {
   return s.includes("tidak cocok") || s.includes("tidak sesuai") || s.includes("tidak valid") || s.includes("invalid") || s.includes("mismatch");
 };
 
-// Helper for Mitra status kirim
-const isSent = (status: string) => {
-  const s = (status || "").toLowerCase().trim();
-  return s.includes("terkirim") || s.includes("sent") || s.includes("sukses") || s === "ok";
+// Helper for Mitra status NIK
+const isNikCocok = (s: string) => {
+  const v = (s || "").toLowerCase().trim();
+  return v.includes("cocok") && !v.includes("tidak");
 };
-const isFailed = (status: string) => {
-  const s = (status || "").toLowerCase().trim();
-  return s.includes("gagal") || s.includes("failed") || s.includes("error");
-};
-const isPending = (status: string) => {
-  const s = (status || "").toLowerCase().trim();
-  return s.includes("pending") || s.includes("antri") || s.includes("menunggu") || (s !== "" && !isSent(s) && !isFailed(s));
+const isNikTidakCocok = (s: string) => {
+  const v = (s || "").toLowerCase().trim();
+  return v.includes("tidak cocok") || v.includes("tidak sesuai") || v.includes("invalid");
 };
 
 export default function KonfirmasiKepka2026() {
@@ -180,7 +177,7 @@ export default function KonfirmasiKepka2026() {
       try {
         setMitriLoading(true);
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", operation: "read", range: "MASTER.MITRA!A1:J" },
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "Manajemen Mitra!A1:S" },
         });
         if (error) throw error;
         const values: Row[] = data?.values || [];
@@ -188,7 +185,8 @@ export default function KonfirmasiKepka2026() {
           setMitriHeaders([]); setMitriRows([]);
         } else {
           setMitriHeaders(values[0]);
-          setMitriRows(values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
+          // Baris 2 di sheet kosong → mulai data dari index 2 (baris 3)
+          setMitriRows(values.slice(2).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
         }
       } catch (e: any) {
         setMitriError(e.message || "Gagal memuat data mitra");
@@ -204,7 +202,7 @@ export default function KonfirmasiKepka2026() {
       try {
         setMtLoading(true);
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", operation: "read", range: "Mitra Tambahan!A1:J" },
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "Mitra Tambahan!A1:S" },
         });
         if (error) throw error;
         const values: Row[] = data?.values || [];
@@ -212,7 +210,7 @@ export default function KonfirmasiKepka2026() {
           setMtHeaders([]); setMtRows([]);
         } else {
           setMtHeaders(values[0]);
-          setMtRows(values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
+          setMtRows(values.slice(2).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
         }
       } catch (e: any) {
         setMtError(e.message || "Gagal memuat data mitra tambahan");
@@ -228,7 +226,7 @@ export default function KonfirmasiKepka2026() {
       try {
         setKkLoading(true);
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM", operation: "read", range: "Kebutuhan Kecamatan!A1:Q" },
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "Kebutuhan Kecamatan!A1:Q" },
         });
         if (error) throw error;
         const values: Row[] = data?.values || [];
@@ -407,16 +405,16 @@ export default function KonfirmasiKepka2026() {
   // Mitra stats
   const mitriStats = useMemo(() => {
     const total = mitriRows.length;
-    let sent = 0, failed = 0, pending = 0;
+    let cocok = 0, tidakCocok = 0, blank = 0;
     const kecMap = new Map<string, number>();
     const statusMap = new Map<string, number>();
     
     mitriRows.forEach(r => {
-      const st = r[COL_MITRA.statusKirim] || "";
-      if (isSent(st)) sent++;
-      else if (isFailed(st)) failed++;
-      else if (st.trim() !== "") pending++;
-      
+      const st = r[COL_MITRA.statusNik] || "";
+      if (isNikCocok(st)) cocok++;
+      else if (isNikTidakCocok(st)) tidakCocok++;
+      else if (st.trim() === "") blank++;
+
       const k = (r[COL_MITRA.kec] || "(Tidak diisi)").trim() || "(Tidak diisi)";
       kecMap.set(k, (kecMap.get(k) || 0) + 1);
       
@@ -432,7 +430,7 @@ export default function KonfirmasiKepka2026() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
     
-    return { total, sent, failed, pending, perKec, perStatus };
+    return { total, cocok, tidakCocok, blank, perKec, perStatus };
   }, [mitriRows]);
 
   const mitriKecOptions = useMemo(
@@ -441,7 +439,7 @@ export default function KonfirmasiKepka2026() {
   );
 
   const mitriStatusOptions = useMemo(
-    () => Array.from(new Set(mitriRows.map(r => (r[COL_MITRA.statusKirim] || "").trim()).filter(Boolean))).sort(),
+    () => Array.from(new Set(mitriRows.map(r => (r[COL_MITRA.statusNik] || "").trim()).filter(Boolean))).sort(),
     [mitriRows]
   );
 
@@ -487,7 +485,7 @@ export default function KonfirmasiKepka2026() {
     const q = mitriSearch.toLowerCase().trim();
     let out = mitriRows.filter(r => {
       if (mitriFilterStatus !== "all") {
-        const st = (r[COL_MITRA.statusKirim] || "").trim();
+        const st = (r[COL_MITRA.statusNik] || "").trim();
         if (mitriFilterStatus === "__blank__") {
           if (st !== "") return false;
         } else if (st !== mitriFilterStatus) return false;
@@ -521,25 +519,25 @@ export default function KonfirmasiKepka2026() {
     [mtRows]
   );
   const mtStatusOptions = useMemo(
-    () => Array.from(new Set(mtRows.map(r => (r[COL_MITRA.statusKirim] || "").trim()).filter(Boolean))).sort(),
+    () => Array.from(new Set(mtRows.map(r => (r[COL_MITRA.statusNik] || "").trim()).filter(Boolean))).sort(),
     [mtRows]
   );
   const mtStats = useMemo(() => {
     const total = mtRows.length;
-    let sent = 0, failed = 0, pending = 0;
+    let cocok = 0, tidakCocok = 0, blank = 0;
     mtRows.forEach(r => {
-      const st = r[COL_MITRA.statusKirim] || "";
-      if (isSent(st)) sent++;
-      else if (isFailed(st)) failed++;
-      else if (st.trim() !== "") pending++;
+      const st = r[COL_MITRA.statusNik] || "";
+      if (isNikCocok(st)) cocok++;
+      else if (isNikTidakCocok(st)) tidakCocok++;
+      else if (st.trim() === "") blank++;
     });
-    return { total, sent, failed, pending };
+    return { total, cocok, tidakCocok, blank };
   }, [mtRows]);
   const mtFiltered = useMemo(() => {
     const q = mtSearch.toLowerCase().trim();
     let out = mtRows.filter(r => {
       if (mtFilterStatus !== "all") {
-        const st = (r[COL_MITRA.statusKirim] || "").trim();
+        const st = (r[COL_MITRA.statusNik] || "").trim();
         if (mtFilterStatus === "__blank__") {
           if (st !== "") return false;
         } else if (st !== mtFilterStatus) return false;
@@ -636,14 +634,14 @@ export default function KonfirmasiKepka2026() {
   };
 
   const MitriStatusBadge = ({ status }: { status: string }) => {
-    if (isSent(status)) {
-      return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100"><CheckCircle2 className="h-3 w-3 mr-1" />Terkirim</Badge>;
+    if (isNikCocok(status)) {
+      return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100"><CheckCircle2 className="h-3 w-3 mr-1" />{status || "Cocok"}</Badge>;
     }
-    if (isFailed(status)) {
-      return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100"><XCircle className="h-3 w-3 mr-1" />Gagal</Badge>;
+    if (isNikTidakCocok(status)) {
+      return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100"><XCircle className="h-3 w-3 mr-1" />{status || "Tidak Cocok"}</Badge>;
     }
-    if (isPending(status)) {
-      return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">Menunggu</Badge>;
+    if ((status || "").trim() !== "") {
+      return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">{status}</Badge>;
     }
     return <Badge variant="secondary">{status || "-"}</Badge>;
   };
@@ -1111,38 +1109,18 @@ export default function KonfirmasiKepka2026() {
                 <CardDescription>Monitoring data Mitra dari sheet MASTER.MITRA — cari, filter, dan lihat detail status pengiriman.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Mini stat strip — pembeda visual dari tab Detail Responden */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
-                    <div className="text-xs text-emerald-700/70">Total Mitra</div>
-                    <div className="text-2xl font-bold text-emerald-700">{mitriStats.total.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div className="rounded-lg bg-teal-50 border border-teal-100 p-3">
-                    <div className="text-xs text-teal-700/70">Terkirim</div>
-                    <div className="text-2xl font-bold text-teal-700">{mitriStats.sent.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div className="rounded-lg bg-amber-50 border border-amber-100 p-3">
-                    <div className="text-xs text-amber-700/70">Menunggu</div>
-                    <div className="text-2xl font-bold text-amber-700">{mitriStats.pending.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div className="rounded-lg bg-rose-50 border border-rose-100 p-3">
-                    <div className="text-xs text-rose-700/70">Gagal</div>
-                    <div className="text-2xl font-bold text-rose-700">{mitriStats.failed.toLocaleString("id-ID")}</div>
-                  </div>
-                </div>
-
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Cari nama, pekerjaan, kecamatan, no. HP..."
+                      placeholder="Cari nama, pekerjaan, kecamatan, sobat ID..."
                       value={mitriSearch}
                       onChange={(e) => setMitriSearch(e.target.value)}
                       className="pl-9"
                     />
                   </div>
                    <Select value={mitriFilterStatus} onValueChange={setMitriFilterStatus}>
-                     <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status Kirim" /></SelectTrigger>
+                     <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status NIK" /></SelectTrigger>
                      <SelectContent>
                        <SelectItem value="all">Semua Status</SelectItem>
                        <SelectItem value="__blank__">(Belum Diisi / Kosong)</SelectItem>
@@ -1178,36 +1156,40 @@ export default function KonfirmasiKepka2026() {
                           <TableRow className="bg-emerald-50/60">
                             <TableHead className="w-12">#</TableHead>
                             <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("nama")}>
-                              <div className="flex items-center gap-1">Nama <ArrowUpDown className="h-3 w-3" /></div>
+                          <div className="flex items-center gap-1">Nama Lengkap <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("kec")}>
+                          <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("pendidikan")}>
+                          <div className="flex items-center gap-1">Pendidikan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
                             <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("pekerjaan")}>
                               <div className="flex items-center gap-1">Pekerjaan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("kec")}>
-                              <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("noHp")}>
-                              <div className="flex items-center gap-1">No. HP <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("statusKirim")}>
-                              <div className="flex items-center gap-1">Status Kirim <ArrowUpDown className="h-3 w-3" /></div>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("sobatId")}>
+                          <div className="flex items-center gap-1">Sobat ID <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("statusNik")}>
+                          <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {mitriPageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mitriPageRows.map((r, i) => {
-                            const st = r[COL_MITRA.statusKirim] || "";
-                            const rowBg = isSent(st) ? "bg-emerald-50/30" : isFailed(st) ? "bg-red-50/30" : isPending(st) ? "bg-amber-50/20" : "";
+                        const st = r[COL_MITRA.statusNik] || "";
+                        const rowBg = isNikCocok(st) ? "bg-emerald-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
                             return (
                               <TableRow key={i} className={rowBg}>
                                 <TableCell className="text-muted-foreground">{(mitriCurrentPage - 1) * mitriPageSize + i + 1}</TableCell>
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
-                                <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
-                                <TableCell className="font-mono text-xs">{r[COL_MITRA.noHp] || "-"}</TableCell>
+                            <TableCell>{r[COL_MITRA.pendidikan] || "-"}</TableCell>
+                            <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
+                            <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
                                 <TableCell><MitriStatusBadge status={st} /></TableCell>
                                 <TableCell className="text-right">
                                   <Button size="icon" variant="ghost" onClick={() => setMitriDetailRow(r)} title="Lihat detail">
@@ -1346,37 +1328,18 @@ export default function KonfirmasiKepka2026() {
                 <CardDescription>Monitoring data Mitra dari sheet Mitra Tambahan — cari, filter, dan lihat detail status pengiriman.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="rounded-lg bg-sky-50 border border-sky-100 p-3">
-                    <div className="text-xs text-sky-700/70">Total Mitra</div>
-                    <div className="text-2xl font-bold text-sky-700">{mtStats.total.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div className="rounded-lg bg-teal-50 border border-teal-100 p-3">
-                    <div className="text-xs text-teal-700/70">Terkirim</div>
-                    <div className="text-2xl font-bold text-teal-700">{mtStats.sent.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div className="rounded-lg bg-amber-50 border border-amber-100 p-3">
-                    <div className="text-xs text-amber-700/70">Menunggu</div>
-                    <div className="text-2xl font-bold text-amber-700">{mtStats.pending.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div className="rounded-lg bg-rose-50 border border-rose-100 p-3">
-                    <div className="text-xs text-rose-700/70">Gagal</div>
-                    <div className="text-2xl font-bold text-rose-700">{mtStats.failed.toLocaleString("id-ID")}</div>
-                  </div>
-                </div>
-
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Cari nama, pekerjaan, kecamatan, no. HP..."
+                      placeholder="Cari nama, pekerjaan, kecamatan, sobat ID..."
                       value={mtSearch}
                       onChange={(e) => setMtSearch(e.target.value)}
                       className="pl-9"
                     />
                   </div>
                   <Select value={mtFilterStatus} onValueChange={setMtFilterStatus}>
-                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status Kirim" /></SelectTrigger>
+                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status NIK" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Status</SelectItem>
                       <SelectItem value="__blank__">(Belum Diisi / Kosong)</SelectItem>
@@ -1412,36 +1375,40 @@ export default function KonfirmasiKepka2026() {
                           <TableRow className="bg-sky-50/60">
                             <TableHead className="w-12">#</TableHead>
                             <TableHead className="cursor-pointer" onClick={() => toggleMtSort("nama")}>
-                              <div className="flex items-center gap-1">Nama <ArrowUpDown className="h-3 w-3" /></div>
+                          <div className="flex items-center gap-1">Nama Lengkap <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("kec")}>
+                          <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("pendidikan")}>
+                          <div className="flex items-center gap-1">Pendidikan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
                             <TableHead className="cursor-pointer" onClick={() => toggleMtSort("pekerjaan")}>
                               <div className="flex items-center gap-1">Pekerjaan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("kec")}>
-                              <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("noHp")}>
-                              <div className="flex items-center gap-1">No. HP <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusKirim")}>
-                              <div className="flex items-center gap-1">Status Kirim <ArrowUpDown className="h-3 w-3" /></div>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("sobatId")}>
+                          <div className="flex items-center gap-1">Sobat ID <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusNik")}>
+                          <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {mtPageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mtPageRows.map((r, i) => {
-                            const st = r[COL_MITRA.statusKirim] || "";
-                            const rowBg = isSent(st) ? "bg-emerald-50/30" : isFailed(st) ? "bg-red-50/30" : isPending(st) ? "bg-amber-50/20" : "";
+                        const st = r[COL_MITRA.statusNik] || "";
+                        const rowBg = isNikCocok(st) ? "bg-emerald-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
                             return (
                               <TableRow key={i} className={rowBg}>
                                 <TableCell className="text-muted-foreground">{(mtCurrentPage - 1) * mtPageSize + i + 1}</TableCell>
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
-                                <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
-                                <TableCell className="font-mono text-xs">{r[COL_MITRA.noHp] || "-"}</TableCell>
+                            <TableCell>{r[COL_MITRA.pendidikan] || "-"}</TableCell>
+                            <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
+                            <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
                                 <TableCell><MitriStatusBadge status={st} /></TableCell>
                                 <TableCell className="text-right">
                                   <Button size="icon" variant="ghost" onClick={() => setMtDetailRow(r)} title="Lihat detail">
