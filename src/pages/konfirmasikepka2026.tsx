@@ -59,11 +59,12 @@ const COL = {
 
 // Column mapping untuk MASTER.MITRA
 const COL_MITRA = {
-  nama: colIdx("C"),        // C - Nama
-  pekerjaan: colIdx("D"),   // D - Pekerjaan
-  kec: colIdx("H"),         // H - Kecamatan
-  noHp: colIdx("I"),        // I - No. HP
-  statusKirim: colIdx("J"), // J - Status kirim
+  nama: colIdx("A"),        // A - Nama Lengkap
+  kec: colIdx("H"),         // H - Alamat Kecamatan
+  pendidikan: colIdx("L"),  // L - Pendidikan
+  pekerjaan: colIdx("M"),   // M - Pekerjaan
+  sobatId: colIdx("P"),     // P - Sobat ID
+  statusNik: colIdx("R"),   // R - Status NIK
 };
 
 type Row = string[];
@@ -81,18 +82,14 @@ const isMismatch = (status: string) => {
   return s.includes("tidak cocok") || s.includes("tidak sesuai") || s.includes("tidak valid") || s.includes("invalid") || s.includes("mismatch");
 };
 
-// Helper for Mitra status kirim
-const isSent = (status: string) => {
-  const s = (status || "").toLowerCase().trim();
-  return s.includes("terkirim") || s.includes("sent") || s.includes("sukses") || s === "ok";
+// Helper for Mitra status NIK
+const isNikCocok = (s: string) => {
+  const v = (s || "").toLowerCase().trim();
+  return v.includes("cocok") && !v.includes("tidak");
 };
-const isFailed = (status: string) => {
-  const s = (status || "").toLowerCase().trim();
-  return s.includes("gagal") || s.includes("failed") || s.includes("error");
-};
-const isPending = (status: string) => {
-  const s = (status || "").toLowerCase().trim();
-  return s.includes("pending") || s.includes("antri") || s.includes("menunggu") || (s !== "" && !isSent(s) && !isFailed(s));
+const isNikTidakCocok = (s: string) => {
+  const v = (s || "").toLowerCase().trim();
+  return v.includes("tidak cocok") || v.includes("tidak sesuai") || v.includes("invalid");
 };
 
 export default function KonfirmasiKepka2026() {
