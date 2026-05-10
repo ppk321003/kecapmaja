@@ -639,8 +639,8 @@ export default function KonfirmasiKepka2026() {
     let mitraKepka2026 = 0, mitraTambahan = 0, dobel = 0, tidakDitemukan = 0;
     rows.forEach(r => {
       const reko = (r[COL.rekomendasi] || "").toString().trim();
-      // Hanya hitung yang sudah ada rekomendasi (tidak kosong)
-      if (reko !== "" && reko !== "_" && reko !== "-") {
+      // Hanya hitung yang bernilai "Rekomendasi" di kolom BE (bukan "Non Rekomendasi")
+      if (reko === "Rekomendasi") {
         const respEmail = (r[COL.email] || "").trim().toLowerCase();
         const respSobatId = (r[COL.sobatId] || "").trim().toLowerCase();
         
