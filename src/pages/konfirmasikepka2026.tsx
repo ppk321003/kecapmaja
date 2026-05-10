@@ -981,16 +981,18 @@ export default function KonfirmasiKepka2026() {
               <Card><CardContent className="py-10 text-center text-red-600">{error}</CardContent></Card>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Total Responden + Status SOBAT */}
                   <Card className="border-l-4 border-l-blue-500 shadow-sm">
-                    <CardHeader className="pb-2"><CardDescription>Total Responden</CardDescription>
-                      <CardTitle className="text-3xl flex items-center gap-2"><Users className="h-6 w-6 text-blue-500" />{stats.total.toLocaleString("id-ID")}</CardTitle>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between mb-4 pb-2 border-b">
+                        <div>
+                          <CardDescription>Total Responden</CardDescription>
+                          <CardTitle className="text-3xl flex items-center gap-2"><Users className="h-6 w-6 text-blue-500" />{stats.total.toLocaleString("id-ID")}</CardTitle>
+                        </div>
+                      </div>
+                      <CardDescription className="font-semibold text-slate-700 mt-2">Status SOBAT</CardDescription>
                     </CardHeader>
-                  </Card>
-                  
-                  {/* Status SOBAT */}
-                  <Card className="border-l-4 border-l-purple-500 shadow-sm">
-                    <CardHeader className="pb-2"><CardDescription>Status SOBAT</CardDescription></CardHeader>
                     <CardContent className="space-y-2">
                       {stats.sobatStatusData.map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between text-sm">
@@ -1002,31 +1004,34 @@ export default function KonfirmasiKepka2026() {
                     </CardContent>
                   </Card>
                   
-                  {/* GoogleForm Mitra Kepka 2026 */}
+                  {/* GoogleForm Mitra Kepka 2026 + GoogleForm Mitra Tambahan */}
                   <Card className="border-l-4 border-l-green-500 shadow-sm">
-                    <CardHeader className="pb-2"><CardDescription>GoogleForm Mitra Kepka 2026</CardDescription></CardHeader>
-                    <CardContent className="space-y-2">
-                      {mitriStats.gfData.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-sm">
-                          <span className={`font-medium ${item.name === "Sudah GF" ? "text-green-700" : "text-red-700"}`}>{item.name}</span>
-                          <span className={`text-lg font-bold ${item.name === "Sudah GF" ? "text-green-600" : "text-red-600"}`}>{item.value}</span>
+                    <CardHeader className="pb-3">
+                      <CardDescription className="font-semibold text-slate-700">Mitra Kepka 2026 (GoogleForm)</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        {mitriStats.gfData.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-sm">
+                            <span className={`font-medium ${item.name === "Sudah GF" ? "text-green-700" : "text-red-700"}`}>{item.name}</span>
+                            <span className={`text-lg font-bold ${item.name === "Sudah GF" ? "text-green-600" : "text-red-600"}`}>{item.value}</span>
+                          </div>
+                        ))}
+                        {mitriStats.gfData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
+                      </div>
+                      
+                      <div className="pt-3 border-t">
+                        <CardDescription className="font-semibold text-slate-700 mb-2">Mitra Tambahan (GoogleForm)</CardDescription>
+                        <div className="space-y-2">
+                          {mtStats.gfData.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-sm">
+                              <span className={`font-medium ${item.name === "Sudah GF" ? "text-cyan-700" : "text-orange-700"}`}>{item.name}</span>
+                              <span className={`text-lg font-bold ${item.name === "Sudah GF" ? "text-cyan-600" : "text-orange-600"}`}>{item.value}</span>
+                            </div>
+                          ))}
+                          {mtStats.gfData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
                         </div>
-                      ))}
-                      {mitriStats.gfData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
-                    </CardContent>
-                  </Card>
-                  
-                  {/* GoogleForm Mitra Tambahan */}
-                  <Card className="border-l-4 border-l-cyan-500 shadow-sm">
-                    <CardHeader className="pb-2"><CardDescription>GoogleForm Mitra Tambahan</CardDescription></CardHeader>
-                    <CardContent className="space-y-2">
-                      {mtStats.gfData.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-sm">
-                          <span className={`font-medium ${item.name === "Sudah GF" ? "text-cyan-700" : "text-orange-700"}`}>{item.name}</span>
-                          <span className={`text-lg font-bold ${item.name === "Sudah GF" ? "text-cyan-600" : "text-orange-600"}`}>{item.value}</span>
-                        </div>
-                      ))}
-                      {mtStats.gfData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
