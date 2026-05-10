@@ -78,6 +78,7 @@ const COL = {
 const COL_MITRA = {
   nama: colIdx("A"),        // A - Nama Lengkap
   kec: colIdx("H"),         // H - Alamat Kecamatan
+  desa: colIdx("I"),        // I - Desa
   pendidikan: colIdx("L"),  // L - Pendidikan
   pekerjaan: colIdx("M"),   // M - Pekerjaan
   sobatId: colIdx("P"),     // P - Sobat ID
@@ -1698,6 +1699,9 @@ export default function KonfirmasiKepka2026() {
                         <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("kec")}>
                           <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("desa")}>
+                          <div className="flex items-center gap-1">Desa <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("pendidikan")}>
                           <div className="flex items-center gap-1">Pendidikan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
@@ -1716,7 +1720,7 @@ export default function KonfirmasiKepka2026() {
                         </TableHeader>
                         <TableBody>
                           {mitriPageRows.length === 0 ? (
-                        <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mitriPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
                         const rowBg = isVerifikasiNik(st) ? "bg-emerald-50" : isNikCocok(st) ? "bg-amber-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
@@ -1725,6 +1729,7 @@ export default function KonfirmasiKepka2026() {
                                 <TableCell className="text-muted-foreground">{(mitriCurrentPage - 1) * mitriPageSize + i + 1}</TableCell>
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
+                                <TableCell>{r[COL_MITRA.desa] || "-"}</TableCell>
                             <TableCell>{r[COL_MITRA.pendidikan] || "-"}</TableCell>
                             <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
                             <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
@@ -2003,6 +2008,9 @@ export default function KonfirmasiKepka2026() {
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("kec")}>
                           <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("desa")}>
+                          <div className="flex items-center gap-1">Desa <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("pendidikan")}>
                           <div className="flex items-center gap-1">Pendidikan <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
@@ -2021,7 +2029,7 @@ export default function KonfirmasiKepka2026() {
                         </TableHeader>
                         <TableBody>
                           {mtPageRows.length === 0 ? (
-                        <TableRow><TableCell colSpan={9} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mtPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
                         const rowBg = isVerifikasiNik(st) ? "bg-emerald-50" : isNikCocok(st) ? "bg-amber-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
@@ -2030,6 +2038,7 @@ export default function KonfirmasiKepka2026() {
                                 <TableCell className="text-muted-foreground">{(mtCurrentPage - 1) * mtPageSize + i + 1}</TableCell>
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
+                                <TableCell>{r[COL_MITRA.desa] || "-"}</TableCell>
                             <TableCell>{r[COL_MITRA.pendidikan] || "-"}</TableCell>
                             <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
                             <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
