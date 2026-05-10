@@ -561,6 +561,38 @@ export default function KonfirmasiKepka2026() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
     
+    // Status SOBAT
+    const sobatStatusMap = new Map<string, number>();
+    rows.forEach(r => {
+      const sobatStatus = (r[COL.statusSobat] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      sobatStatusMap.set(sobatStatus, (sobatStatusMap.get(sobatStatus) || 0) + 1);
+    });
+    const sobatStatusData = Array.from(sobatStatusMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    // Rekomendasi per Kecamatan
+    const rekomendasiPerKecMap = new Map<string, {total: number, count: number}>();
+    rows.forEach(r => {
+      const kec = (r[COL.kec] || "(Tidak diisi)").trim() || "(Tidak diisi)";
+      const reko = (r[COL.rekomendasi] || "").toString().trim();
+      const hasReko = reko !== "" && reko !== "_" && reko !== "-";
+      if (!rekomendasiPerKecMap.has(kec)) {
+        rekomendasiPerKecMap.set(kec, {total: 0, count: 0});
+      }
+      const data = rekomendasiPerKecMap.get(kec)!;
+      data.total++;
+      if (hasReko) data.count++;
+    });
+    const rekomendasiPerKecData = Array.from(rekomendasiPerKecMap.entries())
+      .map(([name, {total, count}]) => ({
+        name,
+        value: total > 0 ? ((count / total) * 100).toFixed(1) : 0,
+        count,
+        total
+      }))
+      .sort((a, b) => parseFloat(String(b.value)) - parseFloat(String(a.value)));
+    
     return { 
       total, verified, mismatch, notVerified, perKec,
       umurData, pekerjaanData, androidData, prioritasData,
@@ -568,7 +600,8 @@ export default function KonfirmasiKepka2026() {
       pendidikanData, kegiatanRutinData, rekomendasiData,
       umurMap, pekerjaanMap, androidMap, prioritasMap,
       lintasKecMap, lintasDesaMap, tidakMengalihMap,
-      pendidikanMap, kegiatanRutinMap, rekomendasiMap
+      pendidikanMap, kegiatanRutinMap, rekomendasiMap,
+      sobatStatusData, rekomendasiPerKecData
     };
   }, [rows]);
 
@@ -604,6 +637,7 @@ export default function KonfirmasiKepka2026() {
     let cocok = 0, tidakCocok = 0, blank = 0;
     const kecMap = new Map<string, number>();
     const statusMap = new Map<string, number>();
+    const gfCountMap = new Map<string, number>();
     
     mitriRows.forEach(r => {
       const st = r[COL_MITRA.statusNik] || "";
@@ -616,6 +650,11 @@ export default function KonfirmasiKepka2026() {
       
       const statusVal = (st || "(Tidak diisi)").trim() || "(Tidak diisi)";
       statusMap.set(statusVal, (statusMap.get(statusVal) || 0) + 1);
+      
+      // Count GoogleForm matches
+      const hasGF = checkGoogleFormStatus(r, rows);
+      const gfStatus = hasGF ? "Sudah GF" : "Belum GF";
+      gfCountMap.set(gfStatus, (gfCountMap.get(gfStatus) || 0) + 1);
     });
     
     const perKec = Array.from(kecMap.entries())
@@ -626,8 +665,12 @@ export default function KonfirmasiKepka2026() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
     
-    return { total, cocok, tidakCocok, blank, perKec, perStatus };
-  }, [mitriRows]);
+    const gfData = Array.from(gfCountMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    return { total, cocok, tidakCocok, blank, perKec, perStatus, gfData };
+  }, [mitriRows, rows]);
 
   const mitriKecOptions = useMemo(
     () => Array.from(new Set(mitriRows.map(r => (r[COL_MITRA.kec] || "").trim()).filter(Boolean))).sort(),
@@ -727,14 +770,26 @@ export default function KonfirmasiKepka2026() {
   const mtStats = useMemo(() => {
     const total = mtRows.length;
     let cocok = 0, tidakCocok = 0, blank = 0;
+    const gfCountMap = new Map<string, number>();
+    
     mtRows.forEach(r => {
       const st = r[COL_MITRA.statusNik] || "";
       if (isNikCocok(st)) cocok++;
       else if (isNikTidakCocok(st)) tidakCocok++;
       else if (st.trim() === "") blank++;
+      
+      // Count GoogleForm matches
+      const hasGF = checkGoogleFormStatus(r, rows);
+      const gfStatus = hasGF ? "Sudah GF" : "Belum GF";
+      gfCountMap.set(gfStatus, (gfCountMap.get(gfStatus) || 0) + 1);
     });
-    return { total, cocok, tidakCocok, blank };
-  }, [mtRows]);
+    
+    const gfData = Array.from(gfCountMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    return { total, cocok, tidakCocok, blank, gfData };
+  }, [mtRows, rows]);
   const mtFiltered = useMemo(() => {
     const q = mtSearch.toLowerCase().trim();
     let out = mtRows.filter(r => {
@@ -932,31 +987,87 @@ export default function KonfirmasiKepka2026() {
                       <CardTitle className="text-3xl flex items-center gap-2"><Users className="h-6 w-6 text-blue-500" />{stats.total.toLocaleString("id-ID")}</CardTitle>
                     </CardHeader>
                   </Card>
-                  <Card className="border-l-4 border-l-emerald-500 shadow-sm">
-                    <CardHeader className="pb-2"><CardDescription>Terverifikasi</CardDescription>
-                      <CardTitle className="text-3xl flex items-center gap-2 text-emerald-600"><CheckCircle2 className="h-6 w-6" />{stats.verified.toLocaleString("id-ID")}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0 text-xs text-muted-foreground">
-                      {stats.total > 0 ? `${((stats.verified / stats.total) * 100).toFixed(1)}% dari total` : "-"}
+                  
+                  {/* Status SOBAT */}
+                  <Card className="border-l-4 border-l-purple-500 shadow-sm">
+                    <CardHeader className="pb-2"><CardDescription>Status SOBAT</CardDescription></CardHeader>
+                    <CardContent className="space-y-2">
+                      {stats.sobatStatusData.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <span className="font-medium text-slate-700">{item.name}</span>
+                          <span className="text-lg font-bold text-purple-600">{item.value}</span>
+                        </div>
+                      ))}
+                      {stats.sobatStatusData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
                     </CardContent>
                   </Card>
-                  <Card className="border-l-4 border-l-red-500 shadow-sm">
-                    <CardHeader className="pb-2"><CardDescription>ID/Email Tidak Cocok</CardDescription>
-                      <CardTitle className="text-3xl flex items-center gap-2 text-red-600"><XCircle className="h-6 w-6" />{stats.mismatch.toLocaleString("id-ID")}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0 text-xs text-muted-foreground">
-                      {stats.total > 0 ? `${((stats.mismatch / stats.total) * 100).toFixed(1)}% dari total` : "-"}
+                  
+                  {/* GoogleForm Mitra Kepka 2026 */}
+                  <Card className="border-l-4 border-l-green-500 shadow-sm">
+                    <CardHeader className="pb-2"><CardDescription>GoogleForm Mitra Kepka 2026</CardDescription></CardHeader>
+                    <CardContent className="space-y-2">
+                      {mitriStats.gfData.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <span className={`font-medium ${item.name === "Sudah GF" ? "text-green-700" : "text-red-700"}`}>{item.name}</span>
+                          <span className={`text-lg font-bold ${item.name === "Sudah GF" ? "text-green-600" : "text-red-600"}`}>{item.value}</span>
+                        </div>
+                      ))}
+                      {mitriStats.gfData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
                     </CardContent>
                   </Card>
-                  <Card className="border-l-4 border-l-amber-500 shadow-sm">
-                    <CardHeader className="pb-2"><CardDescription>Belum Terverifikasi</CardDescription>
-                      <CardTitle className="text-3xl flex items-center gap-2 text-amber-600">{stats.notVerified.toLocaleString("id-ID")}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0 text-xs text-muted-foreground">
-                      {stats.total > 0 ? `${((stats.notVerified / stats.total) * 100).toFixed(1)}% dari total` : "-"}
+                  
+                  {/* GoogleForm Mitra Tambahan */}
+                  <Card className="border-l-4 border-l-cyan-500 shadow-sm">
+                    <CardHeader className="pb-2"><CardDescription>GoogleForm Mitra Tambahan</CardDescription></CardHeader>
+                    <CardContent className="space-y-2">
+                      {mtStats.gfData.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <span className={`font-medium ${item.name === "Sudah GF" ? "text-cyan-700" : "text-orange-700"}`}>{item.name}</span>
+                          <span className={`text-lg font-bold ${item.name === "Sudah GF" ? "text-cyan-600" : "text-orange-600"}`}>{item.value}</span>
+                        </div>
+                      ))}
+                      {mtStats.gfData.length === 0 && <div className="text-xs text-muted-foreground">Tidak ada data</div>}
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Persentase Rekomendasi - Full Width Chart */}
+                <Card className="shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-indigo-50 to-indigo-50">
+                  <CardHeader>
+                    <CardDescription className="text-sm font-semibold text-indigo-800">📊 Persentase Rekomendasi per Kecamatan (Google Form)</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart 
+                        data={stats.rekomendasiPerKecData}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-45} 
+                          textAnchor="end" 
+                          height={120}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis 
+                          label={{ value: 'Persentase (%)', angle: -90, position: 'insideLeft' }}
+                        />
+                        <Tooltip 
+                          formatter={(value: any) => [`${value}%`, 'Persentase']}
+                          labelFormatter={(label) => `Kecamatan: ${label}`}
+                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc' }}
+                        />
+                        <Bar 
+                          dataKey="value" 
+                          fill="#6366f1" 
+                          name="Persentase Rekomendasi"
+                          radius={[8, 8, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
 
                 {/* Analysis Cards - Row 1 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
