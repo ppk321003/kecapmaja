@@ -268,25 +268,25 @@ const validateResponden = (row: Row): Array<{ issue: string; severity: "error" |
   // BG: Foto Verifikasi - Harus "OK"
   const fotoStatus = (row[COL.fotoVerifikasi] || "").toLowerCase().trim();
   if (!fotoStatus || fotoStatus !== "ok") {
-    issues.push({ issue: "Foto - belum sesuai ketentuan", severity: "warning" });
+    issues.push({ issue: "Foto - belum sesuai ketentuan / belum periksa PJ", severity: "warning" });
   }
 
   // BH: KTP Verifikasi - Harus "OK"
   const ktpStatus = (row[COL.ktpVerifikasi] || "").toLowerCase().trim();
   if (!ktpStatus || ktpStatus !== "ok") {
-    issues.push({ issue: "KTP - belum sesuai ketentuan", severity: "warning" });
+    issues.push({ issue: "KTP - belum sesuai ketentuan / belum periksa PJ", severity: "warning" });
   }
 
   // BI: Ijazah Verifikasi - Harus "OK"
   const ijazahStatus = (row[COL.ijazahVerifikasi] || "").toLowerCase().trim();
   if (!ijazahStatus || ijazahStatus !== "ok") {
-    issues.push({ issue: "Ijazah - belum sesuai ketentuan", severity: "warning" });
+    issues.push({ issue: "Ijazah - belum sesuai ketentuan / belum periksa PJ", severity: "warning" });
   }
 
   // BJ: Screenshot HP Verifikasi - Harus "OK"
   const hpStatus = (row[COL.screenshotHPVerifikasi] || "").toLowerCase().trim();
   if (!hpStatus || hpStatus !== "ok") {
-    issues.push({ issue: "Screenshot HP - belum sesuai ketentuan", severity: "warning" });
+    issues.push({ issue: "Screenshot HP - belum sesuai ketentuan / belum periksa PJ", severity: "warning" });
   }
 
   return issues;
@@ -2253,8 +2253,7 @@ export default function KonfirmasiKepka2026() {
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div>
-                          <CardDescription>Detail Rekomendasi dengan Issue/Warning - Sudah rekomendasi PJ tetapi terdapat issue atau perlu perbaikan</CardDescription>
-                          <CardTitle className="text-2xl flex items-center gap-2 mt-2"><AlertTriangle className="h-6 w-6 text-amber-500" />{rekoWithIssue.length} Orang per Kecamatan</CardTitle>
+                          <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-6 w-6 text-amber-500" />Detail Rekomendasi dengan Issue/Warning - Sudah rekomendasi PJ tetapi terdapat issue atau perlu perbaikan</CardTitle>
                         </div>
                         <div className="flex gap-2">
                           <Select value={resumeFilterKec} onValueChange={setResumeFilterKec}>
