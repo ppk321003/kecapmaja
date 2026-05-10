@@ -2231,7 +2231,7 @@ export default function KonfirmasiKepka2026() {
                   {/* Cek Rekomendasi SOBAT */}
                   <Card className="border-l-4 border-l-blue-500 shadow-md">
                     <CardHeader className="pb-3">
-                      <CardDescription className="text-xs font-semibold text-blue-800">✅ Jumlah Mitra yang Telah di dipilih Rekomendasioleh PJ</CardDescription>
+                      <CardDescription className="text-xs font-semibold text-blue-800">✅ Jumlah Mitra yang Telah di dipilih Rekomendasi oleh Penanggungjawab Kecamatan</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
