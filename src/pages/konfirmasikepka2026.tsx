@@ -1633,16 +1633,25 @@ export default function KonfirmasiKepka2026() {
                               <TableCell className="text-center">
                                 {(() => {
                                   const validationIssues = validateResponden(r);
-                                  const hasIssues = validationIssues.length > 0;
+                                  const isDocumentWarning = (issue: string) => {
+                                    return issue.includes("Foto - belum sesuai ketentuan") ||
+                                           issue.includes("KTP - belum sesuai ketentuan") ||
+                                           issue.includes("Ijazah - belum sesuai ketentuan") ||
+                                           issue.includes("Screenshot HP - belum sesuai ketentuan");
+                                  };
+                                  const errors = validationIssues.filter(v => v.severity === "error");
+                                  const warnings = validationIssues.filter(v => v.severity === "warning");
+                                  const filteredWarnings = warnings.filter(w => !isDocumentWarning(w.issue));
+                                  const hasDisplayableIssues = errors.length > 0 || filteredWarnings.length > 0;
 
                                   return (
                                     <button 
                                       className="cursor-pointer hover:opacity-75 transition-opacity"
                                       onClick={() => setValidationDetailRow(r)}
                                       type="button"
-                                      title={hasIssues ? "Klik untuk lihat catatan" : "Tidak ada catatan"}
+                                      title={hasDisplayableIssues ? "Klik untuk lihat catatan" : "Tidak ada catatan"}
                                     >
-                                      <AlertTriangle className={hasIssues ? "h-5 w-5 text-amber-600" : "h-5 w-5 text-slate-300"} />
+                                      <AlertTriangle className={hasDisplayableIssues ? "h-5 w-5 text-amber-600" : "h-5 w-5 text-slate-300"} />
                                     </button>
                                   );
                                 })()}
@@ -2407,9 +2416,18 @@ export default function KonfirmasiKepka2026() {
               const errors = issues.filter(v => v.severity === "error");
               const warnings = issues.filter(v => v.severity === "warning");
               
+              // Filter out document verification warnings untuk dialog Detail tab saja
+              const isDocumentWarning = (issue: string) => {
+                return issue.includes("Foto - belum sesuai ketentuan") ||
+                       issue.includes("KTP - belum sesuai ketentuan") ||
+                       issue.includes("Ijazah - belum sesuai ketentuan") ||
+                       issue.includes("Screenshot HP - belum sesuai ketentuan");
+              };
+              const filteredWarnings = warnings.filter(w => !isDocumentWarning(w.issue));
+              
               return (
                 <div className="space-y-4">
-                  {errors.length === 0 && warnings.length === 0 ? (
+                  {errors.length === 0 && filteredWarnings.length === 0 ? (
                     <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                       <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
                       <span className="text-sm font-medium text-emerald-700">Baik - Tidak ada isu</span>
@@ -2432,14 +2450,14 @@ export default function KonfirmasiKepka2026() {
                           </ul>
                         </div>
                       )}
-                      {warnings.length > 0 && (
+                      {filteredWarnings.length > 0 && (
                         <div className="space-y-2">
                           <h4 className="text-sm font-semibold text-amber-700 flex items-center gap-2">
                             <AlertTriangle className="h-4 w-4" />
-                            Catatan ({warnings.length})
+                            Catatan ({filteredWarnings.length})
                           </h4>
                           <ul className="space-y-1">
-                            {warnings.map((w, i) => (
+                            {filteredWarnings.map((w, i) => (
                               <li key={i} className="text-sm text-amber-600 flex items-start gap-2">
                                 <span className="text-amber-400 mt-0.5">•</span>
                                 {w.issue}
