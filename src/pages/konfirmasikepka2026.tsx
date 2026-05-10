@@ -14,7 +14,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Eye, Search, CheckCircle2, XCircle, Users, Loader2, ArrowUpDown, Check, X, Loader, AlertCircle, AlertTriangle } from "lucide-react";
+import {
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Eye, Search, CheckCircle2, XCircle, Users, Loader2, ArrowUpDown, Check, X, Loader, AlertCircle, AlertTriangle, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -262,6 +265,30 @@ const validateResponden = (row: Row): Array<{ issue: string; severity: "error" |
     issues.push({ issue: "Tidak bersedia tidak mengalihkan pekerjaan", severity: "error" });
   }
 
+  // BG: Foto Verifikasi - Harus "OK"
+  const fotoStatus = (row[COL.fotoVerifikasi] || "").toLowerCase().trim();
+  if (!fotoStatus || fotoStatus !== "ok") {
+    issues.push({ issue: "Foto - belum sesuai ketentuan", severity: "warning" });
+  }
+
+  // BH: KTP Verifikasi - Harus "OK"
+  const ktpStatus = (row[COL.ktpVerifikasi] || "").toLowerCase().trim();
+  if (!ktpStatus || ktpStatus !== "ok") {
+    issues.push({ issue: "KTP - belum sesuai ketentuan", severity: "warning" });
+  }
+
+  // BI: Ijazah Verifikasi - Harus "OK"
+  const ijazahStatus = (row[COL.ijazahVerifikasi] || "").toLowerCase().trim();
+  if (!ijazahStatus || ijazahStatus !== "ok") {
+    issues.push({ issue: "Ijazah - belum sesuai ketentuan", severity: "warning" });
+  }
+
+  // BJ: Screenshot HP Verifikasi - Harus "OK"
+  const hpStatus = (row[COL.screenshotHPVerifikasi] || "").toLowerCase().trim();
+  if (!hpStatus || hpStatus !== "ok") {
+    issues.push({ issue: "Screenshot HP - belum sesuai ketentuan", severity: "warning" });
+  }
+
   return issues;
 };
 
@@ -278,6 +305,16 @@ const checkGoogleFormStatus = (mitriRow: Row, olaRows: Row[]): boolean => {
     
     return (mitriEmail && olaEmail === mitriEmail) || (mitriSobatId && olaSobatId === mitriSobatId);
   });
+};
+
+// Helper function untuk check dokumen perlu perbaikan
+const getDocumentsThatNeedRepair = (row: Row): string[] => {
+  const docs: string[] = [];
+  if ((row[COL.fotoVerifikasi] || "").toLowerCase().includes("perlu")) docs.push("Foto");
+  if ((row[COL.ktpVerifikasi] || "").toLowerCase().includes("perlu")) docs.push("KTP");
+  if ((row[COL.ijazahVerifikasi] || "").toLowerCase().includes("perlu")) docs.push("Ijazah");
+  if ((row[COL.screenshotHPVerifikasi] || "").toLowerCase().includes("perlu")) docs.push("HP");
+  return docs;
 };
 
 export default function KonfirmasiKepka2026() {
@@ -340,6 +377,10 @@ export default function KonfirmasiKepka2026() {
   const [mitriDetailRow, setMitriDetailRow] = useState<Row | null>(null);
   const [savingRow, setSavingRow] = useState<number | null>(null);
   const [confirmChange, setConfirmChange] = useState<{ row: Row; next: "Rekomendasi" | "Non Rekomendasi" | "" } | null>(null);
+
+  // Resume filters
+  const [resumeFilterKec, setResumeFilterKec] = useState<string>("all");
+  const [resumeExpandedKecs, setResumeExpandedKecs] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     (async () => {
@@ -594,6 +635,53 @@ export default function KonfirmasiKepka2026() {
       }))
       .sort((a, b) => parseFloat(String(b.value)) - parseFloat(String(a.value)));
     
+    // Checked Recommendation Status (Cek Rekomendasi SOBAT)
+    let mitraKepka2026 = 0, mitraTambahan = 0, dobel = 0, tidakDitemukan = 0;
+    rows.forEach(r => {
+      const reko = (r[COL.rekomendasi] || "").toString().trim();
+      // Hanya hitung yang sudah ada rekomendasi (tidak kosong)
+      if (reko !== "" && reko !== "_" && reko !== "-") {
+        const respEmail = (r[COL.email] || "").trim().toLowerCase();
+        const respSobatId = (r[COL.sobatId] || "").trim().toLowerCase();
+        
+        if (!respEmail && !respSobatId) {
+          tidakDitemukan++;
+          return;
+        }
+        
+        // Check if in Mitra Kepka 2026
+        const inMitri = mitriRows.some(m => {
+          const mEmail = (m[COL_MITRA.email] || "").trim().toLowerCase();
+          const mSobatId = (m[COL_MITRA.sobatId] || "").trim().toLowerCase();
+          return (respEmail && mEmail === respEmail) || (respSobatId && mSobatId === respSobatId);
+        });
+        
+        // Check if in Mitra Tambahan
+        const inMt = mtRows.some(mt => {
+          const mtEmail = (mt[COL_MITRA.email] || "").trim().toLowerCase();
+          const mtSobatId = (mt[COL_MITRA.sobatId] || "").trim().toLowerCase();
+          return (respEmail && mtEmail === respEmail) || (respSobatId && mtSobatId === respSobatId);
+        });
+        
+        if (inMitri && inMt) {
+          dobel++;
+        } else if (inMitri) {
+          mitraKepka2026++;
+        } else if (inMt) {
+          mitraTambahan++;
+        } else {
+          tidakDitemukan++;
+        }
+      }
+    });
+    
+    const checkedRecommendationData = [
+      { name: "Mitra Kepka 2026", value: mitraKepka2026, color: "#10b981" },
+      { name: "Mitra Tambahan", value: mitraTambahan, color: "#06b6d4" },
+      { name: "Dobel", value: dobel, color: "#f59e0b" },
+      { name: "Tidak ditemukan", value: tidakDitemukan, color: "#ef4444" }
+    ];
+    
     return { 
       total, verified, mismatch, notVerified, perKec,
       umurData, pekerjaanData, androidData, prioritasData,
@@ -602,9 +690,9 @@ export default function KonfirmasiKepka2026() {
       umurMap, pekerjaanMap, androidMap, prioritasMap,
       lintasKecMap, lintasDesaMap, tidakMengalihMap,
       pendidikanMap, kegiatanRutinMap, rekomendasiMap,
-      sobatStatusData, rekomendasiPerKecData
+      sobatStatusData, rekomendasiPerKecData, checkedRecommendationData
     };
-  }, [rows]);
+  }, [rows, mitriRows, mtRows]);
 
   const kecOptions = useMemo(
     () => Array.from(new Set(rows.map(r => (r[COL.kec] || "").trim()).filter(Boolean))).sort(),
@@ -966,12 +1054,13 @@ export default function KonfirmasiKepka2026() {
         </header>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full max-w-5xl mx-auto grid-cols-5">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="detail">Detail Responden ({rows.length})</TabsTrigger>
-            <TabsTrigger value="monitoring">Monitoring Kecamatan</TabsTrigger>
-            <TabsTrigger value="mitra">Mitra Kepka 2026 ({mitriRows.length})</TabsTrigger>
-            <TabsTrigger value="mitra-tambahan">Mitra Tambahan ({mtRows.length})</TabsTrigger>
+          <TabsList className="grid w-full max-w-6xl mx-auto grid-cols-3 md:grid-cols-6 gap-1">
+            <TabsTrigger value="dashboard" className="text-xs md:text-sm">Dashboard</TabsTrigger>
+            <TabsTrigger value="detail" className="text-xs md:text-sm">Detail ({rows.length})</TabsTrigger>
+            <TabsTrigger value="monitoring" className="text-xs md:text-sm">Monitoring</TabsTrigger>
+            <TabsTrigger value="mitra" className="text-xs md:text-sm">Mitra 2026 ({mitriRows.length})</TabsTrigger>
+            <TabsTrigger value="mitra-tambahan" className="text-xs md:text-sm">Tambahan ({mtRows.length})</TabsTrigger>
+            <TabsTrigger value="resume" className="text-xs md:text-sm">Resume Rekomendasi</TabsTrigger>
           </TabsList>
 
           {/* DASHBOARD */}
@@ -2078,6 +2167,232 @@ export default function KonfirmasiKepka2026() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* RESUME - Rekomendasi dengan Dokumen Perlu Perbaikan */}
+          <TabsContent value="resume" className="space-y-6 mt-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>
+            ) : error ? (
+              <Card><CardContent className="py-10 text-center text-red-600">{error}</CardContent></Card>
+            ) : (() => {
+              // 4 Category Filters
+              const rekoWithIssue = rows.filter(r => {
+                const rekoStatus = (r[COL.rekomendasi] || "").trim();
+                if (rekoStatus !== "Rekomendasi") return false;
+                const validation = validateResponden(r);
+                return validation.length > 0;
+              });
+
+              const rekoLengkap = rows.filter(r => {
+                const rekoStatus = (r[COL.rekomendasi] || "").trim();
+                if (rekoStatus !== "Rekomendasi") return false;
+                const validation = validateResponden(r);
+                return validation.length === 0;
+              });
+
+              const belumDitentukan = rows.filter(r => {
+                const rekoStatus = (r[COL.rekomendasi] || "").trim();
+                return rekoStatus === "" || rekoStatus === "-";
+              });
+
+              const nonRekomendasi = rows.filter(r => {
+                const rekoStatus = (r[COL.rekomendasi] || "").trim();
+                return rekoStatus === "Non Rekomendasi";
+              });
+
+              // Helper: Group data by kecamatan
+              const groupByKec = (data: Row[]) => {
+                const groups = new Map<string, Row[]>();
+                data.forEach(r => {
+                  const kec = (r[COL.kec] || "Tidak Ada").trim();
+                  if (!groups.has(kec)) groups.set(kec, []);
+                  groups.get(kec)!.push(r);
+                });
+                return groups;
+              };
+
+              const rekoWithIssueKecs = groupByKec(rekoWithIssue);
+              const rekoLengkapKecs = groupByKec(rekoLengkap);
+              const belumKecs = groupByKec(belumDitentukan);
+              const nonRekoKecs = groupByKec(nonRekomendasi);
+
+              return (
+                <>
+                  {/* Cek Rekomendasi SOBAT */}
+                  <Card className="border-l-4 border-l-blue-500 shadow-md">
+                    <CardHeader className="pb-3">
+                      <CardDescription className="text-xs font-semibold text-blue-800">✅ Jumlah Responden yang Telah di Cek Rekomendasi (SOBAT)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {stats.checkedRecommendationData.map((item, idx) => (
+                          <div key={idx}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium">{item.name}</span>
+                              <span className="text-lg font-bold" style={{ color: item.color }}>{item.value}</span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full rounded-full transition-all" 
+                                style={{ 
+                                  width: `${stats.checkedRecommendationData.reduce((sum, d) => sum + d.value, 0) > 0 ? (item.value / stats.checkedRecommendationData.reduce((sum, d) => sum + d.value, 0)) * 100 : 0}%`,
+                                  backgroundColor: item.color
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                        {stats.checkedRecommendationData.length === 0 && <div className="text-xs text-muted-foreground">Belum ada responden dengan rekomendasi</div>}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Section 1: Rekomendasi dengan Issue */}
+                  <Card className="border-l-4 border-l-amber-500 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                          <CardDescription>Detail Rekomendasi dengan Issue/Warning - Sudah rekomendasi PJ tetapi terdapat issue atau perlu perbaikan</CardDescription>
+                          <CardTitle className="text-2xl flex items-center gap-2 mt-2"><AlertTriangle className="h-6 w-6 text-amber-500" />{rekoWithIssue.length} Orang per Kecamatan</CardTitle>
+                        </div>
+                        <div className="flex gap-2">
+                          <Select value={resumeFilterKec} onValueChange={setResumeFilterKec}>
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Semua Kecamatan</SelectItem>
+                              {(() => {
+                                const kecSorted = Array.from(rekoWithIssueKecs.keys()).sort();
+                                return kecSorted.map(k => (
+                                  <SelectItem key={k} value={k}>{k} ({rekoWithIssueKecs.get(k)?.length || 0})</SelectItem>
+                                ));
+                              })()}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {rekoWithIssue.length === 0 ? (
+                        <div className="py-12 text-center">
+                          <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto mb-3" />
+                          <p className="text-slate-600 font-medium">Semua rekomendasi sudah sempurna!</p>
+                          <p className="text-sm text-slate-500">Tidak ada data yang perlu diperbaiki.</p>
+                        </div>
+                      ) : (
+                        <Accordion type="multiple" value={Object.keys(resumeExpandedKecs).filter(k => resumeExpandedKecs[k])} onValueChange={(newVal) => {
+                          const newExpanded: Record<string, boolean> = {};
+                          newVal.forEach(k => { newExpanded[k] = true; });
+                          setResumeExpandedKecs(newExpanded);
+                        }}>
+                          {(() => {
+                            const kecSorted = Array.from(rekoWithIssueKecs.keys()).sort();
+                            const filteredKecs = resumeFilterKec === "all" ? kecSorted : kecSorted.filter(k => k === resumeFilterKec);
+                            
+                            return filteredKecs.map((kec, idx) => {
+                              const kecData = rekoWithIssueKecs.get(kec) || [];
+                              // Hitung dari SEMUA Rekomendasi di kecamatan
+                              const allRekoInKec = rows.filter(r => {
+                                const rKec = (r[COL.kec] || "").trim();
+                                const rekoStatus = (r[COL.rekomendasi] || "").trim();
+                                return rKec === kec && rekoStatus === "Rekomendasi";
+                              });
+                              const kecWithIssueCount = allRekoInKec.filter(r => validateResponden(r).length > 0).length;
+                              const kecLengkapCount = allRekoInKec.length - kecWithIssueCount;
+                              
+                              // Cross-section stats
+                              const nonRekoInKec = rows.filter(r => {
+                                const rKec = (r[COL.kec] || "").trim();
+                                const rekoStatus = (r[COL.rekomendasi] || "").trim();
+                                return rKec === kec && rekoStatus === "Non Rekomendasi";
+                              }).length;
+                              const belumInKec = rows.filter(r => {
+                                const rKec = (r[COL.kec] || "").trim();
+                                const rekoStatus = (r[COL.rekomendasi] || "").trim();
+                                return rKec === kec && (rekoStatus === "" || rekoStatus === "-");
+                              }).length;
+                              
+                              return (
+                                <AccordionItem key={idx} value={kec} className="border rounded-lg mb-3 px-4">
+                                  <AccordionTrigger className="hover:no-underline py-3">
+                                    <div className="flex items-center gap-3 w-full text-left flex-wrap">
+                                      <ChevronDown className="h-4 w-4 shrink-0" />
+                                      <span className="font-semibold text-slate-800">{kec}</span>
+                                      <div className="flex gap-1 ml-auto text-xs flex-wrap justify-end">
+                                        <Badge className="bg-red-100 text-red-800 border-red-300">Non Reko: {nonRekoInKec}</Badge>
+                                        <Badge className="bg-slate-100 text-slate-800 border-slate-300">Belum: {belumInKec}</Badge>
+                                        <Badge className="bg-amber-100 text-amber-800 border-amber-300">Issue: {kecWithIssueCount}</Badge>
+                                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Lengkap: {kecLengkapCount}</Badge>
+                                        <Badge variant="secondary">Reko: {allRekoInKec.length}</Badge>
+                                      </div>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="pt-0">
+                                    <div className="space-y-3 mt-3">
+                                      {kecData.map((r, rowIdx) => {
+                                        const validation = validateResponden(r);
+                                        const errors = validation.filter(v => v.severity === "error");
+                                        const warnings = validation.filter(v => v.severity === "warning");
+                                        return (
+                                          <div key={rowIdx} className="border border-slate-200 rounded-lg p-3 bg-amber-50 hover:bg-amber-100 transition-colors">
+                                            <div className="flex items-start justify-between gap-3 mb-2">
+                                              <div className="flex-1">
+                                                <p className="font-semibold text-slate-800">{r[COL.nama] || "N/A"}</p>
+                                                <p className="text-xs text-slate-600 mt-1">Desa: {r[COL.desa] || "-"} • Pendidikan: {r[COL.pendidikan] || "-"}</p>
+                                              </div>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => setDetailRow(r)}
+                                                title="Lihat detail"
+                                              >
+                                                <Eye className="h-4 w-4" />
+                                              </Button>
+                                            </div>
+                                            {errors.length > 0 && (
+                                              <div className="flex flex-wrap gap-2 mt-2">
+                                                {errors.map((err, i) => (
+                                                  <Badge key={i} className="bg-red-100 text-red-700 border border-red-300 flex items-center gap-1">
+                                                    <XCircle className="h-3 w-3" />
+                                                    {err.issue}
+                                                  </Badge>
+                                                ))}
+                                              </div>
+                                            )}
+                                            {warnings.length > 0 && (
+                                              <div className="text-xs text-amber-700 mt-2 p-2 bg-amber-50 rounded border border-amber-200">
+                                                <p className="font-semibold mb-1 flex items-center gap-1">
+                                                  <AlertTriangle className="h-3 w-3" />
+                                                  Catatan ({warnings.length}):
+                                                </p>
+                                                <ul className="space-y-1">
+                                                  {warnings.slice(0).map((w, i) => (
+                                                    <li key={i} className="flex gap-2">
+                                                      <span className="text-amber-600">•</span>
+                                                      <span>{w.issue}</span>
+                                                    </li>
+                                                  ))}
+                                                </ul>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              );
+                            });
+                          })()}
+                        </Accordion>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              );
+            })()}
           </TabsContent>
         </Tabs>
 
