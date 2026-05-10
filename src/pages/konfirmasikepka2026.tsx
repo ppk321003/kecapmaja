@@ -1050,7 +1050,7 @@ export default function KonfirmasiKepka2026() {
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-800">
             Konfirmasi KEPKA 2026
           </h1>
-          <p className="text-slate-600">Dashboard, Detail Responden & Monitoring Mitra</p>
+          <p className="text-slate-600">Dashboard, Detail Mitra & Monitoring Mitra</p>
         </header>
 
         <Tabs defaultValue="dashboard" className="w-full">
@@ -1072,12 +1072,12 @@ export default function KonfirmasiKepka2026() {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Total Responden + Status SOBAT */}
+                  {/* Total Mitra + Status SOBAT */}
                   <Card className="border-l-4 border-l-blue-500 shadow-sm">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between mb-4 pb-2 border-b">
                         <div>
-                          <CardDescription>Total Responden</CardDescription>
+                          <CardDescription>Total Mitra</CardDescription>
                           <CardTitle className="text-3xl flex items-center gap-2"><Users className="h-6 w-6 text-blue-500" />{stats.total.toLocaleString("id-ID")}</CardTitle>
                         </div>
                       </div>
@@ -1336,7 +1336,7 @@ export default function KonfirmasiKepka2026() {
                 {/* Additional Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card>
-                    <CardHeader><CardTitle className="text-lg">Distribusi Umur Responden</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-lg">Distribusi Umur Mitra</CardTitle></CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={stats.umurData.slice(0, 15)}>
@@ -1366,7 +1366,7 @@ export default function KonfirmasiKepka2026() {
                   </Card>
 
                   <Card>
-                    <CardHeader><CardTitle className="text-lg">Pendidikan Terakhir Responden</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-lg">Pendidikan Terakhir Mitra</CardTitle></CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={stats.pendidikanData}>
@@ -1405,8 +1405,8 @@ export default function KonfirmasiKepka2026() {
           <TabsContent value="detail" className="space-y-4 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Detail Konfirmasi Responden</CardTitle>
-                <CardDescription>Cari, filter, dan lihat detail per responden.</CardDescription>
+                <CardTitle className="text-lg">Detail Konfirmasi Mitra</CardTitle>
+                <CardDescription>Cari, filter, dan lihat detail per mitra.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-col md:flex-row gap-3">
@@ -2222,7 +2222,7 @@ export default function KonfirmasiKepka2026() {
                   {/* Cek Rekomendasi SOBAT */}
                   <Card className="border-l-4 border-l-blue-500 shadow-md">
                     <CardHeader className="pb-3">
-                      <CardDescription className="text-xs font-semibold text-blue-800">✅ Jumlah Responden yang Telah di Cek Rekomendasi (SOBAT)</CardDescription>
+                      <CardDescription className="text-xs font-semibold text-blue-800">✅ Jumlah Mitra yang Telah di Cek Rekomendasi (SOBAT)</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
@@ -2243,7 +2243,7 @@ export default function KonfirmasiKepka2026() {
                             </div>
                           </div>
                         ))}
-                        {stats.checkedRecommendationData.length === 0 && <div className="text-xs text-muted-foreground">Belum ada responden dengan rekomendasi</div>}
+                        {stats.checkedRecommendationData.length === 0 && <div className="text-xs text-muted-foreground">Belum ada mitra dengan rekomendasi</div>}
                       </div>
                     </CardContent>
                   </Card>
@@ -2399,8 +2399,8 @@ export default function KonfirmasiKepka2026() {
         <Dialog open={!!validationDetailRow} onOpenChange={(o) => !o && setValidationDetailRow(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Catatan Kecap Maja - {validationDetailRow ? (validationDetailRow[COL.nama] || "Responden") : ""}</DialogTitle>
-              <DialogDescription>Hasil validasi data responden</DialogDescription>
+              <DialogTitle>Catatan Kecap Maja - {validationDetailRow ? (validationDetailRow[COL.nama] || "Mitra") : ""}</DialogTitle>
+              <DialogDescription>Hasil validasi data mitra</DialogDescription>
             </DialogHeader>
             {validationDetailRow && (() => {
               const issues = validateResponden(validationDetailRow);
@@ -2460,7 +2460,7 @@ export default function KonfirmasiKepka2026() {
         <Dialog open={!!detailRow} onOpenChange={(o) => !o && setDetailRow(null)}>
           <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detail Responden</DialogTitle>
+              <DialogTitle>Detail Mitra</DialogTitle>
               <DialogDescription>
                 {detailRow ? (detailRow[COL.nama] || "-") : ""}
               </DialogDescription>
