@@ -1479,7 +1479,9 @@ export default function KonfirmasiKepka2026() {
                             <TableHead className="cursor-pointer" onClick={() => toggleSort("statusSobat")}>
                               <div className="flex items-center gap-1">Status SOBAT <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
-                            <TableHead>Status NIK</TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleSort("desa")}>
+                              <div className="flex items-center gap-1">Desa <ArrowUpDown className="h-3 w-3" /></div>
+                            </TableHead>
                             <TableHead className="text-center">Foto</TableHead>
                             <TableHead className="text-center">KTP/Suket</TableHead>
                             <TableHead className="text-center">Ijazah</TableHead>
@@ -1498,7 +1500,7 @@ export default function KonfirmasiKepka2026() {
                               <TableCell className="font-medium">{r[COL.nama] || "-"}</TableCell>
                               <TableCell>{r[COL.kec] || "-"}</TableCell>
                               <TableCell>{r[COL.statusSobat] || "-"}</TableCell>
-                              <TableCell><StatusBadge status={r[COL.status] || ""} /></TableCell>
+                              <TableCell>{r[COL.desa] || "-"}</TableCell>
                               
                               {/* Foto */}
                               <TableCell className="text-center">
