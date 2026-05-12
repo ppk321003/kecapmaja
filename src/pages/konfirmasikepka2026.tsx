@@ -1927,26 +1927,32 @@ export default function KonfirmasiKepka2026() {
                   // Column groups based on sheet structure
                   // Col B = Kecamatan (Identitas: 1)
                   // Col C-E = PPL, PML, Jumlah (Kebutuhan: 3)
-                  // Col F-J = Status Google Form (5)
+                  // Col F-J = Status Google Form (5) - HIDDEN
                   // Col K-L = Manajemen Mitra (2)
                   // Col M-Q = Rekomendasi Penanggungjawab (5)
-                  // Col R = Progres (1)
-                  // Total = 1 + 3 + 5 + 2 + 5 + 1 = 17
+                  // Col R = Mitra Eligible SE26 (1)
+                  // Col S = Progres (1)
+                  // Total visible = 1 + 3 + 2 + 5 + 1 + 1 = 13
                   
                   const groupOf = (i: number) => {
                     if (i === 0) return "id";           // i=0: Kecamatan
                     if (i <= 3) return "kebutuhan";    // i=1-3: PPL, PML, Jumlah
-                    if (i <= 8) return "status";       // i=4-8: Status Google Form
+                    if (i <= 8) return "status";       // i=4-8: Status Google Form (HIDDEN)
                     if (i <= 10) return "manajemen";   // i=9-10: Manajemen Mitra
                     if (i <= 15) return "rekomendasi"; // i=11-15: Rekomendasi
-                    return "progres";                  // i=16: Progres
+                    if (i === 16) return "mitraEligible"; // i=16: Mitra Eligible SE26
+                    return "progres";                  // i=17: Progres
                   };
+                  
+                  const isColumnHidden = (i: number) => i >= 4 && i <= 8; // Hide Status Google Form columns
+                  
                   const groupBg: Record<string, string> = {
                     id: "bg-slate-100",
                     kebutuhan: "bg-orange-100",
                     status: "bg-blue-100",
                     manajemen: "bg-rose-100",
                     rekomendasi: "bg-emerald-100",
+                    mitraEligible: "bg-indigo-100",
                     progres: "bg-purple-100",
                   };
                   const groupCellBg: Record<string, string> = {
@@ -1955,20 +1961,21 @@ export default function KonfirmasiKepka2026() {
                     status: "bg-blue-50/40",
                     manajemen: "bg-rose-50/40",
                     rekomendasi: "bg-emerald-50/40",
+                    mitraEligible: "bg-indigo-50/40",
                     progres: "bg-purple-50/40",
                   };
                   const groupLabels: Array<{ label: string; span: number; bg: string }> = [
                     { label: "Identitas Wilayah", span: 1, bg: "bg-slate-200 text-slate-700" },
                     { label: "Kebutuhan Sensus Ekonomi 2026", span: 3, bg: "bg-orange-200 text-orange-800" },
-                    { label: "Status Google Form", span: 5, bg: "bg-blue-200 text-blue-800" },
                     { label: "Manajemen Mitra", span: 2, bg: "bg-rose-200 text-rose-800" },
                     { label: "Rekomendasi Penanggungjawab", span: 5, bg: "bg-emerald-200 text-emerald-800" },
+                    { label: "Mitra Eligible SE26", span: 1, bg: "bg-indigo-200 text-indigo-800" },
                     { label: "Progres", span: 1, bg: "bg-purple-200 text-purple-800" },
                   ];
                   
                   const headerRow = kkRows[1] || []; // Ambil header kolom individual dari baris kedua
                   const dataRows = kkRows.slice(2).filter(r => r && r.some(c => (c || "").toString().trim() !== ""));
-                  const cols = 17; // 16 kolom dari sheet (skip A) + 1 Progres
+                  const cols = 18; // 16 kolom dari sheet (skip A) + Mitra Eligible + Progres
                   
                   // Helper function to calculate progress percentage
                   // Progress = (Lengkap + Dobel) / Jumlah Kebutuhan
@@ -1988,6 +1995,27 @@ export default function KonfirmasiKepka2026() {
                     return Math.round(((lengkap + dobel) / jumlah) * 10000) / 100; // Presisi 2 desimal
                   };
                   
+                  // Helper function to calculate Mitra Eligible SE26
+                  // Mitra Eligible = (Mitra KEPKA 2026 + Mitra Tambahan - Dobel) / Jumlah
+                  // Mitra KEPKA 2026 is at r[10] (K column)
+                  // Mitra Tambahan is at r[11] (L column)
+                  // Dobel is at r[7] (H column)
+                  // Jumlah is at r[4] (E column)
+                  const calculateMitraEligible = (r: Row): number => {
+                    const mitraKepkaStr = (r[10] || "").toString().trim();
+                    const mitraTambahanStr = (r[11] || "").toString().trim();
+                    const dobelStr = (r[7] || "").toString().trim();
+                    const jumlahStr = (r[4] || "").toString().trim();
+                    
+                    const mitraKepka = parseInt(mitraKepkaStr) || 0;
+                    const mitraTambahan = parseInt(mitraTambahanStr) || 0;
+                    const dobel = parseInt(dobelStr) || 0;
+                    const jumlah = parseInt(jumlahStr) || 0;
+                    
+                    if (jumlah === 0) return 0;
+                    return Math.round((((mitraKepka + mitraTambahan - dobel) / jumlah) * 10000)) / 100; // Presisi 2 desimal
+                  };
+                  
                   // Helper to format progress display
                   const formatProgress = (percent: number): string => {
                     if (percent % 1 === 0) {
@@ -2002,8 +2030,7 @@ export default function KonfirmasiKepka2026() {
                   const getProgressColor = (percent: number): string => {
                     if (percent < 25) return "bg-red-500";
                     if (percent < 50) return "bg-orange-500";
-                    if (percent < 75) return "bg-blue-500";
-                    if (percent < 100) return "bg-teal-500";
+                    if (percent < 100) return "bg-blue-500";
                     return "bg-emerald-500";
                   };
                   
@@ -2021,10 +2048,19 @@ export default function KonfirmasiKepka2026() {
                             </TableRow>
                             <TableRow>
                               {Array.from({ length: cols }).map((_, i) => {
+                                if (isColumnHidden(i)) return null;
                                 const sheetColIdx = i + 1; // Skip kolom 0 (Kondisi)
+                                let headerText = "";
+                                if (i === 16) {
+                                  headerText = "Mitra Eligible SE26";
+                                } else if (i === cols - 1) {
+                                  headerText = "Progres";
+                                } else if (sheetColIdx < headerRow.length) {
+                                  headerText = headerRow[sheetColIdx];
+                                }
                                 return (
                                   <TableHead key={i} className={`text-center text-xs font-semibold border ${groupBg[groupOf(i)]}`}>
-                                    {sheetColIdx < headerRow.length ? headerRow[sheetColIdx] : (i === cols - 1 ? "Progres" : "")}
+                                    {headerText}
                                   </TableHead>
                                 );
                               })}
@@ -2037,6 +2073,24 @@ export default function KonfirmasiKepka2026() {
                               return (
                                 <TableRow key={ri} className={isTotal ? "bg-yellow-50 font-bold" : "hover:bg-slate-50"}>
                                   {Array.from({ length: cols }).map((_, ci) => {
+                                    if (isColumnHidden(ci)) return null;
+                                    if (ci === 16) {
+                                      // Mitra Eligible SE26 cell with progress bar
+                                      const mitraEligible = calculateMitraEligible(r);
+                                      return (
+                                        <TableCell key={ci} className={`text-xs border ${groupCellBg[groupOf(ci)]} text-center`}>
+                                          <div className="flex flex-col items-center gap-1">
+                                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                              <div 
+                                                className={`h-full transition-all ${getProgressColor(mitraEligible)}`}
+                                                style={{width: `${mitraEligible}%`}}
+                                              ></div>
+                                            </div>
+                                            <span className="text-xs font-semibold text-gray-700">{formatProgress(mitraEligible)}</span>
+                                          </div>
+                                        </TableCell>
+                                      );
+                                    }
                                     if (ci === cols - 1) {
                                       // Progress bar cell
                                       return (
