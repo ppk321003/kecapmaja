@@ -142,6 +142,21 @@ const isNotAnswer = (val: string): boolean => {
   return v === "tidak" || v === "no" || v === "n";
 };
 
+// Helper function untuk menentukan warna berdasarkan persentase
+const getPercentageColor = (percentage: number | string): string => {
+  const pct = typeof percentage === 'string' ? parseFloat(percentage) : percentage;
+  
+  if (pct === 100) {
+    return "#10b981"; // Hijau - 100%
+  } else if (pct >= 75) {
+    return "#06b6d4"; // Biru Muda - 75-99.9%
+  } else if (pct >= 50) {
+    return "#f59e0b"; // Kuning - 50-74.9%
+  } else {
+    return "#ef4444"; // Merah - < 50%
+  }
+};
+
 const validateResponden = (row: Row): Array<{ issue: string; severity: "error" | "warning" }> => {
   const issues: Array<{ issue: string; severity: "error" | "warning" }> = [];
 
@@ -1155,12 +1170,33 @@ export default function KonfirmasiKepka2026() {
                         />
                         <Bar 
                           dataKey="value" 
-                          fill="#6366f1" 
                           name="Persentase Rekomendasi"
                           radius={[8, 8, 0, 0]}
-                        />
+                        >
+                          {stats.rekomendasiPerKecData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={getPercentageColor(entry.value)} />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                    <div className="flex gap-4 justify-center mt-4 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: '#10b981' }}></div>
+                        <span className="text-xs font-medium">100%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: '#06b6d4' }}></div>
+                        <span className="text-xs font-medium">75% - 99%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: '#f59e0b' }}></div>
+                        <span className="text-xs font-medium">50% - 74%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ef4444' }}></div>
+                        <span className="text-xs font-medium">&lt; 50%</span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1316,16 +1352,16 @@ export default function KonfirmasiKepka2026() {
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardHeader><CardTitle className="text-lg">Top 10 Kecamatan Domisili</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-lg">Top 5 Kecamatan Domisili</CardTitle></CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={stats.perKec.slice(0, 10)} layout="vertical" margin={{ left: 30 }}>
+                        <BarChart data={stats.perKec.slice(0, 5)} layout="vertical" margin={{ left: 30 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis type="number" />
                           <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
                           <Tooltip />
                           <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]}>
-                            {stats.perKec.slice(0, 10).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                            {stats.perKec.slice(0, 5).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
@@ -1936,18 +1972,21 @@ export default function KonfirmasiKepka2026() {
                   const cols = 17; // 16 kolom dari sheet (skip A) + 1 Progres
                   
                   // Helper function to calculate progress percentage
-                  // Progress = Lengkap / Jumlah
+                  // Progress = (Lengkap + Dobel) / Jumlah Kebutuhan
                   // Jumlah is at r[4] (E column)
                   // Lengkap is at r[16] (Q column)
+                  // Dobel is at r[7] (H column)
                   const calculateProgress = (r: Row): number => {
                     const jumlahStr = (r[4] || "").toString().trim();
                     const lengkapStr = (r[16] || "").toString().trim();
+                    const dobelStr = (r[7] || "").toString().trim();
                     
                     const jumlah = parseInt(jumlahStr) || 0;
                     const lengkap = parseInt(lengkapStr) || 0;
+                    const dobel = parseInt(dobelStr) || 0;
                     
                     if (jumlah === 0) return 0;
-                    return Math.round((lengkap / jumlah) * 10000) / 100; // Presisi 2 desimal
+                    return Math.round(((lengkap + dobel) / jumlah) * 10000) / 100; // Presisi 2 desimal
                   };
                   
                   // Helper to format progress display

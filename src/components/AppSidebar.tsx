@@ -68,6 +68,10 @@ const pengadaanItems = [
 const kepegawaianItems = [
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
   { title: "Padamel | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
+];
+
+// MENU GROUP: REKRUTMEN
+const rekrutmenItems = [
   { title: "Konfirmasi KEPKA 2026", url: "/konfirmasi-kepka-2026", icon: FileCheck, conditional: "isSatker3210" },
 ];
 
@@ -117,6 +121,7 @@ export function AppSidebar() {
     keuangan: false,
     pengadaan: false,
     kepegawaian: false,
+    rekrutmen: false,
     dokumen: false,
     adminUtilitas: false,
   });
@@ -619,6 +624,58 @@ export function AppSidebar() {
                   <SidebarGroupContent className="mt-1">
                     <SidebarMenu className="space-y-0.5 pl-2">
                       {getVisibleItems(kepegawaianItems).map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild>
+                            <NavLink
+                              to={item.url}
+                              end
+                              className={({ isActive }) =>
+                                isActive
+                                  ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200"
+                                  : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"
+                              }
+                            >
+                              {open && <span>{item.title}</span>}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                )}
+              </SidebarGroup>
+            )}
+
+            {/* MENU GROUP: REKRUTMEN */}
+            {getVisibleItems(rekrutmenItems).length > 0 && (
+              <SidebarGroup className="px-3 py-1">
+                <SidebarGroupContent className="mt-0">
+                  <SidebarMenu className="space-y-1">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <button
+                          onClick={() => toggleGroup("rekrutmen")}
+                          className={"flex items-center justify-between w-full transition-all duration-200 " + (true ? "text-white font-semibold" : "text-white/90 hover:text-white")}
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileCheck className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                            {open && <span className="font-medium">Rekrutmen</span>}
+                          </div>
+                          <ChevronDown
+                            className="h-4 w-4 transition-transform duration-300"
+                            style={{
+                              transform: expandedGroups.rekrutmen ? "rotate(180deg)" : "rotate(0deg)",
+                            }}
+                          />
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+                {expandedGroups.rekrutmen && (
+                  <SidebarGroupContent className="mt-1">
+                    <SidebarMenu className="space-y-0.5 pl-2">
+                      {getVisibleItems(rekrutmenItems).map((item) => (
                         <SidebarMenuItem key={item.title}>
                           <SidebarMenuButton asChild>
                             <NavLink
