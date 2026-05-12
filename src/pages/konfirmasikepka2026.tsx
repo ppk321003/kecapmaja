@@ -2254,6 +2254,16 @@ export default function KonfirmasiKepka2026() {
                             </div>
                           </div>
                         ))}
+                        {stats.checkedRecommendationData.length > 0 && (
+                          <>
+                            <div className="border-t pt-3 mt-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-slate-700">TOTAL</span>
+                                <span className="text-lg font-bold text-slate-900">{stats.checkedRecommendationData.reduce((sum, d) => sum + d.value, 0)}</span>
+                              </div>
+                            </div>
+                          </>
+                        )}
                         {stats.checkedRecommendationData.length === 0 && <div className="text-xs text-muted-foreground">Belum ada mitra dengan rekomendasi</div>}
                       </div>
                     </CardContent>
