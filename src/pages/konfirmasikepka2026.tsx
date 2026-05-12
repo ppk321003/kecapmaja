@@ -365,6 +365,14 @@ export default function KonfirmasiKepka2026() {
   const [kkRows, setKkRows] = useState<Row[]>([]);
   const [kkLoading, setKkLoading] = useState(true);
   const [kkError, setKkError] = useState<string | null>(null);
+  const [kkExpandedGroups, setKkExpandedGroups] = useState<Record<string, boolean>>({
+    kebutuhan: true,
+    status: true,
+    manajemen: true,
+    rekomendasi: true,
+    mitraEligible: true,
+    progres: true,
+  });
 
   // Responden filters & pagination
   const [search, setSearch] = useState("");
@@ -1914,7 +1922,7 @@ export default function KonfirmasiKepka2026() {
                   <Users className="h-5 w-5 text-indigo-600" />
                   Monitoring Kecamatan
                 </CardTitle>
-                <CardDescription>Rekap kebutuhan, status Google Form, manajemen mitra & rekomendasi penanggung jawab per kecamatan.</CardDescription>
+                <CardDescription>Rekap kebutuhan, status Google Form, manajemen mitra & rekomendasi penanggung jawab per kecamatan. <span className="font-medium text-indigo-700">💡 Klik header kolom untuk expand/collapse atau gunakan tombol "Buka Semua" / "Tutup Semua"</span></CardDescription>
               </CardHeader>
               <CardContent>
                 {kkLoading ? (
@@ -1924,6 +1932,15 @@ export default function KonfirmasiKepka2026() {
                 ) : kkRows.length === 0 ? (
                   <div className="py-10 text-center text-muted-foreground">Tidak ada data</div>
                 ) : (() => {
+                  // Use component-level expanded groups state
+                  const expandedGroups = kkExpandedGroups;
+                  const toggleGroupExpand = (group: string) => {
+                    setKkExpandedGroups(prev => ({
+                      ...prev,
+                      [group]: !prev[group]
+                    }));
+                  };
+                  
                   // Column groups based on sheet structure
                   // Col B = Kecamatan (Identitas: 1)
                   // Col C-E = PPL, PML, Jumlah (Kebutuhan: 3)
@@ -1937,14 +1954,23 @@ export default function KonfirmasiKepka2026() {
                   const groupOf = (i: number) => {
                     if (i === 0) return "id";           // i=0: Kecamatan
                     if (i <= 3) return "kebutuhan";    // i=1-3: PPL, PML, Jumlah
-                    if (i <= 8) return "status";       // i=4-8: Status Google Form (HIDDEN)
+                    if (i <= 8) return "status";       // i=4-8: Status Google Form (F-J)
                     if (i <= 10) return "manajemen";   // i=9-10: Manajemen Mitra
                     if (i <= 15) return "rekomendasi"; // i=11-15: Rekomendasi
                     if (i === 16) return "mitraEligible"; // i=16: Mitra Eligible SE26
                     return "progres";                  // i=17: Progres
                   };
                   
-                  const isColumnHidden = (i: number) => i >= 4 && i <= 8; // Hide Status Google Form columns
+                  const isColumnHidden = (i: number) => {
+                    // Hide columns based on group expand state
+                    if (i >= 1 && i <= 3 && !expandedGroups["kebutuhan"]) return true; // Kebutuhan columns
+                    if (i >= 4 && i <= 8 && !expandedGroups["status"]) return true; // Status Google Form columns
+                    if (i >= 9 && i <= 10 && !expandedGroups["manajemen"]) return true; // Manajemen columns
+                    if (i >= 11 && i <= 15 && !expandedGroups["rekomendasi"]) return true; // Rekomendasi columns
+                    if (i === 16 && !expandedGroups["mitraEligible"]) return true; // Mitra Eligible column
+                    if (i === 17 && !expandedGroups["progres"]) return true; // Progres column
+                    return false;
+                  };
                   
                   const groupBg: Record<string, string> = {
                     id: "bg-slate-100",
@@ -1964,13 +1990,14 @@ export default function KonfirmasiKepka2026() {
                     mitraEligible: "bg-indigo-50/40",
                     progres: "bg-purple-50/40",
                   };
-                  const groupLabels: Array<{ label: string; span: number; bg: string }> = [
+                  const groupLabels: Array<{ label: string; span: number; bg: string; group?: string }> = [
                     { label: "Identitas Wilayah", span: 1, bg: "bg-slate-200 text-slate-700" },
-                    { label: "Kebutuhan Sensus Ekonomi 2026", span: 3, bg: "bg-orange-200 text-orange-800" },
-                    { label: "Manajemen Mitra", span: 2, bg: "bg-rose-200 text-rose-800" },
-                    { label: "Rekomendasi Penanggungjawab", span: 5, bg: "bg-emerald-200 text-emerald-800" },
-                    { label: "Mitra Eligible SE26", span: 1, bg: "bg-indigo-200 text-indigo-800" },
-                    { label: "Progres", span: 1, bg: "bg-purple-200 text-purple-800" },
+                    { label: "Kebutuhan Sensus Ekonomi 2026", span: expandedGroups["kebutuhan"] ? 3 : 0, bg: "bg-orange-200 text-orange-800", group: "kebutuhan" },
+                    { label: "Status Google Form", span: expandedGroups["status"] ? 5 : 0, bg: "bg-blue-200 text-blue-800", group: "status" },
+                    { label: "Manajemen Mitra", span: expandedGroups["manajemen"] ? 2 : 0, bg: "bg-rose-200 text-rose-800", group: "manajemen" },
+                    { label: "Rekomendasi Penanggungjawab", span: expandedGroups["rekomendasi"] ? 5 : 0, bg: "bg-emerald-200 text-emerald-800", group: "rekomendasi" },
+                    { label: "Mitra Eligible SE26 - Dobel", span: expandedGroups["mitraEligible"] ? 1 : 0, bg: "bg-indigo-200 text-indigo-800", group: "mitraEligible" },
+                    { label: "Progres", span: expandedGroups["progres"] ? 1 : 0, bg: "bg-purple-200 text-purple-800", group: "progres" },
                   ];
                   
                   const headerRow = kkRows[1] || []; // Ambil header kolom individual dari baris kedua
@@ -1995,7 +2022,7 @@ export default function KonfirmasiKepka2026() {
                     return Math.round(((lengkap + dobel) / jumlah) * 10000) / 100; // Presisi 2 desimal
                   };
                   
-                  // Helper function to calculate Mitra Eligible SE26
+                  // Helper function to calculate Mitra Eligible SE26 - Dobel
                   // Mitra Eligible = (Mitra KEPKA 2026 + Mitra Tambahan - Dobel) / Jumlah
                   // Mitra KEPKA 2026 is at r[10] (K column)
                   // Mitra Tambahan is at r[11] (L column)
@@ -2036,15 +2063,56 @@ export default function KonfirmasiKepka2026() {
                   
                   return (
                     <div className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b">
+                        <span className="text-sm font-medium text-slate-600">Kolom:</span>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setKkExpandedGroups({
+                            kebutuhan: true,
+                            status: true,
+                            manajemen: true,
+                            rekomendasi: true,
+                            mitraEligible: true,
+                            progres: true,
+                          })}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                        >
+                          ▼ Buka Semua
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setKkExpandedGroups({
+                            kebutuhan: false,
+                            status: false,
+                            manajemen: false,
+                            rekomendasi: false,
+                            mitraEligible: false,
+                            progres: false,
+                          })}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                        >
+                          ▶ Tutup Semua
+                        </Button>
+                      </div>
                       <div className="rounded-md border overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              {groupLabels.map((g, gi) => (
-                                <TableHead key={gi} colSpan={g.span} className={`text-center font-bold border ${g.bg}`}>
-                                  {g.label}
-                                </TableHead>
-                              ))}
+                              {groupLabels.map((g, gi) => {
+                                if (g.span === 0) return null; // Skip if no columns visible
+                                return (
+                                  <TableHead key={gi} colSpan={g.span} className={`text-center font-bold border ${g.bg} cursor-pointer select-none transition-all hover:shadow-md hover:opacity-90`} onClick={() => g.group && toggleGroupExpand(g.group)} title={g.group ? `Klik untuk ${expandedGroups[g.group] ? 'tutup' : 'buka'} kolom ini` : ""}>
+                                    <div className="flex items-center justify-center gap-2 py-1 px-2">
+                                      <span>{g.label}</span>
+                                      {g.group && (
+                                        <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-transform duration-200 ${expandedGroups[g.group] ? "rotate-0" : "-rotate-90"}`} />
+                                      )}
+                                    </div>
+                                  </TableHead>
+                                );
+                              })}
                             </TableRow>
                             <TableRow>
                               {Array.from({ length: cols }).map((_, i) => {
@@ -2052,7 +2120,7 @@ export default function KonfirmasiKepka2026() {
                                 const sheetColIdx = i + 1; // Skip kolom 0 (Kondisi)
                                 let headerText = "";
                                 if (i === 16) {
-                                  headerText = "Mitra Eligible SE26";
+                                  headerText = "Mitra Eligible SE26 - Dobel";
                                 } else if (i === cols - 1) {
                                   headerText = "Progres";
                                 } else if (sheetColIdx < headerRow.length) {
@@ -2075,7 +2143,7 @@ export default function KonfirmasiKepka2026() {
                                   {Array.from({ length: cols }).map((_, ci) => {
                                     if (isColumnHidden(ci)) return null;
                                     if (ci === 16) {
-                                      // Mitra Eligible SE26 cell with progress bar
+                                      // Mitra Eligible SE26 - Dobel cell with progress bar
                                       const mitraEligible = calculateMitraEligible(r);
                                       return (
                                         <TableCell key={ci} className={`text-xs border ${groupCellBg[groupOf(ci)]} text-center`}>
