@@ -1859,9 +1859,8 @@ export default function KonfirmasiKepka2026() {
                         <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mitriPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
-                        const rowBg = isVerifikasiNik(st) ? "bg-emerald-50" : isNikCocok(st) ? "bg-amber-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
                             return (
-                              <TableRow key={i} className={rowBg}>
+                              <TableRow key={i}>
                                 <TableCell className="text-muted-foreground">{(mitriCurrentPage - 1) * mitriPageSize + i + 1}</TableCell>
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
@@ -2171,9 +2170,8 @@ export default function KonfirmasiKepka2026() {
                         <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mtPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
-                        const rowBg = isVerifikasiNik(st) ? "bg-emerald-50" : isNikCocok(st) ? "bg-amber-50/30" : isNikTidakCocok(st) ? "bg-red-50/30" : st.trim() !== "" ? "bg-amber-50/20" : "";
                             return (
-                              <TableRow key={i} className={rowBg}>
+                              <TableRow key={i}>
                                 <TableCell className="text-muted-foreground">{(mtCurrentPage - 1) * mtPageSize + i + 1}</TableCell>
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
