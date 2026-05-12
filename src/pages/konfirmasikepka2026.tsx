@@ -569,8 +569,8 @@ export default function KonfirmasiKepka2026() {
     const categorizeUmur = (umurStr: string): string => {
       const umurNum = parseInt(umurStr);
       if (isNaN(umurNum)) return "Tidak ada data";
-      if (umurNum < 20) return "<20";
-      if (umurNum <= 30) return "21-30";
+      if (umurNum < 18) return "<18";
+      if (umurNum <= 30) return "18-30";
       if (umurNum <= 40) return "31-40";
       if (umurNum <= 50) return "41-50";
       return ">50";
@@ -582,7 +582,7 @@ export default function KonfirmasiKepka2026() {
       umurRangeMap.set(range, (umurRangeMap.get(range) || 0) + count);
     });
     
-    const umurRangeOrder = ["<20", "21-30", "31-40", "41-50", ">50"];
+    const umurRangeOrder = ["<18", "18-30", "31-40", "41-50", ">50"];
     const umurData = umurRangeOrder
       .filter(range => umurRangeMap.has(range))
       .map(range => ({ name: range, value: umurRangeMap.get(range) || 0 }));
