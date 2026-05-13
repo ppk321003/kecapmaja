@@ -1944,31 +1944,32 @@ export default function KonfirmasiKepka2026() {
                   // Column groups based on sheet structure
                   // Col B = Kecamatan (Identitas: 1)
                   // Col C-E = PPL, PML, Jumlah (Kebutuhan: 3)
+                  // Col F = Cadangan (Kebutuhan: 1) - CALCULATED
                   // Col F-J = Status Google Form (5) - HIDDEN
                   // Col K-L = Manajemen Mitra (2)
                   // Col M-Q = Rekomendasi Penanggungjawab (5)
                   // Col R = Mitra Eligible SE26 (1)
                   // Col S = Progres (1)
-                  // Total visible = 1 + 3 + 2 + 5 + 1 + 1 = 13
+                  // Total visible = 1 + 4 + 2 + 5 + 1 + 1 = 14
                   
                   const groupOf = (i: number) => {
                     if (i === 0) return "id";           // i=0: Kecamatan
-                    if (i <= 3) return "kebutuhan";    // i=1-3: PPL, PML, Jumlah
-                    if (i <= 8) return "status";       // i=4-8: Status Google Form (F-J)
-                    if (i <= 10) return "manajemen";   // i=9-10: Manajemen Mitra
-                    if (i <= 15) return "rekomendasi"; // i=11-15: Rekomendasi
-                    if (i === 16) return "mitraEligible"; // i=16: Mitra Eligible SE26
-                    return "progres";                  // i=17: Progres
+                    if (i <= 4) return "kebutuhan";    // i=1-4: PPL, PML, Jumlah, Cadangan
+                    if (i <= 9) return "status";       // i=5-9: Status Google Form (F-J)
+                    if (i <= 11) return "manajemen";   // i=10-11: Manajemen Mitra
+                    if (i <= 16) return "rekomendasi"; // i=12-16: Rekomendasi
+                    if (i === 17) return "mitraEligible"; // i=17: Mitra Eligible SE26
+                    return "progres";                  // i=18: Progres
                   };
                   
                   const isColumnHidden = (i: number) => {
                     // Hide columns based on group expand state
-                    if (i >= 1 && i <= 3 && !expandedGroups["kebutuhan"]) return true; // Kebutuhan columns
-                    if (i >= 4 && i <= 8 && !expandedGroups["status"]) return true; // Status Google Form columns
-                    if (i >= 9 && i <= 10 && !expandedGroups["manajemen"]) return true; // Manajemen columns
-                    if (i >= 11 && i <= 15 && !expandedGroups["rekomendasi"]) return true; // Rekomendasi columns
-                    if (i === 16 && !expandedGroups["mitraEligible"]) return true; // Mitra Eligible column
-                    if (i === 17 && !expandedGroups["progres"]) return true; // Progres column
+                    if (i >= 1 && i <= 4 && !expandedGroups["kebutuhan"]) return true; // Kebutuhan columns (including Cadangan)
+                    if (i >= 5 && i <= 9 && !expandedGroups["status"]) return true; // Status Google Form columns
+                    if (i >= 10 && i <= 11 && !expandedGroups["manajemen"]) return true; // Manajemen columns
+                    if (i >= 12 && i <= 16 && !expandedGroups["rekomendasi"]) return true; // Rekomendasi columns
+                    if (i === 17 && !expandedGroups["mitraEligible"]) return true; // Mitra Eligible column
+                    if (i === 18 && !expandedGroups["progres"]) return true; // Progres column
                     return false;
                   };
                   
@@ -1992,7 +1993,7 @@ export default function KonfirmasiKepka2026() {
                   };
                   const groupLabels: Array<{ label: string; span: number; bg: string; group?: string }> = [
                     { label: "Identitas Wilayah", span: 1, bg: "bg-slate-200 text-slate-700" },
-                    { label: "Kebutuhan Sensus Ekonomi 2026", span: expandedGroups["kebutuhan"] ? 3 : 0, bg: "bg-orange-200 text-orange-800", group: "kebutuhan" },
+                    { label: "Kebutuhan Sensus Ekonomi 2026", span: expandedGroups["kebutuhan"] ? 4 : 0, bg: "bg-orange-200 text-orange-800", group: "kebutuhan" },
                     { label: "Status Google Form", span: expandedGroups["status"] ? 5 : 0, bg: "bg-blue-200 text-blue-800", group: "status" },
                     { label: "Manajemen Mitra", span: expandedGroups["manajemen"] ? 2 : 0, bg: "bg-rose-200 text-rose-800", group: "manajemen" },
                     { label: "Rekomendasi Penanggungjawab", span: expandedGroups["rekomendasi"] ? 5 : 0, bg: "bg-emerald-200 text-emerald-800", group: "rekomendasi" },
@@ -2002,7 +2003,7 @@ export default function KonfirmasiKepka2026() {
                   
                   const headerRow = kkRows[1] || []; // Ambil header kolom individual dari baris kedua
                   const dataRows = kkRows.slice(2).filter(r => r && r.some(c => (c || "").toString().trim() !== ""));
-                  const cols = 18; // 16 kolom dari sheet (skip A) + Mitra Eligible + Progres
+                  const cols = 19; // 16 kolom dari sheet (skip A) + Cadangan + Mitra Eligible + Progres
                   
                   // Helper function to calculate progress percentage
                   // Progress = (Lengkap + Dobel) / Jumlah Kebutuhan
@@ -2119,7 +2120,9 @@ export default function KonfirmasiKepka2026() {
                                 if (isColumnHidden(i)) return null;
                                 const sheetColIdx = i + 1; // Skip kolom 0 (Kondisi)
                                 let headerText = "";
-                                if (i === 16) {
+                                if (i === 4) {
+                                  headerText = "Cadangan";
+                                } else if (i === 17) {
                                   headerText = "Mitra Eligible SE26 - Dobel";
                                 } else if (i === cols - 1) {
                                   headerText = "Progres";
@@ -2142,7 +2145,18 @@ export default function KonfirmasiKepka2026() {
                                 <TableRow key={ri} className={isTotal ? "bg-yellow-50 font-bold" : "hover:bg-slate-50"}>
                                   {Array.from({ length: cols }).map((_, ci) => {
                                     if (isColumnHidden(ci)) return null;
-                                    if (ci === 16) {
+                                    if (ci === 4) {
+                                      // Cadangan cell - Jumlah + 10% * Jumlah
+                                      const jumlahStr = (r[4] || "").toString().trim();
+                                      const jumlah = parseInt(jumlahStr) || 0;
+                                      const cadangan = Math.round(jumlah * 1.1);
+                                      return (
+                                        <TableCell key={ci} className={`text-xs border ${groupCellBg[groupOf(ci)]} text-center font-mono font-bold text-indigo-700`}>
+                                          {cadangan || ""}
+                                        </TableCell>
+                                      );
+                                    }
+                                    if (ci === 17) {
                                       // Mitra Eligible SE26 - Dobel cell with progress bar
                                       const mitraEligible = calculateMitraEligible(r);
                                       return (
@@ -2176,7 +2190,11 @@ export default function KonfirmasiKepka2026() {
                                       );
                                     }
                                     const sheetColIdx = ci + 1; // Skip kolom 0
-                                    const v = r[sheetColIdx] ?? "";
+                                    let v = r[sheetColIdx] ?? "";
+                                    // For columns after cadangan, adjust the sheet index to skip the cadangan calculation
+                                    if (ci > 4) {
+                                      v = r[sheetColIdx - 1] ?? "";
+                                    }
                                     const isText = ci === 0 || ci === 1;
                                     return (
                                       <TableCell key={ci} className={`text-xs border ${groupCellBg[groupOf(ci)]} ${isText ? "" : "text-center font-mono"}`}>
