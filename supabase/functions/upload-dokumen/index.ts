@@ -263,7 +263,9 @@ async function appendMetadataToSheet(
   fileId: string,
   fileName: string,
   jenisDokumen: string,
-  uploadedBy: string
+  uploadedBy: string,
+  targetFolderId: string,
+  keterangan?: string
 ): Promise<void> {
   console.log(`[Metadata] Saving to Google Sheets: ${fileName}`);
 
@@ -278,11 +280,13 @@ async function appendMetadataToSheet(
       uploadedBy || "", // D: User yang upload
       jenisDokumen,     // E: Jenis dokumen
       fileLink,         // F: Link
+      targetFolderId,   // G: Folder tujuan
+      keterangan || "", // H: Keterangan
     ],
   ];
 
   const appendResponse = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${METADATA_SPREADSHEET_ID}/values/${METADATA_SHEET_NAME}!A:F:append?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${METADATA_SPREADSHEET_ID}/values/${METADATA_SHEET_NAME}!A:H:append?valueInputOption=USER_ENTERED`,
     {
       method: "POST",
       headers: {
