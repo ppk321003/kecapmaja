@@ -344,11 +344,12 @@ serve(async (req) => {
       (!fileData && !fileDataBase64) ||
       !tahun ||
       !jenisDokumen ||
-      !namaOrganik ||
-      !folderDriveId
+      !namaOrganik
     ) {
       throw new Error("Missing required fields");
     }
+
+    const rootFolderId = TARGET_DRIVE_FOLDER_ID;
 
     // Get Google access token
     const accessToken = await getGoogleAccessToken();
@@ -372,7 +373,7 @@ serve(async (req) => {
     const tahunFolderId = await findOrCreateFolder(
       accessToken,
       tahun,
-      folderDriveId
+      rootFolderId
     );
     await delay(200); // Rate limiting
 
@@ -409,7 +410,9 @@ serve(async (req) => {
       fileId,
       fileName,
       jenisDokumen,
-      uploadedBy || "Unknown"
+      uploadedBy || "Unknown",
+      jenisFolderId,
+      keterangan
     );
     await delay(200); // Rate limiting
 
