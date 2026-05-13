@@ -177,10 +177,23 @@ export function UnggahDokumenDialog() {
       const fileExtension = formData.file.name.split(".").pop();
       const finalFileName = `${generatedFileName}.${fileExtension}`;
 
+      // Convert file to base64 (JSON-safe transport)
+      const arrayBuffer = await formData.file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(
+          null,
+          Array.from(bytes.subarray(i, i + chunkSize))
+        );
+      }
+      const fileBase64 = btoa(binary);
+
       const { data, error } = await supabase.functions.invoke("upload-dokumen", {
         body: {
           fileName: finalFileName,
-          fileData: await formData.file.arrayBuffer(),
+          fileDataBase64: fileBase64,
           mimeType: formData.file.type,
           tahun: formData.tahun,
           jenisDokumen: formData.jenisDokumen,
