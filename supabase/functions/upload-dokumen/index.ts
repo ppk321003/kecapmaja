@@ -8,7 +8,8 @@ const corsHeaders = {
 
 interface UploadRequest {
   fileName: string;
-  fileData: ArrayBuffer;
+  fileData?: ArrayBuffer | number[];
+  fileDataBase64?: string;
   mimeType: string;
   tahun: string;
   jenisDokumen: string;
@@ -256,6 +257,7 @@ serve(async (req) => {
     const {
       fileName,
       fileData,
+      fileDataBase64,
       mimeType,
       tahun,
       jenisDokumen,
@@ -273,7 +275,7 @@ serve(async (req) => {
     // Validasi input
     if (
       !fileName ||
-      !fileData ||
+      (!fileData && !fileDataBase64) ||
       !tahun ||
       !jenisDokumen ||
       !namaOrganik ||
@@ -286,8 +288,19 @@ serve(async (req) => {
     const accessToken = await getGoogleAccessToken();
     console.log("[Google Drive] Access token acquired");
 
-    // Convert ArrayBuffer to Uint8Array
-    const fileDataArray = new Uint8Array(fileData);
+    // Convert input ke Uint8Array (support base64 atau array)
+    let fileDataArray: Uint8Array;
+    if (fileDataBase64) {
+      const binary = atob(fileDataBase64);
+      fileDataArray = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        fileDataArray[i] = binary.charCodeAt(i);
+      }
+    } else if (Array.isArray(fileData)) {
+      fileDataArray = new Uint8Array(fileData);
+    } else {
+      fileDataArray = new Uint8Array(fileData as ArrayBuffer);
+    }
 
     // Step 1: Create/Find Tahun folder
     const tahunFolderId = await findOrCreateFolder(
