@@ -1,6 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -22,6 +20,11 @@ interface UploadRequest {
 // Metadata database Google Sheets
 const METADATA_SPREADSHEET_ID = "1rq35tks1OEzyEYdMpc_mGCsS5kwIFGKSzb6j0HqTrz8";
 const METADATA_SHEET_NAME = "Sheet1"; // Default sheet name
+const TARGET_DRIVE_FOLDER_ID = "1CpAkfoxliks8Xi2CMmYbELSV3mDpKvLJ";
+const GOOGLE_API_SCOPES = [
+  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/spreadsheets",
+].join(" ");
 
 // Utility untuk delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -38,18 +41,78 @@ function formatTimestampIndonesia(date: Date): string {
   return `${dd}/${MM}/${yyyy} ${HH}:${mm}:${ss}`;
 }
 
-// Fungsi untuk get Google Drive credentials dari environment variable
-function getGoogleCredentials() {
-  const credentialsJson = Deno.env.get("GOOGLE_APPLICATION_CREDENTIALS_JSON");
-  if (!credentialsJson) {
-    throw new Error("GOOGLE_APPLICATION_CREDENTIALS_JSON not configured");
-  }
-  return JSON.parse(credentialsJson);
+function base64Url(input: string | Uint8Array): string {
+  const binary = typeof input === "string" ? input : String.fromCharCode(...input);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-// Fungsi untuk get access token dari Google
+function getGoogleCredentials(): { privateKey: string; serviceAccountEmail: string } {
+  const privateKeyEnv = Deno.env.get("GOOGLE_PRIVATE_KEY") || "";
+  const serviceAccountEmailEnv = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_EMAIL") || "";
+
+  try {
+    if (privateKeyEnv.includes('"type"')) {
+      const serviceAccount = JSON.parse(privateKeyEnv);
+      return {
+        privateKey: serviceAccount.private_key.replace(/\\n/g, "\n"),
+        serviceAccountEmail: serviceAccount.client_email,
+      };
+    }
+
+    if (serviceAccountEmailEnv.includes('"type"')) {
+      const serviceAccount = JSON.parse(serviceAccountEmailEnv);
+      return {
+        privateKey: serviceAccount.private_key.replace(/\\n/g, "\n"),
+        serviceAccountEmail: serviceAccount.client_email,
+      };
+    }
+  } catch (error) {
+    console.error("[Google Auth] Failed to parse service account JSON:", error);
+  }
+
+  return {
+    privateKey: privateKeyEnv.replace(/\\n/g, "\n"),
+    serviceAccountEmail: serviceAccountEmailEnv,
+  };
+}
+
 async function getGoogleAccessToken(): Promise<string> {
-  const credentials = getGoogleCredentials();
+  const { privateKey, serviceAccountEmail } = getGoogleCredentials();
+  if (!privateKey || !serviceAccountEmail) {
+    throw new Error("Missing Google service account credentials");
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const encodedHeader = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const encodedPayload = base64Url(
+    JSON.stringify({
+      iss: serviceAccountEmail,
+      scope: GOOGLE_API_SCOPES,
+      aud: "https://oauth2.googleapis.com/token",
+      exp: now + 3600,
+      iat: now,
+    })
+  );
+
+  const pemContents = privateKey
+    .replace("-----BEGIN PRIVATE KEY-----", "")
+    .replace("-----END PRIVATE KEY-----", "")
+    .replace(/\s/g, "");
+  const binaryDer = Uint8Array.from(atob(pemContents), (char) => char.charCodeAt(0));
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    binaryDer,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    key,
+    new TextEncoder().encode(unsignedToken)
+  );
+  const assertion = `${unsignedToken}.${base64Url(new Uint8Array(signature))}`;
 
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -57,15 +120,14 @@ async function getGoogleAccessToken(): Promise<string> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams({
-      client_id: credentials.client_id,
-      client_secret: credentials.client_secret,
-      refresh_token: credentials.refresh_token,
-      grant_type: "refresh_token",
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion,
     }).toString(),
   });
 
   if (!tokenResponse.ok) {
-    throw new Error(`Failed to get access token: ${tokenResponse.statusText}`);
+    const errorText = await tokenResponse.text();
+    throw new Error(`Failed to get Google access token: ${tokenResponse.statusText} - ${errorText}`);
   }
 
   const tokenData = await tokenResponse.json();
@@ -84,6 +146,8 @@ async function findOrCreateFolder(
   searchUrl.searchParams.set("q", searchQuery);
   searchUrl.searchParams.set("spaces", "drive");
   searchUrl.searchParams.set("fields", "files(id, name)");
+  searchUrl.searchParams.set("supportsAllDrives", "true");
+  searchUrl.searchParams.set("includeItemsFromAllDrives", "true");
 
   const searchResponse = await fetch(searchUrl.toString(), {
     headers: {
@@ -92,7 +156,8 @@ async function findOrCreateFolder(
   });
 
   if (!searchResponse.ok) {
-    throw new Error(`Failed to search folder: ${searchResponse.statusText}`);
+    const errorText = await searchResponse.text();
+    throw new Error(`Failed to search folder: ${searchResponse.statusText} - ${errorText}`);
   }
 
   const searchData = await searchResponse.json();
@@ -105,7 +170,7 @@ async function findOrCreateFolder(
 
   // Create folder baru
   console.log(`[Google Drive] Creating new folder: ${folderName}`);
-  const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
+  const createResponse = await fetch("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -119,7 +184,8 @@ async function findOrCreateFolder(
   });
 
   if (!createResponse.ok) {
-    throw new Error(`Failed to create folder: ${createResponse.statusText}`);
+    const errorText = await createResponse.text();
+    throw new Error(`Failed to create folder: ${createResponse.statusText} - ${errorText}`);
   }
 
   const folderData = await createResponse.json();
@@ -172,7 +238,7 @@ async function uploadFileToDrive(
   ]);
 
   const uploadResponse = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
     {
       method: "POST",
       headers: {
@@ -201,7 +267,9 @@ async function appendMetadataToSheet(
   fileId: string,
   fileName: string,
   jenisDokumen: string,
-  uploadedBy: string
+  uploadedBy: string,
+  targetFolderId: string,
+  keterangan?: string
 ): Promise<void> {
   console.log(`[Metadata] Saving to Google Sheets: ${fileName}`);
 
@@ -216,11 +284,13 @@ async function appendMetadataToSheet(
       uploadedBy || "", // D: User yang upload
       jenisDokumen,     // E: Jenis dokumen
       fileLink,         // F: Link
+      targetFolderId,   // G: Folder tujuan
+      keterangan || "", // H: Keterangan
     ],
   ];
 
   const appendResponse = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${METADATA_SPREADSHEET_ID}/values/${METADATA_SHEET_NAME}!A:F:append?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${METADATA_SPREADSHEET_ID}/values/${METADATA_SHEET_NAME}!A:H:append?valueInputOption=USER_ENTERED`,
     {
       method: "POST",
       headers: {
@@ -278,11 +348,12 @@ serve(async (req) => {
       (!fileData && !fileDataBase64) ||
       !tahun ||
       !jenisDokumen ||
-      !namaOrganik ||
-      !folderDriveId
+      !namaOrganik
     ) {
       throw new Error("Missing required fields");
     }
+
+    const rootFolderId = TARGET_DRIVE_FOLDER_ID;
 
     // Get Google access token
     const accessToken = await getGoogleAccessToken();
@@ -306,7 +377,7 @@ serve(async (req) => {
     const tahunFolderId = await findOrCreateFolder(
       accessToken,
       tahun,
-      folderDriveId
+      rootFolderId
     );
     await delay(200); // Rate limiting
 
@@ -343,7 +414,9 @@ serve(async (req) => {
       fileId,
       fileName,
       jenisDokumen,
-      uploadedBy || "Unknown"
+      uploadedBy || "Unknown",
+      jenisFolderId,
+      keterangan
     );
     await delay(200); // Rate limiting
 

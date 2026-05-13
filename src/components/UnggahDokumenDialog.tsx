@@ -301,6 +301,9 @@ export function UnggahDokumenDialog() {
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Unggah Dokumen</DialogTitle>
+          <DialogDescription>
+            Unggah file PDF ke folder dokumen dan catat metadata unggahan secara otomatis.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
