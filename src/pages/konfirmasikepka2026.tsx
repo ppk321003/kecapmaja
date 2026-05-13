@@ -2121,7 +2121,7 @@ export default function KonfirmasiKepka2026() {
                                 const sheetColIdx = i + 1; // Skip kolom 0 (Kondisi)
                                 let headerText = "";
                                 if (i === 4) {
-                                  headerText = "Cadangan";
+                                  headerText = "Plus Cadangan 10%";
                                 } else if (i === 17) {
                                   headerText = "Mitra Eligible SE26 - Dobel";
                                 } else if (i === cols - 1) {
