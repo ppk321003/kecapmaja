@@ -57,7 +57,6 @@ import LayananUmum from "./pages/LayananUmum";
 import ETamu from "./pages/ETamu";
 import KonfirmasiKepka2026 from "./pages/konfirmasikepka2026";
 import BahanRevisiAnggaran from "./components/bahanrevisi/BahanRevisiAnggaran";
-import { UnggahDokumenPage } from "./pages/UnggahDokumenPage";
 
 const queryClient = new QueryClient();
 
@@ -114,7 +113,6 @@ const App = () => (
             <Route path="/detail-kuitansi/:id" element={<ProtectedRoute><Layout><DetailKuitansi /></Layout></ProtectedRoute>} />
             <Route path="/edit-kuitansi/:id" element={<ProtectedRoute><Layout><EditKuitansi /></Layout></ProtectedRoute>} />
             <Route path="/bahan-revisi-anggaran" element={<ProtectedRoute><Layout><BahanRevisiAnggaran /></Layout></ProtectedRoute>} />
-            <Route path="/unggah-dokumen" element={<ProtectedRoute><Layout><UnggahDokumenPage /></Layout></ProtectedRoute>} />
             <Route path="/layanan-umum" element={<LayananUmum />} />
             <Route path="/e-tamu" element={<ETamu />} />
             <Route path="/konfirmasi-kepka-2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
