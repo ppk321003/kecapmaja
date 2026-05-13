@@ -22,6 +22,7 @@ import {
   Plus,
   BarChart3,
   Smartphone,
+  Upload,
 } from "lucide-react";
 
 import {
@@ -84,6 +85,7 @@ const eDokumenSubItems: { title: string; url: string; icon: typeof FilePlus; ext
 // MENU GROUP: DOKUMEN
 const dokumenItems = [
   { title: "e-Dokumen", url: "/e-dokumen", icon: FolderOpen, hasSubItems: true, subItems: eDokumenSubItems },
+  { title: "Unggah Dokumen", url: "/unggah-dokumen", icon: Upload },
   { title: "Cetak Kuitansi", url: "/cetak-kuitansi", icon: Receipt, conditional: "showCetakKuitansi" },
 ];
 
