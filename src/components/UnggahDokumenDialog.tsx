@@ -282,15 +282,12 @@ export function UnggahDokumenDialog() {
       <DialogTrigger asChild>
         <Button className="gap-2">
           <UploadIcon className="w-4 h-4" />
-          📤 Unggah Dokumen
+          Unggah Dokumen
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>📤 Unggah Dokumen</DialogTitle>
-          <DialogDescription>
-            Unggah dokumen laporan, rencana tindak lanjut, bukti dukung, atau output kegiatan dalam format PDF
-          </DialogDescription>
+          <DialogTitle>Unggah Dokumen</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">

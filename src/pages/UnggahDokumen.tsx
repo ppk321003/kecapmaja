@@ -279,10 +279,7 @@ export function UnggahDokumen() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">📤 Unggah Dokumen</h1>
-          <p className="text-muted-foreground">
-            Unggah dokumen laporan, rencana tindak lanjut, bukti dukung, atau output kegiatan dalam format PDF
-          </p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Unggah Dokumen</h1>
         </div>
 
         {/* Form Card */}
