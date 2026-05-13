@@ -40,6 +40,7 @@ interface NgibarRow {
   pic: string;
   targetSubmit: number;
   realisasiSubmit: number;
+  dokumenPapi: string;
   kendala: string;
   solusi: string;
   tindakLanjut: string;
@@ -85,7 +86,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
           body: {
             spreadsheetId: SPREADSHEET_ID,
             operation: 'read',
-            range: `${SHEET_NAME}!A:J`,
+            range: `${SHEET_NAME}!A:L`,
           },
         });
 
@@ -105,11 +106,12 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
           pic: String(r[3] || '').trim(),
           targetSubmit: parseInt(r[4]) || 0,
           realisasiSubmit: parseInt(r[5]) || 0,
-          kendala: String(r[6] || '').trim(),
-          solusi: String(r[7] || '').trim(),
-          tindakLanjut: String(r[8] || '').trim(),
-          status: String(r[9] || 'Proses Konfirmasi').trim() as 'Terlaksana' | 'Proses Konfirmasi',
-          keterangan: String(r[10] || '').trim(),
+          dokumenPapi: String(r[6] || '').trim(),
+          kendala: String(r[7] || '').trim(),
+          solusi: String(r[8] || '').trim(),
+          tindakLanjut: String(r[9] || '').trim(),
+          status: String(r[10] || 'Proses Konfirmasi').trim() as 'Terlaksana' | 'Proses Konfirmasi',
+          keterangan: String(r[11] || '').trim(),
         })).filter(r => r.instansi); // Filter out empty rows
 
         setRows(parsed);
@@ -357,6 +359,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                   <th className="text-center py-3 px-2 font-semibold">Target</th>
                   <th className="text-center py-3 px-2 font-semibold">Realisasi</th>
                   <th className="text-center py-3 px-2 font-semibold">%</th>
+                  <th className="text-left py-3 px-2 font-semibold">Siap Entri</th>
                   <th className="text-left py-3 px-2 font-semibold">Status</th>
                   <th className="text-center py-3 px-2 font-semibold">Aksi</th>
                 </tr>
@@ -364,7 +367,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
               <tbody>
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={10} className="text-center py-8 text-muted-foreground">
                       {searchQuery || filterStatus !== 'all'
                         ? `Tidak ada data yang cocok`
                         : `Tidak ada data Ngibar SE26`}
@@ -393,6 +396,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                           <td className={`text-center py-3 px-2 text-sm ${percentageColor}`}>
                             {percentage.toFixed(1)}%
                           </td>
+                          <td className="py-3 px-2 text-sm text-slate-700">{row.dokumenPapi}</td>
                           <td className="py-3 px-2">
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
@@ -417,7 +421,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                         </tr>
                         {isExpanded && (
                           <tr className="bg-gradient-to-r from-blue-50 to-slate-50 border-b-2 border-blue-200">
-                            <td colSpan={9} className="py-6 px-4">
+                            <td colSpan={10} className="py-6 px-4">
                               <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div className="bg-white p-3 rounded border-l-4 border-red-400">
@@ -437,7 +441,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                                     </p>
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                   <div className="bg-white p-3 rounded border-l-4 border-blue-400">
                                     <h4 className="font-semibold text-sm text-slate-700 mb-2 flex items-center gap-2">
                                       <span className="text-blue-500">📋</span> Tindak Lanjut
@@ -446,12 +450,22 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                                       {row.tindakLanjut || '—'}
                                     </p>
                                   </div>
-                                  {row.keterangan && (
-                                    <div className="bg-white p-3 rounded border-l-4 border-amber-400">
+                                  {row.dokumenPapi && (
+                                    <div className="bg-white p-3 rounded border-l-4 border-purple-400">
                                       <h4 className="font-semibold text-sm text-slate-700 mb-2 flex items-center gap-2">
-                                        <span className="text-amber-500">📝</span> Keterangan
+                                        <span className="text-purple-500">📄</span> Siap Entri
                                       </h4>
                                       <p className="text-sm text-slate-600">
+                                        {row.dokumenPapi}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {row.keterangan && (
+                                    <div className="bg-white p-2 rounded border-l-4 border-amber-400">
+                                      <h4 className="font-semibold text-xs text-slate-700 mb-1 flex items-center gap-2">
+                                        <span className="text-amber-500">📝</span> Keterangan
+                                      </h4>
+                                      <p className="text-xs text-slate-600">
                                         {row.keterangan}
                                       </p>
                                     </div>
