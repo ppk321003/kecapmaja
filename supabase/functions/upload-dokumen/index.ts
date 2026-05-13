@@ -146,6 +146,8 @@ async function findOrCreateFolder(
   searchUrl.searchParams.set("q", searchQuery);
   searchUrl.searchParams.set("spaces", "drive");
   searchUrl.searchParams.set("fields", "files(id, name)");
+  searchUrl.searchParams.set("supportsAllDrives", "true");
+  searchUrl.searchParams.set("includeItemsFromAllDrives", "true");
 
   const searchResponse = await fetch(searchUrl.toString(), {
     headers: {
@@ -154,7 +156,8 @@ async function findOrCreateFolder(
   });
 
   if (!searchResponse.ok) {
-    throw new Error(`Failed to search folder: ${searchResponse.statusText}`);
+    const errorText = await searchResponse.text();
+    throw new Error(`Failed to search folder: ${searchResponse.statusText} - ${errorText}`);
   }
 
   const searchData = await searchResponse.json();
@@ -167,7 +170,7 @@ async function findOrCreateFolder(
 
   // Create folder baru
   console.log(`[Google Drive] Creating new folder: ${folderName}`);
-  const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
+  const createResponse = await fetch("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -181,7 +184,8 @@ async function findOrCreateFolder(
   });
 
   if (!createResponse.ok) {
-    throw new Error(`Failed to create folder: ${createResponse.statusText}`);
+    const errorText = await createResponse.text();
+    throw new Error(`Failed to create folder: ${createResponse.statusText} - ${errorText}`);
   }
 
   const folderData = await createResponse.json();
