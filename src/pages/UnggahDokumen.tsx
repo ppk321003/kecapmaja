@@ -91,7 +91,7 @@ export function UnggahDokumen() {
 
       const rows = data?.values || [];
       if (rows.length <= 1) {
-        setMitra([]);
+        setOrganik([]);
         return;
       }
 

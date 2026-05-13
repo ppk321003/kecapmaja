@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.send-kebijakan-notifications]
 verify_jwt = false
+
+[functions.upload-dokumen]
+verify_jwt = false
