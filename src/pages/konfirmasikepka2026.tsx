@@ -2159,8 +2159,42 @@ export default function KonfirmasiKepka2026() {
                                 if (isColumnHidden(i)) return null;
                                 const sheetColIdx = i + 1; // Skip kolom 0 (Kondisi)
                                 let headerText = "";
-                                if (i === 4) {
+                                
+                                // Mapping kolom individual dengan label yang lebih spesifik
+                                if (i === 0) {
+                                  headerText = "Kecamatan";
+                                } else if (i === 1) {
+                                  headerText = "PPL";
+                                } else if (i === 2) {
+                                  headerText = "PML";
+                                } else if (i === 3) {
+                                  headerText = "Jumlah";
+                                } else if (i === 4) {
                                   headerText = "Plus Cadangan 10%";
+                                } else if (i === 5) {
+                                  headerText = "Mitra Kepka 2026";
+                                } else if (i === 6) {
+                                  headerText = "Mitra Tambahan";
+                                } else if (i === 7) {
+                                  headerText = "Dobel";
+                                } else if (i === 8) {
+                                  headerText = "Tidak ditemukan";
+                                } else if (i === 9) {
+                                  headerText = "Total";
+                                } else if (i === 10) {
+                                  headerText = "Mitra Kepka 2026";
+                                } else if (i === 11) {
+                                  headerText = "Mitra Tambahan";
+                                } else if (i === 12) {
+                                  headerText = "Mitra Kepka 2026";
+                                } else if (i === 13) {
+                                  headerText = "Mitra Tambahan";
+                                } else if (i === 14) {
+                                  headerText = "Dobel";
+                                } else if (i === 15) {
+                                  headerText = "Belum Kepka";
+                                } else if (i === 16) {
+                                  headerText = "Lengkap";
                                 } else if (i === 17) {
                                   headerText = "Mitra Eligible SE26 - Dobel";
                                 } else if (i === cols - 1) {
