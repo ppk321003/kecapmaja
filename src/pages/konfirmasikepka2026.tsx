@@ -88,6 +88,7 @@ const COL_MITRA = {
   sobatId: colIdx("P"),     // P - Sobat ID
   email: colIdx("Q"),       // Q - Email
   statusNik: colIdx("R"),   // R - Status NIK
+  statusSeleksiAdmin: colIdx("C"),  // C - Status Seleksi Administrasi (from Mitra Tambahan)
 };
 
 type Row = string[];
@@ -356,6 +357,7 @@ export default function KonfirmasiKepka2026() {
   const [mtFilterKec, setMtFilterKec] = useState<string>("all");
   const [mtFilterStatus, setMtFilterStatus] = useState<string>("all");
   const [mtFilterGF, setMtFilterGF] = useState<string>("all");
+  const [mtFilterStatusSeleksiAdmin, setMtFilterStatusSeleksiAdmin] = useState<string>("all");
   const [mtSortKey, setMtSortKey] = useState<keyof typeof COL_MITRA>("nama");
   const [mtSortDir, setMtSortDir] = useState<"asc" | "desc">("asc");
   const [mtPage, setMtPage] = useState(1);
@@ -887,6 +889,10 @@ export default function KonfirmasiKepka2026() {
     () => Array.from(new Set(mtRows.map(r => (r[COL_MITRA.statusNik] || "").trim()).filter(Boolean))).sort(),
     [mtRows]
   );
+  const mtStatusSeleksiAdminOptions = useMemo(
+    () => Array.from(new Set(mtRows.map(r => (r[COL_MITRA.statusSeleksiAdmin] || "").trim()).filter(Boolean))).sort(),
+    [mtRows]
+  );
   const mtStats = useMemo(() => {
     const total = mtRows.length;
     let cocok = 0, tidakCocok = 0, blank = 0;
@@ -925,6 +931,7 @@ export default function KonfirmasiKepka2026() {
         const gfStatus = hasGF ? "Sudah GF" : "Belum GF";
         if (gfStatus !== mtFilterGF) return false;
       }
+      if (mtFilterStatusSeleksiAdmin !== "all" && (r[COL_MITRA.statusSeleksiAdmin] || "").trim() !== mtFilterStatusSeleksiAdmin) return false;
       if (q) return r.some(c => (c || "").toString().toLowerCase().includes(q));
       return true;
     });
@@ -937,11 +944,11 @@ export default function KonfirmasiKepka2026() {
       return 0;
     });
     return out;
-  }, [mtRows, mtSearch, mtFilterStatus, mtFilterKec, mtFilterGF, mtSortKey, mtSortDir, rows]);
+  }, [mtRows, mtSearch, mtFilterStatus, mtFilterKec, mtFilterGF, mtFilterStatusSeleksiAdmin, mtSortKey, mtSortDir, rows]);
   const mtTotalPages = Math.max(1, Math.ceil(mtFiltered.length / mtPageSize));
   const mtCurrentPage = Math.min(mtPage, mtTotalPages);
   const mtPageRows = mtFiltered.slice((mtCurrentPage - 1) * mtPageSize, mtCurrentPage * mtPageSize);
-  useEffect(() => { setMtPage(1); }, [mtSearch, mtFilterStatus, mtFilterKec, mtFilterGF, mtPageSize]);
+  useEffect(() => { setMtPage(1); }, [mtSearch, mtFilterStatus, mtFilterKec, mtFilterGF, mtFilterStatusSeleksiAdmin, mtPageSize]);
   const toggleMtSort = (key: keyof typeof COL_MITRA) => {
     if (mtSortKey === key) setMtSortDir(d => d === "asc" ? "desc" : "asc");
     else { setMtSortKey(key); setMtSortDir("asc"); }
@@ -2258,47 +2265,62 @@ export default function KonfirmasiKepka2026() {
                 <CardDescription>Monitoring data Mitra dari sheet Mitra Tambahan — cari, filter, dan lihat detail status pengiriman.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-col md:flex-row gap-3">
-                  <div className="relative flex-1">
+                {/* Search + Filter + Pagination */}
+                <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
+                  <div className="relative flex-1 md:max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Cari nama, pekerjaan, kecamatan, sobat ID..."
+                      placeholder="Cari nama, ID, kecamatan..."
                       value={mtSearch}
                       onChange={(e) => setMtSearch(e.target.value)}
-                      className="pl-9"
+                      className="pl-9 h-9 text-sm"
                     />
                   </div>
-                  <Select value={mtFilterStatus} onValueChange={setMtFilterStatus}>
-                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status NIK" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Status</SelectItem>
-                      <SelectItem value="__blank__">(Belum Diisi / Kosong)</SelectItem>
-                      {mtStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={mtFilterGF} onValueChange={setMtFilterGF}>
-                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Cek GoogleForm" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Status</SelectItem>
-                      <SelectItem value="Sudah GF">Sudah GF</SelectItem>
-                      <SelectItem value="Belum GF">Belum GF</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={mtFilterKec} onValueChange={setMtFilterKec}>
-                    <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Kecamatan" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Kecamatan</SelectItem>
-                      {mtKecOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={String(mtPageSize)} onValueChange={(v) => setMtPageSize(Number(v))}>
-                    <SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="20">20 / hal</SelectItem>
-                      <SelectItem value="50">50 / hal</SelectItem>
-                      <SelectItem value="100">100 / hal</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  
+                  <div className="flex gap-2 flex-wrap">
+                    <Select value={mtFilterKec} onValueChange={setMtFilterKec}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="Kec" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Kecamatan</SelectItem>
+                        {mtKecOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={mtFilterStatus} onValueChange={setMtFilterStatus}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="NIK" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="__blank__">(Kosong)</SelectItem>
+                        {mtStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={mtFilterGF} onValueChange={setMtFilterGF}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="GF" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua</SelectItem>
+                        <SelectItem value="Sudah GF">Sudah GF</SelectItem>
+                        <SelectItem value="Belum GF">Belum GF</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={mtFilterStatusSeleksiAdmin} onValueChange={setMtFilterStatusSeleksiAdmin}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="Seleksi Admin" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Seleksi Admin</SelectItem>
+                        {mtStatusSeleksiAdminOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={String(mtPageSize)} onValueChange={(v) => setMtPageSize(Number(v))}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {mtLoading ? (
@@ -2333,13 +2355,14 @@ export default function KonfirmasiKepka2026() {
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusNik")}>
                           <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
+                            <TableHead>Status Seleksi Administrasi</TableHead>
                             <TableHead className="text-center">Cek GoogleForm</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {mtPageRows.length === 0 ? (
-                        <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mtPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
                             return (
@@ -2352,6 +2375,7 @@ export default function KonfirmasiKepka2026() {
                             <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
                             <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
                                 <TableCell><MitriStatusBadge status={st} /></TableCell>
+                                <TableCell className="text-sm">{r[COL_MITRA.statusSeleksiAdmin] || "-"}</TableCell>
                                 <TableCell className="text-center">
                                   {checkGoogleFormStatus(r, rows) ? (
                                     <Badge className="bg-green-600 text-white">Sudah GF</Badge>
