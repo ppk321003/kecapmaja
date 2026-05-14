@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
   BarChart,
@@ -23,6 +24,8 @@ import {
   TrendingUp,
   Clock,
   Target,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -69,12 +72,30 @@ interface DashboardNgibarSE26Props {
 }
 
 const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<NgibarRow[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'Terlaksana' | 'Proses Konfirmasi'>('all');
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+
+  // Theme-aware button styling
+  const getButtonClass = () => {
+    const baseClass = "inline-flex items-center gap-1.5 px-3 py-1.5 text-white rounded-full transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-2xl text-sm font-semibold";
+    switch(theme) {
+      case 'blue':
+        return `${baseClass} bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700`;
+      case 'green':
+        return `${baseClass} bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700`;
+      case 'orange':
+        return `${baseClass} bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700`;
+      case 'black':
+        return `${baseClass} bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900`;
+      default:
+        return `${baseClass} bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700`;
+    }
+  };
 
   // Fetch data dari Google Sheets
   useEffect(() => {
@@ -322,7 +343,19 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
       {/* Main Data Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Tracking Ngibar SE26</CardTitle>
+          <div className="flex items-center justify-between mb-2">
+            <CardTitle>Tracking Ngibar SE26</CardTitle>
+            <a 
+              href="https://docs.google.com/spreadsheets/d/1EyrssWtjEGd64SYelUMON3nnLpj6KU5INCMeD-Amjto/edit?gid=0#gid=0" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={getButtonClass()}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Entri Data
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
           <CardDescription>Detail kegiatan ngibar untuk semua instansi/lembaga</CardDescription>
           
           <div className="flex gap-4 mt-4">
