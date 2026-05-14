@@ -26,7 +26,7 @@ import {
 
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
-const RANGE = `${SHEET_NAME}!A1:BK`;
+const RANGE = `${SHEET_NAME}!A1:BL`;
 
 const COLORS = ["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 
@@ -75,6 +75,7 @@ const COL = {
   status: colIdx("BD"),  // BD
   rekomendasi: colIdx("BE"), // BE - Rekomendasi / Non Rekomendasi
   statusSobat: colIdx("BF"),  // BF - Status SOBAT
+  statusSeleksi: colIdx("BL"),  // BL - Status Seleksi Administrasi
 };
 
 // Column mapping untuk MASTER.MITRA
@@ -380,6 +381,7 @@ export default function KonfirmasiKepka2026() {
   const [filterKec, setFilterKec] = useState<string>("all");
   const [filterRekomendasi, setFilterRekomendasi] = useState<string>("all");
   const [filterStatusSobat, setFilterStatusSobat] = useState<string>("all");
+  const [filterStatusSeleksi, setFilterStatusSeleksi] = useState<string>("all");
   const [sortKey, setSortKey] = useState<keyof typeof COL>("nama");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -743,6 +745,11 @@ export default function KonfirmasiKepka2026() {
     [rows]
   );
 
+  const statusSeleksiOptions = useMemo(
+    () => Array.from(new Set(rows.map(r => (r[COL.statusSeleksi] || "").trim()).filter(Boolean))).sort(),
+    [rows]
+  );
+
   // Mitra stats
   const mitriStats = useMemo(() => {
     const total = mitriRows.length;
@@ -810,6 +817,7 @@ export default function KonfirmasiKepka2026() {
         if (rekoDisplay !== filterRekomendasi) return false;
       }
       if (filterStatusSobat !== "all" && (r[COL.statusSobat] || "").trim() !== filterStatusSobat) return false;
+      if (filterStatusSeleksi !== "all" && (r[COL.statusSeleksi] || "").trim() !== filterStatusSeleksi) return false;
       if (q) {
         return r.some(c => (c || "").toString().toLowerCase().includes(q));
       }
@@ -824,13 +832,13 @@ export default function KonfirmasiKepka2026() {
       return 0;
     });
     return out;
-  }, [rows, search, filterStatus, filterKec, filterRekomendasi, filterStatusSobat, sortKey, sortDir]);
+  }, [rows, search, filterStatus, filterKec, filterRekomendasi, filterStatusSobat, filterStatusSeleksi, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  useEffect(() => { setPage(1); }, [search, filterStatus, filterKec, filterRekomendasi, filterStatusSobat, pageSize]);
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterKec, filterRekomendasi, filterStatusSobat, filterStatusSeleksi, pageSize]);
 
   // Mitra filtered & pagination
   const mitriFiltered = useMemo(() => {
@@ -1453,54 +1461,70 @@ export default function KonfirmasiKepka2026() {
                 <CardDescription>Cari, filter, dan lihat detail per mitra.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-col md:flex-row gap-3">
-                  <div className="relative flex-1">
+                {/* Search + Filter + Pagination */}
+                <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
+                  <div className="relative flex-1 md:max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Cari nama, email, sobat ID, kecamatan..."
+                      placeholder="Cari nama, email, ID..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="pl-9"
+                      className="pl-9 h-9 text-sm"
                     />
                   </div>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Status</SelectItem>
-                      <SelectItem value="verified">Terverifikasi</SelectItem>
-                      <SelectItem value="mismatch">Tidak Cocok</SelectItem>
-                      <SelectItem value="notVerified">Belum Terverifikasi</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterKec} onValueChange={setFilterKec}>
-                    <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Kecamatan" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Kecamatan</SelectItem>
-                      {kecOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterRekomendasi} onValueChange={setFilterRekomendasi}>
-                    <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Rekomendasi" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Rekomendasi</SelectItem>
-                      {rekomendasiOptions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterStatusSobat} onValueChange={setFilterStatusSobat}>
-                    <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Status SOBAT" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Status SOBAT</SelectItem>
-                      {statusSobatOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                    <SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="20">20 / hal</SelectItem>
-                      <SelectItem value="50">50 / hal</SelectItem>
-                      <SelectItem value="100">100 / hal</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  
+                  <div className="flex gap-2 flex-wrap">
+                    <Select value={filterKec} onValueChange={setFilterKec}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="Kec" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Kecamatan</SelectItem>
+                        {kecOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="verified">Terverifikasi</SelectItem>
+                        <SelectItem value="mismatch">Tidak Cocok</SelectItem>
+                        <SelectItem value="notVerified">Belum Verifikasi</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={filterRekomendasi} onValueChange={setFilterRekomendasi}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="Reko" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Rekomendasi</SelectItem>
+                        {rekomendasiOptions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={filterStatusSobat} onValueChange={setFilterStatusSobat}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="SOBAT" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status SOBAT</SelectItem>
+                        {statusSobatOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={filterStatusSeleksi} onValueChange={setFilterStatusSeleksi}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="Seleksi Admin" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status Seleksi Administrasi</SelectItem>
+                        {statusSeleksiOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {loading ? (
@@ -1532,12 +1556,13 @@ export default function KonfirmasiKepka2026() {
                             <TableHead className="text-center">Screenshot HP</TableHead>
                             <TableHead className="min-w-40">Catatan PJ</TableHead>
                             <TableHead className="text-center">Catatan Kecap Maja</TableHead>
+                            <TableHead className="text-center">Status Seleksi Administrasi</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {pageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={12} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : pageRows.map((r, i) => (
                             <TableRow key={i} className={isNotVerified(r[COL.status]) ? "bg-orange-50/30" : isVerified(r[COL.status]) ? "bg-emerald-50/30" : isMismatch(r[COL.status]) ? "bg-red-50/30" : ""}>
                               <TableCell className="text-muted-foreground">{(currentPage - 1) * pageSize + i + 1}</TableCell>
@@ -1701,6 +1726,13 @@ export default function KonfirmasiKepka2026() {
                                     </button>
                                   );
                                 })()}
+                              </TableCell>
+
+                              {/* Status Seleksi Administrasi */}
+                              <TableCell className="text-center">
+                                <span className="text-sm text-slate-600">
+                                  {r[COL.statusSeleksi] || "-"}
+                                </span>
                               </TableCell>
 
                               {/* Aksi */}
