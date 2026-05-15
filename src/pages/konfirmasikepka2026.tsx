@@ -89,8 +89,7 @@ const COL_MITRA = {
   desa: colIdx("I"),        // I - Desa
   periodStart: colIdx("BI"),  // BI - Period Start (dari Mitra Tambahan)
   skor: colIdx("BL"),       // BL - Skor (dari Mitra Tambahan)
-  tesStart: colIdx("BM"),   // BM - Test Start (dari Mitra Tambahan)
-  tesEnd: colIdx("BK"),     // BK - Test End (dari Mitra Tambahan)
+  statusSeleksiKompetensi: colIdx("BM"),  // BM - Status Seleksi Kompetensi (dari Mitra Tambahan)
   sobatId: colIdx("P"),     // P - Sobat ID (untuk matching dengan Google Form)
   email: colIdx("Q"),       // Q - Email (untuk matching dengan Google Form)
   statusNik: colIdx("R"),   // R - Status NIK
@@ -332,12 +331,12 @@ const checkGoogleFormStatus = (mitriRow: Row, olaRows: Row[]): boolean => {
 
 // Helper function untuk mengambil data dari Olah sheet berdasarkan Email atau Sobat ID
 // Jika tidak ketemu di Olah, fallback ke Mitra Tambahan langsung
-const getOlaRowData = (mitriRow: Row, olaRows: Row[]): { periodStart: string; skor: string; tesStart: string; tesEnd: string } => {
+const getOlaRowData = (mitriRow: Row, olaRows: Row[]): { periodStart: string; skor: string; statusSeleksiKompetensi: string } => {
   const mitriEmail = (mitriRow[COL_MITRA.email] || "").trim().toLowerCase();
   const mitriSobatId = (mitriRow[COL_MITRA.sobatId] || "").trim().toLowerCase();
   
   if (!mitriEmail && !mitriSobatId) {
-    return { periodStart: "", skor: "", tesStart: "", tesEnd: "" };
+    return { periodStart: "", skor: "", statusSeleksiKompetensi: "" };
   }
   
   // Try to find match in Olah sheet first
@@ -352,8 +351,7 @@ const getOlaRowData = (mitriRow: Row, olaRows: Row[]): { periodStart: string; sk
     return {
       periodStart: (matchedOlaRow[COL.periodStart] || "").trim(),
       skor: (matchedOlaRow[COL.skor] || "").trim(),
-      tesStart: (matchedOlaRow[COL.tesStart] || "").trim(),
-      tesEnd: (matchedOlaRow[COL.tesEnd] || "").trim(),
+      statusSeleksiKompetensi: (matchedOlaRow[COL_MITRA.statusSeleksiKompetensi] || "").trim(),
     };
   }
   
@@ -362,9 +360,24 @@ const getOlaRowData = (mitriRow: Row, olaRows: Row[]): { periodStart: string; sk
   return {
     periodStart: (mitriRow[COL_MITRA.periodStart] || "").trim(),
     skor: (mitriRow[COL_MITRA.skor] || "").trim(),
-    tesStart: (mitriRow[COL_MITRA.tesStart] || "").trim(),
-    tesEnd: (mitriRow[COL_MITRA.tesEnd] || "").trim(),
+    statusSeleksiKompetensi: (mitriRow[COL_MITRA.statusSeleksiKompetensi] || "").trim(),
   };
+};
+
+// Helper function to find the matching Olah row for a Mitra Tambahan row
+const getMatchedOlaRow = (mitriRow: Row, olaRows: Row[]): Row | undefined => {
+  const mitriEmail = (mitriRow[COL_MITRA.email] || "").trim().toLowerCase();
+  const mitriSobatId = (mitriRow[COL_MITRA.sobatId] || "").trim().toLowerCase();
+  
+  if (!mitriEmail && !mitriSobatId) {
+    return undefined;
+  }
+  
+  return olaRows.find(olaRow => {
+    const olaEmail = (olaRow[COL.email] || "").trim().toLowerCase();
+    const olaSobatId = (olaRow[COL.sobatId] || "").trim().toLowerCase();
+    return (mitriEmail && olaEmail === mitriEmail) || (mitriSobatId && olaSobatId === mitriSobatId);
+  });
 };
 
 // Helper function untuk check dokumen perlu perbaikan
@@ -406,6 +419,7 @@ export default function KonfirmasiKepka2026() {
   const [mtPage, setMtPage] = useState(1);
   const [mtPageSize, setMtPageSize] = useState(20);
   const [mtDetailRow, setMtDetailRow] = useState<Row | null>(null);
+  const [mtValidationDetailRow, setMtValidationDetailRow] = useState<Row | null>(null);
 
   // Monitoring Kecamatan Sheet (Kebutuhan Kecamatan A:Q)
   const [kkRows, setKkRows] = useState<Row[]>([]);
@@ -1003,8 +1017,8 @@ export default function KonfirmasiKepka2026() {
       return true;
     });
     
-    // Handle sorting for dynamic columns (periodStart, skor, tesStart, tesEnd) vs direct columns
-    const isDynamicColumn = ["periodStart", "skor", "tesStart", "tesEnd"].includes(mtSortKey);
+    // Handle sorting for dynamic columns (periodStart, skor, statusSeleksiKompetensi) vs direct columns
+    const isDynamicColumn = ["periodStart", "skor", "statusSeleksiKompetensi"].includes(mtSortKey);
     
     if (isDynamicColumn) {
       // For dynamic columns, fetch olaData for each row and sort based on that
@@ -2471,29 +2485,25 @@ export default function KonfirmasiKepka2026() {
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("periodStart")}>
                           <div className="flex items-center gap-1">Periode Seleksi <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("tesStart")}>
-                          <div className="flex items-center gap-1">Test Start <ArrowUpDown className="h-3 w-3" /></div>
-                        </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("tesEnd")}>
-                          <div className="flex items-center gap-1">Test End <ArrowUpDown className="h-3 w-3" /></div>
-                        </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("skor")}>
                           <div className="flex items-center gap-1">Skor <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusNik")}>
-                          <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
-                        </TableHead>
                             <TableHead>Status Seleksi Administrasi</TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusSeleksiKompetensi")}>
+                          <div className="flex items-center gap-1">Status Seleksi Kompetensi <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                            <TableHead className="min-w-40">Catatan PJ</TableHead>
+                            <TableHead className="text-center">Catatan Kecap Maja</TableHead>
                             <TableHead className="text-center">Cek GoogleForm</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {mtPageRows.length === 0 ? (
-                        <TableRow><TableCell colSpan={12} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={15} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mtPageRows.map((r, i) => {
-                        const st = r[COL_MITRA.statusNik] || "";
                         const olaData = getOlaRowData(r, rows);
+                        const matchedOlaRow = getMatchedOlaRow(r, rows);
                             return (
                               <TableRow key={i}>
                                 <TableCell className="text-muted-foreground">{(mtCurrentPage - 1) * mtPageSize + i + 1}</TableCell>
@@ -2501,11 +2511,57 @@ export default function KonfirmasiKepka2026() {
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.desa] || "-"}</TableCell>
                             <TableCell>{olaData.periodStart || "-"}</TableCell>
-                            <TableCell>{olaData.tesStart || "-"}</TableCell>
-                            <TableCell>{olaData.tesEnd || "-"}</TableCell>
                             <TableCell>{olaData.skor || "-"}</TableCell>
-                                <TableCell><MitriStatusBadge status={st} /></TableCell>
                                 <TableCell className="text-sm">{r[COL_MITRA.statusSeleksiAdmin] || "-"}</TableCell>
+                                <TableCell className="text-sm">{olaData.statusSeleksiKompetensi || "-"}</TableCell>
+                                <TableCell>
+                                  {matchedOlaRow ? (
+                                    <Input
+                                      className="h-8 text-xs"
+                                      placeholder="Catatan PJ..."
+                                      value={matchedOlaRow[COL.catatanPJ] || ""}
+                                      onChange={(e) => {
+                                        const origIdx = rows.indexOf(matchedOlaRow);
+                                        if (origIdx >= 0) {
+                                          const copy = [...matchedOlaRow];
+                                          copy[COL.catatanPJ] = e.target.value;
+                                          setRows(prev => prev.map((row, idx) => idx === origIdx ? copy : row));
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        if (matchedOlaRow) {
+                                          updateVerificationField(matchedOlaRow, "catatanPJ", matchedOlaRow[COL.catatanPJ] || "");
+                                        }
+                                      }}
+                                    />
+                                  ) : "-"}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {(() => {
+                                    const validationIssues = matchedOlaRow ? validateResponden(matchedOlaRow) : [];
+                                    const isDocumentWarning = (issue: string) => {
+                                      return issue.includes("Foto - belum sesuai ketentuan") ||
+                                             issue.includes("KTP - belum sesuai ketentuan") ||
+                                             issue.includes("Ijazah - belum sesuai ketentuan") ||
+                                             issue.includes("Screenshot HP - belum sesuai ketentuan");
+                                    };
+                                    const errors = validationIssues.filter(v => v.severity === "error");
+                                    const warnings = validationIssues.filter(v => v.severity === "warning");
+                                    const filteredWarnings = warnings.filter(w => !isDocumentWarning(w.issue));
+                                    const hasDisplayableIssues = errors.length > 0 || filteredWarnings.length > 0;
+
+                                    return (
+                                      <button 
+                                        className="cursor-pointer hover:opacity-75 transition-opacity"
+                                        onClick={() => setMtValidationDetailRow(matchedOlaRow || null)}
+                                        type="button"
+                                        title={hasDisplayableIssues ? "Klik untuk lihat catatan" : "Tidak ada catatan"}
+                                      >
+                                        <AlertTriangle className={hasDisplayableIssues ? "h-5 w-5 text-amber-600 mx-auto" : "h-5 w-5 text-slate-300 mx-auto"} />
+                                      </button>
+                                    );
+                                  })()}
+                                </TableCell>
                                 <TableCell className="text-center">
                                   {checkGoogleFormStatus(r, rows) ? (
                                     <Badge className="bg-green-600 text-white">Sudah GF</Badge>
@@ -2514,9 +2570,48 @@ export default function KonfirmasiKepka2026() {
                                   )}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Button size="icon" variant="ghost" onClick={() => setMtDetailRow(r)} title="Lihat detail">
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
+                                  {(() => {
+                                    if (!matchedOlaRow) {
+                                      return <span className="text-xs text-slate-400">No Match</span>;
+                                    }
+                                    
+                                    const currentRek = (matchedOlaRow[COL.rekomendasi] || "").trim();
+
+                                    return (
+                                      <div className="flex items-center justify-end gap-1">
+                                        <button 
+                                          className={`p-1.5 rounded transition-all ${
+                                            currentRek === "Rekomendasi"
+                                              ? "bg-emerald-600 text-white"
+                                              : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                          }`}
+                                          onClick={() => handleRekomendasiClick(matchedOlaRow, "Rekomendasi")} 
+                                          title="Rekomendasi"
+                                          type="button"
+                                        >
+                                          <Check className="h-4 w-4" />
+                                        </button>
+                                        <button 
+                                          className={`p-1.5 rounded transition-all ${
+                                            currentRek === "Non Rekomendasi"
+                                              ? "bg-red-600 text-white"
+                                              : "bg-red-50 text-red-500 hover:bg-red-100"
+                                          }`}
+                                          onClick={() => handleRekomendasiClick(matchedOlaRow, "Non Rekomendasi")} 
+                                          title="Non Rekomendasi"
+                                          type="button"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                        <Button size="icon" variant="ghost" onClick={() => setMtDetailRow(r)} title="Detail Mitra Tambahan" className="h-9 w-9">
+                                          <Eye className="h-4 w-4" />
+                                        </Button>
+                                        <Button size="icon" variant="ghost" onClick={() => setDetailRow(matchedOlaRow)} title="Detail Mitra" className="h-9 w-9">
+                                          <Eye className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    );
+                                  })()}
                                 </TableCell>
                               </TableRow>
                             );
@@ -2943,6 +3038,76 @@ export default function KonfirmasiKepka2026() {
                 })}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Validation Detail Dialog - Mitra Tambahan */}
+        <Dialog open={!!mtValidationDetailRow} onOpenChange={(o) => !o && setMtValidationDetailRow(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Catatan Kecap Maja - {mtValidationDetailRow ? (mtValidationDetailRow[COL.nama] || "Mitra") : ""}</DialogTitle>
+              <DialogDescription>Hasil validasi data mitra</DialogDescription>
+            </DialogHeader>
+            {mtValidationDetailRow && (() => {
+              const issues = validateResponden(mtValidationDetailRow);
+              const errors = issues.filter(v => v.severity === "error");
+              const warnings = issues.filter(v => v.severity === "warning");
+              
+              // Filter out document verification warnings
+              const isDocumentWarning = (issue: string) => {
+                return issue.includes("Foto - belum sesuai ketentuan") ||
+                       issue.includes("KTP - belum sesuai ketentuan") ||
+                       issue.includes("Ijazah - belum sesuai ketentuan") ||
+                       issue.includes("Screenshot HP - belum sesuai ketentuan");
+              };
+              const filteredWarnings = warnings.filter(w => !isDocumentWarning(w.issue));
+              
+              return (
+                <div className="space-y-4">
+                  {errors.length === 0 && filteredWarnings.length === 0 ? (
+                    <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-emerald-700">Baik - Tidak ada isu</span>
+                    </div>
+                  ) : (
+                    <>
+                      {errors.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-red-700 flex items-center gap-2">
+                            <XCircle className="h-4 w-4" />
+                            Issue Kritis ({errors.length})
+                          </h4>
+                          <ul className="space-y-1">
+                            {errors.map((e, i) => (
+                              <li key={i} className="text-sm text-red-600 flex items-start gap-2">
+                                <span className="text-red-400 mt-0.5">•</span>
+                                {e.issue}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {filteredWarnings.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-amber-700 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            Catatan ({filteredWarnings.length})
+                          </h4>
+                          <ul className="space-y-1">
+                            {filteredWarnings.map((w, i) => (
+                              <li key={i} className="text-sm text-amber-600 flex items-start gap-2">
+                                <span className="text-amber-400 mt-0.5">•</span>
+                                {w.issue}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </DialogContent>
         </Dialog>
 
