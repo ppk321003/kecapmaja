@@ -15,7 +15,7 @@ type Row = string[];
 
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
-const RANGE = `${SHEET_NAME}!A1:BO`;
+const RANGE = `${SHEET_NAME}!A1:BP`;
 
 // Column letter to index (0-based)
 const colIdx = (letter: string): number => {
@@ -274,6 +274,9 @@ const findMitraForResponden = (respondenRow: Row, mitraRows: Row[]): Row | null 
 export default function MitraSE2026() {
   const { user } = useAuth();
   
+  // Check if user is PPK
+  const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+  
   // Data states
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -283,9 +286,14 @@ export default function MitraSE2026() {
   const [mitriLoading, setMitriLoading] = useState(true);
   const [mitriError, setMitriError] = useState<string | null>(null);
 
+  const [kkRows, setKkRows] = useState<Row[]>([]);
+  const [kkLoading, setKkLoading] = useState(true);
+  const [kkError, setKkError] = useState<string | null>(null);
+
   // Filter & pagination states for Rekomendasi tab
   const [search, setSearch] = useState("");
-  const [filterKec, setFilterKec] = useState<string>("all");
+  const [filterKec, setFilterKec] = useState<string>("");
+  const [filterSobat, setFilterSobat] = useState<string>("*");
   const [sortKey, setSortKey] = useState<keyof typeof COL>("nama");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -342,18 +350,62 @@ export default function MitraSE2026() {
     fetchMitriData();
   }, []);
 
+  // Load data from Kebutuhan Kecamatan sheet
+  useEffect(() => {
+    const fetchKkData = async () => {
+      try {
+        setKkLoading(true);
+        const { data, error: err } = await supabase.functions.invoke("google-sheets", {
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "Kebutuhan Kecamatan!B3:E28" },
+        });
+        if (err) throw new Error(err);
+        const values: Row[] = data?.values || [];
+        setKkRows(values);
+        setKkError(null);
+      } catch (e) {
+        setKkError(e instanceof Error ? e.message : "Gagal memuat data Kebutuhan");
+        setKkRows([]);
+      } finally {
+        setKkLoading(false);
+      }
+    };
+    fetchKkData();
+  }, []);
+
+  // Helper function to get Kebutuhan data for a specific kecamatan
+  const getKebutuhanForKec = (kecName: string): { ppl: number; pml: number; jumlah: number } => {
+    if (!kecName || filterKec === "") {
+      return { ppl: 0, pml: 0, jumlah: 0 };
+    }
+    
+    const kkRow = kkRows.find(r => (r[0] || "").toString().trim().toLowerCase() === kecName.toLowerCase());
+    
+    if (!kkRow) return { ppl: 0, pml: 0, jumlah: 0 };
+    
+    return {
+      ppl: parseInt((kkRow[1] || "").toString().trim()) || 0,
+      pml: parseInt((kkRow[2] || "").toString().trim()) || 0,
+      jumlah: parseInt((kkRow[3] || "").toString().trim()) || 0,
+    };
+  };
+
   // Computed values for Rekomendasi tab
   const kecOptions = useMemo(
     () => Array.from(new Set(rows.map(r => (r[COL.kec] || "").trim()).filter(Boolean))).sort(),
     [rows]
   );
 
+  const sobatOptions = useMemo(
+    () => Array.from(new Set(rows.map(r => {
+      const status = (r[COL.statusSobat] || "").toString().trim();
+      // Exclude "Tidak ditemukan" dan empty values
+      return (status && !status.toLowerCase().includes("tidak ditemukan")) ? status : null;
+    }).filter(Boolean))).sort(),
+    [rows]
+  );
+
   const filtered = useMemo(() => {
     return rows.filter(r => {
-      // Cari mitra yang match dengan responden ini
-      const mitra = findMitraForResponden(r, mitriRows);
-      if (!mitra) return false; // Filter hanya yang punya mitra
-      
       // Apply search filter
       const nama = (r[COL.nama] || "").toLowerCase();
       const kec = (r[COL.kec] || "").toLowerCase();
@@ -361,11 +413,18 @@ export default function MitraSE2026() {
       const matchSearch = !search || nama.includes(searchStr) || kec.includes(searchStr);
       
       // Apply kecamatan filter
-      const matchKec = filterKec === "all" || kec === filterKec.toLowerCase();
+      const matchKec = filterKec === "all" || (filterKec && kec === filterKec.toLowerCase()) || !filterKec;
       
-      return matchSearch && matchKec;
+      // Filter Status SOBAT - exclude "Tidak ditemukan"
+      const statusSobat = (r[COL.statusSobat] || "").toString().toLowerCase().trim();
+      const isNotTidakDitemukan = !statusSobat.includes("tidak ditemukan");
+      
+      // Apply Sobat filter
+      const matchSobat = filterSobat === "*" || statusSobat === filterSobat.toLowerCase();
+      
+      return matchSearch && matchKec && isNotTidakDitemukan && matchSobat;
     });
-  }, [rows, mitriRows, search, filterKec]);
+  }, [rows, search, filterKec, filterSobat]);
 
   const pageRows = useMemo(() => {
     const sorted = [...filtered].sort((a, b) => {
@@ -381,7 +440,29 @@ export default function MitraSE2026() {
   const totalPages = Math.ceil(filtered.length / pageSize);
   const currentPage = Math.min(page, Math.max(1, totalPages));
 
-  useEffect(() => { setPage(1); }, [search, filterKec, pageSize]);
+  // Calculate allocation statistics for the current filter
+  const alokasi = useMemo(() => {
+    let pplCount = 0;
+    let pmlCount = 0;
+    
+    filtered.forEach(r => {
+      const tipeKegiatan = (r[COL.tipeKegiatan] || "").toString().trim();
+      const pplPml = (r[COL.pplPml] || "").toString().trim();
+      
+      if (tipeKegiatan === "SE2026") {
+        if (pplPml === "PPL") pplCount++;
+        else if (pplPml === "PML") pmlCount++;
+      }
+    });
+    
+    return {
+      ppl: pplCount,
+      pml: pmlCount,
+      total: pplCount + pmlCount,
+    };
+  }, [filtered]);
+
+  useEffect(() => { setPage(1); }, [search, filterKec, filterSobat, pageSize]);
 
   // Update cell value ke sheet Olah
   const updateCellValue = async (rowIdx: number, colLetter: string, newValue: string) => {
@@ -412,7 +493,7 @@ export default function MitraSE2026() {
     }
   };
 
-  useEffect(() => { setPage(1); }, [search, filterKec, pageSize]);
+  useEffect(() => { setPage(1); }, [search, filterKec, filterSobat, pageSize]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 p-4 md:p-8">
@@ -461,8 +542,15 @@ export default function MitraSE2026() {
                   <Select value={filterKec} onValueChange={setFilterKec}>
                     <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Kecamatan" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Semua Kecamatan</SelectItem>
+                      {isPPK && <SelectItem value="all">Semua Kecamatan</SelectItem>}
                       {kecOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterSobat} onValueChange={setFilterSobat}>
+                    <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Cek Sobat" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="*">Semua Status Sobat</SelectItem>
+                      {sobatOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
@@ -474,6 +562,107 @@ export default function MitraSE2026() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Card Kebutuhan Petugas Sensus Ekonomi - Compact Version */}
+                {filterKec && filterKec !== "" && (
+                  <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500">
+                    <CardContent className="pt-4 pb-4">
+                      {filterKec === "all" ? (
+                        (() => {
+                          const totalPpl = kkLoading ? 0 : kkRows.reduce((sum, r) => sum + (parseInt((r[1] || "").toString().trim()) || 0), 0);
+                          const totalPml = kkLoading ? 0 : kkRows.reduce((sum, r) => sum + (parseInt((r[2] || "").toString().trim()) || 0), 0);
+                          const totalKebutuhan = kkLoading ? 0 : kkRows.reduce((sum, r) => sum + (parseInt((r[3] || "").toString().trim()) || 0), 0);
+                          const pplPercent = totalPpl > 0 ? Math.round((alokasi.ppl / totalPpl) * 100) : 0;
+                          const pmlPercent = totalPml > 0 ? Math.round((alokasi.pml / totalPml) * 100) : 0;
+                          const totalPercent = totalKebutuhan > 0 ? Math.round((alokasi.total / totalKebutuhan) * 100) : 0;
+                          
+                          return (
+                            <div className="space-y-3">
+                              <p className="text-xs font-semibold text-slate-600 mb-3">📍 SEMUA KECAMATAN</p>
+                              {/* PPL Row */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-blue-700">PPL</p>
+                                  <p className="text-sm font-bold text-blue-600">{alokasi.ppl}/{totalPpl} <span className="text-xs font-normal text-blue-500">({pplPercent}%)</span></p>
+                                </div>
+                                <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-600" style={{width: `${Math.min(pplPercent, 100)}%`}}></div>
+                                </div>
+                              </div>
+                              
+                              {/* PML Row */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-indigo-700">PML</p>
+                                  <p className="text-sm font-bold text-indigo-600">{alokasi.pml}/{totalPml} <span className="text-xs font-normal text-indigo-500">({pmlPercent}%)</span></p>
+                                </div>
+                                <div className="h-2 bg-indigo-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-indigo-600" style={{width: `${Math.min(pmlPercent, 100)}%`}}></div>
+                                </div>
+                              </div>
+                              
+                              {/* TOTAL Row */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-purple-700">TOTAL</p>
+                                  <p className="text-sm font-bold text-purple-600">{alokasi.total}/{totalKebutuhan} <span className="text-xs font-normal text-purple-500">({totalPercent}%)</span></p>
+                                </div>
+                                <div className="h-2 bg-purple-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-purple-600" style={{width: `${Math.min(totalPercent, 100)}%`}}></div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        (() => {
+                          const kebutuhan = getKebutuhanForKec(filterKec);
+                          const pplPercent = kebutuhan.ppl > 0 ? Math.round((alokasi.ppl / kebutuhan.ppl) * 100) : 0;
+                          const pmlPercent = kebutuhan.pml > 0 ? Math.round((alokasi.pml / kebutuhan.pml) * 100) : 0;
+                          const totalPercent = kebutuhan.jumlah > 0 ? Math.round((alokasi.total / kebutuhan.jumlah) * 100) : 0;
+                          
+                          return (
+                            <div className="space-y-3">
+                              <p className="text-xs font-semibold text-slate-600 mb-3">📍 {filterKec}</p>
+                              {/* PPL Row */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-blue-700">PPL</p>
+                                  <p className="text-sm font-bold text-blue-600">{kkLoading ? "..." : `${alokasi.ppl}/${kebutuhan.ppl}`} <span className="text-xs font-normal text-blue-500">({kkLoading ? "..." : `${pplPercent}%`})</span></p>
+                                </div>
+                                <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-600" style={{width: `${kkLoading ? 0 : Math.min(pplPercent, 100)}%`}}></div>
+                                </div>
+                              </div>
+                              
+                              {/* PML Row */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-indigo-700">PML</p>
+                                  <p className="text-sm font-bold text-indigo-600">{kkLoading ? "..." : `${alokasi.pml}/${kebutuhan.pml}`} <span className="text-xs font-normal text-indigo-500">({kkLoading ? "..." : `${pmlPercent}%`})</span></p>
+                                </div>
+                                <div className="h-2 bg-indigo-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-indigo-600" style={{width: `${kkLoading ? 0 : Math.min(pmlPercent, 100)}%`}}></div>
+                                </div>
+                              </div>
+                              
+                              {/* TOTAL Row */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-purple-700">TOTAL</p>
+                                  <p className="text-sm font-bold text-purple-600">{kkLoading ? "..." : `${alokasi.total}/${kebutuhan.jumlah}`} <span className="text-xs font-normal text-purple-500">({kkLoading ? "..." : `${totalPercent}%`})</span></p>
+                                </div>
+                                <div className="h-2 bg-purple-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-purple-600" style={{width: `${kkLoading ? 0 : Math.min(totalPercent, 100)}%`}}></div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {loading || mitriLoading ? (
                   <div className="flex items-center justify-center py-20">
@@ -524,7 +713,7 @@ export default function MitraSE2026() {
                               <TableCell>{respondenRow[COL.kec] || "-"}</TableCell>
                               <TableCell>{respondenRow[COL.desa] || "-"}</TableCell>
                               <TableCell className="text-sm">{respondenRow[COL.statusSobat] || "-"}</TableCell>
-                              <TableCell className="text-sm">{mitraRow ? (mitraRow[COL_MITRA.statusSeleksiAdmin] || "-") : "-"}</TableCell>
+                              <TableCell className="text-sm">{respondenRow[COL.statusSeleksi] || "-"}</TableCell>
                               <TableCell className="text-sm text-center">
                                 <Badge className="bg-blue-100 text-blue-800">
                                   {respondenRow[COL.statusSeleksiKompetensi] || "Belum"}
