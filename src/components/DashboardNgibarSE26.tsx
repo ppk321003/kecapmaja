@@ -1133,24 +1133,6 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                       </CardContent>
                     </Card>
 
-                    {/* Status Dokumen */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-sm">Status Dokumen</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <BarChart data={targetUBAnalytics.statusDokumen}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="value" fill="#8b5cf6" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </CardContent>
-                    </Card>
-
                     {/* Metode */}
                     <Card>
                       <CardHeader>
@@ -1164,24 +1146,6 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                             <YAxis />
                             <Tooltip />
                             <Bar dataKey="value" fill="#06b6d4" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </CardContent>
-                    </Card>
-
-                    {/* PAPI Sudah Entri */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-sm">PAPI Sudah Entri</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <BarChart data={targetUBAnalytics.papiSudahEntri}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="value" fill="#f59e0b" />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
