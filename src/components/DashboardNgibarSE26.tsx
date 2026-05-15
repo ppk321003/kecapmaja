@@ -201,10 +201,11 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                 pic: String(r[2] || '').trim(),
                 contact: String(r[3] || '').trim(),
                 // Monev Ngibar fields from Sheet2 E-I
+                // E=Status Ngibar, F=Metode, G=PAPI Sudah Entry, H=Status Dokumen, I=Status Submit
                 statusNgibar: String(r[4] || '').trim(),
-                statusDokumen: String(r[5] || '').trim(),
-                metode: String(r[6] || '').trim(),
-                papiSudahEntri: String(r[7] || '').trim(),
+                metode: String(r[5] || '').trim(),
+                papiSudahEntri: String(r[6] || '').trim(),
+                statusDokumen: String(r[7] || '').trim(),
                 statusSubmit: String(r[8] || '').trim(),
               };
             }).filter(r => r.namaUsaha);
@@ -267,14 +268,17 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
       // Sheet2 row number: rowIndex + 2 (1 for header, 1 for array starting at 0)
       const sheet2RowNumber = rowIndex + 2;
 
-      // Update columns E-I in Sheet2 (Monev Ngibar fields)
-      // E=Status Ngibar, F=Status Dokumen, G=Metode, H=PAPI Sudah Entri, I=Status Submit
-      const updateRange = `Sheet2!E${sheet2RowNumber}:I${sheet2RowNumber}`;
+      // Update columns B-I in Sheet2 (Nama Usaha + Monev Ngibar fields)
+      // B=Nama Usaha, C=PIC, D=Contact, E=Status Ngibar, F=Metode, G=PAPI Sudah Entry, H=Status Dokumen, I=Status Submit
+      const updateRange = `Sheet2!B${sheet2RowNumber}:I${sheet2RowNumber}`;
       const values = [[
+        editedData.namaUsaha || row.namaUsaha || '',
+        row.pic || '', // Keep existing PIC value
+        row.contact || '', // Keep existing Contact value
         editedData.statusNgibar || row.statusNgibar || '',
-        editedData.statusDokumen || row.statusDokumen || '',
         editedData.metode || row.metode || '',
         editedData.papiSudahEntri || row.papiSudahEntri || '',
+        editedData.statusDokumen || row.statusDokumen || '',
         editedData.statusSubmit || row.statusSubmit || '',
       ]];
 
@@ -296,10 +300,14 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
         r.no === row.no
           ? {
               ...r,
+              idsbr: r.idsbr, // Keep IDSBR
+              namaUsaha: editedData.namaUsaha || r.namaUsaha || '', // Edit Nama Usaha
+              pic: r.pic, // Keep PIC - do not clear
+              contact: r.contact, // Keep Contact - do not clear
               statusNgibar: editedData.statusNgibar || r.statusNgibar || '',
-              statusDokumen: editedData.statusDokumen || r.statusDokumen || '',
               metode: editedData.metode || r.metode || '',
               papiSudahEntri: editedData.papiSudahEntri || r.papiSudahEntri || '',
+              statusDokumen: editedData.statusDokumen || r.statusDokumen || '',
               statusSubmit: editedData.statusSubmit || r.statusSubmit || '',
             }
           : r
@@ -333,8 +341,10 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
       }
 
       const sheet2RowNumber = rowIndex + 2;
+      // Only clear columns E-I (Status Ngibar, Metode, PAPI Sudah Entry, Status Dokumen, Status Submit)
+      // Keep columns B-D (Nama Usaha, PIC, Contact)
       const updateRange = `Sheet2!E${sheet2RowNumber}:I${sheet2RowNumber}`;
-      const values = [['', '', '', '', '']]; // Clear all columns E-I
+      const values = [['', '', '', '', '']]; // Clear only columns E-I (5 columns)
 
       console.log('[Delete] Range:', updateRange);
 
@@ -354,6 +364,10 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
         r.no === row.no
           ? {
               ...r,
+              idsbr: r.idsbr, // Keep IDSBR - do not clear
+              namaUsaha: r.namaUsaha, // Keep Nama Usaha - do not clear
+              pic: r.pic, // Keep PIC - do not clear
+              contact: r.contact, // Keep Contact - do not clear
               statusNgibar: '',
               statusDokumen: '',
               metode: '',
@@ -803,9 +817,9 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                       <th className="text-left py-3 px-2 font-semibold">IDSBR</th>
                       <th className="text-left py-3 px-2 font-semibold">Nama Usaha</th>
                       <th className="text-center py-3 px-2 font-semibold bg-blue-100">Status Ngibar</th>
-                      <th className="text-left py-3 px-2 font-semibold bg-blue-100">Status Dokumen</th>
                       <th className="text-left py-3 px-2 font-semibold bg-blue-100">Metode</th>
-                      <th className="text-left py-3 px-2 font-semibold bg-blue-100">PAPI Sudah Entri</th>
+                      <th className="text-left py-3 px-2 font-semibold bg-blue-100">PAPI Sudah Entry</th>
+                      <th className="text-left py-3 px-2 font-semibold bg-blue-100">Status Dokumen</th>
                       <th className="text-left py-3 px-2 font-semibold bg-blue-100">Status Submit</th>
                       <th className="text-center py-3 px-2 font-semibold">Aksi</th>
                     </tr>
@@ -828,9 +842,21 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                           <tr key={row.no} className="border-b hover:bg-blue-50">
                             <td className="py-3 px-2 text-muted-foreground">{(targetUBPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
                             <td className="py-3 px-2 font-medium text-slate-800">{row.idsbr}</td>
-                            <td className="py-3 px-2 font-medium text-slate-800">{row.namaUsaha}</td>
+                            <td className="py-3 px-2 font-medium text-slate-800">
+                              {isEditing ? (
+                                <Input
+                                  value={editedData.namaUsaha !== undefined ? editedData.namaUsaha : row.namaUsaha}
+                                  onChange={(e) => setEditedData({ ...editedData, namaUsaha: e.target.value })}
+                                  disabled={isSaving}
+                                  placeholder="Nama usaha"
+                                  className="h-8 text-sm"
+                                />
+                              ) : (
+                                row.namaUsaha
+                              )}
+                            </td>
                             
-                            {/* Status Ngibar - Icon Toggle */}
+                            {/* Status Ngibar - Slide Toggle */}
                             <td className="py-3 px-2 text-center">
                               {isEditing ? (
                                 <button
@@ -839,14 +865,18 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                                     setEditedData({ ...editedData, statusNgibar: newStatus });
                                   }}
                                   disabled={isSaving}
-                                  className="inline-flex items-center justify-center w-8 h-8 rounded border-2 transition-all disabled:opacity-50"
+                                  className="relative inline-flex h-7 w-14 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
                                   title={`${(editedData.statusNgibar || row.statusNgibar) === 'Sudah' ? 'Sudah Ngibar' : 'Belum Ngibar'}`}
                                   style={{
-                                    borderColor: (editedData.statusNgibar || row.statusNgibar) === 'Sudah' ? '#10b981' : '#ef4444',
-                                    color: (editedData.statusNgibar || row.statusNgibar) === 'Sudah' ? '#10b981' : '#ef4444',
+                                    backgroundColor: (editedData.statusNgibar || row.statusNgibar) === 'Sudah' ? '#10b981' : '#ef4444',
                                   }}
                                 >
-                                  {(editedData.statusNgibar || row.statusNgibar) === 'Sudah' ? '✓' : '✗'}
+                                  <span
+                                    className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md"
+                                    style={{
+                                      transform: (editedData.statusNgibar || row.statusNgibar) === 'Sudah' ? 'translateX(28px)' : 'translateX(2px)',
+                                    }}
+                                  />
                                 </button>
                               ) : (
                                 <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-white font-bold text-sm ${
@@ -857,29 +887,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                               )}
                             </td>
 
-                            {/* Status Dokumen - Dropdown */}
-                            <td className="py-3 px-2 text-sm">
-                              {isEditing ? (
-                                <Select 
-                                  value={editedData.statusDokumen !== undefined ? editedData.statusDokumen : (row.statusDokumen || '')}
-                                  onValueChange={(val) => setEditedData({ ...editedData, statusDokumen: val })}
-                                  disabled={isSaving}
-                                >
-                                  <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Pilih" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Draft">Draft</SelectItem>
-                                    <SelectItem value="Open">Open</SelectItem>
-                                    <SelectItem value="Submit">Submit</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <span className="text-slate-700">{row.statusDokumen || '-'}</span>
-                              )}
-                            </td>
-
-                            {/* Metode - Dropdown (CAWI/PAPI) */}
+                            {/* Metode - Dropdown (CAWI/CAPI/PAPI) */}
                             <td className="py-3 px-2 text-sm">
                               {isEditing ? (
                                 <Select 
@@ -892,6 +900,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="CAWI">CAWI</SelectItem>
+                                    <SelectItem value="CAPI">CAPI</SelectItem>
                                     <SelectItem value="PAPI">PAPI</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -900,9 +909,9 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                               )}
                             </td>
 
-                            {/* PAPI Sudah Entri - Conditional (hanya jika Metode=PAPI) */}
+                            {/* PAPI Sudah Entry - Conditional (hanya jika Metode=PAPI) */}
                             <td className="py-3 px-2 text-sm">
-                              {isMetodePAPI ? (
+                              {metodeValue === 'PAPI' ? (
                                 isEditing ? (
                                   <Select 
                                     value={editedData.papiSudahEntri !== undefined ? editedData.papiSudahEntri : (row.papiSudahEntri || '')}
@@ -913,12 +922,37 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                                       <SelectValue placeholder="Pilih" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="Belum Entri">Belum Entri</SelectItem>
-                                      <SelectItem value="Sudah Entri">Sudah Entri</SelectItem>
+                                      <SelectItem value="Belum">Belum</SelectItem>
+                                      <SelectItem value="Sudah">Sudah</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 ) : (
                                   <span className="text-slate-700">{row.papiSudahEntri || '-'}</span>
+                                )
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+
+                            {/* Status Dokumen - Conditional (hanya jika Metode=CAWI/CAPI) */}
+                            <td className="py-3 px-2 text-sm">
+                              {metodeValue === 'CAWI' || metodeValue === 'CAPI' ? (
+                                isEditing ? (
+                                  <Select 
+                                    value={editedData.statusDokumen !== undefined ? editedData.statusDokumen : (row.statusDokumen || '')}
+                                    onValueChange={(val) => setEditedData({ ...editedData, statusDokumen: val })}
+                                    disabled={isSaving}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue placeholder="Pilih" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Draft">Draft</SelectItem>
+                                      <SelectItem value="Open">Open</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <span className="text-slate-700">{row.statusDokumen || '-'}</span>
                                 )
                               ) : (
                                 <span className="text-gray-400">-</span>
@@ -973,6 +1007,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                                     onClick={() => {
                                       setEditingRowId(row.no);
                                       setEditedData({
+                                        namaUsaha: row.namaUsaha || '',
                                         statusNgibar: row.statusNgibar || '',
                                         statusDokumen: row.statusDokumen || '',
                                         metode: row.metode || '',
