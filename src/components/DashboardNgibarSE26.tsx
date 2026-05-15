@@ -761,31 +761,13 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                                         </p>
                                       </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div className="bg-white p-3 rounded border-l-4 border-blue-400">
-                                        <h4 className="font-semibold text-sm text-slate-700 mb-2 flex items-center gap-2">
-                                          <span className="text-blue-500">📋</span> Tindak Lanjut
-                                        </h4>
-                                        <p className="text-sm text-slate-600">
-                                          {row.tindakLanjut || '—'}
-                                        </p>
-                                      </div>
-                                      <div className="bg-white p-3 rounded border-l-4 border-purple-400">
-                                        <h4 className="font-semibold text-sm text-slate-700 mb-2 flex items-center gap-2">
-                                          <span className="text-purple-500">📋</span> Monev Ngibar
-                                        </h4>
-                                        <div className="text-xs space-y-1 text-slate-600">
-                                          <p><strong>Status:</strong> {row.statusNgibar || '—'}</p>
-                                          <p><strong>Dokumen:</strong> {row.dokumenStatus || '—'}</p>
-                                          <p><strong>Metode:</strong> {row.metode || '—'}</p>
-                                          {row.metode === 'PAPI' && (
-                                            <>
-                                              <p><strong>Entry:</strong> {row.entryStatus || '—'}</p>
-                                            </>
-                                          )}
-                                          <p><strong>Submit:</strong> {row.submitStatus || '—'}</p>
-                                        </div>
-                                      </div>
+                                    <div className="bg-white p-3 rounded border-l-4 border-blue-400">
+                                      <h4 className="font-semibold text-sm text-slate-700 mb-2 flex items-center gap-2">
+                                        <span className="text-blue-500">📋</span> Tindak Lanjut
+                                      </h4>
+                                      <p className="text-sm text-slate-600">
+                                        {row.tindakLanjut || '—'}
+                                      </p>
                                     </div>
                                   </div>
                                 </td>
