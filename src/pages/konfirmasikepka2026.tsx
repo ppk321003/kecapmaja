@@ -76,10 +76,10 @@ const COL = {
   rekomendasi: colIdx("BE"), // BE - Rekomendasi / Non Rekomendasi
   statusSobat: colIdx("BF"),  // BF - Status SOBAT
   statusSeleksi: colIdx("BL"),  // BL - Status Seleksi Administrasi
-  periodeSeleksi: colIdx("BP"),  // BP - Periode Seleksi
-  mulai: colIdx("BQ"),      // BQ - Mulai
-  selesai: colIdx("BR"),    // BR - Selesai
-  nilai: colIdx("BS"),      // BS - Nilai
+  periodStart: colIdx("BP"),  // BP - Period Start
+  skor: colIdx("BQ"),       // BQ - Skor
+  tesStart: colIdx("BR"),   // BR - Test Start
+  tesEnd: colIdx("BS"),     // BS - Test End
 };
 
 // Column mapping untuk MASTER.MITRA
@@ -87,10 +87,10 @@ const COL_MITRA = {
   nama: colIdx("A"),        // A - Nama Lengkap
   kec: colIdx("H"),         // H - Alamat Kecamatan
   desa: colIdx("I"),        // I - Desa
-  periodeSeleksi: colIdx("BI"),  // BI - Periode Seleksi (dari Mitra Tambahan)
-  mulai: colIdx("BL"),      // BL - Mulai (dari Mitra Tambahan)
-  selesai: colIdx("BM"),    // BM - Selesai (dari Mitra Tambahan)
-  nilai: colIdx("BK"),      // BK - Nilai (dari Mitra Tambahan)
+  periodStart: colIdx("BI"),  // BI - Period Start (dari Mitra Tambahan)
+  skor: colIdx("BL"),       // BL - Skor (dari Mitra Tambahan)
+  tesStart: colIdx("BM"),   // BM - Test Start (dari Mitra Tambahan)
+  tesEnd: colIdx("BK"),     // BK - Test End (dari Mitra Tambahan)
   sobatId: colIdx("P"),     // P - Sobat ID (untuk matching dengan Google Form)
   email: colIdx("Q"),       // Q - Email (untuk matching dengan Google Form)
   statusNik: colIdx("R"),   // R - Status NIK
@@ -332,12 +332,12 @@ const checkGoogleFormStatus = (mitriRow: Row, olaRows: Row[]): boolean => {
 
 // Helper function untuk mengambil data dari Olah sheet berdasarkan Email atau Sobat ID
 // Jika tidak ketemu di Olah, fallback ke Mitra Tambahan langsung
-const getOlaRowData = (mitriRow: Row, olaRows: Row[]): { periodeSeleksi: string; mulai: string; selesai: string; nilai: string } => {
+const getOlaRowData = (mitriRow: Row, olaRows: Row[]): { periodStart: string; skor: string; tesStart: string; tesEnd: string } => {
   const mitriEmail = (mitriRow[COL_MITRA.email] || "").trim().toLowerCase();
   const mitriSobatId = (mitriRow[COL_MITRA.sobatId] || "").trim().toLowerCase();
   
   if (!mitriEmail && !mitriSobatId) {
-    return { periodeSeleksi: "", mulai: "", selesai: "", nilai: "" };
+    return { periodStart: "", skor: "", tesStart: "", tesEnd: "" };
   }
   
   // Try to find match in Olah sheet first
@@ -348,22 +348,22 @@ const getOlaRowData = (mitriRow: Row, olaRows: Row[]): { periodeSeleksi: string;
   });
   
   if (matchedOlaRow) {
-    console.log("Match found in Olah! MT Email/SobatID:", mitriEmail || mitriSobatId, "→ BP:", matchedOlaRow[COL.periodeSeleksi]);
+    console.log("Match found in Olah! MT Email/SobatID:", mitriEmail || mitriSobatId, "→ BP:", matchedOlaRow[COL.periodStart]);
     return {
-      periodeSeleksi: (matchedOlaRow[COL.periodeSeleksi] || "").trim(),
-      mulai: (matchedOlaRow[COL.mulai] || "").trim(),
-      selesai: (matchedOlaRow[COL.selesai] || "").trim(),
-      nilai: (matchedOlaRow[COL.nilai] || "").trim(),
+      periodStart: (matchedOlaRow[COL.periodStart] || "").trim(),
+      skor: (matchedOlaRow[COL.skor] || "").trim(),
+      tesStart: (matchedOlaRow[COL.tesStart] || "").trim(),
+      tesEnd: (matchedOlaRow[COL.tesEnd] || "").trim(),
     };
   }
   
   // Fallback: try to get from Mitra Tambahan directly (if data entered there)
   console.log("No match in Olah for MT Email/SobatID:", mitriEmail || mitriSobatId, "→ using direct columns from MT");
   return {
-    periodeSeleksi: (mitriRow[COL_MITRA.periodeSeleksi] || "").trim(),
-    mulai: (mitriRow[COL_MITRA.mulai] || "").trim(),
-    selesai: (mitriRow[COL_MITRA.selesai] || "").trim(),
-    nilai: (mitriRow[COL_MITRA.nilai] || "").trim(),
+    periodStart: (mitriRow[COL_MITRA.periodStart] || "").trim(),
+    skor: (mitriRow[COL_MITRA.skor] || "").trim(),
+    tesStart: (mitriRow[COL_MITRA.tesStart] || "").trim(),
+    tesEnd: (mitriRow[COL_MITRA.tesEnd] || "").trim(),
   };
 };
 
@@ -473,10 +473,10 @@ export default function KonfirmasiKepka2026() {
             console.log("Sample Olah Row 1:", {
               email_B: olaData[0][colIdx("B")],
               sobatId_G: olaData[0][colIdx("G")],
-              periodeSeleksi_BP: olaData[0][colIdx("BP")],
-              mulai_BQ: olaData[0][colIdx("BQ")],
-              selesai_BR: olaData[0][colIdx("BR")],
-              nilai_BS: olaData[0][colIdx("BS")],
+              periodStart_BP: olaData[0][colIdx("BP")],
+              skor_BQ: olaData[0][colIdx("BQ")],
+              tesStart_BR: olaData[0][colIdx("BR")],
+              tesEnd_BS: olaData[0][colIdx("BS")],
             });
           }
         }
@@ -1003,8 +1003,8 @@ export default function KonfirmasiKepka2026() {
       return true;
     });
     
-    // Handle sorting for dynamic columns (periodeSeleksi, mulai, selesai, nilai) vs direct columns
-    const isDynamicColumn = ["periodeSeleksi", "mulai", "selesai", "nilai"].includes(mtSortKey);
+    // Handle sorting for dynamic columns (periodStart, skor, tesStart, tesEnd) vs direct columns
+    const isDynamicColumn = ["periodStart", "skor", "tesStart", "tesEnd"].includes(mtSortKey);
     
     if (isDynamicColumn) {
       // For dynamic columns, fetch olaData for each row and sort based on that
@@ -2454,17 +2454,17 @@ export default function KonfirmasiKepka2026() {
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("desa")}>
                           <div className="flex items-center gap-1">Desa <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("periodeSeleksi")}>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("periodStart")}>
                           <div className="flex items-center gap-1">Periode Seleksi <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("mulai")}>
-                          <div className="flex items-center gap-1">Mulai <ArrowUpDown className="h-3 w-3" /></div>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("tesStart")}>
+                          <div className="flex items-center gap-1">Test Start <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("selesai")}>
-                          <div className="flex items-center gap-1">Selesai <ArrowUpDown className="h-3 w-3" /></div>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("tesEnd")}>
+                          <div className="flex items-center gap-1">Test End <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("nilai")}>
-                          <div className="flex items-center gap-1">Nilai <ArrowUpDown className="h-3 w-3" /></div>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("skor")}>
+                          <div className="flex items-center gap-1">Skor <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusNik")}>
                           <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
@@ -2486,10 +2486,10 @@ export default function KonfirmasiKepka2026() {
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.desa] || "-"}</TableCell>
-                            <TableCell>{olaData.periodeSeleksi || "-"}</TableCell>
-                            <TableCell>{olaData.mulai || "-"}</TableCell>
-                            <TableCell>{olaData.selesai || "-"}</TableCell>
-                            <TableCell>{olaData.nilai || "-"}</TableCell>
+                            <TableCell>{olaData.periodStart || "-"}</TableCell>
+                            <TableCell>{olaData.tesStart || "-"}</TableCell>
+                            <TableCell>{olaData.tesEnd || "-"}</TableCell>
+                            <TableCell>{olaData.skor || "-"}</TableCell>
                                 <TableCell><MitriStatusBadge status={st} /></TableCell>
                                 <TableCell className="text-sm">{r[COL_MITRA.statusSeleksiAdmin] || "-"}</TableCell>
                                 <TableCell className="text-center">
