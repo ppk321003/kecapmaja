@@ -26,7 +26,7 @@ import {
 
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
-const RANGE = `${SHEET_NAME}!A1:BL`;
+const RANGE = `${SHEET_NAME}!A1:BS`;
 
 const COLORS = ["#10b981", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 
@@ -76,6 +76,10 @@ const COL = {
   rekomendasi: colIdx("BE"), // BE - Rekomendasi / Non Rekomendasi
   statusSobat: colIdx("BF"),  // BF - Status SOBAT
   statusSeleksi: colIdx("BL"),  // BL - Status Seleksi Administrasi
+  periodeSeleksi: colIdx("BP"),  // BP - Periode Seleksi
+  mulai: colIdx("BQ"),      // BQ - Mulai
+  selesai: colIdx("BR"),    // BR - Selesai
+  nilai: colIdx("BS"),      // BS - Nilai
 };
 
 // Column mapping untuk MASTER.MITRA
@@ -83,10 +87,12 @@ const COL_MITRA = {
   nama: colIdx("A"),        // A - Nama Lengkap
   kec: colIdx("H"),         // H - Alamat Kecamatan
   desa: colIdx("I"),        // I - Desa
-  pendidikan: colIdx("L"),  // L - Pendidikan
-  pekerjaan: colIdx("M"),   // M - Pekerjaan
-  sobatId: colIdx("P"),     // P - Sobat ID
-  email: colIdx("Q"),       // Q - Email
+  periodeSeleksi: colIdx("BP"),  // BP - Periode Seleksi (dari Olah matching)
+  mulai: colIdx("BQ"),      // BQ - Mulai (dari Olah matching)
+  selesai: colIdx("BR"),    // BR - Selesai (dari Olah matching)
+  nilai: colIdx("BS"),      // BS - Nilai (dari Olah matching)
+  sobatId: colIdx("P"),     // P - Sobat ID (untuk matching dengan Google Form)
+  email: colIdx("Q"),       // Q - Email (untuk matching dengan Google Form)
   statusNik: colIdx("R"),   // R - Status NIK
   statusSeleksiAdmin: colIdx("C"),  // C - Status Seleksi Administrasi (from Mitra Tambahan)
 };
@@ -324,6 +330,43 @@ const checkGoogleFormStatus = (mitriRow: Row, olaRows: Row[]): boolean => {
   });
 };
 
+// Helper function untuk mengambil data dari Olah sheet berdasarkan Email atau Sobat ID
+// Jika tidak ketemu di Olah, fallback ke Mitra Tambahan langsung
+const getOlaRowData = (mitriRow: Row, olaRows: Row[]): { periodeSeleksi: string; mulai: string; selesai: string; nilai: string } => {
+  const mitriEmail = (mitriRow[COL_MITRA.email] || "").trim().toLowerCase();
+  const mitriSobatId = (mitriRow[COL_MITRA.sobatId] || "").trim().toLowerCase();
+  
+  if (!mitriEmail && !mitriSobatId) {
+    return { periodeSeleksi: "", mulai: "", selesai: "", nilai: "" };
+  }
+  
+  // Try to find match in Olah sheet first
+  const matchedOlaRow = olaRows.find(olaRow => {
+    const olaEmail = (olaRow[COL.email] || "").trim().toLowerCase();
+    const olaSobatId = (olaRow[COL.sobatId] || "").trim().toLowerCase();
+    return (mitriEmail && olaEmail === mitriEmail) || (mitriSobatId && olaSobatId === mitriSobatId);
+  });
+  
+  if (matchedOlaRow) {
+    console.log("Match found in Olah! MT Email/SobatID:", mitriEmail || mitriSobatId, "→ BP:", matchedOlaRow[COL.periodeSeleksi]);
+    return {
+      periodeSeleksi: (matchedOlaRow[COL.periodeSeleksi] || "").trim(),
+      mulai: (matchedOlaRow[COL.mulai] || "").trim(),
+      selesai: (matchedOlaRow[COL.selesai] || "").trim(),
+      nilai: (matchedOlaRow[COL.nilai] || "").trim(),
+    };
+  }
+  
+  // Fallback: try to get from Mitra Tambahan directly (if data entered there)
+  console.log("No match in Olah for MT Email/SobatID:", mitriEmail || mitriSobatId, "→ using direct columns from MT");
+  return {
+    periodeSeleksi: (mitriRow[COL_MITRA.periodeSeleksi] || "").trim(),
+    mulai: (mitriRow[COL_MITRA.mulai] || "").trim(),
+    selesai: (mitriRow[COL_MITRA.selesai] || "").trim(),
+    nilai: (mitriRow[COL_MITRA.nilai] || "").trim(),
+  };
+};
+
 // Helper function untuk check dokumen perlu perbaikan
 const getDocumentsThatNeedRepair = (row: Row): string[] => {
   const docs: string[] = [];
@@ -422,7 +465,20 @@ export default function KonfirmasiKepka2026() {
           setHeaders([]); setRows([]);
         } else {
           setHeaders(values[0]);
-          setRows(values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
+          const olaData = values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== ""));
+          setRows(olaData);
+          // Debug: log sample data and BP/BQ/BR/BS columns
+          console.log("Olah loaded:", olaData.length, "rows");
+          if (olaData.length > 0) {
+            console.log("Sample Olah Row 1:", {
+              email_B: olaData[0][colIdx("B")],
+              sobatId_G: olaData[0][colIdx("G")],
+              periodeSeleksi_BP: olaData[0][colIdx("BP")],
+              mulai_BQ: olaData[0][colIdx("BQ")],
+              selesai_BR: olaData[0][colIdx("BR")],
+              nilai_BS: olaData[0][colIdx("BS")],
+            });
+          }
         }
       } catch (e: any) {
         setError(e.message || "Gagal memuat data");
@@ -462,7 +518,7 @@ export default function KonfirmasiKepka2026() {
       try {
         setMtLoading(true);
         const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "Mitra Tambahan!A1:S" },
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: "Mitra Tambahan!A1:BS" },
         });
         if (error) throw error;
         const values: Row[] = data?.values || [];
@@ -470,7 +526,18 @@ export default function KonfirmasiKepka2026() {
           setMtHeaders([]); setMtRows([]);
         } else {
           setMtHeaders(values[0]);
-          setMtRows(values.slice(2).filter(r => r && r.some(c => (c || "").toString().trim() !== "")));
+          const mtData = values.slice(2).filter(r => r && r.some(c => (c || "").toString().trim() !== ""));
+          setMtRows(mtData);
+          // Debug: log sample data
+          console.log("Mitra Tambahan loaded:", mtData.length, "rows");
+          if (mtData.length > 0) {
+            console.log("Sample MT Row 1:", {
+              nama: mtData[0][colIdx("A")],
+              email_Q: mtData[0][colIdx("Q")],
+              sobatId_P: mtData[0][colIdx("P")],
+              statusNik_R: mtData[0][colIdx("R")],
+            });
+          }
         }
       } catch (e: any) {
         setMtError(e.message || "Gagal memuat data mitra tambahan");
@@ -935,14 +1002,34 @@ export default function KonfirmasiKepka2026() {
       if (q) return r.some(c => (c || "").toString().toLowerCase().includes(q));
       return true;
     });
-    const idx = COL_MITRA[mtSortKey];
-    out = [...out].sort((a, b) => {
-      const av = (a[idx] || "").toString().toLowerCase();
-      const bv = (b[idx] || "").toString().toLowerCase();
-      if (av < bv) return mtSortDir === "asc" ? -1 : 1;
-      if (av > bv) return mtSortDir === "asc" ? 1 : -1;
-      return 0;
-    });
+    
+    // Handle sorting for dynamic columns (periodeSeleksi, mulai, selesai, nilai) vs direct columns
+    const isDynamicColumn = ["periodeSeleksi", "mulai", "selesai", "nilai"].includes(mtSortKey);
+    
+    if (isDynamicColumn) {
+      // For dynamic columns, fetch olaData for each row and sort based on that
+      out = [...out].sort((a, b) => {
+        const aData = getOlaRowData(a, rows);
+        const bData = getOlaRowData(b, rows);
+        const fieldKey = mtSortKey as keyof typeof aData;
+        const av = (aData[fieldKey] || "").toString().toLowerCase();
+        const bv = (bData[fieldKey] || "").toString().toLowerCase();
+        if (av < bv) return mtSortDir === "asc" ? -1 : 1;
+        if (av > bv) return mtSortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+    } else {
+      // For direct columns, use the original sorting logic (column index lookup)
+      const idx = COL_MITRA[mtSortKey];
+      out = [...out].sort((a, b) => {
+        const av = (a[idx] || "").toString().toLowerCase();
+        const bv = (b[idx] || "").toString().toLowerCase();
+        if (av < bv) return mtSortDir === "asc" ? -1 : 1;
+        if (av > bv) return mtSortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    
     return out;
   }, [mtRows, mtSearch, mtFilterStatus, mtFilterKec, mtFilterGF, mtFilterStatusSeleksiAdmin, mtSortKey, mtSortDir, rows]);
   const mtTotalPages = Math.max(1, Math.ceil(mtFiltered.length / mtPageSize));
@@ -1885,15 +1972,7 @@ export default function KonfirmasiKepka2026() {
                         <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("desa")}>
                           <div className="flex items-center gap-1">Desa <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("pendidikan")}>
-                          <div className="flex items-center gap-1">Pendidikan <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("pekerjaan")}>
-                              <div className="flex items-center gap-1">Pekerjaan <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("sobatId")}>
-                          <div className="flex items-center gap-1">Sobat ID <ArrowUpDown className="h-3 w-3" /></div>
-                        </TableHead>
+
                         <TableHead className="cursor-pointer" onClick={() => toggleMitriSort("statusNik")}>
                           <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
                             </TableHead>
@@ -1912,9 +1991,7 @@ export default function KonfirmasiKepka2026() {
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.desa] || "-"}</TableCell>
-                            <TableCell>{r[COL_MITRA.pendidikan] || "-"}</TableCell>
-                            <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
-                            <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
+
                                 <TableCell><MitriStatusBadge status={st} /></TableCell>
                                 <TableCell className="text-center">
                                   {checkGoogleFormStatus(r, rows) ? (
@@ -2377,18 +2454,21 @@ export default function KonfirmasiKepka2026() {
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("desa")}>
                           <div className="flex items-center gap-1">Desa <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("pendidikan")}>
-                          <div className="flex items-center gap-1">Pendidikan <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => toggleMtSort("pekerjaan")}>
-                              <div className="flex items-center gap-1">Pekerjaan <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("sobatId")}>
-                          <div className="flex items-center gap-1">Sobat ID <ArrowUpDown className="h-3 w-3" /></div>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("periodeSeleksi")}>
+                          <div className="flex items-center gap-1">Periode Seleksi <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("mulai")}>
+                          <div className="flex items-center gap-1">Mulai <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("selesai")}>
+                          <div className="flex items-center gap-1">Selesai <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleMtSort("nilai")}>
+                          <div className="flex items-center gap-1">Nilai <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => toggleMtSort("statusNik")}>
                           <div className="flex items-center gap-1">Status NIK <ArrowUpDown className="h-3 w-3" /></div>
-                            </TableHead>
+                        </TableHead>
                             <TableHead>Status Seleksi Administrasi</TableHead>
                             <TableHead className="text-center">Cek GoogleForm</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
@@ -2396,18 +2476,20 @@ export default function KonfirmasiKepka2026() {
                         </TableHeader>
                         <TableBody>
                           {mtPageRows.length === 0 ? (
-                        <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={12} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : mtPageRows.map((r, i) => {
                         const st = r[COL_MITRA.statusNik] || "";
+                        const olaData = getOlaRowData(r, rows);
                             return (
                               <TableRow key={i}>
                                 <TableCell className="text-muted-foreground">{(mtCurrentPage - 1) * mtPageSize + i + 1}</TableCell>
                                 <TableCell className="font-medium">{r[COL_MITRA.nama] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.kec] || "-"}</TableCell>
                                 <TableCell>{r[COL_MITRA.desa] || "-"}</TableCell>
-                            <TableCell>{r[COL_MITRA.pendidikan] || "-"}</TableCell>
-                            <TableCell>{r[COL_MITRA.pekerjaan] || "-"}</TableCell>
-                            <TableCell className="font-mono text-xs">{r[COL_MITRA.sobatId] || "-"}</TableCell>
+                            <TableCell>{olaData.periodeSeleksi || "-"}</TableCell>
+                            <TableCell>{olaData.mulai || "-"}</TableCell>
+                            <TableCell>{olaData.selesai || "-"}</TableCell>
+                            <TableCell>{olaData.nilai || "-"}</TableCell>
                                 <TableCell><MitriStatusBadge status={st} /></TableCell>
                                 <TableCell className="text-sm">{r[COL_MITRA.statusSeleksiAdmin] || "-"}</TableCell>
                                 <TableCell className="text-center">
