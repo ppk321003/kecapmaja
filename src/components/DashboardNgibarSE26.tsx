@@ -824,7 +824,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
 
                         return (
                           <tr key={row.no} className="border-b hover:bg-blue-50">
-                            <td className="py-3 px-2 text-muted-foreground">{idx + 1}</td>
+                            <td className="py-3 px-2 text-muted-foreground">{(targetUBPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
                             <td className="py-3 px-2 font-medium text-slate-800">{row.idsbr}</td>
                             <td className="py-3 px-2 font-medium text-slate-800">{row.namaUsaha}</td>
                             
