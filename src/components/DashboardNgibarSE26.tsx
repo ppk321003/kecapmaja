@@ -613,16 +613,18 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
         <CardHeader>
           <div className="flex items-center justify-between mb-2">
             <CardTitle>Monitoring Ngibar SE26</CardTitle>
-            <a 
-              href="https://docs.google.com/spreadsheets/d/1EyrssWtjEGd64SYelUMON3nnLpj6KU5INCMeD-Amjto/edit?gid=0#gid=0" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className={getButtonClass()}
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Entri Data
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            {activeTab === 'tracking' && (
+              <a 
+                href="https://docs.google.com/spreadsheets/d/1EyrssWtjEGd64SYelUMON3nnLpj6KU5INCMeD-Amjto/edit?gid=0#gid=0" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className={getButtonClass()}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Entri Data
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
           </div>
           <CardDescription>Detail kegiatan ngibar untuk semua instansi/lembaga</CardDescription>
         </CardHeader>
