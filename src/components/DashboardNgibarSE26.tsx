@@ -421,6 +421,23 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
     };
   }, [rows]);
 
+  // Calculate statistics for Target UB
+  const targetUBStats = useMemo(() => {
+    const totalTarget = targetUBRows.length;
+    const totalRealisasi = targetUBRows.filter(r => r.statusSubmit === 'Sudah').length;
+    const persentase = totalTarget > 0 ? ((totalRealisasi / totalTarget) * 100).toFixed(1) : '0';
+    
+    return {
+      totalTarget,
+      totalRealisasi,
+      persentase,
+      totalKegiatan: targetUBRows.length,
+    };
+  }, [targetUBRows]);
+
+  // Determine which stats to display based on active tab
+  const displayStats = activeTab === 'tracking' ? stats : targetUBStats;
+
   // Status distribution for pie chart
   const statusDistribution = useMemo(() => {
     return [
@@ -539,7 +556,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-900">
-              {stats.totalTarget.toLocaleString('id-ID')}
+              {displayStats.totalTarget.toLocaleString('id-ID')}
             </div>
             <p className="text-xs text-blue-700 mt-1">Peserta target</p>
           </CardContent>
@@ -554,7 +571,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-900">
-              {stats.totalRealisasi.toLocaleString('id-ID')}
+              {displayStats.totalRealisasi.toLocaleString('id-ID')}
             </div>
             <p className="text-xs text-green-700 mt-1">Peserta submit</p>
           </CardContent>
@@ -569,7 +586,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-900">
-              {stats.persentase}%
+              {displayStats.persentase}%
             </div>
             <p className="text-xs text-purple-700 mt-1">Target vs Realisasi</p>
           </CardContent>
@@ -584,7 +601,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-900">
-              {stats.totalKegiatan}
+              {displayStats.totalKegiatan}
             </div>
             <p className="text-xs text-orange-700 mt-1">Instansi/Lembaga</p>
           </CardContent>
