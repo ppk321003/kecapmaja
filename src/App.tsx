@@ -56,6 +56,7 @@ import EditKuitansi from "./pages/EditKuitansi";
 import LayananUmum from "./pages/LayananUmum";
 import ETamu from "./pages/ETamu";
 import KonfirmasiKepka2026 from "./pages/konfirmasikepka2026";
+import MitraSE2026 from "./pages/mitraSE2026";
 import BahanRevisiAnggaran from "./components/bahanrevisi/BahanRevisiAnggaran";
 
 const queryClient = new QueryClient();
@@ -115,6 +116,9 @@ const App = () => (
             <Route path="/bahan-revisi-anggaran" element={<ProtectedRoute><Layout><BahanRevisiAnggaran /></Layout></ProtectedRoute>} />
             <Route path="/layanan-umum" element={<LayananUmum />} />
             <Route path="/e-tamu" element={<ETamu />} />
+            <Route path="/mitra-tambahan-2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
+            <Route path="/mitra-se2026" element={<ProtectedRoute><Layout><MitraSE2026 /></Layout></ProtectedRoute>} />
+            <Route path="/mitra-tambahan" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             <Route path="/konfirmasi-kepka-2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             <Route path="/konfirmasikepka2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

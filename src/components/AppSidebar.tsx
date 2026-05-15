@@ -72,7 +72,8 @@ const kepegawaianItems = [
 
 // MENU GROUP: REKRUTMEN
 const rekrutmenItems = [
-  { title: "Konfirmasi KEPKA 2026", url: "/konfirmasi-kepka-2026", icon: FileCheck, conditional: "isSatker3210" },
+  { title: "Mitra Tambahan 2026", url: "/mitra-tambahan-2026", icon: FileCheck, conditional: "isSatker3210" },
+  { title: "Mitra SE2026", url: "/mitra-se2026", icon: Users, conditional: "isSatker3210" },
 ];
 
 // MENU GROUP: e-DOKUMEN SUB ITEMS
