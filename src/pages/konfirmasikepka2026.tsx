@@ -87,10 +87,10 @@ const COL_MITRA = {
   nama: colIdx("A"),        // A - Nama Lengkap
   kec: colIdx("H"),         // H - Alamat Kecamatan
   desa: colIdx("I"),        // I - Desa
-  periodeSeleksi: colIdx("BP"),  // BP - Periode Seleksi (dari Olah matching)
-  mulai: colIdx("BQ"),      // BQ - Mulai (dari Olah matching)
-  selesai: colIdx("BR"),    // BR - Selesai (dari Olah matching)
-  nilai: colIdx("BS"),      // BS - Nilai (dari Olah matching)
+  periodeSeleksi: colIdx("BI"),  // BI - Periode Seleksi (dari Mitra Tambahan)
+  mulai: colIdx("BL"),      // BL - Mulai (dari Mitra Tambahan)
+  selesai: colIdx("BM"),    // BM - Selesai (dari Mitra Tambahan)
+  nilai: colIdx("BK"),      // BK - Nilai (dari Mitra Tambahan)
   sobatId: colIdx("P"),     // P - Sobat ID (untuk matching dengan Google Form)
   email: colIdx("Q"),       // Q - Email (untuk matching dengan Google Form)
   statusNik: colIdx("R"),   // R - Status NIK
