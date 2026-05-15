@@ -101,6 +101,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
   const [rows, setRows] = useState<NgibarRow[]>([]);
   const [targetUBRows, setTargetUBRows] = useState<TargetUBRow[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [targetUBSearchQuery, setTargetUBSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'Terlaksana' | 'Proses Konfirmasi'>('all');
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState('tracking');
@@ -523,13 +524,22 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
   }, [targetUBRows]);
 
   // Pagination for Target UB
+  const filteredTargetUBRows = useMemo(() => {
+    return targetUBRows.filter(row => {
+      const matchesSearch = 
+        row.idsbr.toLowerCase().includes(targetUBSearchQuery.toLowerCase()) ||
+        row.namaUsaha.toLowerCase().includes(targetUBSearchQuery.toLowerCase());
+      return matchesSearch;
+    });
+  }, [targetUBRows, targetUBSearchQuery]);
+
   const paginatedTargetUBRows = useMemo(() => {
     const startIndex = (targetUBPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    return targetUBRows.slice(startIndex, endIndex);
-  }, [targetUBRows, targetUBPage]);
+    return filteredTargetUBRows.slice(startIndex, endIndex);
+  }, [filteredTargetUBRows, targetUBPage]);
 
-  const totalPages = Math.ceil(targetUBRows.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredTargetUBRows.length / ITEMS_PER_PAGE);
 
   if (loading) {
     return (
@@ -809,6 +819,18 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                 </Alert>
               )}
 
+              <div className="mb-4">
+                <Input
+                  placeholder="Cari berdasarkan IDSBR atau Nama Usaha..."
+                  value={targetUBSearchQuery}
+                  onChange={(e) => {
+                    setTargetUBSearchQuery(e.target.value);
+                    setTargetUBPage(1); // Reset ke halaman 1 saat search
+                  }}
+                  className="h-9"
+                />
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -828,7 +850,9 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
                     {paginatedTargetUBRows.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="text-center py-8 text-muted-foreground">
-                          Tidak ada data Target UB
+                          {targetUBSearchQuery
+                            ? `Tidak ada data yang cocok untuk "${targetUBSearchQuery}"`
+                            : `Tidak ada data Target UB`}
                         </td>
                       </tr>
                     ) : (
@@ -1040,7 +1064,7 @@ const DashboardNgibarSE26 = ({ filterTahun }: DashboardNgibarSE26Props) => {
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
-                    Menampilkan {(targetUBPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(targetUBPage * ITEMS_PER_PAGE, targetUBRows.length)} dari {targetUBRows.length} data
+                    Menampilkan {(targetUBPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(targetUBPage * ITEMS_PER_PAGE, filteredTargetUBRows.length)} dari {filteredTargetUBRows.length} data
                   </div>
                   <div className="flex gap-2">
                     <button
