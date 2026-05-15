@@ -1012,10 +1012,24 @@ export default function KonfirmasiKepka2026() {
         const aData = getOlaRowData(a, rows);
         const bData = getOlaRowData(b, rows);
         const fieldKey = mtSortKey as keyof typeof aData;
-        const av = (aData[fieldKey] || "").toString().toLowerCase();
-        const bv = (bData[fieldKey] || "").toString().toLowerCase();
-        if (av < bv) return mtSortDir === "asc" ? -1 : 1;
-        if (av > bv) return mtSortDir === "asc" ? 1 : -1;
+        const av = (aData[fieldKey] || "").toString().trim();
+        const bv = (bData[fieldKey] || "").toString().trim();
+        
+        // For skor column, do numeric sort
+        if (mtSortKey === "skor") {
+          const aNum = parseFloat(av) || 0;
+          const bNum = parseFloat(bv) || 0;
+          if (aNum !== bNum) {
+            return mtSortDir === "asc" ? aNum - bNum : bNum - aNum;
+          }
+          return 0;
+        }
+        
+        // For other columns, do string sort
+        const avLower = av.toLowerCase();
+        const bvLower = bv.toLowerCase();
+        if (avLower < bvLower) return mtSortDir === "asc" ? -1 : 1;
+        if (avLower > bvLower) return mtSortDir === "asc" ? 1 : -1;
         return 0;
       });
     } else {
