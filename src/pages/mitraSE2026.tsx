@@ -16,7 +16,7 @@ type Row = string[];
 
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
-const RANGE = `${SHEET_NAME}!A1:BP`;
+const RANGE = `${SHEET_NAME}!A1:BT`;
 
 // Column letter to index (0-based)
 const colIdx = (letter: string): number => {
@@ -65,8 +65,10 @@ const COL = {
   statusSobat: colIdx("BF"),  // BF
   statusSeleksi: colIdx("BL"),  // BL - Status Seleksi Administrasi
   statusSeleksiKompetensi: colIdx("BM"),  // BM - Status Seleksi Kompetensi
+  skor: colIdx("BQ"),  // BQ - Skor
   tipeKegiatan: colIdx("BN"),  // BN - Tipe Kegiatan (SE2026 / Rutin)
   pplPml: colIdx("BO"),  // BO - PPL atau PML
+  statusAkhir: colIdx("BT"),  // BT - Status Akhir (Diterima/Ditolak) untuk Mitra Tambahan
 };
 
 // Column mapping untuk Mitra (Manajemen Mitra sheet)
@@ -699,15 +701,16 @@ export default function MitraSE2026() {
                             <TableHead>Desa</TableHead>
                             <TableHead>Status SOBAT</TableHead>
                             <TableHead>Status Seleksi Admin</TableHead>
-                            <TableHead>Status Seleksi Kompetensi</TableHead>
+                            <TableHead>Skor</TableHead>
                             <TableHead className="text-center">Kesediaan SE26</TableHead>
                             <TableHead className="text-center">Catatan Kecap Maja</TableHead>
-                            <TableHead className="text-right">Aksi</TableHead>
+                            <TableHead className="text-center">Status Akhir</TableHead>
+                            <TableHead className="text-center">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {pageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : pageRows.map((respondenRow, i) => {
                             const mitraRow = findMitraForResponden(respondenRow, mitriRows);
                             return (
@@ -719,9 +722,7 @@ export default function MitraSE2026() {
                               <TableCell className="text-sm">{respondenRow[COL.statusSobat] || "-"}</TableCell>
                               <TableCell className="text-sm">{respondenRow[COL.statusSeleksi] || "-"}</TableCell>
                               <TableCell className="text-sm text-center">
-                                <Badge className="bg-blue-100 text-blue-800">
-                                  {respondenRow[COL.statusSeleksiKompetensi] || "Belum"}
-                                </Badge>
+                                {respondenRow[COL.skor] ? parseFloat(respondenRow[COL.skor]).toFixed(2) : "-"}
                               </TableCell>
                               <TableCell className="text-center">
                                 <Badge className={respondenRow[COL.sensusEkonomi]?.toString().toLowerCase().includes("ya") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
@@ -754,27 +755,99 @@ export default function MitraSE2026() {
                                   );
                                 })()}
                               </TableCell>
+                              
+                              {/* Status Akhir - for Mitra Tambahan only */}
+                              <TableCell className="text-center">
+                                {(() => {
+                                  const statusSobat = (respondenRow[COL.statusSobat] || "").toString().trim();
+                                  if (statusSobat === "Mitra Tambahan") {
+                                    const statusAkhir = (respondenRow[COL.statusAkhir] || "").toString().trim();
+                                    return (
+                                      <Badge className={
+                                        statusAkhir === "Diterima"
+                                          ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                                          : statusAkhir === "Ditolak"
+                                            ? "bg-red-100 text-red-700 border-red-200"
+                                            : "bg-slate-100 text-slate-600 border-slate-200"
+                                      }>
+                                        {statusAkhir || "-"}
+                                      </Badge>
+                                    );
+                                  }
+                                  return <span className="text-slate-400">-</span>;
+                                })()}
+                              </TableCell>
+                              
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1">
                                   {(() => {
                                     const origIdx = rows.indexOf(respondenRow);
+                                    const statusSobat = (respondenRow[COL.statusSobat] || "").toString().trim();
+                                    const statusAkhir = (respondenRow[COL.statusAkhir] || "").toString().trim();
                                     const tipeKegiatan = (respondenRow[COL.tipeKegiatan] || "").toString().trim();
                                     const pplPml = (respondenRow[COL.pplPml] || "").toString().trim();
                                     const isSavingTipe = savingCell?.rowIdx === origIdx && savingCell?.col === "BN";
                                     const isSavingPpl = savingCell?.rowIdx === origIdx && savingCell?.col === "BO";
+                                    const isSavingAkhir = savingCell?.rowIdx === origIdx && savingCell?.col === "BT";
+                                    const isMitraTambahan = statusSobat === "Mitra Tambahan";
+                                    const isDiterimA = statusAkhir === "Diterima";
                                     
                                     return (
                                       <>
+                                        {/* MITRA TAMBAHAN: Ceklis dan X Icons */}
+                                        {isMitraTambahan && (
+                                          <>
+                                            {/* Ceklis: Diterima */}
+                                            <button
+                                              className={`p-1.5 rounded transition-colors ${
+                                                isDiterimA
+                                                  ? "bg-emerald-100 text-emerald-700"
+                                                  : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                              }`}
+                                              onClick={() => updateCellValue(origIdx, "BT", isDiterimA ? "" : "Diterima")}
+                                              title="Diterima"
+                                              disabled={isSavingAkhir}
+                                            >
+                                              <CheckCircle2 className="h-4 w-4" />
+                                            </button>
+                                            
+                                            {/* X: Ditolak */}
+                                            <button
+                                              className={`p-1.5 rounded transition-colors ${
+                                                statusAkhir === "Ditolak"
+                                                  ? "bg-red-100 text-red-700"
+                                                  : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                              }`}
+                                              onClick={async () => {
+                                                if (statusAkhir === "Ditolak") {
+                                                  await updateCellValue(origIdx, "BT", "");
+                                                } else {
+                                                  await updateCellValue(origIdx, "BT", "Ditolak");
+                                                  // Clear BN and BO when Ditolak is set
+                                                  await updateCellValue(origIdx, "BN", "");
+                                                  await updateCellValue(origIdx, "BO", "");
+                                                }
+                                              }}
+                                              title="Ditolak"
+                                              disabled={isSavingAkhir}
+                                            >
+                                              <XCircle className="h-4 w-4" />
+                                            </button>
+                                          </>
+                                        )}
+                                        
                                         {/* Tipe Kegiatan: SE2026 - selalu tampil, click untuk toggle */}
                                         <Button 
                                           variant="ghost"
                                           className={`h-8 px-2 py-1 text-xs font-semibold transition-all rounded-full ${
                                             tipeKegiatan === "SE2026" 
                                               ? "bg-orange-100 border border-orange-700 text-orange-700" 
-                                              : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
+                                              : isMitraTambahan && !isDiterimA
+                                                ? "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
+                                                : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
                                           }`}
                                           onClick={() => updateCellValue(origIdx, "BN", tipeKegiatan === "SE2026" ? "" : "SE2026")}
-                                          disabled={isSavingTipe}
+                                          disabled={isSavingTipe || (isMitraTambahan && !isDiterimA)}
                                           title="Sensus Ekonomi 2026"
                                         >
                                           {isSavingTipe ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
@@ -787,7 +860,9 @@ export default function MitraSE2026() {
                                           className={`h-8 px-2 py-1 text-xs font-semibold transition-all rounded-full ${
                                             tipeKegiatan === "Rutin" 
                                               ? "bg-blue-100 border border-blue-500 text-blue-700" 
-                                              : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
+                                              : isMitraTambahan && !isDiterimA
+                                                ? "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
+                                                : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
                                           }`}
                                           onClick={async () => {
                                             if (tipeKegiatan === "Rutin") {
@@ -799,7 +874,7 @@ export default function MitraSE2026() {
                                               await updateCellValue(origIdx, "BO", "");
                                             }
                                           }}
-                                          disabled={isSavingTipe}
+                                          disabled={isSavingTipe || (isMitraTambahan && !isDiterimA)}
                                           title="Rutin"
                                         >
                                           {isSavingTipe ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
@@ -810,14 +885,16 @@ export default function MitraSE2026() {
                                         <Button 
                                           variant="ghost"
                                           className={`h-8 px-2 py-1 text-xs font-semibold transition-all rounded-full ${
-                                            tipeKegiatan === "SE2026"
-                                              ? pplPml === "PPL"
-                                                ? "bg-emerald-100 border border-emerald-500 text-emerald-700"
-                                                : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
-                                              : "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
+                                            isMitraTambahan && !isDiterimA
+                                              ? "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
+                                              : tipeKegiatan === "SE2026"
+                                                ? pplPml === "PPL"
+                                                  ? "bg-emerald-100 border border-emerald-500 text-emerald-700"
+                                                  : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
+                                                : "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
                                           }`}
                                           onClick={() => updateCellValue(origIdx, "BO", pplPml === "PPL" ? "" : "PPL")}
-                                          disabled={tipeKegiatan !== "SE2026" || isSavingPpl}
+                                          disabled={(isMitraTambahan && !isDiterimA) || tipeKegiatan !== "SE2026" || isSavingPpl}
                                           title="Petugas Pendataan Lapangan"
                                         >
                                           {isSavingPpl ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
@@ -828,14 +905,16 @@ export default function MitraSE2026() {
                                         <Button 
                                           variant="ghost"
                                           className={`h-8 px-2 py-1 text-xs font-semibold transition-all rounded-full ${
-                                            tipeKegiatan === "SE2026"
-                                              ? pplPml === "PML"
-                                                ? "bg-rose-100 border border-rose-500 text-rose-700"
-                                                : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
-                                              : "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
+                                            isMitraTambahan && !isDiterimA
+                                              ? "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
+                                              : tipeKegiatan === "SE2026"
+                                                ? pplPml === "PML"
+                                                  ? "bg-rose-100 border border-rose-500 text-rose-700"
+                                                  : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
+                                                : "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
                                           }`}
                                           onClick={() => updateCellValue(origIdx, "BO", pplPml === "PML" ? "" : "PML")}
-                                          disabled={tipeKegiatan !== "SE2026" || isSavingPpl}
+                                          disabled={(isMitraTambahan && !isDiterimA) || tipeKegiatan !== "SE2026" || isSavingPpl}
                                           title="Petugas Pemeriksaan Lapangan"
                                         >
                                           {isSavingPpl ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
@@ -1104,11 +1183,9 @@ export default function MitraSE2026() {
                       <div className="text-sm break-words mt-1">{detailRow[COL.statusSeleksi] || "-"}</div>
                     </div>
                     <div className="border-b pb-2">
-                      <div className="text-xs font-semibold text-slate-700/80 uppercase tracking-wide">Status Seleksi Kompetensi</div>
+                      <div className="text-xs font-semibold text-slate-700/80 uppercase tracking-wide">Skor</div>
                       <div className="text-sm break-words mt-1">
-                        <Badge className="bg-blue-100 text-blue-800">
-                          {detailRow[COL.statusSeleksiKompetensi] || "Belum"}
-                        </Badge>
+                        {detailRow[COL.skor] ? parseFloat(detailRow[COL.skor]).toFixed(2) : "-"}
                       </div>
                     </div>
                     <div className="border-b pb-2">
