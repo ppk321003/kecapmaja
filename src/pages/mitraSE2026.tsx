@@ -448,6 +448,7 @@ export default function MitraSE2026() {
     let pplCount = 0;
     let pmlCount = 0;
     let cadanganCount = 0;
+    let rutinCount = 0;
     
     filtered.forEach(r => {
       const tipeKegiatan = (r[COL.tipeKegiatan] || "").toString().trim();
@@ -457,6 +458,8 @@ export default function MitraSE2026() {
         if (pplPml === "PPL") pplCount++;
         else if (pplPml === "PML") pmlCount++;
         else if (pplPml === "Cadangan") cadanganCount++;
+      } else if (tipeKegiatan === "Rutin") {
+        rutinCount++;
       }
     });
     
@@ -464,6 +467,7 @@ export default function MitraSE2026() {
       ppl: pplCount,
       pml: pmlCount,
       cadangan: cadanganCount,
+      rutin: rutinCount,
       total: pplCount + pmlCount,
     };
   }, [filtered]);
@@ -665,6 +669,16 @@ export default function MitraSE2026() {
                                   <ProgressBar percent={cadanganPercent} />
                                 </div>
                               </div>
+                              
+                              {/* Mitra Rutin Row */}
+                              <div className="space-y-1 pt-2 border-t border-slate-300">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-emerald-700">Mitra Rutin</p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-emerald-600">{alokasi.rutin}</p>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           );
                         })()
@@ -753,6 +767,16 @@ export default function MitraSE2026() {
                                 </div>
                                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
                                   {kkLoading ? <div className="h-full bg-green-600" style={{width: "0%"}}></div> : <ProgressBar percent={cadanganPercent} />}
+                                </div>
+                              </div>
+                              
+                              {/* Mitra Rutin Row */}
+                              <div className="space-y-1 pt-2 border-t border-slate-300">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-emerald-700">Mitra Rutin</p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-emerald-600">{kkLoading ? "..." : alokasi.rutin}</p>
+                                  </div>
                                 </div>
                               </div>
                             </div>
