@@ -581,6 +581,19 @@ export default function MitraSE2026() {
                           const pplPercent = totalPpl > 0 ? Math.round((alokasi.ppl / totalPpl) * 100) : 0;
                           const pmlPercent = totalPml > 0 ? Math.round((alokasi.pml / totalPml) * 100) : 0;
                           const totalPercent = totalKebutuhan > 0 ? Math.round((alokasi.total / totalKebutuhan) * 100) : 0;
+                          const cadanganTarget = Math.round(totalKebutuhan * 0.1);
+                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasi.total / cadanganTarget) * 100) : 0;
+                          
+                          const getWarning = (percent: number, current: number, target: number) => {
+                            if (percent > 100) {
+                              const excess = current - target;
+                              return ` ⚠️ +${excess} (${percent - 100}%)`;
+                            }
+                            return "";
+                          };
+                          
+                          const getBarColor = (percent: number) => percent > 100 ? "bg-red-600" : "bg-green-600";
+                          const getBarBgColor = (percent: number) => percent > 100 ? "bg-red-200" : "bg-green-200";
                           
                           return (
                             <div className="space-y-3">
@@ -589,10 +602,12 @@ export default function MitraSE2026() {
                               <div className="space-y-1">
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-blue-700">PPL</p>
-                                  <p className="text-sm font-bold text-blue-600">{alokasi.ppl}/{totalPpl} <span className="text-xs font-normal text-blue-500">({pplPercent}%)</span></p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-blue-600">{alokasi.ppl}/{totalPpl} <span className="text-xs font-normal text-blue-500">({pplPercent}%)</span>{getWarning(pplPercent, alokasi.ppl, totalPpl)}</p>
+                                  </div>
                                 </div>
-                                <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
-                                  <div className="h-full bg-blue-600" style={{width: `${Math.min(pplPercent, 100)}%`}}></div>
+                                <div className={`h-2 ${getBarBgColor(pplPercent)} rounded-full overflow-hidden`}>
+                                  <div className={`h-full ${getBarColor(pplPercent)}`} style={{width: `${Math.min(pplPercent, 100)}%`}}></div>
                                 </div>
                               </div>
                               
@@ -600,10 +615,12 @@ export default function MitraSE2026() {
                               <div className="space-y-1">
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-indigo-700">PML</p>
-                                  <p className="text-sm font-bold text-indigo-600">{alokasi.pml}/{totalPml} <span className="text-xs font-normal text-indigo-500">({pmlPercent}%)</span></p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-indigo-600">{alokasi.pml}/{totalPml} <span className="text-xs font-normal text-indigo-500">({pmlPercent}%)</span>{getWarning(pmlPercent, alokasi.pml, totalPml)}</p>
+                                  </div>
                                 </div>
-                                <div className="h-2 bg-indigo-200 rounded-full overflow-hidden">
-                                  <div className="h-full bg-indigo-600" style={{width: `${Math.min(pmlPercent, 100)}%`}}></div>
+                                <div className={`h-2 ${getBarBgColor(pmlPercent)} rounded-full overflow-hidden`}>
+                                  <div className={`h-full ${getBarColor(pmlPercent)}`} style={{width: `${Math.min(pmlPercent, 100)}%`}}></div>
                                 </div>
                               </div>
                               
@@ -611,10 +628,25 @@ export default function MitraSE2026() {
                               <div className="space-y-1">
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-purple-700">TOTAL</p>
-                                  <p className="text-sm font-bold text-purple-600">{alokasi.total}/{totalKebutuhan} <span className="text-xs font-normal text-purple-500">({totalPercent}%)</span></p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-purple-600">{alokasi.total}/{totalKebutuhan} <span className="text-xs font-normal text-purple-500">({totalPercent}%)</span>{getWarning(totalPercent, alokasi.total, totalKebutuhan)}</p>
+                                  </div>
                                 </div>
-                                <div className="h-2 bg-purple-200 rounded-full overflow-hidden">
-                                  <div className="h-full bg-purple-600" style={{width: `${Math.min(totalPercent, 100)}%`}}></div>
+                                <div className={`h-2 ${getBarBgColor(totalPercent)} rounded-full overflow-hidden`}>
+                                  <div className={`h-full ${getBarColor(totalPercent)}`} style={{width: `${Math.min(totalPercent, 100)}%`}}></div>
+                                </div>
+                              </div>
+                              
+                              {/* CADANGAN Row */}
+                              <div className="space-y-1 pt-2 border-t border-slate-300">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-amber-700">Cadangan (10%)</p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-amber-600">{alokasi.total}/{cadanganTarget} <span className="text-xs font-normal text-amber-500">({cadanganPercent}%)</span>{getWarning(cadanganPercent, alokasi.total, cadanganTarget)}</p>
+                                  </div>
+                                </div>
+                                <div className={`h-2 ${getBarBgColor(cadanganPercent)} rounded-full overflow-hidden`}>
+                                  <div className={`h-full ${getBarColor(cadanganPercent)}`} style={{width: `${Math.min(cadanganPercent, 100)}%`}}></div>
                                 </div>
                               </div>
                             </div>
@@ -626,6 +658,19 @@ export default function MitraSE2026() {
                           const pplPercent = kebutuhan.ppl > 0 ? Math.round((alokasi.ppl / kebutuhan.ppl) * 100) : 0;
                           const pmlPercent = kebutuhan.pml > 0 ? Math.round((alokasi.pml / kebutuhan.pml) * 100) : 0;
                           const totalPercent = kebutuhan.jumlah > 0 ? Math.round((alokasi.total / kebutuhan.jumlah) * 100) : 0;
+                          const cadanganTarget = Math.round(kebutuhan.jumlah * 0.1);
+                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasi.total / cadanganTarget) * 100) : 0;
+                          
+                          const getWarning = (percent: number, current: number, target: number) => {
+                            if (percent > 100) {
+                              const excess = current - target;
+                              return ` ⚠️ +${excess} (${percent - 100}%)`;
+                            }
+                            return "";
+                          };
+                          
+                          const getBarColor = (percent: number) => percent > 100 ? "bg-red-600" : "bg-green-600";
+                          const getBarBgColor = (percent: number) => percent > 100 ? "bg-red-200" : "bg-green-200";
                           
                           return (
                             <div className="space-y-3">
@@ -634,10 +679,12 @@ export default function MitraSE2026() {
                               <div className="space-y-1">
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-blue-700">PPL</p>
-                                  <p className="text-sm font-bold text-blue-600">{kkLoading ? "..." : `${alokasi.ppl}/${kebutuhan.ppl}`} <span className="text-xs font-normal text-blue-500">({kkLoading ? "..." : `${pplPercent}%`})</span></p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-blue-600">{kkLoading ? "..." : `${alokasi.ppl}/${kebutuhan.ppl}`} <span className="text-xs font-normal text-blue-500">({kkLoading ? "..." : `${pplPercent}%`})</span>{kkLoading ? "" : getWarning(pplPercent, alokasi.ppl, kebutuhan.ppl)}</p>
+                                  </div>
                                 </div>
-                                <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
-                                  <div className="h-full bg-blue-600" style={{width: `${kkLoading ? 0 : Math.min(pplPercent, 100)}%`}}></div>
+                                <div className={`h-2 ${kkLoading ? "bg-blue-200" : getBarBgColor(pplPercent)} rounded-full overflow-hidden`}>
+                                  <div className={`h-full ${kkLoading ? "bg-blue-600" : getBarColor(pplPercent)}`} style={{width: `${kkLoading ? 0 : Math.min(pplPercent, 100)}%`}}></div>
                                 </div>
                               </div>
                               
@@ -645,10 +692,12 @@ export default function MitraSE2026() {
                               <div className="space-y-1">
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-indigo-700">PML</p>
-                                  <p className="text-sm font-bold text-indigo-600">{kkLoading ? "..." : `${alokasi.pml}/${kebutuhan.pml}`} <span className="text-xs font-normal text-indigo-500">({kkLoading ? "..." : `${pmlPercent}%`})</span></p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-indigo-600">{kkLoading ? "..." : `${alokasi.pml}/${kebutuhan.pml}`} <span className="text-xs font-normal text-indigo-500">({kkLoading ? "..." : `${pmlPercent}%`})</span>{kkLoading ? "" : getWarning(pmlPercent, alokasi.pml, kebutuhan.pml)}</p>
+                                  </div>
                                 </div>
-                                <div className="h-2 bg-indigo-200 rounded-full overflow-hidden">
-                                  <div className="h-full bg-indigo-600" style={{width: `${kkLoading ? 0 : Math.min(pmlPercent, 100)}%`}}></div>
+                                <div className={`h-2 ${kkLoading ? "bg-indigo-200" : getBarBgColor(pmlPercent)} rounded-full overflow-hidden`}>
+                                  <div className={`h-full ${kkLoading ? "bg-indigo-600" : getBarColor(pmlPercent)}`} style={{width: `${kkLoading ? 0 : Math.min(pmlPercent, 100)}%`}}></div>
                                 </div>
                               </div>
                               
@@ -656,10 +705,25 @@ export default function MitraSE2026() {
                               <div className="space-y-1">
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-purple-700">TOTAL</p>
-                                  <p className="text-sm font-bold text-purple-600">{kkLoading ? "..." : `${alokasi.total}/${kebutuhan.jumlah}`} <span className="text-xs font-normal text-purple-500">({kkLoading ? "..." : `${totalPercent}%`})</span></p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-purple-600">{kkLoading ? "..." : `${alokasi.total}/${kebutuhan.jumlah}`} <span className="text-xs font-normal text-purple-500">({kkLoading ? "..." : `${totalPercent}%`})</span>{kkLoading ? "" : getWarning(totalPercent, alokasi.total, kebutuhan.jumlah)}</p>
+                                  </div>
                                 </div>
-                                <div className="h-2 bg-purple-200 rounded-full overflow-hidden">
-                                  <div className="h-full bg-purple-600" style={{width: `${kkLoading ? 0 : Math.min(totalPercent, 100)}%`}}></div>
+                                <div className={`h-2 ${kkLoading ? "bg-purple-200" : getBarBgColor(totalPercent)} rounded-full overflow-hidden`}>
+                                  <div className={`h-full ${kkLoading ? "bg-purple-600" : getBarColor(totalPercent)}`} style={{width: `${kkLoading ? 0 : Math.min(totalPercent, 100)}%`}}></div>
+                                </div>
+                              </div>
+                              
+                              {/* CADANGAN Row */}
+                              <div className="space-y-1 pt-2 border-t border-slate-300">
+                                <div className="flex justify-between items-center">
+                                  <p className="text-xs font-semibold text-amber-700">Cadangan (10%)</p>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-amber-600">{kkLoading ? "..." : `${alokasi.total}/${cadanganTarget}`} <span className="text-xs font-normal text-amber-500">({kkLoading ? "..." : `${cadanganPercent}%`})</span>{kkLoading ? "" : getWarning(cadanganPercent, alokasi.total, cadanganTarget)}</p>
+                                  </div>
+                                </div>
+                                <div className={`h-2 ${kkLoading ? "bg-amber-200" : getBarBgColor(cadanganPercent)} rounded-full overflow-hidden`}>
+                                  <div className={`h-full ${kkLoading ? "bg-amber-600" : getBarColor(cadanganPercent)}`} style={{width: `${kkLoading ? 0 : Math.min(cadanganPercent, 100)}%`}}></div>
                                 </div>
                               </div>
                             </div>
@@ -804,7 +868,17 @@ export default function MitraSE2026() {
                                                   ? "bg-emerald-100 text-emerald-700"
                                                   : "bg-slate-100 text-slate-400 hover:bg-slate-200"
                                               }`}
-                                              onClick={() => updateCellValue(origIdx, "BT", isDiterimA ? "" : "Diterima")}
+                                              onClick={async () => {
+                                                if (isDiterimA) {
+                                                  // Unchecked: Clear BT, BN, and BO
+                                                  await updateCellValue(origIdx, "BT", "");
+                                                  await updateCellValue(origIdx, "BN", "");
+                                                  await updateCellValue(origIdx, "BO", "");
+                                                } else {
+                                                  // Checked: Set BT to Diterima
+                                                  await updateCellValue(origIdx, "BT", "Diterima");
+                                                }
+                                              }}
                                               title="Diterima"
                                               disabled={isSavingAkhir}
                                             >
@@ -836,90 +910,56 @@ export default function MitraSE2026() {
                                           </>
                                         )}
                                         
-                                        {/* Tipe Kegiatan: SE2026 - selalu tampil, click untuk toggle */}
-                                        <Button 
-                                          variant="ghost"
-                                          className={`h-8 px-2 py-1 text-xs font-semibold transition-all rounded-full ${
-                                            tipeKegiatan === "SE2026" 
-                                              ? "bg-orange-100 border border-orange-700 text-orange-700" 
-                                              : isMitraTambahan && !isDiterimA
-                                                ? "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
-                                                : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
-                                          }`}
-                                          onClick={() => updateCellValue(origIdx, "BN", tipeKegiatan === "SE2026" ? "" : "SE2026")}
-                                          disabled={isSavingTipe || (isMitraTambahan && !isDiterimA)}
-                                          title="Sensus Ekonomi 2026"
-                                        >
-                                          {isSavingTipe ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
-                                          SE2026
-                                        </Button>
-                                        
-                                        {/* Tipe Kegiatan: Rutin - selalu tampil, click untuk toggle & clear BO */}
-                                        <Button 
-                                          variant="ghost"
-                                          className={`h-8 px-2 py-1 text-xs font-semibold transition-all rounded-full ${
-                                            tipeKegiatan === "Rutin" 
-                                              ? "bg-blue-100 border border-blue-500 text-blue-700" 
-                                              : isMitraTambahan && !isDiterimA
-                                                ? "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
-                                                : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
-                                          }`}
-                                          onClick={async () => {
-                                            if (tipeKegiatan === "Rutin") {
-                                              // Deselect Rutin
-                                              await updateCellValue(origIdx, "BN", "");
-                                            } else {
+                                        {/* Tipe Kegiatan Dropdown */}
+                                        <Select 
+                                          value={tipeKegiatan || "-"} 
+                                          onValueChange={async (value) => {
+                                            const finalValue = value === "-" ? "" : value;
+                                            if (finalValue === "Rutin") {
                                               // Select Rutin & clear BO
-                                              await updateCellValue(origIdx, "BN", "Rutin");
+                                              await updateCellValue(origIdx, "BN", finalValue);
                                               await updateCellValue(origIdx, "BO", "");
+                                            } else if (finalValue === "") {
+                                              // Empty/Belum ditentukan - clear both BN and BO
+                                              await updateCellValue(origIdx, "BN", finalValue);
+                                              await updateCellValue(origIdx, "BO", "");
+                                            } else {
+                                              // SE2026 - keep BO as is
+                                              await updateCellValue(origIdx, "BN", finalValue);
                                             }
                                           }}
-                                          disabled={isSavingTipe || (isMitraTambahan && !isDiterimA)}
-                                          title="Rutin"
+                                          disabled={(isMitraTambahan && !isDiterimA) || isSavingTipe}
                                         >
-                                          {isSavingTipe ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
-                                          Rutin
-                                        </Button>
+                                          <SelectTrigger className={`h-8 w-24 text-xs ${
+                                            (isMitraTambahan && !isDiterimA) ? "opacity-50 cursor-not-allowed" : ""
+                                          }`}>
+                                            <SelectValue placeholder="Tipe" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="-">Belum ditentukan</SelectItem>
+                                            <SelectItem value="SE2026">SE2026</SelectItem>
+                                            <SelectItem value="Rutin">Rutin</SelectItem>
+                                          </SelectContent>
+                                        </Select>
 
-                                        {/* PPL: Petugas Pendataan Lapangan - enable/disable berdasarkan tipeKegiatan, click untuk toggle */}
-                                        <Button 
-                                          variant="ghost"
-                                          className={`h-8 px-2 py-1 text-xs font-semibold transition-all rounded-full ${
-                                            isMitraTambahan && !isDiterimA
-                                              ? "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
-                                              : tipeKegiatan === "SE2026"
-                                                ? pplPml === "PPL"
-                                                  ? "bg-emerald-100 border border-emerald-500 text-emerald-700"
-                                                  : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
-                                                : "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
-                                          }`}
-                                          onClick={() => updateCellValue(origIdx, "BO", pplPml === "PPL" ? "" : "PPL")}
+                                        {/* Jabatan Dropdown - hanya aktif jika SE2026 dipilih */}
+                                        <Select 
+                                          value={pplPml || "-"} 
+                                          onValueChange={(value) => updateCellValue(origIdx, "BO", value === "-" ? "" : value)}
                                           disabled={(isMitraTambahan && !isDiterimA) || tipeKegiatan !== "SE2026" || isSavingPpl}
-                                          title="Petugas Pendataan Lapangan"
                                         >
-                                          {isSavingPpl ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
-                                          PPL
-                                        </Button>
-
-                                        {/* PML: Petugas Pemeriksaan Lapangan - enable/disable berdasarkan tipeKegiatan, click untuk toggle */}
-                                        <Button 
-                                          variant="ghost"
-                                          className={`h-8 px-2 py-1 text-xs font-semibold transition-all rounded-full ${
-                                            isMitraTambahan && !isDiterimA
-                                              ? "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
-                                              : tipeKegiatan === "SE2026"
-                                                ? pplPml === "PML"
-                                                  ? "bg-rose-100 border border-rose-500 text-rose-700"
-                                                  : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
-                                                : "bg-slate-100 border border-slate-300 text-slate-400 opacity-50 cursor-not-allowed"
-                                          }`}
-                                          onClick={() => updateCellValue(origIdx, "BO", pplPml === "PML" ? "" : "PML")}
-                                          disabled={(isMitraTambahan && !isDiterimA) || tipeKegiatan !== "SE2026" || isSavingPpl}
-                                          title="Petugas Pemeriksaan Lapangan"
-                                        >
-                                          {isSavingPpl ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}
-                                          PML
-                                        </Button>
+                                          <SelectTrigger className={`h-8 w-32 text-xs ${
+                                            ((isMitraTambahan && !isDiterimA) || tipeKegiatan !== "SE2026") ? "opacity-50 cursor-not-allowed" : ""
+                                          }`}>
+                                            <SelectValue placeholder="Jabatan" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="-">Belum ditentukan</SelectItem>
+                                            <SelectItem value="PPL">PPL</SelectItem>
+                                            <SelectItem value="PML">PML</SelectItem>
+                                            <SelectItem value="Cadangan">Cadangan</SelectItem>
+                                          </SelectContent>
+                                        </Select>
 
                                         <Button size="icon" variant="ghost" onClick={() => setDetailRow(respondenRow)} title="Lihat detail" className="hover:bg-purple-100">
                                           <Eye className="h-4 w-4 text-purple-600" />
