@@ -447,6 +447,7 @@ export default function MitraSE2026() {
   const alokasi = useMemo(() => {
     let pplCount = 0;
     let pmlCount = 0;
+    let cadanganCount = 0;
     
     filtered.forEach(r => {
       const tipeKegiatan = (r[COL.tipeKegiatan] || "").toString().trim();
@@ -455,12 +456,14 @@ export default function MitraSE2026() {
       if (tipeKegiatan === "SE2026") {
         if (pplPml === "PPL") pplCount++;
         else if (pplPml === "PML") pmlCount++;
+        else if (pplPml === "Cadangan") cadanganCount++;
       }
     });
     
     return {
       ppl: pplCount,
       pml: pmlCount,
+      cadangan: cadanganCount,
       total: pplCount + pmlCount,
     };
   }, [filtered]);
@@ -582,18 +585,31 @@ export default function MitraSE2026() {
                           const pmlPercent = totalPml > 0 ? Math.round((alokasi.pml / totalPml) * 100) : 0;
                           const totalPercent = totalKebutuhan > 0 ? Math.round((alokasi.total / totalKebutuhan) * 100) : 0;
                           const cadanganTarget = Math.round(totalKebutuhan * 0.1);
-                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasi.total / cadanganTarget) * 100) : 0;
+                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasi.cadangan / cadanganTarget) * 100) : 0;
                           
-                          const getWarning = (percent: number, current: number, target: number) => {
+                          const getWarningText = (percent: number, current: number, target: number) => {
                             if (percent > 100) {
                               const excess = current - target;
-                              return ` ⚠️ +${excess} (${percent - 100}%)`;
+                              return ` Lebih ${excess} (${percent - 100}%)`;
                             }
                             return "";
                           };
                           
-                          const getBarColor = (percent: number) => percent > 100 ? "bg-red-600" : "bg-green-600";
-                          const getBarBgColor = (percent: number) => percent > 100 ? "bg-red-200" : "bg-green-200";
+                          const ProgressBar = ({ percent }: { percent: number }) => {
+                            if (percent <= 100) {
+                              return <div className="h-full bg-green-600" style={{width: `${percent}%`}}></div>;
+                            }
+                            const filledWidth = 100;
+                            const excessWidth = percent - 100;
+                            const filledPercent = (filledWidth / percent) * 100;
+                            const excessPercent = (excessWidth / percent) * 100;
+                            return (
+                              <>
+                                <div className="h-full bg-green-600" style={{width: `${filledPercent}%`}}></div>
+                                <div className="h-full bg-red-600" style={{width: `${excessPercent}%`}}></div>
+                              </>
+                            );
+                          };
                           
                           return (
                             <div className="space-y-3">
@@ -603,11 +619,11 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-blue-700">PPL</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-blue-600">{alokasi.ppl}/{totalPpl} <span className="text-xs font-normal text-blue-500">({pplPercent}%)</span>{getWarning(pplPercent, alokasi.ppl, totalPpl)}</p>
+                                    <p className="text-sm font-bold text-blue-600">{alokasi.ppl}/{totalPpl} <span className="text-xs font-normal text-blue-500">({pplPercent}%)</span>{getWarningText(pplPercent, alokasi.ppl, totalPpl)}</p>
                                   </div>
                                 </div>
-                                <div className={`h-2 ${getBarBgColor(pplPercent)} rounded-full overflow-hidden`}>
-                                  <div className={`h-full ${getBarColor(pplPercent)}`} style={{width: `${Math.min(pplPercent, 100)}%`}}></div>
+                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
+                                  <ProgressBar percent={pplPercent} />
                                 </div>
                               </div>
                               
@@ -616,11 +632,11 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-indigo-700">PML</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-indigo-600">{alokasi.pml}/{totalPml} <span className="text-xs font-normal text-indigo-500">({pmlPercent}%)</span>{getWarning(pmlPercent, alokasi.pml, totalPml)}</p>
+                                    <p className="text-sm font-bold text-indigo-600">{alokasi.pml}/{totalPml} <span className="text-xs font-normal text-indigo-500">({pmlPercent}%)</span>{getWarningText(pmlPercent, alokasi.pml, totalPml)}</p>
                                   </div>
                                 </div>
-                                <div className={`h-2 ${getBarBgColor(pmlPercent)} rounded-full overflow-hidden`}>
-                                  <div className={`h-full ${getBarColor(pmlPercent)}`} style={{width: `${Math.min(pmlPercent, 100)}%`}}></div>
+                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
+                                  <ProgressBar percent={pmlPercent} />
                                 </div>
                               </div>
                               
@@ -629,11 +645,11 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-purple-700">TOTAL</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-purple-600">{alokasi.total}/{totalKebutuhan} <span className="text-xs font-normal text-purple-500">({totalPercent}%)</span>{getWarning(totalPercent, alokasi.total, totalKebutuhan)}</p>
+                                    <p className="text-sm font-bold text-purple-600">{alokasi.total}/{totalKebutuhan} <span className="text-xs font-normal text-purple-500">({totalPercent}%)</span>{getWarningText(totalPercent, alokasi.total, totalKebutuhan)}</p>
                                   </div>
                                 </div>
-                                <div className={`h-2 ${getBarBgColor(totalPercent)} rounded-full overflow-hidden`}>
-                                  <div className={`h-full ${getBarColor(totalPercent)}`} style={{width: `${Math.min(totalPercent, 100)}%`}}></div>
+                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
+                                  <ProgressBar percent={totalPercent} />
                                 </div>
                               </div>
                               
@@ -642,11 +658,11 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-amber-700">Cadangan (10%)</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-amber-600">{alokasi.total}/{cadanganTarget} <span className="text-xs font-normal text-amber-500">({cadanganPercent}%)</span>{getWarning(cadanganPercent, alokasi.total, cadanganTarget)}</p>
+                                    <p className="text-sm font-bold text-amber-600">{alokasi.cadangan}/{cadanganTarget} <span className="text-xs font-normal text-amber-500">({cadanganPercent}%)</span>{getWarningText(cadanganPercent, alokasi.cadangan, cadanganTarget)}</p>
                                   </div>
                                 </div>
-                                <div className={`h-2 ${getBarBgColor(cadanganPercent)} rounded-full overflow-hidden`}>
-                                  <div className={`h-full ${getBarColor(cadanganPercent)}`} style={{width: `${Math.min(cadanganPercent, 100)}%`}}></div>
+                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
+                                  <ProgressBar percent={cadanganPercent} />
                                 </div>
                               </div>
                             </div>
@@ -659,18 +675,31 @@ export default function MitraSE2026() {
                           const pmlPercent = kebutuhan.pml > 0 ? Math.round((alokasi.pml / kebutuhan.pml) * 100) : 0;
                           const totalPercent = kebutuhan.jumlah > 0 ? Math.round((alokasi.total / kebutuhan.jumlah) * 100) : 0;
                           const cadanganTarget = Math.round(kebutuhan.jumlah * 0.1);
-                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasi.total / cadanganTarget) * 100) : 0;
+                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasi.cadangan / cadanganTarget) * 100) : 0;
                           
-                          const getWarning = (percent: number, current: number, target: number) => {
+                          const getWarningText = (percent: number, current: number, target: number) => {
                             if (percent > 100) {
                               const excess = current - target;
-                              return ` ⚠️ +${excess} (${percent - 100}%)`;
+                              return ` Lebih ${excess} (${percent - 100}%)`;
                             }
                             return "";
                           };
                           
-                          const getBarColor = (percent: number) => percent > 100 ? "bg-red-600" : "bg-green-600";
-                          const getBarBgColor = (percent: number) => percent > 100 ? "bg-red-200" : "bg-green-200";
+                          const ProgressBar = ({ percent }: { percent: number }) => {
+                            if (percent <= 100) {
+                              return <div className="h-full bg-green-600" style={{width: `${percent}%`}}></div>;
+                            }
+                            const filledWidth = 100;
+                            const excessWidth = percent - 100;
+                            const filledPercent = (filledWidth / percent) * 100;
+                            const excessPercent = (excessWidth / percent) * 100;
+                            return (
+                              <>
+                                <div className="h-full bg-green-600" style={{width: `${filledPercent}%`}}></div>
+                                <div className="h-full bg-red-600" style={{width: `${excessPercent}%`}}></div>
+                              </>
+                            );
+                          };
                           
                           return (
                             <div className="space-y-3">
@@ -680,11 +709,11 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-blue-700">PPL</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-blue-600">{kkLoading ? "..." : `${alokasi.ppl}/${kebutuhan.ppl}`} <span className="text-xs font-normal text-blue-500">({kkLoading ? "..." : `${pplPercent}%`})</span>{kkLoading ? "" : getWarning(pplPercent, alokasi.ppl, kebutuhan.ppl)}</p>
+                                    <p className="text-sm font-bold text-blue-600">{kkLoading ? "..." : `${alokasi.ppl}/${kebutuhan.ppl}`} <span className="text-xs font-normal text-blue-500">({kkLoading ? "..." : `${pplPercent}%`})</span>{kkLoading ? "" : getWarningText(pplPercent, alokasi.ppl, kebutuhan.ppl)}</p>
                                   </div>
                                 </div>
-                                <div className={`h-2 ${kkLoading ? "bg-blue-200" : getBarBgColor(pplPercent)} rounded-full overflow-hidden`}>
-                                  <div className={`h-full ${kkLoading ? "bg-blue-600" : getBarColor(pplPercent)}`} style={{width: `${kkLoading ? 0 : Math.min(pplPercent, 100)}%`}}></div>
+                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
+                                  {kkLoading ? <div className="h-full bg-green-600" style={{width: "0%"}}></div> : <ProgressBar percent={pplPercent} />}
                                 </div>
                               </div>
                               
@@ -693,11 +722,11 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-indigo-700">PML</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-indigo-600">{kkLoading ? "..." : `${alokasi.pml}/${kebutuhan.pml}`} <span className="text-xs font-normal text-indigo-500">({kkLoading ? "..." : `${pmlPercent}%`})</span>{kkLoading ? "" : getWarning(pmlPercent, alokasi.pml, kebutuhan.pml)}</p>
+                                    <p className="text-sm font-bold text-indigo-600">{kkLoading ? "..." : `${alokasi.pml}/${kebutuhan.pml}`} <span className="text-xs font-normal text-indigo-500">({kkLoading ? "..." : `${pmlPercent}%`})</span>{kkLoading ? "" : getWarningText(pmlPercent, alokasi.pml, kebutuhan.pml)}</p>
                                   </div>
                                 </div>
-                                <div className={`h-2 ${kkLoading ? "bg-indigo-200" : getBarBgColor(pmlPercent)} rounded-full overflow-hidden`}>
-                                  <div className={`h-full ${kkLoading ? "bg-indigo-600" : getBarColor(pmlPercent)}`} style={{width: `${kkLoading ? 0 : Math.min(pmlPercent, 100)}%`}}></div>
+                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
+                                  {kkLoading ? <div className="h-full bg-green-600" style={{width: "0%"}}></div> : <ProgressBar percent={pmlPercent} />}
                                 </div>
                               </div>
                               
@@ -706,11 +735,11 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-purple-700">TOTAL</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-purple-600">{kkLoading ? "..." : `${alokasi.total}/${kebutuhan.jumlah}`} <span className="text-xs font-normal text-purple-500">({kkLoading ? "..." : `${totalPercent}%`})</span>{kkLoading ? "" : getWarning(totalPercent, alokasi.total, kebutuhan.jumlah)}</p>
+                                    <p className="text-sm font-bold text-purple-600">{kkLoading ? "..." : `${alokasi.total}/${kebutuhan.jumlah}`} <span className="text-xs font-normal text-purple-500">({kkLoading ? "..." : `${totalPercent}%`})</span>{kkLoading ? "" : getWarningText(totalPercent, alokasi.total, kebutuhan.jumlah)}</p>
                                   </div>
                                 </div>
-                                <div className={`h-2 ${kkLoading ? "bg-purple-200" : getBarBgColor(totalPercent)} rounded-full overflow-hidden`}>
-                                  <div className={`h-full ${kkLoading ? "bg-purple-600" : getBarColor(totalPercent)}`} style={{width: `${kkLoading ? 0 : Math.min(totalPercent, 100)}%`}}></div>
+                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
+                                  {kkLoading ? <div className="h-full bg-green-600" style={{width: "0%"}}></div> : <ProgressBar percent={totalPercent} />}
                                 </div>
                               </div>
                               
@@ -719,11 +748,11 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-amber-700">Cadangan (10%)</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-amber-600">{kkLoading ? "..." : `${alokasi.total}/${cadanganTarget}`} <span className="text-xs font-normal text-amber-500">({kkLoading ? "..." : `${cadanganPercent}%`})</span>{kkLoading ? "" : getWarning(cadanganPercent, alokasi.total, cadanganTarget)}</p>
+                                    <p className="text-sm font-bold text-amber-600">{kkLoading ? "..." : `${alokasi.cadangan}/${cadanganTarget}`} <span className="text-xs font-normal text-amber-500">({kkLoading ? "..." : `${cadanganPercent}%`})</span>{kkLoading ? "" : getWarningText(cadanganPercent, alokasi.cadangan, cadanganTarget)}</p>
                                   </div>
                                 </div>
-                                <div className={`h-2 ${kkLoading ? "bg-amber-200" : getBarBgColor(cadanganPercent)} rounded-full overflow-hidden`}>
-                                  <div className={`h-full ${kkLoading ? "bg-amber-600" : getBarColor(cadanganPercent)}`} style={{width: `${kkLoading ? 0 : Math.min(cadanganPercent, 100)}%`}}></div>
+                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
+                                  {kkLoading ? <div className="h-full bg-green-600" style={{width: "0%"}}></div> : <ProgressBar percent={cadanganPercent} />}
                                 </div>
                               </div>
                             </div>
@@ -942,24 +971,26 @@ export default function MitraSE2026() {
                                           </SelectContent>
                                         </Select>
 
-                                        {/* Jabatan Dropdown - hanya aktif jika SE2026 dipilih */}
-                                        <Select 
-                                          value={pplPml || "-"} 
-                                          onValueChange={(value) => updateCellValue(origIdx, "BO", value === "-" ? "" : value)}
-                                          disabled={(isMitraTambahan && !isDiterimA) || tipeKegiatan !== "SE2026" || isSavingPpl}
-                                        >
-                                          <SelectTrigger className={`h-8 w-32 text-xs ${
-                                            ((isMitraTambahan && !isDiterimA) || tipeKegiatan !== "SE2026") ? "opacity-50 cursor-not-allowed" : ""
-                                          }`}>
-                                            <SelectValue placeholder="Jabatan" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="-">Belum ditentukan</SelectItem>
-                                            <SelectItem value="PPL">PPL</SelectItem>
-                                            <SelectItem value="PML">PML</SelectItem>
-                                            <SelectItem value="Cadangan">Cadangan</SelectItem>
-                                          </SelectContent>
-                                        </Select>
+                                        {/* Jabatan Dropdown - hanya tampil jika SE2026 dipilih */}
+                                        {tipeKegiatan === "SE2026" && (
+                                          <Select 
+                                            value={pplPml || "-"} 
+                                            onValueChange={(value) => updateCellValue(origIdx, "BO", value === "-" ? "" : value)}
+                                            disabled={(isMitraTambahan && !isDiterimA) || isSavingPpl}
+                                          >
+                                            <SelectTrigger className={`h-8 w-32 text-xs ${
+                                              (isMitraTambahan && !isDiterimA) ? "opacity-50 cursor-not-allowed" : ""
+                                            }`}>
+                                              <SelectValue placeholder="Jabatan" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="-">Belum ditentukan</SelectItem>
+                                              <SelectItem value="PPL">PPL</SelectItem>
+                                              <SelectItem value="PML">PML</SelectItem>
+                                              <SelectItem value="Cadangan">Cadangan</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        )}
 
                                         <Button size="icon" variant="ghost" onClick={() => setDetailRow(respondenRow)} title="Lihat detail" className="hover:bg-purple-100">
                                           <Eye className="h-4 w-4 text-purple-600" />
