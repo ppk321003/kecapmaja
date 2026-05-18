@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Loader2, Eye, ArrowUpDown, Users, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Loader2, Eye, ArrowUpDown, Users, AlertTriangle, CheckCircle2, XCircle, Circle } from "lucide-react";
 import { PelatihanSE26 } from "@/components/PelatihanSE26";
 
 type Row = string[];
@@ -69,6 +69,7 @@ const COL = {
   tipeKegiatan: colIdx("BN"),  // BN - Tipe Kegiatan (SE2026 / Rutin)
   pplPml: colIdx("BO"),  // BO - PPL atau PML
   statusAkhir: colIdx("BT"),  // BT - Status Akhir (Diterima/Ditolak) untuk Mitra Tambahan
+  aksiAdmin: colIdx("BU"),  // BU - Aksi Admin (PPL SE26, PML SE26, Cadangan SE26, Rutin)
 };
 
 // Column mapping untuk Mitra (Manajemen Mitra sheet)
@@ -306,6 +307,7 @@ export default function MitraSE2026() {
   const [detailRow, setDetailRow] = useState<Row | null>(null);
   const [validationDetailRow, setValidationDetailRow] = useState<Row | null>(null);
   const [savingCell, setSavingCell] = useState<{ rowIdx: number; col: string } | null>(null);
+  const [aksiAdminActiveRows, setAksiAdminActiveRows] = useState<Set<number>>(new Set());
 
   // Load data from Olah sheet
   useEffect(() => {
@@ -852,12 +854,12 @@ export default function MitraSE2026() {
                             </TableHead>
                             <TableHead>Desa</TableHead>
                             <TableHead>Status SOBAT</TableHead>
-                            <TableHead>Status Seleksi Admin</TableHead>
                             <TableHead>Skor</TableHead>
                             <TableHead className="text-center">Kesediaan SE26</TableHead>
                             <TableHead className="text-center">Catatan Kecap Maja</TableHead>
                             <TableHead className="text-center">Status Akhir</TableHead>
                             <TableHead className="text-center">Aksi</TableHead>
+                            <TableHead className="text-center">Aksi Admin</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -872,7 +874,6 @@ export default function MitraSE2026() {
                               <TableCell>{respondenRow[COL.kec] || "-"}</TableCell>
                               <TableCell>{respondenRow[COL.desa] || "-"}</TableCell>
                               <TableCell className="text-sm">{respondenRow[COL.statusSobat] || "-"}</TableCell>
-                              <TableCell className="text-sm">{respondenRow[COL.statusSeleksi] || "-"}</TableCell>
                               <TableCell className="text-sm text-center">
                                 {respondenRow[COL.skor] ? parseFloat(respondenRow[COL.skor]).toFixed(2) : "-"}
                               </TableCell>
@@ -1058,6 +1059,91 @@ export default function MitraSE2026() {
                                     );
                                   })()}
                                 </div>
+                              </TableCell>
+                              
+                              {/* Aksi Admin - Checkbox + Dropdown */}
+                              <TableCell className="text-center">
+                                {(() => {
+                                  const origIdx = rows.indexOf(respondenRow);
+                                  const aksiAdminValue = (respondenRow[COL.aksiAdmin] || "").toString().trim();
+                                  const isAdmin = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Administrator";
+                                  const isSavingAdmin = savingCell?.rowIdx === origIdx && savingCell?.col === "BU";
+                                  const isChecked = aksiAdminValue !== "";
+                                  const isActive = aksiAdminActiveRows.has(origIdx);
+                                  const shouldShowDropdown = isActive || isChecked;
+                                  
+                                  // Read-only display
+                                  if (!isAdmin) {
+                                    if (isChecked) {
+                                      return (
+                                        <Badge className="bg-blue-100 text-blue-800">
+                                          {aksiAdminValue}
+                                        </Badge>
+                                      );
+                                    } else {
+                                      return <span className="text-slate-400 text-sm">Belum</span>;
+                                    }
+                                  }
+                                  
+                                  // Admin interactive mode
+                                  return (
+                                    <div className="flex items-center gap-2">
+                                      {/* Checkbox */}
+                                      <button
+                                        onClick={() => {
+                                          if (isChecked) {
+                                            // Checked -> uncheck and clear BU
+                                            updateCellValue(origIdx, "BU", "");
+                                            // Disable dropdown
+                                            setAksiAdminActiveRows(prev => {
+                                              const next = new Set(prev);
+                                              next.delete(origIdx);
+                                              return next;
+                                            });
+                                          } else {
+                                            // Unchecked -> enable dropdown for user to select
+                                            setAksiAdminActiveRows(prev => new Set([...prev, origIdx]));
+                                          }
+                                        }}
+                                        disabled={isSavingAdmin}
+                                        className={`p-1 rounded transition-colors ${
+                                          isChecked
+                                            ? "bg-blue-100 text-blue-600 hover:bg-blue-200"
+                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                        }`}
+                                        title={isChecked ? "Klik untuk clear" : "Klik untuk memilih opsi"}
+                                      >
+                                        {isChecked ? (
+                                          <CheckCircle2 className="h-4 w-4" />
+                                        ) : (
+                                          <Circle className="h-4 w-4" />
+                                        )}
+                                      </button>
+                                      
+                                      {/* Dropdown - Only show when checked or active */}
+                                      {shouldShowDropdown && (
+                                        <Select 
+                                          value={aksiAdminValue} 
+                                          onValueChange={async (val) => {
+                                            await updateCellValue(origIdx, "BU", val);
+                                            // Keep dropdown open by staying active
+                                            setAksiAdminActiveRows(prev => new Set([...prev, origIdx]));
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-36 h-8">
+                                            <SelectValue placeholder="Pilih opsi" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="PPL SE26">PPL SE26</SelectItem>
+                                            <SelectItem value="PML SE26">PML SE26</SelectItem>
+                                            <SelectItem value="Cadangan SE26">Cadangan SE26</SelectItem>
+                                            <SelectItem value="Rutin">Rutin</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </TableCell>
                             </TableRow>
                           );
