@@ -317,7 +317,18 @@ export default function MitraSE2026() {
         const values: Row[] = data?.values || [];
         // Skip header row, ambil data mulai dari row 1
         const rowsData = values.length > 1 ? values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== "")) : [];
-        setRows(rowsData);
+        
+        // Deduplikasi berdasarkan email (kolom B) - hanya simpan yang pertama
+        const seenEmails = new Set<string>();
+        const deduplicatedRows = rowsData.filter(r => {
+          const email = (r[COL.email] || "").toString().trim().toLowerCase();
+          if (!email) return true; // Jika tidak ada email, tetap include
+          if (seenEmails.has(email)) return false; // Skip jika sudah ada email ini
+          seenEmails.add(email);
+          return true;
+        });
+        
+        setRows(deduplicatedRows);
         setError(null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Gagal memuat data");
@@ -471,6 +482,16 @@ export default function MitraSE2026() {
       total: pplCount + pmlCount,
     };
   }, [filtered]);
+
+  // Set default filterKec untuk non-PPK ke kecamatan pertama
+  useEffect(() => {
+    if (!isPPK && kecOptions.length > 0) {
+      // Untuk non-PPK, set ke kecamatan pertama
+      if (!filterKec || filterKec === "all") {
+        setFilterKec(kecOptions[0]);
+      }
+    }
+  }, [isPPK, kecOptions]);
 
   useEffect(() => { setPage(1); }, [search, filterKec, filterSobat, pageSize]);
 
