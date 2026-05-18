@@ -277,8 +277,8 @@ const findMitraForResponden = (respondenRow: Row, mitraRows: Row[]): Row | null 
 export default function MitraSE2026() {
   const { user } = useAuth();
   
-  // Check if user is PPK
-  const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+  // Check if user is PPK or Fungsi Neraca
+  const isPPK = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Fungsi Neraca";
   
   // Data states
   const [rows, setRows] = useState<Row[]>([]);
