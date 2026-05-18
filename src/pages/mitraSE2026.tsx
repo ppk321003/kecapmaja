@@ -1075,8 +1075,23 @@ export default function MitraSE2026() {
                                   // Read-only display
                                   if (!isAdmin) {
                                     if (isChecked) {
+                                      // Get color based on value
+                                      const getAksiAdminColor = (value: string): string => {
+                                        switch (value) {
+                                          case "PPL SE26":
+                                            return "bg-blue-100 text-blue-800";
+                                          case "PML SE26":
+                                            return "bg-purple-100 text-purple-800";
+                                          case "Cadangan SE26":
+                                            return "bg-amber-100 text-amber-800";
+                                          case "Rutin":
+                                            return "bg-emerald-100 text-emerald-800";
+                                          default:
+                                            return "bg-slate-100 text-slate-800";
+                                        }
+                                      };
                                       return (
-                                        <Badge className="bg-blue-100 text-blue-800">
+                                        <Badge className={getAksiAdminColor(aksiAdminValue)}>
                                           {aksiAdminValue}
                                         </Badge>
                                       );
@@ -1086,6 +1101,21 @@ export default function MitraSE2026() {
                                   }
                                   
                                   // Admin interactive mode
+                                  const getAksiAdminColorAdmin = (value: string): { button: string; icon: string } => {
+                                    switch (value) {
+                                      case "PPL SE26":
+                                        return { button: "bg-blue-100 text-blue-600 hover:bg-blue-200", icon: "text-blue-600" };
+                                      case "PML SE26":
+                                        return { button: "bg-purple-100 text-purple-600 hover:bg-purple-200", icon: "text-purple-600" };
+                                      case "Cadangan SE26":
+                                        return { button: "bg-amber-100 text-amber-600 hover:bg-amber-200", icon: "text-amber-600" };
+                                      case "Rutin":
+                                        return { button: "bg-emerald-100 text-emerald-600 hover:bg-emerald-200", icon: "text-emerald-600" };
+                                      default:
+                                        return { button: "bg-slate-100 text-slate-400 hover:bg-slate-200", icon: "text-slate-400" };
+                                    }
+                                  };
+                                  
                                   return (
                                     <div className="flex items-center gap-2">
                                       {/* Checkbox */}
@@ -1108,7 +1138,7 @@ export default function MitraSE2026() {
                                         disabled={isSavingAdmin}
                                         className={`p-1 rounded transition-colors ${
                                           isChecked
-                                            ? "bg-blue-100 text-blue-600 hover:bg-blue-200"
+                                            ? getAksiAdminColorAdmin(aksiAdminValue).button
                                             : "bg-slate-100 text-slate-400 hover:bg-slate-200"
                                         }`}
                                         title={isChecked ? "Klik untuk clear" : "Klik untuk memilih opsi"}
