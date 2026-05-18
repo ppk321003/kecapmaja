@@ -16,7 +16,7 @@ type Row = string[];
 
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
-const RANGE = `${SHEET_NAME}!A1:BT`;
+const RANGE = `${SHEET_NAME}!A1:BU`;
 
 // Column letter to index (0-based)
 const colIdx = (letter: string): number => {
