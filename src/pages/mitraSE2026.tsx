@@ -436,7 +436,11 @@ export default function MitraSE2026() {
       // Apply Sobat filter
       const matchSobat = filterSobat === "*" || statusSobat === filterSobat.toLowerCase();
       
-      return matchSearch && matchKec && isNotTidakDitemukan && matchSobat;
+      // Filter Status Seleksi Admin - exclude "Ditolak"
+      const statusSeleksiAdmin = (r[COL.statusSeleksi] || "").toString().trim();
+      const isNotDitolak = statusSeleksiAdmin.toLowerCase() !== "ditolak";
+      
+      return matchSearch && matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak;
     });
   }, [rows, search, filterKec, filterSobat]);
 
