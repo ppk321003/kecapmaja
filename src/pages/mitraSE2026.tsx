@@ -274,6 +274,8 @@ const findMitraForResponden = (respondenRow: Row, mitraRows: Row[]): Row | null 
   }) || null;
 };
 
+type RowWithMetadata = string[] & { __sheetRowNum?: number };
+
 export default function MitraSE2026() {
   const { user } = useAuth();
   
@@ -281,7 +283,7 @@ export default function MitraSE2026() {
   const isPPK = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Fungsi Neraca";
   
   // Data states
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<RowWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -318,9 +320,16 @@ export default function MitraSE2026() {
         // Skip header row, ambil data mulai dari row 1
         const rowsData = values.length > 1 ? values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== "")) : [];
         
+        // Tambah original sheet row number untuk setiap row (row 2 di sheet = index 0 di array)
+        const rowsWithIndex = rowsData.map((r, idx) => {
+          const rowWithMeta = r as RowWithMetadata;
+          rowWithMeta.__sheetRowNum = idx + 2; // +2: +1 untuk header, +1 karena sheet 1-indexed
+          return rowWithMeta;
+        });
+        
         // Deduplikasi berdasarkan email (kolom B) - hanya simpan yang pertama
         const seenEmails = new Set<string>();
-        const deduplicatedRows = rowsData.filter(r => {
+        const deduplicatedRows = rowsWithIndex.filter(r => {
           const email = (r[COL.email] || "").toString().trim().toLowerCase();
           if (!email) return true; // Jika tidak ada email, tetap include
           if (seenEmails.has(email)) return false; // Skip jika sudah ada email ini
@@ -503,7 +512,8 @@ export default function MitraSE2026() {
   const updateCellValue = async (rowIdx: number, colLetter: string, newValue: string) => {
     try {
       setSavingCell({ rowIdx, col: colLetter });
-      const sheetRow = rowIdx + 2; // +1 untuk skip header, +1 lagi karena Google Sheets 1-indexed
+      const respondenRow = rows[rowIdx];
+      const sheetRow = respondenRow?.__sheetRowNum || (rowIdx + 2); // Gunakan stored sheet row, fallback ke formula
       const { data, error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
