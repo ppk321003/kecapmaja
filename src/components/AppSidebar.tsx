@@ -72,8 +72,8 @@ const kepegawaianItems = [
 
 // MENU GROUP: REKRUTMEN
 const rekrutmenItems = [
-  { title: "Mitra Tambahan 2026", url: "/mitra-tambahan-2026", icon: FileCheck, conditional: "isSatker3210" },
-  { title: "Mitra SE2026", url: "/mitra-se2026", icon: Users, conditional: "isSatker3210" },
+  { title: "Mitra Tambahan 2026", url: "/mitra-tambahan-2026", icon: FileCheck, conditional: "showRekrutmen" },
+  { title: "Mitra SE2026", url: "/mitra-se2026", icon: Users, conditional: "showRekrutmen" },
 ];
 
 // MENU GROUP: e-DOKUMEN SUB ITEMS
@@ -132,6 +132,9 @@ export function AppSidebar() {
   // Check if user is PPK for User Management menu
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
   
+  // Check if user is Administrator
+  const isAdministrator = user?.role === "Administrator";
+  
   // Check if user has Fungsi role for Anggaran menu
   const hasFungsiRole = user?.role?.startsWith("Fungsi") === true;
   
@@ -140,6 +143,9 @@ export function AppSidebar() {
   
   // Check if user is satker 3210 for Sikostik 28 menu
   const isSatker3210 = user?.satker === '3210';
+  
+  // Show Rekrutmen menu for Administrator OR satker 3210
+  const showRekrutmen = isAdministrator || isSatker3210;
   
   // Show Cetak Kuitansi for PPK Satker 3210
   const showCetakKuitansi = isSatker3210 && isPPK;
@@ -156,6 +162,8 @@ export function AppSidebar() {
     const conditions: Record<string, boolean> = {
       isPPK,
       isSatker3210,
+      isAdministrator,
+      showRekrutmen,
       showBahanRevisiAnggaran,
       showCetakKuitansi,
     };
