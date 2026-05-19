@@ -460,6 +460,28 @@ export default function MitraSE2026() {
     });
   }, [rows, search, filterKec, filterSobat]);
 
+  // Calculate kecamatan-filtered count (without search) for locked display
+  const kecamatanFilteredCount = useMemo(() => {
+    return rows.filter(r => {
+      // Apply kecamatan filter only (no search)
+      const kec = (r[COL.kec] || "").toLowerCase();
+      const matchKec = filterKec === "all" || (filterKec && kec === filterKec.toLowerCase()) || !filterKec;
+      
+      // Filter Status SOBAT - exclude "Tidak ditemukan"
+      const statusSobat = (r[COL.statusSobat] || "").toString().toLowerCase().trim();
+      const isNotTidakDitemukan = !statusSobat.includes("tidak ditemukan");
+      
+      // Apply Sobat filter
+      const matchSobat = filterSobat === "*" || statusSobat === filterSobat.toLowerCase();
+      
+      // Filter Status Seleksi Admin - exclude "Ditolak"
+      const statusSeleksiAdmin = (r[COL.statusSeleksi] || "").toString().trim();
+      const isNotDitolak = statusSeleksiAdmin.toLowerCase() !== "ditolak";
+      
+      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak;
+    }).length;
+  }, [rows, filterKec, filterSobat]);
+
   const pageRows = useMemo(() => {
     const sorted = [...filtered].sort((a, b) => {
       const aVal = ((a[COL[sortKey]] || "") as string).toLowerCase();
@@ -502,6 +524,52 @@ export default function MitraSE2026() {
       total: pplCount + pmlCount,
     };
   }, [filtered]);
+
+  // Calculate allocation statistics for kecamatan filter only (without search) - locked display
+  const alokasiKecamatan = useMemo(() => {
+    let pplCount = 0;
+    let pmlCount = 0;
+    let cadanganCount = 0;
+    let rutinCount = 0;
+    
+    rows.filter(r => {
+      // Apply kecamatan filter only (no search)
+      const kec = (r[COL.kec] || "").toLowerCase();
+      const matchKec = filterKec === "all" || (filterKec && kec === filterKec.toLowerCase()) || !filterKec;
+      
+      // Filter Status SOBAT - exclude "Tidak ditemukan"
+      const statusSobat = (r[COL.statusSobat] || "").toString().toLowerCase().trim();
+      const isNotTidakDitemukan = !statusSobat.includes("tidak ditemukan");
+      
+      // Apply Sobat filter
+      const matchSobat = filterSobat === "*" || statusSobat === filterSobat.toLowerCase();
+      
+      // Filter Status Seleksi Admin - exclude "Ditolak"
+      const statusSeleksiAdmin = (r[COL.statusSeleksi] || "").toString().trim();
+      const isNotDitolak = statusSeleksiAdmin.toLowerCase() !== "ditolak";
+      
+      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak;
+    }).forEach(r => {
+      const tipeKegiatan = (r[COL.tipeKegiatan] || "").toString().trim();
+      const pplPml = (r[COL.pplPml] || "").toString().trim();
+      
+      if (tipeKegiatan === "SE2026") {
+        if (pplPml === "PPL") pplCount++;
+        else if (pplPml === "PML") pmlCount++;
+        else if (pplPml === "Cadangan") cadanganCount++;
+      } else if (tipeKegiatan === "Rutin") {
+        rutinCount++;
+      }
+    });
+    
+    return {
+      ppl: pplCount,
+      pml: pmlCount,
+      cadangan: cadanganCount,
+      rutin: rutinCount,
+      total: pplCount + pmlCount,
+    };
+  }, [rows, filterKec, filterSobat]);
 
   // Set default filterKec untuk non-PPK ke kecamatan pertama
   useEffect(() => {
@@ -578,7 +646,7 @@ export default function MitraSE2026() {
                   Data responden dengan tipe kegiatan (SE2026/Rutin) dan PPL/PML. Sumber data dari Detail Konfirmasi Mitra.
                   {rows.length > 0 && mitriRows.length > 0 && (
                     <div className="mt-2 text-xs text-slate-600">
-                      📊 {rows.length} responden | {mitriRows.length} mitra | {filtered.length} yang cocok
+                      📊 {rows.length} responden | {mitriRows.length} mitra | {kecamatanFilteredCount} dari {filterKec && filterKec !== "" ? "kecamatan" : "total"}{search && kecamatanFilteredCount > filtered.length && ` (${filtered.length} cocok pencarian)`}
                     </div>
                   )}
                 </CardDescription>
@@ -627,11 +695,11 @@ export default function MitraSE2026() {
                           const totalPpl = kkLoading ? 0 : kkRows.reduce((sum, r) => sum + (parseInt((r[1] || "").toString().trim()) || 0), 0);
                           const totalPml = kkLoading ? 0 : kkRows.reduce((sum, r) => sum + (parseInt((r[2] || "").toString().trim()) || 0), 0);
                           const totalKebutuhan = kkLoading ? 0 : kkRows.reduce((sum, r) => sum + (parseInt((r[3] || "").toString().trim()) || 0), 0);
-                          const pplPercent = totalPpl > 0 ? Math.round((alokasi.ppl / totalPpl) * 100) : 0;
-                          const pmlPercent = totalPml > 0 ? Math.round((alokasi.pml / totalPml) * 100) : 0;
-                          const totalPercent = totalKebutuhan > 0 ? Math.round((alokasi.total / totalKebutuhan) * 100) : 0;
+                          const pplPercent = totalPpl > 0 ? Math.round((alokasiKecamatan.ppl / totalPpl) * 100) : 0;
+                          const pmlPercent = totalPml > 0 ? Math.round((alokasiKecamatan.pml / totalPml) * 100) : 0;
+                          const totalPercent = totalKebutuhan > 0 ? Math.round((alokasiKecamatan.total / totalKebutuhan) * 100) : 0;
                           const cadanganTarget = Math.round(totalKebutuhan * 0.1);
-                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasi.cadangan / cadanganTarget) * 100) : 0;
+                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasiKecamatan.cadangan / cadanganTarget) * 100) : 0;
                           
                           const getWarningText = (percent: number, current: number, target: number) => {
                             if (percent > 100) {
@@ -665,7 +733,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-blue-700">PPL</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-blue-600">{alokasi.ppl}/{totalPpl} <span className="text-xs font-normal text-blue-500">({pplPercent}%)</span>{getWarningText(pplPercent, alokasi.ppl, totalPpl)}</p>
+                                    <p className="text-sm font-bold text-blue-600">{alokasiKecamatan.ppl}/{totalPpl} <span className="text-xs font-normal text-blue-500">({pplPercent}%)</span>{getWarningText(pplPercent, alokasiKecamatan.ppl, totalPpl)}</p>
                                   </div>
                                 </div>
                                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
@@ -678,7 +746,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-indigo-700">PML</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-indigo-600">{alokasi.pml}/{totalPml} <span className="text-xs font-normal text-indigo-500">({pmlPercent}%)</span>{getWarningText(pmlPercent, alokasi.pml, totalPml)}</p>
+                                    <p className="text-sm font-bold text-indigo-600">{alokasiKecamatan.pml}/{totalPml} <span className="text-xs font-normal text-indigo-500">({pmlPercent}%)</span>{getWarningText(pmlPercent, alokasiKecamatan.pml, totalPml)}</p>
                                   </div>
                                 </div>
                                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
@@ -691,7 +759,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-purple-700">TOTAL</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-purple-600">{alokasi.total}/{totalKebutuhan} <span className="text-xs font-normal text-purple-500">({totalPercent}%)</span>{getWarningText(totalPercent, alokasi.total, totalKebutuhan)}</p>
+                                    <p className="text-sm font-bold text-purple-600">{alokasiKecamatan.total}/{totalKebutuhan} <span className="text-xs font-normal text-purple-500">({totalPercent}%)</span>{getWarningText(totalPercent, alokasiKecamatan.total, totalKebutuhan)}</p>
                                   </div>
                                 </div>
                                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
@@ -704,7 +772,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-amber-700">Cadangan (10%)</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-amber-600">{alokasi.cadangan}/{cadanganTarget} <span className="text-xs font-normal text-amber-500">({cadanganPercent}%)</span>{getWarningText(cadanganPercent, alokasi.cadangan, cadanganTarget)}</p>
+                                    <p className="text-sm font-bold text-amber-600">{alokasiKecamatan.cadangan}/{cadanganTarget} <span className="text-xs font-normal text-amber-500">({cadanganPercent}%)</span>{getWarningText(cadanganPercent, alokasiKecamatan.cadangan, cadanganTarget)}</p>
                                   </div>
                                 </div>
                                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
@@ -717,7 +785,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-emerald-700">Mitra Rutin</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-emerald-600">{alokasi.rutin}</p>
+                                    <p className="text-sm font-bold text-emerald-600">{alokasiKecamatan.rutin}</p>
                                   </div>
                                 </div>
                               </div>
@@ -727,11 +795,11 @@ export default function MitraSE2026() {
                       ) : (
                         (() => {
                           const kebutuhan = getKebutuhanForKec(filterKec);
-                          const pplPercent = kebutuhan.ppl > 0 ? Math.round((alokasi.ppl / kebutuhan.ppl) * 100) : 0;
-                          const pmlPercent = kebutuhan.pml > 0 ? Math.round((alokasi.pml / kebutuhan.pml) * 100) : 0;
-                          const totalPercent = kebutuhan.jumlah > 0 ? Math.round((alokasi.total / kebutuhan.jumlah) * 100) : 0;
+                          const pplPercent = kebutuhan.ppl > 0 ? Math.round((alokasiKecamatan.ppl / kebutuhan.ppl) * 100) : 0;
+                          const pmlPercent = kebutuhan.pml > 0 ? Math.round((alokasiKecamatan.pml / kebutuhan.pml) * 100) : 0;
+                          const totalPercent = kebutuhan.jumlah > 0 ? Math.round((alokasiKecamatan.total / kebutuhan.jumlah) * 100) : 0;
                           const cadanganTarget = Math.round(kebutuhan.jumlah * 0.1);
-                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasi.cadangan / cadanganTarget) * 100) : 0;
+                          const cadanganPercent = cadanganTarget > 0 ? Math.round((alokasiKecamatan.cadangan / cadanganTarget) * 100) : 0;
                           
                           const getWarningText = (percent: number, current: number, target: number) => {
                             if (percent > 100) {
@@ -765,7 +833,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-blue-700">PPL</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-blue-600">{kkLoading ? "..." : `${alokasi.ppl}/${kebutuhan.ppl}`} <span className="text-xs font-normal text-blue-500">({kkLoading ? "..." : `${pplPercent}%`})</span>{kkLoading ? "" : getWarningText(pplPercent, alokasi.ppl, kebutuhan.ppl)}</p>
+                                    <p className="text-sm font-bold text-blue-600">{kkLoading ? "..." : `${alokasiKecamatan.ppl}/${kebutuhan.ppl}`} <span className="text-xs font-normal text-blue-500">({kkLoading ? "..." : `${pplPercent}%`})</span>{kkLoading ? "" : getWarningText(pplPercent, alokasiKecamatan.ppl, kebutuhan.ppl)}</p>
                                   </div>
                                 </div>
                                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
@@ -778,7 +846,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-indigo-700">PML</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-indigo-600">{kkLoading ? "..." : `${alokasi.pml}/${kebutuhan.pml}`} <span className="text-xs font-normal text-indigo-500">({kkLoading ? "..." : `${pmlPercent}%`})</span>{kkLoading ? "" : getWarningText(pmlPercent, alokasi.pml, kebutuhan.pml)}</p>
+                                    <p className="text-sm font-bold text-indigo-600">{kkLoading ? "..." : `${alokasiKecamatan.pml}/${kebutuhan.pml}`} <span className="text-xs font-normal text-indigo-500">({kkLoading ? "..." : `${pmlPercent}%`})</span>{kkLoading ? "" : getWarningText(pmlPercent, alokasiKecamatan.pml, kebutuhan.pml)}</p>
                                   </div>
                                 </div>
                                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
@@ -791,7 +859,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-purple-700">TOTAL</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-purple-600">{kkLoading ? "..." : `${alokasi.total}/${kebutuhan.jumlah}`} <span className="text-xs font-normal text-purple-500">({kkLoading ? "..." : `${totalPercent}%`})</span>{kkLoading ? "" : getWarningText(totalPercent, alokasi.total, kebutuhan.jumlah)}</p>
+                                    <p className="text-sm font-bold text-purple-600">{kkLoading ? "..." : `${alokasiKecamatan.total}/${kebutuhan.jumlah}`} <span className="text-xs font-normal text-purple-500">({kkLoading ? "..." : `${totalPercent}%`})</span>{kkLoading ? "" : getWarningText(totalPercent, alokasiKecamatan.total, kebutuhan.jumlah)}</p>
                                   </div>
                                 </div>
                                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
@@ -804,7 +872,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-amber-700">Cadangan (10%)</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-amber-600">{kkLoading ? "..." : `${alokasi.cadangan}/${cadanganTarget}`} <span className="text-xs font-normal text-amber-500">({kkLoading ? "..." : `${cadanganPercent}%`})</span>{kkLoading ? "" : getWarningText(cadanganPercent, alokasi.cadangan, cadanganTarget)}</p>
+                                    <p className="text-sm font-bold text-amber-600">{kkLoading ? "..." : `${alokasiKecamatan.cadangan}/${cadanganTarget}`} <span className="text-xs font-normal text-amber-500">({kkLoading ? "..." : `${cadanganPercent}%`})</span>{kkLoading ? "" : getWarningText(cadanganPercent, alokasiKecamatan.cadangan, cadanganTarget)}</p>
                                   </div>
                                 </div>
                                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
@@ -817,7 +885,7 @@ export default function MitraSE2026() {
                                 <div className="flex justify-between items-center">
                                   <p className="text-xs font-semibold text-emerald-700">Mitra Rutin</p>
                                   <div className="text-right">
-                                    <p className="text-sm font-bold text-emerald-600">{kkLoading ? "..." : alokasi.rutin}</p>
+                                    <p className="text-sm font-bold text-emerald-600">{kkLoading ? "..." : alokasiKecamatan.rutin}</p>
                                   </div>
                                 </div>
                               </div>
