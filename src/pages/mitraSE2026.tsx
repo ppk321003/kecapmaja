@@ -16,7 +16,7 @@ type Row = string[];
 
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
-const RANGE = `${SHEET_NAME}!A1:BU`;
+const RANGE = `${SHEET_NAME}!A1:BX`;
 
 // Column letter to index (0-based)
 const colIdx = (letter: string): number => {
@@ -70,6 +70,9 @@ const COL = {
   pplPml: colIdx("BO"),  // BO - PPL atau PML
   statusAkhir: colIdx("BT"),  // BT - Status Akhir (Diterima/Ditolak) untuk Mitra Tambahan
   aksiAdmin: colIdx("BU"),  // BU - Aksi Admin (PPL SE26, PML SE26, Cadangan SE26, Rutin)
+  suratVideo1: colIdx("BV"),  // BV - Surat & Video (link/text)
+  suratVideo2: colIdx("BW"),  // BW - Surat & Video (link/text)
+  suratVideo3: colIdx("BX"),  // BX - Surat & Video (link/text)
 };
 
 // Column mapping untuk Mitra (Manajemen Mitra sheet)
@@ -857,7 +860,7 @@ export default function MitraSE2026() {
                             <TableHead>Skor</TableHead>
                             <TableHead className="text-center">Kesediaan SE26</TableHead>
                             <TableHead className="text-center">Catatan Kecap Maja</TableHead>
-                            <TableHead className="text-center">Status Akhir</TableHead>
+                            <TableHead className="text-center">Surat & Video</TableHead>
                             <TableHead className="text-center">Aksi</TableHead>
                             <TableHead className="text-center">Aksi Admin</TableHead>
                           </TableRow>
@@ -909,25 +912,71 @@ export default function MitraSE2026() {
                                 })()}
                               </TableCell>
                               
-                              {/* Status Akhir - for Mitra Tambahan only */}
+                              {/* Surat & Video - Links/Text from BV, BW, BX */}
                               <TableCell className="text-center">
                                 {(() => {
-                                  const statusSobat = (respondenRow[COL.statusSobat] || "").toString().trim();
-                                  if (statusSobat === "Mitra Tambahan") {
-                                    const statusAkhir = (respondenRow[COL.statusAkhir] || "").toString().trim();
-                                    return (
-                                      <Badge className={
-                                        statusAkhir === "Diterima"
-                                          ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                                          : statusAkhir === "Ditolak"
-                                            ? "bg-red-100 text-red-700 border-red-200"
-                                            : "bg-slate-100 text-slate-600 border-slate-200"
-                                      }>
-                                        {statusAkhir || "-"}
-                                      </Badge>
+                                  const isLink = (url: string): boolean => {
+                                    try {
+                                      new URL(url);
+                                      return true;
+                                    } catch {
+                                      return false;
+                                    }
+                                  };
+
+                                  // Debug: Log column indices and values
+                                  if (pageRows.indexOf(respondenRow) === 0) {
+                                    console.log("DEBUG Surat & Video - BV/BW/BX indices:", COL.suratVideo1, COL.suratVideo2, COL.suratVideo3);
+                                    console.log("DEBUG Surat & Video - BV/BW/BX values:", 
+                                      respondenRow[COL.suratVideo1], 
+                                      respondenRow[COL.suratVideo2], 
+                                      respondenRow[COL.suratVideo3]
                                     );
+                                    console.log("DEBUG Row length:", respondenRow.length);
+                                    console.log("DEBUG Full row data:", respondenRow.slice(73, 76));
                                   }
-                                  return <span className="text-slate-400">-</span>;
+
+                                  const renderSuratVideoIcon = (value: string) => {
+                                    const trimmedValue = (value || "").toString().trim();
+                                    
+                                    if (!trimmedValue) {
+                                      return (
+                                        <div title="Kosong">
+                                          <Eye className="h-4 w-4 text-slate-300 cursor-not-allowed" />
+                                        </div>
+                                      );
+                                    }
+
+                                    if (isLink(trimmedValue)) {
+                                      return (
+                                        <button
+                                          onClick={() => window.open(trimmedValue, "_blank")}
+                                          className="p-1 rounded hover:bg-blue-100 transition-colors"
+                                          title="Buka link"
+                                        >
+                                          <Eye className="h-4 w-4 text-blue-600 hover:text-blue-800 cursor-pointer" />
+                                        </button>
+                                      );
+                                    } else {
+                                      // Text content, show as tooltip/button
+                                      return (
+                                        <button
+                                          className="p-1 rounded hover:bg-amber-100 transition-colors"
+                                          title={trimmedValue}
+                                        >
+                                          <Eye className="h-4 w-4 text-amber-600 cursor-help" />
+                                        </button>
+                                      );
+                                    }
+                                  };
+
+                                  return (
+                                    <div className="flex items-center justify-center gap-2">
+                                      {renderSuratVideoIcon(respondenRow[COL.suratVideo1] || "")}
+                                      {renderSuratVideoIcon(respondenRow[COL.suratVideo2] || "")}
+                                      {renderSuratVideoIcon(respondenRow[COL.suratVideo3] || "")}
+                                    </div>
+                                  );
                                 })()}
                               </TableCell>
                               
@@ -1091,7 +1140,7 @@ export default function MitraSE2026() {
                                         }
                                       };
                                       return (
-                                        <Badge className={getAksiAdminColor(aksiAdminValue)}>
+                                        <Badge className={`${getAksiAdminColor(aksiAdminValue)} text-xs`}>
                                           {aksiAdminValue}
                                         </Badge>
                                       );
@@ -1160,7 +1209,7 @@ export default function MitraSE2026() {
                                             setAksiAdminActiveRows(prev => new Set([...prev, origIdx]));
                                           }}
                                         >
-                                          <SelectTrigger className="w-36 h-8">
+                                          <SelectTrigger className="w-36 h-8 text-xs">
                                             <SelectValue placeholder="Pilih opsi" />
                                           </SelectTrigger>
                                           <SelectContent>
