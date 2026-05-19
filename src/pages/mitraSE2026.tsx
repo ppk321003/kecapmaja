@@ -311,6 +311,8 @@ export default function MitraSE2026() {
   const [validationDetailRow, setValidationDetailRow] = useState<Row | null>(null);
   const [savingCell, setSavingCell] = useState<{ rowIdx: number; col: string } | null>(null);
   const [aksiAdminActiveRows, setAksiAdminActiveRows] = useState<Set<number>>(new Set());
+  const [suratVideoDialogText, setSuratVideoDialogText] = useState<string>("");
+  const [suratVideoDialogTitle, setSuratVideoDialogTitle] = useState<string>("");
 
   // Load data from Olah sheet
   useEffect(() => {
@@ -924,18 +926,6 @@ export default function MitraSE2026() {
                                     }
                                   };
 
-                                  // Debug: Log column indices and values
-                                  if (pageRows.indexOf(respondenRow) === 0) {
-                                    console.log("DEBUG Surat & Video - BV/BW/BX indices:", COL.suratVideo1, COL.suratVideo2, COL.suratVideo3);
-                                    console.log("DEBUG Surat & Video - BV/BW/BX values:", 
-                                      respondenRow[COL.suratVideo1], 
-                                      respondenRow[COL.suratVideo2], 
-                                      respondenRow[COL.suratVideo3]
-                                    );
-                                    console.log("DEBUG Row length:", respondenRow.length);
-                                    console.log("DEBUG Full row data:", respondenRow.slice(73, 76));
-                                  }
-
                                   const renderSuratVideoIcon = (value: string) => {
                                     const trimmedValue = (value || "").toString().trim();
                                     
@@ -958,13 +948,18 @@ export default function MitraSE2026() {
                                         </button>
                                       );
                                     } else {
-                                      // Text content, show as tooltip/button
+                                      // Text content, open dialog on click
+                                      const nama = (respondenRow[COL.nama] || "").toString().trim();
                                       return (
                                         <button
+                                          onClick={() => {
+                                            setSuratVideoDialogTitle(nama);
+                                            setSuratVideoDialogText(trimmedValue);
+                                          }}
                                           className="p-1 rounded hover:bg-amber-100 transition-colors"
-                                          title={trimmedValue}
+                                          title="Klik untuk lihat detail"
                                         >
-                                          <Eye className="h-4 w-4 text-amber-600 cursor-help" />
+                                          <Eye className="h-4 w-4 text-amber-600 hover:text-amber-800 cursor-pointer" />
                                         </button>
                                       );
                                     }
@@ -1506,6 +1501,33 @@ export default function MitraSE2026() {
               </div>
             );
             })()}
+          </DialogContent>
+        </Dialog>
+
+        {/* Surat & Video Text Content Dialog */}
+        <Dialog open={!!suratVideoDialogText} onOpenChange={(o) => !o && setSuratVideoDialogText("")}>  
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{suratVideoDialogTitle}</DialogTitle>
+              <DialogDescription>Detail Surat & Video</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{suratVideoDialogText}</p>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(suratVideoDialogText);
+                    alert("Disalin ke clipboard");
+                  }}
+                >
+                  Salin
+                </Button>
+                <Button onClick={() => setSuratVideoDialogText("")}>Tutup</Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
