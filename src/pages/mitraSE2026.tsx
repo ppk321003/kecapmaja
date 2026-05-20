@@ -617,6 +617,15 @@ export default function MitraSE2026() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 p-4 md:p-8">
+      <style>{`
+        @keyframes blink {
+          0%, 49% { opacity: 1; }
+          50%, 100% { opacity: 0.7; }
+        }
+        .animate-blink {
+          animation: blink 0.8s infinite;
+        }
+      `}</style>
       <div className="w-full mx-auto space-y-6">
         <header className="text-center space-y-2">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-800">
@@ -947,9 +956,19 @@ export default function MitraSE2026() {
                               <TableCell>{respondenRow[COL.kec] || "-"}</TableCell>
                               <TableCell>{respondenRow[COL.desa] || "-"}</TableCell>
                               <TableCell className="text-sm">{respondenRow[COL.statusSobat] || "-"}</TableCell>
-                              <TableCell className="text-sm text-center">
-                                {respondenRow[COL.skor] ? parseFloat(respondenRow[COL.skor]).toFixed(2) : "-"}
-                              </TableCell>
+                              {(() => {
+                                const statusSobat = (respondenRow[COL.statusSobat] || "").toString().toLowerCase().trim();
+                                const isMitraKepkaOrDobel = statusSobat.includes("mitra kepka 2026") || statusSobat === "dobel";
+                                const shouldBeRed = (respondenRow[COL.skor] && parseFloat(respondenRow[COL.skor]) < 60) || 
+                                                   (!respondenRow[COL.skor] && !isMitraKepkaOrDobel);
+                                return (
+                                  <TableCell className={`text-sm text-center font-semibold px-3 py-2 rounded ${
+                                    shouldBeRed ? "bg-red-600 text-white animate-blink" : ""
+                                  }`}>
+                                    {respondenRow[COL.skor] ? parseFloat(respondenRow[COL.skor]).toFixed(2) : "-"}
+                                  </TableCell>
+                                );
+                              })()}
                               <TableCell className="text-center">
                                 <Badge className={respondenRow[COL.sensusEkonomi]?.toString().toLowerCase().includes("ya") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                                   {respondenRow[COL.sensusEkonomi] || "-"}
@@ -1542,9 +1561,19 @@ export default function MitraSE2026() {
                     </div>
                     <div className="border-b pb-2">
                       <div className="text-xs font-semibold text-slate-700/80 uppercase tracking-wide">Skor</div>
-                      <div className="text-sm break-words mt-1">
-                        {detailRow[COL.skor] ? parseFloat(detailRow[COL.skor]).toFixed(2) : "-"}
-                      </div>
+                      {(() => {
+                        const statusSobat = (detailRow[COL.statusSobat] || "").toString().toLowerCase().trim();
+                        const isMitraKepkaOrDobel = statusSobat.includes("mitra kepka 2026") || statusSobat === "dobel";
+                        const shouldBeRed = (detailRow[COL.skor] && parseFloat(detailRow[COL.skor]) < 60) || 
+                                           (!detailRow[COL.skor] && !isMitraKepkaOrDobel);
+                        return (
+                          <div className={`text-sm break-words mt-1 font-semibold px-3 py-2 rounded ${
+                            shouldBeRed ? "bg-red-600 text-white animate-blink" : ""
+                          }`}>
+                            {detailRow[COL.skor] ? parseFloat(detailRow[COL.skor]).toFixed(2) : "-"}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="border-b pb-2">
                       <div className="text-xs font-semibold text-slate-700/80 uppercase tracking-wide">Rekomendasi</div>
