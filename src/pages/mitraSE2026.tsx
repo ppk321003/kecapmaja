@@ -1052,21 +1052,14 @@ export default function MitraSE2026() {
                                     }
                                   };
 
-                                  // Check if Status SOBAT is NOT "Mitra Kepka 2026" and NOT "Dobel"
-                                  const statusSobat = (respondenRow[COL.statusSobat] || "").toString().toLowerCase().trim();
-                                  const isMitraKepkaOrDobel = statusSobat.includes("mitra kepka 2026") || statusSobat === "dobel";
-                                  
                                   // Check if all Surat & Video icons are empty
                                   const allEmpty = !respondenRow[COL.suratVideo1]?.toString().trim() &&
                                                  !respondenRow[COL.suratVideo2]?.toString().trim() &&
                                                  !respondenRow[COL.suratVideo3]?.toString().trim();
-                                  
-                                  // Apply blinking red if Status SOBAT is NOT Mitra Kepka 2026/Dobel AND all icons are empty
-                                  const shouldBlink = !isMitraKepkaOrDobel && allEmpty;
 
                                   return (
                                     <div className={`flex items-center justify-center gap-2 px-3 py-2 rounded ${
-                                      shouldBlink ? "bg-red-600 animate-blink" : ""
+                                      allEmpty ? "bg-red-600 animate-blink" : ""
                                     }`}>
                                       {renderSuratVideoIcon(respondenRow[COL.suratVideo1] || "")}
                                       {renderSuratVideoIcon(respondenRow[COL.suratVideo2] || "")}
