@@ -194,10 +194,10 @@ const validateResponden = (row: Row): Array<{ issue: string; severity: "error" |
     issues.push({ issue: "Tidak bersedia mengikuti pelatihan BPS", severity: "warning" });
   }
 
-  // AP: Pelatihan BPS 2 ≠ "Ya"
+  // AP: Pendataan Rumah ke Rumah/Tempat Usaha ≠ "Ya"
   const pelatihanBPS2 = (row[colIdx("AP")] || "").trim();
   if (pelatihanBPS2 && !isYesAnswer(pelatihanBPS2)) {
-    issues.push({ issue: "Tidak bersedia mengikuti pelatihan BPS (2)", severity: "error" });
+    issues.push({ issue: "Tidak bersedia melaksanakan pendataan dari rumah ke rumah/tempat usaha sesuai ketentuan", severity: "error" });
   }
 
   // AQ: Lintas Kecamatan ≠ "Ya"
@@ -1514,6 +1514,7 @@ export default function MitraSE2026() {
                       ["Prioritas Pekerjaan BPS", detailRow[COL.prioritasKejaanBPS]],
                       ["Bersedia Kontrak Kerja", detailRow[COL.kontrakKerja]],
                       ["Pelatihan BPS", detailRow[COL.pelatihanBPS]],
+                      ["Pendataan Rumah ke Rumah/Tempat Usaha", detailRow[COL.pelatihanBPS2]],
                       ["Bekerja Lintas Kecamatan", detailRow[COL.lintasKecamatan]],
                       ["Bekerja Lintas Desa", detailRow[COL.lintasDesa]],
                       ["Mengikuti Deadline", detailRow[COL.deadline]],
