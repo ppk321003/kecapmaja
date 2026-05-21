@@ -1022,9 +1022,20 @@ export default function MitraSE2026() {
                                 );
                               })()}
                               <TableCell className="text-center">
-                                <Badge className={getKompetensiForResponden(respondenRow) !== "-" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}>
-                                  {getKompetensiForResponden(respondenRow)}
-                                </Badge>
+                                {(() => {
+                                  const kompetensiValue = getKompetensiForResponden(respondenRow).toLowerCase().trim();
+                                  let badgeClass = "bg-gray-100 text-gray-800";
+                                  if (kompetensiValue === "diterima") {
+                                    badgeClass = "bg-green-600 text-white";
+                                  } else if (kompetensiValue === "ditolak") {
+                                    badgeClass = "bg-red-600 text-white";
+                                  }
+                                  return (
+                                    <Badge className={badgeClass}>
+                                      {getKompetensiForResponden(respondenRow)}
+                                    </Badge>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell className="text-center">
                                 {(() => {
