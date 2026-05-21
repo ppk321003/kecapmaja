@@ -245,10 +245,10 @@ const validateResponden = (row: Row): Array<{ issue: string; severity: "error" |
     issues.push({ issue: "Tidak bersedia mengikuti pelatihan BPS", severity: "warning" });
   }
 
-  // AP: Pelatihan BPS 2 ≠ "Ya"
+  // AP: Pendataan Rumah ke Rumah/Tempat Usaha ≠ "Ya"
   const pelatihanBPS2 = (row[COL.pelatihanBPS2] || "").trim();
   if (pelatihanBPS2 && !isYesAnswer(pelatihanBPS2)) {
-    issues.push({ issue: "Tidak bersedia mengikuti pelatihan BPS (2)", severity: "error" });
+    issues.push({ issue: "Tidak bersedia melaksanakan pendataan dari rumah ke rumah/tempat usaha sesuai ketentuan", severity: "error" });
   }
 
   // AQ: Lintas Kecamatan ≠ "Ya"
