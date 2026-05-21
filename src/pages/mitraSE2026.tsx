@@ -17,8 +17,8 @@ type Row = string[];
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
 const RANGE = `${SHEET_NAME}!A1:BX`;
-const SHEET_NAME_KOMPETENSI = "kompetensi";
-const RANGE_KOMPETENSI = `${SHEET_NAME_KOMPETENSI}!A1:Z`;
+const SHEET_NAME_KOMPETENSI = "Scraping Seleksi";
+const RANGE_KOMPETENSI = `${SHEET_NAME_KOMPETENSI}!A1:AI`;
 
 // Column letter to index (0-based)
 const colIdx = (letter: string): number => {
@@ -90,10 +90,10 @@ const COL_MITRA = {
   pplPml: colIdx("F"),   // F - PPL atau PML
 };
 
-// Column mapping untuk Kompetensi sheet
+// Column mapping untuk Scraping Seleksi sheet
 const COL_KOMPETENSI = {
-  email: colIdx("U"),       // U - Email
-  kompetensi: colIdx("C"),  // C - Kompetensi
+  email: colIdx("AI"),      // AI - Email
+  kompetensi: colIdx("J"),  // J - Kompetensi
 };
 
 // Validation helper functions
