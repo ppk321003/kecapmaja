@@ -17,6 +17,8 @@ type Row = string[];
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
 const RANGE = `${SHEET_NAME}!A1:BX`;
+const SHEET_NAME_KOMPETENSI = "kompetensi";
+const RANGE_KOMPETENSI = `${SHEET_NAME_KOMPETENSI}!A1:Z`;
 
 // Column letter to index (0-based)
 const colIdx = (letter: string): number => {
@@ -86,6 +88,12 @@ const COL_MITRA = {
   statusSeleksiKompetensi: colIdx("D"),  // D - Status Seleksi Kompetensi
   tipeKegiatan: colIdx("E"),  // E - Tipe Kegiatan (SE2026 / Rutin)
   pplPml: colIdx("F"),   // F - PPL atau PML
+};
+
+// Column mapping untuk Kompetensi sheet
+const COL_KOMPETENSI = {
+  email: colIdx("U"),       // U - Email
+  kompetensi: colIdx("C"),  // C - Kompetensi
 };
 
 // Validation helper functions
@@ -299,6 +307,10 @@ export default function MitraSE2026() {
   const [kkLoading, setKkLoading] = useState(true);
   const [kkError, setKkError] = useState<string | null>(null);
 
+  const [kompetensiRows, setKompetensiRows] = useState<Row[]>([]);
+  const [kompetensiLoading, setKompetensiLoading] = useState(true);
+  const [kompetensiError, setKompetensiError] = useState<string | null>(null);
+
   // Filter & pagination states for Rekomendasi tab
   const [search, setSearch] = useState("");
   const [filterKec, setFilterKec] = useState<string>("");
@@ -402,6 +414,30 @@ export default function MitraSE2026() {
     fetchKkData();
   }, []);
 
+  // Load data from Kompetensi sheet
+  useEffect(() => {
+    const fetchKompetensiData = async () => {
+      try {
+        setKompetensiLoading(true);
+        const { data, error: err } = await supabase.functions.invoke("google-sheets", {
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: RANGE_KOMPETENSI },
+        });
+        if (err) throw new Error(err);
+        const values: Row[] = data?.values || [];
+        // Skip header row (row 0), mulai dari row 1
+        const kompetensiData = values.length > 1 ? values.slice(1) : [];
+        setKompetensiRows(kompetensiData);
+        setKompetensiError(null);
+      } catch (e) {
+        setKompetensiError(e instanceof Error ? e.message : "Gagal memuat data Kompetensi");
+        setKompetensiRows([]);
+      } finally {
+        setKompetensiLoading(false);
+      }
+    };
+    fetchKompetensiData();
+  }, []);
+
   // Helper function to get Kebutuhan data for a specific kecamatan
   const getKebutuhanForKec = (kecName: string): { ppl: number; pml: number; jumlah: number } => {
     if (!kecName || filterKec === "") {
@@ -417,6 +453,20 @@ export default function MitraSE2026() {
       pml: parseInt((kkRow[2] || "").toString().trim()) || 0,
       jumlah: parseInt((kkRow[3] || "").toString().trim()) || 0,
     };
+  };
+
+  // Helper function to get Kompetensi for a responden based on email
+  const getKompetensiForResponden = (respondenRow: Row): string => {
+    const respondenEmail = (respondenRow[COL.email] || "").toString().trim().toLowerCase();
+    if (!respondenEmail) return "-";
+    
+    const kompetensiRow = kompetensiRows.find(row => {
+      const rowEmail = (row[COL_KOMPETENSI.email] || "").toString().trim().toLowerCase();
+      return rowEmail === respondenEmail;
+    });
+    
+    if (!kompetensiRow) return "-";
+    return (kompetensiRow[COL_KOMPETENSI.kompetensi] || "-").toString().trim();
   };
 
   // Computed values for Rekomendasi tab
@@ -906,20 +956,22 @@ export default function MitraSE2026() {
                   </Card>
                 )}
 
-                {loading || mitriLoading ? (
+                {loading || mitriLoading || kompetensiLoading ? (
                   <div className="flex items-center justify-center py-20">
                     <div className="text-center">
                       <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">
-                        {loading ? "Memuat data responden..." : ""}{mitriLoading && loading && " & "}
-                        {mitriLoading ? "Memuat data mitra..." : ""}
+                        {loading ? "Memuat data responden..." : ""}{(mitriLoading || kompetensiLoading) && loading && " & "}
+                        {mitriLoading ? "Memuat data mitra..." : ""}{kompetensiLoading && mitriLoading && " & "}
+                        {kompetensiLoading ? "Memuat data kompetensi..." : ""}
                       </p>
                     </div>
                   </div>
-                ) : error || mitriError ? (
+                ) : error || mitriError || kompetensiError ? (
                   <div className="py-10 text-center">
                     {error && <div className="text-red-600 mb-2">{error}</div>}
                     {mitriError && <div className="text-red-600 mb-2">{mitriError}</div>}
+                    {kompetensiError && <div className="text-red-600 mb-2">{kompetensiError}</div>}
                   </div>
                 ) : (
                   <>
@@ -937,7 +989,7 @@ export default function MitraSE2026() {
                             <TableHead>Desa</TableHead>
                             <TableHead>Status SOBAT</TableHead>
                             <TableHead>Skor</TableHead>
-                            <TableHead className="text-center">Kesediaan SE26</TableHead>
+                            <TableHead className="text-center">Kompetensi</TableHead>
                             <TableHead className="text-center">Catatan Kecap Maja</TableHead>
                             <TableHead className="text-center">Surat & Video</TableHead>
                             <TableHead className="text-center">Aksi</TableHead>
@@ -963,15 +1015,15 @@ export default function MitraSE2026() {
                                                    (!respondenRow[COL.skor] && !isMitraKepkaOrDobel);
                                 return (
                                   <TableCell className={`text-sm text-center font-semibold px-3 py-2 rounded ${
-                                    shouldBeRed ? "bg-red-600 text-white animate-blink" : ""
+                                    shouldBeRed ? "bg-red-600 text-white" : ""
                                   }`}>
                                     {respondenRow[COL.skor] ? parseFloat(respondenRow[COL.skor]).toFixed(2) : "-"}
                                   </TableCell>
                                 );
                               })()}
                               <TableCell className="text-center">
-                                <Badge className={respondenRow[COL.sensusEkonomi]?.toString().toLowerCase().includes("ya") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                                  {respondenRow[COL.sensusEkonomi] || "-"}
+                                <Badge className={getKompetensiForResponden(respondenRow) !== "-" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}>
+                                  {getKompetensiForResponden(respondenRow)}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-center">
@@ -1059,7 +1111,7 @@ export default function MitraSE2026() {
 
                                   return (
                                     <div className={`flex items-center justify-center gap-2 px-3 py-2 rounded ${
-                                      allEmpty ? "bg-red-600 animate-blink" : ""
+                                      allEmpty ? "bg-red-600" : ""
                                     }`}>
                                       {renderSuratVideoIcon(respondenRow[COL.suratVideo1] || "")}
                                       {renderSuratVideoIcon(respondenRow[COL.suratVideo2] || "")}
@@ -1576,7 +1628,7 @@ export default function MitraSE2026() {
                                            (!detailRow[COL.skor] && !isMitraKepkaOrDobel);
                         return (
                           <div className={`text-sm break-words mt-1 font-semibold px-3 py-2 rounded ${
-                            shouldBeRed ? "bg-red-600 text-white animate-blink" : ""
+                            shouldBeRed ? "bg-red-600 text-white" : ""
                           }`}>
                             {detailRow[COL.skor] ? parseFloat(detailRow[COL.skor]).toFixed(2) : "-"}
                           </div>
