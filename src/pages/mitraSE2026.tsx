@@ -458,12 +458,32 @@ export default function MitraSE2026() {
   // Helper function to get Kompetensi for a responden based on email
   const getKompetensiForResponden = (respondenRow: Row): string => {
     const respondenEmail = (respondenRow[COL.email] || "").toString().trim().toLowerCase();
-    if (!respondenEmail) return "-";
+    const respondenName = (respondenRow[COL.nama] || "").toString().trim().toLowerCase();
     
-    const kompetensiRow = kompetensiRows.find(row => {
+    if (!respondenEmail && !respondenName) return "-";
+    
+    // Try 1: Exact email match
+    let kompetensiRow = kompetensiRows.find(row => {
       const rowEmail = (row[COL_KOMPETENSI.email] || "").toString().trim().toLowerCase();
-      return rowEmail === respondenEmail;
+      return rowEmail === respondenEmail && respondenEmail;
     });
+    
+    // Try 2: Partial email match (before @)
+    if (!kompetensiRow && respondenEmail.includes("@")) {
+      const emailPrefix = respondenEmail.split("@")[0];
+      kompetensiRow = kompetensiRows.find(row => {
+        const rowEmail = (row[COL_KOMPETENSI.email] || "").toString().trim().toLowerCase();
+        return rowEmail.includes(emailPrefix) && rowEmail.includes("@");
+      });
+    }
+    
+    // Try 3: Name-based match as fallback
+    if (!kompetensiRow && respondenName) {
+      kompetensiRow = kompetensiRows.find(row => {
+        const rowName = (row[0] || "").toString().trim().toLowerCase();
+        return rowName === respondenName;
+      });
+    }
     
     if (!kompetensiRow) return "-";
     return (kompetensiRow[COL_KOMPETENSI.kompetensi] || "-").toString().trim();
