@@ -1043,16 +1043,16 @@ export default function MitraSE2026() {
                               })()}
                               <TableCell className="text-center">
                                 {(() => {
-                                  const kompetensiValue = getKompetensiForResponden(respondenRow).toLowerCase().trim();
+                                  const statusKompetensi = (respondenRow[COL.statusSeleksiKompetensi] || "").toString().trim().toLowerCase();
                                   let badgeClass = "bg-gray-100 text-gray-800";
-                                  if (kompetensiValue === "diterima") {
-                                    badgeClass = "bg-green-600 text-white";
-                                  } else if (kompetensiValue === "ditolak") {
-                                    badgeClass = "bg-red-600 text-white";
+                                  if (statusKompetensi === "diterima") {
+                                    badgeClass = "bg-green-700 text-white font-bold";
+                                  } else if (statusKompetensi === "ditolak") {
+                                    badgeClass = "bg-red-700 text-white font-bold";
                                   }
                                   return (
                                     <Badge className={badgeClass}>
-                                      {getKompetensiForResponden(respondenRow)}
+                                      {respondenRow[COL.statusSeleksiKompetensi] || "-"}
                                     </Badge>
                                   );
                                 })()}
