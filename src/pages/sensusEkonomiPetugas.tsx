@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, Search, Loader2, ArrowUpDown, ZoomIn } from "lucide-react";
+import { Eye, Search, Loader2, ArrowUpDown, ZoomIn, Check, X } from "lucide-react";
 import { OptimizedImage } from "@/components/OptimizedImage";
 
 type Row = string[];
@@ -31,6 +31,7 @@ const COL = {
   kecamatan: colIdx("T"),
   desa: colIdx("U"),
   foto: colIdx("AL"),
+  nik: colIdx("AI"),
 };
 
 export default function SensusEkonomiPetugas() {
@@ -42,6 +43,7 @@ export default function SensusEkonomiPetugas() {
   const [filterKec, setFilterKec] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterJabatan, setFilterJabatan] = useState<string>("all");
+  const [filterNik, setFilterNik] = useState<string>("all");
   const [sortKey, setSortKey] = useState<keyof typeof COL>("nama_lengkap");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -105,6 +107,16 @@ export default function SensusEkonomiPetugas() {
     return Array.from(jabatanSet).sort();
   }, [rows]);
 
+  // Get unique NIK values
+  const nikOptions = useMemo(() => {
+    const nikSet = new Set<string>();
+    rows.forEach(r => {
+      const nik = (r[COL.nik] || "").toString().trim().toUpperCase();
+      if (nik === "TRUE" || nik === "FALSE") nikSet.add(nik);
+    });
+    return Array.from(nikSet).sort();
+  }, [rows]);
+
   // Filter and sort data
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -112,6 +124,7 @@ export default function SensusEkonomiPetugas() {
       if (filterKec !== "all" && (r[COL.kecamatan] || "").toString().trim() !== filterKec) return false;
       if (filterStatus !== "all" && (r[COL.status_penawaran] || "").toString().trim() !== filterStatus) return false;
       if (filterJabatan !== "all" && (r[COL.jabatan] || "").toString().trim() !== filterJabatan) return false;
+      if (filterNik !== "all" && (r[COL.nik] || "").toString().trim().toUpperCase() !== filterNik) return false;
       if (q) {
         return r.some(c => (c || "").toString().toLowerCase().includes(q));
       }
@@ -129,7 +142,7 @@ export default function SensusEkonomiPetugas() {
     });
 
     return out;
-  }, [rows, search, filterKec, filterStatus, filterJabatan, sortKey, sortDir]);
+  }, [rows, search, filterKec, filterStatus, filterJabatan, filterNik, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -212,6 +225,16 @@ export default function SensusEkonomiPetugas() {
                   </SelectContent>
                 </Select>
 
+                <Select value={filterNik} onValueChange={(v) => { setFilterNik(v); setPage(1); }}>
+                  <SelectTrigger className="w-auto h-9 text-xs">
+                    <SelectValue placeholder="NIK" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua NIK</SelectItem>
+                    {nikOptions.map(n => <SelectItem key={n} value={n}>{n === "TRUE" ? "✓ Valid" : "✗ Tidak Valid"}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+
                 <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
                   <SelectTrigger className="w-auto h-9 text-xs">
                     <SelectValue />
@@ -240,19 +263,22 @@ export default function SensusEkonomiPetugas() {
                     <TableHeader>
                       <TableRow className="bg-slate-50">
                         <TableHead className="w-12">#</TableHead>
-                        <TableHead className="w-64 cursor-pointer" onClick={() => toggleSort("nama_lengkap")}>
+                        <TableHead className="w-48 cursor-pointer" onClick={() => toggleSort("nama_lengkap")}>
                           <div className="flex items-center gap-1">Nama <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="w-32 cursor-pointer" onClick={() => toggleSort("kecamatan")}>
+                        <TableHead className="w-14 cursor-pointer text-center" onClick={() => toggleSort("nik")}>
+                          <div className="flex items-center justify-center gap-1">NIK <ArrowUpDown className="h-3 w-3" /></div>
+                        </TableHead>
+                        <TableHead className="w-28 cursor-pointer" onClick={() => toggleSort("kecamatan")}>
                           <div className="flex items-center gap-1">Kecamatan <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="w-32 cursor-pointer" onClick={() => toggleSort("desa")}>
+                        <TableHead className="w-28 cursor-pointer" onClick={() => toggleSort("desa")}>
                           <div className="flex items-center gap-1">Desa <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="w-40 cursor-pointer" onClick={() => toggleSort("jabatan")}>
+                        <TableHead className="w-36 cursor-pointer" onClick={() => toggleSort("jabatan")}>
                           <div className="flex items-center gap-1">Jabatan <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
-                        <TableHead className="w-28 cursor-pointer" onClick={() => toggleSort("status_penawaran")}>
+                        <TableHead className="w-24 cursor-pointer" onClick={() => toggleSort("status_penawaran")}>
                           <div className="flex items-center gap-1">Status Penawaran <ArrowUpDown className="h-3 w-3" /></div>
                         </TableHead>
                         <TableHead className="text-center w-12">Aksi</TableHead>
@@ -261,7 +287,7 @@ export default function SensusEkonomiPetugas() {
                     <TableBody>
                       {pageRows.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
                             Tidak ada data
                           </TableCell>
                         </TableRow>
@@ -292,6 +318,17 @@ export default function SensusEkonomiPetugas() {
                                 )}
                                 <span className="font-medium text-sm">{r[COL.nama_lengkap] || "-"}</span>
                               </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {(() => {
+                                const nikValue = (r[COL.nik] || "").toString().trim().toUpperCase();
+                                if (nikValue === "TRUE") {
+                                  return <div className="flex justify-center"><Check className="h-5 w-5 text-green-600" /></div>;
+                                } else if (nikValue === "FALSE") {
+                                  return <div className="flex justify-center"><X className="h-5 w-5 text-red-600" /></div>;
+                                }
+                                return <span className="text-xs text-slate-500">-</span>;
+                              })()}
                             </TableCell>
                             <TableCell className="text-sm">{r[COL.kecamatan] || "-"}</TableCell>
                             <TableCell className="text-sm">{r[COL.desa] || "-"}</TableCell>
