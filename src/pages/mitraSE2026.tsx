@@ -294,6 +294,9 @@ export default function MitraSE2026() {
   // Check if user is PPK or Fungsi Neraca
   const isPPK = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Fungsi Neraca";
   
+  // Check if user can edit (PPK or Administrator only)
+  const canEdit = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Administrator";
+  
   // Data states
   const [rows, setRows] = useState<RowWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1190,7 +1193,7 @@ export default function MitraSE2026() {
                                                 }
                                               }}
                                               title="Diterima"
-                                              disabled={isSavingAkhir}
+                                              disabled={isSavingAkhir || !canEdit}
                                             >
                                               <CheckCircle2 className="h-4 w-4" />
                                             </button>
@@ -1213,7 +1216,7 @@ export default function MitraSE2026() {
                                                 }
                                               }}
                                               title="Ditolak"
-                                              disabled={isSavingAkhir}
+                                              disabled={isSavingAkhir || !canEdit}
                                             >
                                               <XCircle className="h-4 w-4" />
                                             </button>
@@ -1238,7 +1241,7 @@ export default function MitraSE2026() {
                                               await updateCellValue(origIdx, "BN", finalValue);
                                             }
                                           }}
-                                          disabled={(isMitraTambahan && !isDiterimA) || isSavingTipe}
+                                          disabled={(isMitraTambahan && !isDiterimA) || isSavingTipe || !canEdit}
                                         >
                                           <SelectTrigger className={`h-8 w-24 text-xs ${
                                             (isMitraTambahan && !isDiterimA) ? "opacity-50 cursor-not-allowed" : ""
@@ -1257,7 +1260,7 @@ export default function MitraSE2026() {
                                           <Select 
                                             value={pplPml || "-"} 
                                             onValueChange={(value) => updateCellValue(origIdx, "BO", value === "-" ? "" : value)}
-                                            disabled={(isMitraTambahan && !isDiterimA) || isSavingPpl}
+                                            disabled={(isMitraTambahan && !isDiterimA) || isSavingPpl || !canEdit}
                                           >
                                             <SelectTrigger className={`h-8 w-32 text-xs ${
                                               (isMitraTambahan && !isDiterimA) ? "opacity-50 cursor-not-allowed" : ""

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -392,6 +393,11 @@ const getDocumentsThatNeedRepair = (row: Row): string[] => {
 
 export default function KonfirmasiKepka2026() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Check if user can edit (PPK or Administrator)
+  const canEdit = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Administrator";
+  
   // Responden Sheet
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -1695,96 +1701,121 @@ export default function KonfirmasiKepka2026() {
                               
                               {/* Foto */}
                               <TableCell className="text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    className={`p-1.5 rounded transition-colors ${
-                                      (r[COL.fotoVerifikasi] || "") === "OK"
-                                        ? "bg-emerald-100 text-emerald-700"
-                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                    }`}
-                                    onClick={() => updateVerificationField(r, "fotoVerifikasi", (r[COL.fotoVerifikasi] || "") === "OK" ? "" : "OK")}
-                                    title="OK"
-                                  >
-                                    <CheckCircle2 className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    className={`p-1.5 rounded transition-colors ${
-                                      (r[COL.fotoVerifikasi] || "") === "Perlu perbaikan"
-                                        ? "bg-red-100 text-red-700"
-                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                    }`}
-                                    onClick={() => updateVerificationField(r, "fotoVerifikasi", (r[COL.fotoVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
-                                    title="Perlu perbaikan"
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                  </button>
-                                </div>
+                                {canEdit ? (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      className={`p-1.5 rounded transition-colors ${
+                                        (r[COL.fotoVerifikasi] || "") === "OK"
+                                          ? "bg-emerald-100 text-emerald-700"
+                                          : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                      }`}
+                                      onClick={() => updateVerificationField(r, "fotoVerifikasi", (r[COL.fotoVerifikasi] || "") === "OK" ? "" : "OK")}
+                                      title="OK"
+                                    >
+                                      <CheckCircle2 className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      className={`p-1.5 rounded transition-colors ${
+                                        (r[COL.fotoVerifikasi] || "") === "Perlu perbaikan"
+                                          ? "bg-red-100 text-red-700"
+                                          : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                      }`}
+                                      onClick={() => updateVerificationField(r, "fotoVerifikasi", (r[COL.fotoVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
+                                      title="Perlu perbaikan"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    {(r[COL.fotoVerifikasi] || "") === "OK" && <Badge className="bg-emerald-100 text-emerald-700">OK</Badge>}
+                                    {(r[COL.fotoVerifikasi] || "") === "Perlu perbaikan" && <Badge className="bg-red-100 text-red-700">Perlu diperbaiki</Badge>}
+                                    {!r[COL.fotoVerifikasi] && <span className="text-slate-400 text-sm">-</span>}
+                                  </div>
+                                )}
                               </TableCell>
 
                               {/* KTP/Suket */}
                               <TableCell className="text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    className={`p-1.5 rounded transition-colors ${
-                                      (r[COL.ktpVerifikasi] || "") === "OK"
-                                        ? "bg-emerald-100 text-emerald-700"
-                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                    }`}
-                                    onClick={() => updateVerificationField(r, "ktpVerifikasi", (r[COL.ktpVerifikasi] || "") === "OK" ? "" : "OK")}
-                                    title="OK"
-                                  >
-                                    <CheckCircle2 className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    className={`p-1.5 rounded transition-colors ${
-                                      (r[COL.ktpVerifikasi] || "") === "Perlu perbaikan"
-                                        ? "bg-red-100 text-red-700"
-                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                    }`}
-                                    onClick={() => updateVerificationField(r, "ktpVerifikasi", (r[COL.ktpVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
-                                    title="Perlu perbaikan"
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                  </button>
-                                </div>
+                                {canEdit ? (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      className={`p-1.5 rounded transition-colors ${
+                                        (r[COL.ktpVerifikasi] || "") === "OK"
+                                          ? "bg-emerald-100 text-emerald-700"
+                                          : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                      }`}
+                                      onClick={() => updateVerificationField(r, "ktpVerifikasi", (r[COL.ktpVerifikasi] || "") === "OK" ? "" : "OK")}
+                                      title="OK"
+                                    >
+                                      <CheckCircle2 className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      className={`p-1.5 rounded transition-colors ${
+                                        (r[COL.ktpVerifikasi] || "") === "Perlu perbaikan"
+                                          ? "bg-red-100 text-red-700"
+                                          : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                      }`}
+                                      onClick={() => updateVerificationField(r, "ktpVerifikasi", (r[COL.ktpVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
+                                      title="Perlu perbaikan"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    {(r[COL.ktpVerifikasi] || "") === "OK" && <Badge className="bg-emerald-100 text-emerald-700">OK</Badge>}
+                                    {(r[COL.ktpVerifikasi] || "") === "Perlu perbaikan" && <Badge className="bg-red-100 text-red-700">Perlu diperbaiki</Badge>}
+                                    {!r[COL.ktpVerifikasi] && <span className="text-slate-400 text-sm">-</span>}
+                                  </div>
+                                )}
                               </TableCell>
 
                               {/* Ijazah */}
                               <TableCell className="text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    className={`p-1.5 rounded transition-colors ${
-                                      (r[COL.ijazahVerifikasi] || "") === "OK"
-                                        ? "bg-emerald-100 text-emerald-700"
-                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                    }`}
-                                    onClick={() => updateVerificationField(r, "ijazahVerifikasi", (r[COL.ijazahVerifikasi] || "") === "OK" ? "" : "OK")}
-                                    title="OK"
-                                  >
-                                    <CheckCircle2 className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    className={`p-1.5 rounded transition-colors ${
-                                      (r[COL.ijazahVerifikasi] || "") === "Perlu perbaikan"
-                                        ? "bg-red-100 text-red-700"
-                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                    }`}
-                                    onClick={() => updateVerificationField(r, "ijazahVerifikasi", (r[COL.ijazahVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
-                                    title="Perlu perbaikan"
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                  </button>
-                                </div>
+                                {canEdit ? (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      className={`p-1.5 rounded transition-colors ${
+                                        (r[COL.ijazahVerifikasi] || "") === "OK"
+                                          ? "bg-emerald-100 text-emerald-700"
+                                          : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                      }`}
+                                      onClick={() => updateVerificationField(r, "ijazahVerifikasi", (r[COL.ijazahVerifikasi] || "") === "OK" ? "" : "OK")}
+                                      title="OK"
+                                    >
+                                      <CheckCircle2 className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      className={`p-1.5 rounded transition-colors ${
+                                        (r[COL.ijazahVerifikasi] || "") === "Perlu perbaikan"
+                                          ? "bg-red-100 text-red-700"
+                                          : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                      }`}
+                                      onClick={() => updateVerificationField(r, "ijazahVerifikasi", (r[COL.ijazahVerifikasi] || "") === "Perlu perbaikan" ? "" : "Perlu perbaikan")}
+                                      title="Perlu perbaikan"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    {(r[COL.ijazahVerifikasi] || "") === "OK" && <Badge className="bg-emerald-100 text-emerald-700">OK</Badge>}
+                                    {(r[COL.ijazahVerifikasi] || "") === "Perlu perbaikan" && <Badge className="bg-red-100 text-red-700">Perlu diperbaiki</Badge>}
+                                    {!r[COL.ijazahVerifikasi] && <span className="text-slate-400 text-sm">-</span>}
+                                  </div>
+                                )}
                               </TableCell>
 
                               {/* Screenshot HP */}
                               <TableCell className="text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    className={`p-1.5 rounded transition-colors ${
-                                      (r[COL.screenshotHPVerifikasi] || "") === "OK"
-                                        ? "bg-emerald-100 text-emerald-700"
-                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                {canEdit ? (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      className={`p-1.5 rounded transition-colors ${
+                                        (r[COL.screenshotHPVerifikasi] || "") === "OK"
+                                          ? "bg-emerald-100 text-emerald-700"
+                                          : "bg-slate-100 text-slate-400 hover:bg-slate-200"
                                     }`}
                                     onClick={() => updateVerificationField(r, "screenshotHPVerifikasi", (r[COL.screenshotHPVerifikasi] || "") === "OK" ? "" : "OK")}
                                     title="OK"
@@ -1803,23 +1834,34 @@ export default function KonfirmasiKepka2026() {
                                     <XCircle className="h-4 w-4" />
                                   </button>
                                 </div>
+                                ) : (
+                                  <div>
+                                    {(r[COL.screenshotHPVerifikasi] || "") === "OK" && <Badge className="bg-emerald-100 text-emerald-700">OK</Badge>}
+                                    {(r[COL.screenshotHPVerifikasi] || "") === "Perlu perbaikan" && <Badge className="bg-red-100 text-red-700">Perlu diperbaiki</Badge>}
+                                    {!r[COL.screenshotHPVerifikasi] && <span className="text-slate-400 text-sm">-</span>}
+                                  </div>
+                                )}
                               </TableCell>
 
                               {/* Catatan PJ */}
                               <TableCell>
-                                <Input
-                                  className="h-8 text-xs"
-                                  placeholder="Catatan PJ..."
-                                  value={r[COL.catatanPJ] || ""}
-                                  onChange={(e) => {
-                                    const copy = [...r];
-                                    copy[COL.catatanPJ] = e.target.value;
-                                    setRows(prev => prev.map((row, idx) => rows.indexOf(row) === rows.indexOf(r) ? copy : row));
-                                  }}
-                                  onBlur={() => {
-                                    updateVerificationField(r, "catatanPJ", r[COL.catatanPJ] || "");
-                                  }}
-                                />
+                                {canEdit ? (
+                                  <Input
+                                    className="h-8 text-xs"
+                                    placeholder="Catatan PJ..."
+                                    value={r[COL.catatanPJ] || ""}
+                                    onChange={(e) => {
+                                      const copy = [...r];
+                                      copy[COL.catatanPJ] = e.target.value;
+                                      setRows(prev => prev.map((row, idx) => rows.indexOf(row) === rows.indexOf(r) ? copy : row));
+                                    }}
+                                    onBlur={() => {
+                                      updateVerificationField(r, "catatanPJ", r[COL.catatanPJ] || "");
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="text-xs text-slate-600">{r[COL.catatanPJ] || <span className="text-slate-400">-</span>}</div>
+                                )}
                               </TableCell>
 
                               {/* Catatan Kecap Maja */}
@@ -1866,30 +1908,40 @@ export default function KonfirmasiKepka2026() {
 
                                   return (
                                     <div className="flex items-center justify-end gap-2">
-                                      <button 
-                                        className={`p-1.5 rounded transition-all ${
-                                          currentRek === "Rekomendasi"
-                                            ? "bg-emerald-600 text-white"
-                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                                        }`}
-                                        onClick={() => handleRekomendasiClick(r, "Rekomendasi")} 
-                                        title="Rekomendasi"
-                                        type="button"
-                                      >
-                                        <Check className="h-4 w-4" />
-                                      </button>
-                                      <button 
-                                        className={`p-1.5 rounded transition-all ${
-                                          currentRek === "Non Rekomendasi"
-                                            ? "bg-red-600 text-white"
-                                            : "bg-red-50 text-red-500 hover:bg-red-100"
-                                        }`}
-                                        onClick={() => handleRekomendasiClick(r, "Non Rekomendasi")} 
-                                        title="Non Rekomendasi"
-                                        type="button"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </button>
+                                      {canEdit ? (
+                                        <>
+                                          <button 
+                                            className={`p-1.5 rounded transition-all ${
+                                              currentRek === "Rekomendasi"
+                                                ? "bg-emerald-600 text-white"
+                                                : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                            }`}
+                                            onClick={() => handleRekomendasiClick(r, "Rekomendasi")} 
+                                            title="Rekomendasi"
+                                            type="button"
+                                          >
+                                            <Check className="h-4 w-4" />
+                                          </button>
+                                          <button 
+                                            className={`p-1.5 rounded transition-all ${
+                                              currentRek === "Non Rekomendasi"
+                                                ? "bg-red-600 text-white"
+                                                : "bg-red-50 text-red-500 hover:bg-red-100"
+                                            }`}
+                                            onClick={() => handleRekomendasiClick(r, "Non Rekomendasi")} 
+                                            title="Non Rekomendasi"
+                                            type="button"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <div className="text-xs">
+                                          {currentRek === "Rekomendasi" && <Badge className="bg-emerald-100 text-emerald-700">Rekomendasi</Badge>}
+                                          {currentRek === "Non Rekomendasi" && <Badge className="bg-red-100 text-red-700">Non Rekomendasi</Badge>}
+                                          {!currentRek && <span className="text-slate-400">-</span>}
+                                        </div>
+                                      )}
                                       <button 
                                         className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
                                         onClick={() => setDetailRow(r)} 
