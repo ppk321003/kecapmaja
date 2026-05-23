@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Eye, Search, Loader2, ArrowUpDown, ZoomIn } from "lucide-react";
+import { OptimizedImage } from "@/components/OptimizedImage";
 
 type Row = string[];
 
@@ -273,19 +274,17 @@ export default function SensusEkonomiPetugas() {
                                 {(r[COL.foto] || "").trim() ? (
                                   <button
                                     onClick={() => setExpandedPhoto(r[COL.foto] || "")}
-                                    className="relative h-10 w-10 rounded overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all flex-shrink-0"
+                                    className="relative h-10 w-10 rounded overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all flex-shrink-0 group"
                                     title="Klik untuk memperbesar foto"
                                   >
-                                    <img
-                                      src={r[COL.foto] || ""}
+                                    <OptimizedImage
+                                      src={r[COL.foto]}
                                       alt="Foto"
-                                      className="h-full w-full object-cover"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).src = "https://via.placeholder.com/40?text=No+Photo";
-                                      }}
+                                      size="small"
+                                      className="h-10 w-10"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
-                                      <ZoomIn className="h-3 w-3 text-white opacity-0 hover:opacity-100" />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+                                      <ZoomIn className="h-3 w-3 text-white opacity-0 group-hover:opacity-100" />
                                     </div>
                                   </button>
                                 ) : (
@@ -372,6 +371,7 @@ export default function SensusEkonomiPetugas() {
                   src={expandedPhoto}
                   alt="Foto Petugas"
                   className="max-w-full max-h-96 rounded"
+                  loading="lazy"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "https://via.placeholder.com/300?text=Foto+Tidak+Tersedia";
                   }}
@@ -396,19 +396,17 @@ export default function SensusEkonomiPetugas() {
                       onClick={() => {
                         setExpandedPhoto(detailRow[COL.foto] || "");
                       }}
-                      className="relative h-32 w-32 rounded overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer"
+                      className="relative h-32 w-32 rounded overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer group"
                       title="Klik untuk memperbesar"
                     >
-                      <img
-                        src={detailRow[COL.foto] || ""}
+                      <OptimizedImage
+                        src={detailRow[COL.foto]}
                         alt="Foto"
-                        className="h-full w-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://via.placeholder.com/128?text=No+Photo";
-                        }}
+                        size="large"
+                        className="h-32 w-32"
                       />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
-                        <ZoomIn className="h-5 w-5 text-white opacity-0 hover:opacity-100" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+                        <ZoomIn className="h-5 w-5 text-white opacity-0 group-hover:opacity-100" />
                       </div>
                     </button>
                   </div>
