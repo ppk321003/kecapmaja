@@ -229,7 +229,7 @@ export default function SensusEkonomiPelatihan() {
     return Array.from(hotelSet).sort();
   }, [rows, COL.hotel]);
 
-  // Get unique kelas values
+  // Get unique kelas values (sorted with natural order: A, B, C, ... AA, AB, AC ...)
   const kelasOptions = useMemo(() => {
     if (COL.kelas === -1) return [];
     const kelasSet = new Set<string>();
@@ -237,7 +237,7 @@ export default function SensusEkonomiPelatihan() {
       const kelas = (r[COL.kelas] || "").toString().trim();
       if (kelas) kelasSet.add(kelas);
     });
-    return Array.from(kelasSet).sort();
+    return Array.from(kelasSet).sort((a, b) => classToSortValue(a) - classToSortValue(b));
   }, [rows, COL.kelas]);
 
   // Get unique instruktur/panitia names (nama petugas dengan jabatan Instruktur Daerah, Panitia 1, Panitia 2)
@@ -581,7 +581,9 @@ export default function SensusEkonomiPelatihan() {
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-white">📍 Rincian per Hotel</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {Array.from(stats.hotelStats.entries()).map(([hotel, data]) => (
+                  {Array.from(stats.hotelStats.entries())
+                    .sort(([hotelA], [hotelB]) => hotelA.localeCompare(hotelB))
+                    .map(([hotel, data]) => (
                     <Card key={hotel} className="bg-slate-800 border-slate-700">
                       <CardContent className="p-4">
                         <h4 className="text-sm font-semibold text-amber-300 mb-3">{hotel}</h4>
@@ -595,7 +597,7 @@ export default function SensusEkonomiPelatihan() {
                             <span className="text-lg font-bold text-green-400">{data.classes.size}</span>
                           </div>
                           <div className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-700">
-                            Kelas: {Array.from(data.classes).sort().join(", ")}
+                            Kelas: {Array.from(data.classes).sort((a, b) => classToSortValue(a) - classToSortValue(b)).join(", ")}
                           </div>
                         </div>
                       </CardContent>
@@ -616,7 +618,15 @@ export default function SensusEkonomiPelatihan() {
                 </div>
                 <Button
                   variant="outline"
-                  onClick={() => setShowTable(false)}
+                  onClick={() => {
+                    setShowTable(false);
+                    setFilterKecamatan("all");
+                    setFilterHotel("all");
+                    setFilterKelas("all");
+                    setFilterInstruktur("all");
+                    setSearch("");
+                    setPage(1);
+                  }}
                   className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
                 >
                   ← Kembali ke Filter
