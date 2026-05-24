@@ -13,26 +13,35 @@ type Row = string[];
 
 const SPREADSHEET_ID = "1iCZGbfPgRMiXGO6q_vtklOsJ4gFQoUS2nMwS-HlY0r4";
 const SHEET_NAME = "SCRAPING";
-const RANGE = `${SHEET_NAME}!A1:AN`;
+const RANGE = `${SHEET_NAME}!A1:BT`;
 
-// Column letter to index (0-based)
-const colIdx = (letter: string): number => {
-  let n = 0;
-  for (let i = 0; i < letter.length; i++) {
-    n = n * 26 + (letter.charCodeAt(i) - 64);
-  }
-  return n - 1;
+// Column header names (source of truth)
+const COLUMN_HEADERS = {
+  foto: "foto",
+  nama_lengkap: "nama_lengkap",
+  nik: "is_nik_verified_mitra",
+  kecamatan: "alamat_kec",
+  desa: "alamat_desa",
+  jabatan: "nama_pos",
+  status_penawaran: "ket_status",
 };
 
-const COL = {
-  jabatan: colIdx("E"),
-  status_penawaran: colIdx("G"),
-  nama_lengkap: colIdx("L"),
-  kecamatan: colIdx("T"),
-  desa: colIdx("U"),
-  foto: colIdx("AL"),
-  nik: colIdx("AI"),
+// Find column index by header name
+const findColumnIndex = (headers: string[], headerName: string): number => {
+  const index = headers.findIndex(h => h && h.toLowerCase().trim() === headerName.toLowerCase().trim());
+  return index >= 0 ? index : -1;
 };
+
+// Get column indices dynamically
+const getColumnIndices = (headers: string[]) => ({
+  foto: findColumnIndex(headers, COLUMN_HEADERS.foto),
+  nama_lengkap: findColumnIndex(headers, COLUMN_HEADERS.nama_lengkap),
+  nik: findColumnIndex(headers, COLUMN_HEADERS.nik),
+  kecamatan: findColumnIndex(headers, COLUMN_HEADERS.kecamatan),
+  desa: findColumnIndex(headers, COLUMN_HEADERS.desa),
+  jabatan: findColumnIndex(headers, COLUMN_HEADERS.jabatan),
+  status_penawaran: findColumnIndex(headers, COLUMN_HEADERS.status_penawaran),
+});
 
 export default function SensusEkonomiPetugas() {
   const [headers, setHeaders] = useState<string[]>([]);
@@ -44,12 +53,31 @@ export default function SensusEkonomiPetugas() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterJabatan, setFilterJabatan] = useState<string>("all");
   const [filterNik, setFilterNik] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<keyof typeof COL>("nama_lengkap");
+  const [sortKey, setSortKey] = useState<keyof typeof COLUMN_HEADERS>("nama_lengkap");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [detailRow, setDetailRow] = useState<Row | null>(null);
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
+
+  // Get dynamic column indices based on current headers
+  const COL = useMemo(() => getColumnIndices(headers), [headers]);
+
+  // Debug logging
+  useEffect(() => {
+    if (headers.length > 0) {
+      console.log("📋 All Headers found:", headers);
+      console.log("🔍 Column indices:", COL);
+      console.log("🎯 Expected mappings:", COLUMN_HEADERS);
+      console.log("📊 Sample row 0:", rows[0]);
+      
+      // Detail matching
+      Object.entries(COLUMN_HEADERS).forEach(([key, expectedName]) => {
+        const foundIndex = findColumnIndex(headers, expectedName);
+        console.log(`  ${key}: looking for "${expectedName}" -> ${foundIndex !== -1 ? `✓ found at index ${foundIndex}` : "✗ NOT FOUND"}`);
+      });
+    }
+  }, [COL, headers, rows]);
 
   // Load data from Google Sheets
   useEffect(() => {
@@ -79,52 +107,56 @@ export default function SensusEkonomiPetugas() {
 
   // Get unique kecamatan values
   const kecOptions = useMemo(() => {
+    if (COL.kecamatan === -1) return [];
     const kecSet = new Set<string>();
     rows.forEach(r => {
       const kec = (r[COL.kecamatan] || "").toString().trim();
       if (kec) kecSet.add(kec);
     });
     return Array.from(kecSet).sort();
-  }, [rows]);
+  }, [rows, COL.kecamatan]);
 
   // Get unique status values
   const statusOptions = useMemo(() => {
+    if (COL.status_penawaran === -1) return [];
     const statusSet = new Set<string>();
     rows.forEach(r => {
       const status = (r[COL.status_penawaran] || "").toString().trim();
       if (status) statusSet.add(status);
     });
     return Array.from(statusSet).sort();
-  }, [rows]);
+  }, [rows, COL.status_penawaran]);
 
   // Get unique jabatan values
   const jabatanOptions = useMemo(() => {
+    if (COL.jabatan === -1) return [];
     const jabatanSet = new Set<string>();
     rows.forEach(r => {
       const jabatan = (r[COL.jabatan] || "").toString().trim();
       if (jabatan) jabatanSet.add(jabatan);
     });
     return Array.from(jabatanSet).sort();
-  }, [rows]);
+  }, [rows, COL.jabatan]);
 
   // Get unique NIK values
   const nikOptions = useMemo(() => {
+    if (COL.nik === -1) return [];
     const nikSet = new Set<string>();
     rows.forEach(r => {
       const nik = (r[COL.nik] || "").toString().trim().toUpperCase();
       if (nik === "TRUE" || nik === "FALSE") nikSet.add(nik);
     });
     return Array.from(nikSet).sort();
-  }, [rows]);
+  }, [rows, COL.nik]);
 
   // Filter and sort data
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     let out = rows.filter(r => {
-      if (filterKec !== "all" && (r[COL.kecamatan] || "").toString().trim() !== filterKec) return false;
-      if (filterStatus !== "all" && (r[COL.status_penawaran] || "").toString().trim() !== filterStatus) return false;
-      if (filterJabatan !== "all" && (r[COL.jabatan] || "").toString().trim() !== filterJabatan) return false;
-      if (filterNik !== "all" && (r[COL.nik] || "").toString().trim().toUpperCase() !== filterNik) return false;
+      if (filterKec !== "all" && COL.kecamatan !== -1 && (r[COL.kecamatan] || "").toString().trim() !== filterKec) return false;
+      if (filterStatus !== "all" && COL.status_penawaran !== -1 && (r[COL.status_penawaran] || "").toString().trim() !== filterStatus) return false;
+      if (filterJabatan !== "all" && COL.jabatan !== -1 && (r[COL.jabatan] || "").toString().trim() !== filterJabatan) return false;
+      if (filterNik !== "all" && COL.nik !== -1 && (r[COL.nik] || "").toString().trim().toUpperCase() !== filterNik) return false;
       if (q) {
         return r.some(c => (c || "").toString().toLowerCase().includes(q));
       }
@@ -132,23 +164,25 @@ export default function SensusEkonomiPetugas() {
     });
 
     // Sort
-    const idx = COL[sortKey];
+    const sortColIdx = COL[sortKey];
+    if (sortColIdx === -1) return out;
+    
     out = [...out].sort((a, b) => {
-      const av = (a[idx] || "").toString().toLowerCase();
-      const bv = (b[idx] || "").toString().toLowerCase();
+      const av = (a[sortColIdx] || "").toString().toLowerCase();
+      const bv = (b[sortColIdx] || "").toString().toLowerCase();
       if (av < bv) return sortDir === "asc" ? -1 : 1;
       if (av > bv) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
 
     return out;
-  }, [rows, search, filterKec, filterStatus, filterJabatan, filterNik, sortKey, sortDir]);
+  }, [rows, search, filterKec, filterStatus, filterJabatan, filterNik, sortKey, sortDir, COL]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const toggleSort = (key: keyof typeof COL) => {
+  const toggleSort = (key: keyof typeof COLUMN_HEADERS) => {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
     else {
       setSortKey(key);
@@ -172,6 +206,39 @@ export default function SensusEkonomiPetugas() {
           </h1>
           <p className="text-slate-600">Daftar petugas yang terlibat dalam kegiatan Sensus Ekonomi 2026</p>
         </header>
+
+        {/* Debug Info - Remove in production */}
+        {headers.length > 0 ? (
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="py-3 text-xs text-slate-600">
+              <div className="space-y-2">
+                <div className="font-semibold">Kolom yang ditemukan:</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div>Foto: {COL.foto !== -1 ? `✓ Index ${COL.foto}` : "✗ Tidak ditemukan"}</div>
+                  <div>Nama: {COL.nama_lengkap !== -1 ? `✓ Index ${COL.nama_lengkap}` : "✗ Tidak ditemukan"}</div>
+                  <div>NIK: {COL.nik !== -1 ? `✓ Index ${COL.nik}` : "✗ Tidak ditemukan"}</div>
+                  <div>Kecamatan: {COL.kecamatan !== -1 ? `✓ Index ${COL.kecamatan}` : "✗ Tidak ditemukan"}</div>
+                  <div>Desa: {COL.desa !== -1 ? `✓ Index ${COL.desa}` : "✗ Tidak ditemukan"}</div>
+                  <div>Jabatan: {COL.jabatan !== -1 ? `✓ Index ${COL.jabatan}` : "✗ Tidak ditemukan"}</div>
+                  <div>Status: {COL.status_penawaran !== -1 ? `✓ Index ${COL.status_penawaran}` : "✗ Tidak ditemukan"}</div>
+                  <div>Total Data: {rows.length} rows</div>
+                </div>
+                <div className="font-semibold mt-3">Semua headers di sheet:</div>
+                <div className="text-xs bg-white p-2 rounded border max-h-20 overflow-y-auto">
+                  {headers.map((h, i) => (
+                    <div key={i}>{i}: <span className="font-mono text-blue-600">"{h}"</span></div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-amber-50 border-amber-200">
+            <CardContent className="py-3 text-xs text-amber-700">
+              {loading ? "📥 Memuat data..." : error ? `❌ Error: ${error}` : "⚠️ Tidak ada header ditemukan"}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -297,7 +364,7 @@ export default function SensusEkonomiPetugas() {
                             <TableCell className="text-muted-foreground text-xs">{(currentPage - 1) * pageSize + i + 1}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                {(r[COL.foto] || "").trim() ? (
+                                {COL.foto !== -1 && (r[COL.foto] || "").trim() ? (
                                   <button
                                     onClick={() => setExpandedPhoto(r[COL.foto] || "")}
                                     className="relative h-10 w-10 rounded overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all flex-shrink-0 group"
@@ -317,26 +384,30 @@ export default function SensusEkonomiPetugas() {
                                 ) : (
                                   <div className="h-10 w-10 rounded bg-slate-200 flex items-center justify-center text-xs text-slate-500 flex-shrink-0">-</div>
                                 )}
-                                <span className="font-medium text-sm">{r[COL.nama_lengkap] || "-"}</span>
+                                <span className="font-medium text-sm">{COL.nama_lengkap !== -1 ? r[COL.nama_lengkap] || "-" : "-"}</span>
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
-                              {(() => {
-                                const nikValue = (r[COL.nik] || "").toString().trim().toUpperCase();
-                                if (nikValue === "TRUE") {
-                                  return <div className="flex justify-center"><Check className="h-5 w-5 text-green-600" /></div>;
-                                } else if (nikValue === "FALSE") {
-                                  return <div className="flex justify-center"><X className="h-5 w-5 text-red-600" /></div>;
-                                }
-                                return <span className="text-xs text-slate-500">-</span>;
-                              })()}
+                              {COL.nik !== -1 ? (
+                                (() => {
+                                  const nikValue = (r[COL.nik] || "").toString().trim().toUpperCase();
+                                  if (nikValue === "TRUE") {
+                                    return <div className="flex justify-center"><Check className="h-5 w-5 text-green-600" /></div>;
+                                  } else if (nikValue === "FALSE") {
+                                    return <div className="flex justify-center"><X className="h-5 w-5 text-red-600" /></div>;
+                                  }
+                                  return <span className="text-xs text-slate-500">-</span>;
+                                })()
+                              ) : (
+                                <span className="text-xs text-slate-500">-</span>
+                              )}
                             </TableCell>
-                            <TableCell className="text-sm">{r[COL.kecamatan] || "-"}</TableCell>
-                            <TableCell className="text-sm">{r[COL.desa] || "-"}</TableCell>
-                            <TableCell className="text-sm">{r[COL.jabatan] || "-"}</TableCell>
+                            <TableCell className="text-sm">{COL.kecamatan !== -1 ? r[COL.kecamatan] || "-" : "-"}</TableCell>
+                            <TableCell className="text-sm">{COL.desa !== -1 ? r[COL.desa] || "-" : "-"}</TableCell>
+                            <TableCell className="text-sm">{COL.jabatan !== -1 ? r[COL.jabatan] || "-" : "-"}</TableCell>
                             <TableCell>
-                              <Badge className={getStatusColor(r[COL.status_penawaran] || "")}>
-                                {r[COL.status_penawaran] || "-"}
+                              <Badge className={getStatusColor(COL.status_penawaran !== -1 ? r[COL.status_penawaran] || "" : "")}>
+                                {COL.status_penawaran !== -1 ? r[COL.status_penawaran] || "-" : "-"}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center">
@@ -428,7 +499,7 @@ export default function SensusEkonomiPetugas() {
               </DialogHeader>
               <div className="space-y-6">
                 {/* Foto */}
-                {detailRow[COL.foto] && (
+                {COL.foto !== -1 && detailRow[COL.foto] && (
                   <div className="flex justify-center">
                     <button
                       onClick={() => {
@@ -458,7 +529,10 @@ export default function SensusEkonomiPetugas() {
                     if (!value || !value.toString().trim()) return null;
                     
                     const isLink = value.toString().toLowerCase().startsWith("http");
-                    const isPhotoColumn = idx === 37 || idx === 38 || idx === 39; // AL, AM, AN
+                    const photoColumnNames = ["foto", "foto_ktp", "ijazah"];
+                    const isPhotoColumn = photoColumnNames.some(name => 
+                      header.toLowerCase().trim() === name.toLowerCase()
+                    );
                     
                     return (
                       <div key={idx}>
