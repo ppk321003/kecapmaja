@@ -333,8 +333,10 @@ export default function SensusEkonomiPelatihan() {
     const isBlankColumn = blankColumns.includes(sortKey);
 
     out = [...out].sort((a, b) => {
-      // When filtering by kelas, prioritize by jabatan first
-      if (filterKelas !== "all" && COL.jabatan !== -1) {
+      // When any filter is active, prioritize by jabatan first
+      const isAnyFilterActive = filterKelas !== "all" || filterHotel !== "all" || filterKecamatan !== "all" || filterInstruktur !== "all";
+      
+      if (isAnyFilterActive && COL.jabatan !== -1) {
         const aJabatan = (a[COL.jabatan] || "").toString().trim();
         const bJabatan = (b[COL.jabatan] || "").toString().trim();
         const aPriority = getJabatanPriority(aJabatan);
@@ -565,12 +567,12 @@ export default function SensusEkonomiPelatihan() {
                   </CardContent>
                 </Card>
 
-                {/* Total Petugas Card */}
+                {/* Total Peserta Pelatihan Card */}
                 <Card className="bg-gradient-to-br from-blue-900 to-cyan-900 border-cyan-700">
                   <CardContent className="p-6">
-                    <h3 className="text-sm text-cyan-200 font-semibold mb-2">Total Petugas</h3>
+                    <h3 className="text-sm text-cyan-200 font-semibold mb-2">Total Peserta Pelatihan</h3>
                     <p className="text-4xl font-bold text-cyan-300">{rows.length}</p>
-                    <p className="text-xs text-cyan-400 mt-2">Petugas pelatihan SE26</p>
+                    <p className="text-xs text-cyan-400 mt-2">Peserta pelatihan SE26</p>
                   </CardContent>
                 </Card>
               </div>
