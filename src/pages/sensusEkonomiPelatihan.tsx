@@ -1,39 +1,793 @@
-import { AlertCircle, Hammer } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, MapPin, Hotel, Calendar, Users } from "lucide-react";
+
+type Row = string[];
+
+const SPREADSHEET_ID = "1iCZGbfPgRMiXGO6q_vtklOsJ4gFQoUS2nMwS-HlY0r4";
+const SHEET_NAME = "PETUGAS SE26";
+const RANGE = `${SHEET_NAME}!A1:Z`; // Expanded to Z to catch all columns
+
+// Column header names (source of truth)
+const COLUMN_HEADERS = {
+  no: "NO",
+  isi: "ISI",
+  kecamatan: "KECAMATAN",
+  nama_petugas: "NAMA PETUGAS",
+  sobat_id: "SOBAT ID",
+  jabatan: "JABATAN",
+  bank: "BANK",
+  nomor_rekening: "NOMOR REKENING",
+  idkelas: "IDKELAS",
+  hotel: "Hotel",
+  gelombang: "Gelombang",
+  kelas: "Kelas",
+  tanggal: "Tanggal",
+};
+
+// Alternative header names for flexible matching
+const HEADER_ALIASES: { [key: string]: string[] } = {
+  tanggal: ["Tanggal", "Tanggal Pelaksanaan", "Tanggal Pelatihan", "Tgl", "Date", "Tanggal Mulai"],
+  gelombang: ["Gelombang", "Gelombang Pelatihan", "Wave"],
+  hotel: ["Hotel", "Hotel Tempat Pelatihan", "Tempat"],
+  kelas: ["Kelas", "Kelas Pelatihan", "Class"],
+};
+
+// Natural sort for class names (A, B, C, ... AA, AB, AC ...)
+const classToSortValue = (cls: string): number => {
+  if (!cls || !cls.trim()) return Infinity; // Put blank at end
+  const s = cls.trim().toUpperCase();
+  let value = 0;
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i) - 64; // A=1, B=2, ..., Z=26
+    if (code < 1 || code > 26) return Infinity;
+    value = value * 26 + code;
+  }
+  return value;
+};
+
+// Color palette for different class badges - alternating warm/cool for maximum contrast
+const CLASS_COLORS = [
+  "bg-gradient-to-r from-red-900 to-red-500",              // A - Red/Warm
+  "bg-gradient-to-r from-blue-900 to-blue-400",            // B - Blue/Cool (max contrast from A)
+  "bg-gradient-to-r from-orange-900 to-orange-400",        // C - Orange/Warm (max contrast from B)
+  "bg-gradient-to-r from-green-900 to-green-400",          // D - Green/Cool (max contrast from C)
+  "bg-gradient-to-r from-purple-900 to-purple-400",        // E - Purple/Warm (max contrast from D)
+  "bg-gradient-to-r from-cyan-900 to-cyan-400",            // F - Cyan/Cool (max contrast from E)
+  "bg-gradient-to-r from-pink-900 to-pink-400",            // G - Pink/Warm (max contrast from F)
+  "bg-gradient-to-r from-teal-900 to-teal-400",            // H - Teal/Cool (max contrast from G)
+  "bg-gradient-to-r from-rose-900 to-rose-400",            // I - Rose/Warm (max contrast from H)
+  "bg-gradient-to-r from-indigo-900 to-indigo-400",        // J - Indigo/Cool (max contrast from I)
+  "bg-gradient-to-r from-amber-900 to-amber-400",          // K - Amber/Warm (max contrast from J)
+  "bg-gradient-to-r from-emerald-900 to-emerald-400",      // L - Emerald/Cool (max contrast from K)
+  "bg-gradient-to-r from-fuchsia-900 to-fuchsia-400",      // M - Fuchsia/Warm (max contrast from L)
+  "bg-gradient-to-r from-slate-700 to-slate-400",          // N - Slate/Cool (max contrast from M)
+  "bg-gradient-to-r from-lime-900 to-lime-400",            // O - Lime/Warm (max contrast from N)
+  "bg-gradient-to-r from-sky-900 to-sky-400",              // P - Sky/Cool (max contrast from O)
+];
+
+// Create color mapping for classes
+const createClassColorMap = (classes: string[]): Map<string, string> => {
+  const map = new Map<string, string>();
+  const sortedClasses = [...classes].sort((a, b) => classToSortValue(a) - classToSortValue(b));
+  sortedClasses.forEach((cls, idx) => {
+    map.set(cls, CLASS_COLORS[idx % CLASS_COLORS.length]);
+  });
+  return map;
+};
+
+// Find column index by header name (with aliases support)
+const findColumnIndex = (headers: string[], headerKey: string): number => {
+  const headerNames = (headers || []).map(h => (h || "").toString());
+  
+  // Get all possible names for this header
+  const possibleNames = HEADER_ALIASES[headerKey]?.length > 0 
+    ? HEADER_ALIASES[headerKey] 
+    : [COLUMN_HEADERS[headerKey as keyof typeof COLUMN_HEADERS] || headerKey];
+  
+  // Try each possible name
+  for (const name of possibleNames) {
+    const index = headerNames.findIndex(
+      (h) => h && h.toLowerCase().trim() === name.toLowerCase().trim()
+    );
+    if (index >= 0) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`✓ Found "${headerKey}" at index ${index} (header: "${name}")`);
+      }
+      return index;
+    }
+  }
+  
+  if (process.env.NODE_ENV === "development") {
+    console.warn(`✗ Column "${headerKey}" not found. Tried: ${possibleNames.join(", ")}`);
+    console.log(`Available headers: ${headerNames.join(", ")}`);
+  }
+  return -1;
+};
+
+// Get column indices dynamically
+const getColumnIndices = (headers: string[]) => ({
+  no: findColumnIndex(headers, "no"),
+  isi: findColumnIndex(headers, "isi"),
+  kecamatan: findColumnIndex(headers, "kecamatan"),
+  nama_petugas: findColumnIndex(headers, "nama_petugas"),
+  sobat_id: findColumnIndex(headers, "sobat_id"),
+  jabatan: findColumnIndex(headers, "jabatan"),
+  bank: findColumnIndex(headers, "bank"),
+  nomor_rekening: findColumnIndex(headers, "nomor_rekening"),
+  idkelas: findColumnIndex(headers, "idkelas"),
+  hotel: findColumnIndex(headers, "hotel"),
+  gelombang: findColumnIndex(headers, "gelombang"),
+  kelas: findColumnIndex(headers, "kelas"),
+  tanggal: findColumnIndex(headers, "tanggal"),
+});
 
 export default function SensusEkonomiPelatihan() {
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterKecamatan, setFilterKecamatan] = useState<string>("all");
+  const [filterHotel, setFilterHotel] = useState<string>("all");
+  const [filterKelas, setFilterKelas] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<keyof typeof COLUMN_HEADERS>("kelas");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [showTable, setShowTable] = useState(false);
+
+  // Get dynamic column indices based on current headers
+  const COL = useMemo(() => getColumnIndices(headers), [headers]);
+
+  // Debug logging
+  useEffect(() => {
+    if (headers.length > 0) {
+      console.log("📋 All Headers found:", headers);
+      console.log("🔍 Column indices:", COL);
+      console.log("📊 Sample row 0:", rows[0]);
+      
+      // Detailed column mapping
+      console.log("\n🗂️ COLUMN MAPPING:");
+      headers.forEach((h, idx) => {
+        console.log(`  [${idx}] ${h}`);
+      });
+      
+      console.log("\n📌 DETECTED COLUMNS:");
+      Object.entries(COL).forEach(([key, idx]) => {
+        if (idx >= 0) {
+          console.log(`  ✓ ${key.padEnd(20)} = index ${idx} (${headers[idx]})`);
+        } else {
+          console.log(`  ✗ ${key.padEnd(20)} = NOT FOUND`);
+        }
+      });
+    }
+  }, [COL, headers, rows]);
+
+  // Load data from Google Sheets
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase.functions.invoke("google-sheets", {
+          body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: RANGE },
+        });
+        if (error) throw error;
+        const values: Row[] = data?.values || [];
+        if (values.length === 0) {
+          setHeaders([]);
+          setRows([]);
+        } else {
+          setHeaders(values[0]);
+          const dataRows = values
+            .slice(1)
+            .filter((r) => r && r.some((c) => (c || "").toString().trim() !== ""));
+          setRows(dataRows);
+        }
+      } catch (e: any) {
+        setError(e.message || "Gagal memuat data");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  // Get unique kecamatan values
+  const kecamatanOptions = useMemo(() => {
+    if (COL.kecamatan === -1) return [];
+    const kecSet = new Set<string>();
+    rows.forEach((r) => {
+      const kec = (r[COL.kecamatan] || "").toString().trim();
+      if (kec) kecSet.add(kec);
+    });
+    return Array.from(kecSet).sort();
+  }, [rows, COL.kecamatan]);
+
+  // Get unique hotel values
+  const hotelOptions = useMemo(() => {
+    if (COL.hotel === -1) return [];
+    const hotelSet = new Set<string>();
+    rows.forEach((r) => {
+      const hotel = (r[COL.hotel] || "").toString().trim();
+      if (hotel) hotelSet.add(hotel);
+    });
+    return Array.from(hotelSet).sort();
+  }, [rows, COL.hotel]);
+
+  // Get unique kelas values
+  const kelasOptions = useMemo(() => {
+    if (COL.kelas === -1) return [];
+    const kelasSet = new Set<string>();
+    rows.forEach((r) => {
+      const kelas = (r[COL.kelas] || "").toString().trim();
+      if (kelas) kelasSet.add(kelas);
+    });
+    return Array.from(kelasSet).sort();
+  }, [rows, COL.kelas]);
+
+  // Create color map for each unique class
+  const classColorMap = useMemo(() => {
+    return createClassColorMap(kelasOptions);
+  }, [kelasOptions]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const hotelStats = new Map<string, { count: number; classes: Set<string> }>();
+    const gelombangSet = new Set<string>();
+    
+    rows.forEach((r) => {
+      const hotel = COL.hotel !== -1 ? (r[COL.hotel] || "").toString().trim() : "Unknown";
+      const kelas = COL.kelas !== -1 ? (r[COL.kelas] || "").toString().trim() : "";
+      const gelombang = COL.gelombang !== -1 ? (r[COL.gelombang] || "").toString().trim() : "";
+      
+      if (hotel) {
+        if (!hotelStats.has(hotel)) {
+          hotelStats.set(hotel, { count: 0, classes: new Set<string>() });
+        }
+        const stat = hotelStats.get(hotel)!;
+        stat.count += 1;
+        if (kelas) stat.classes.add(kelas);
+      }
+      
+      if (gelombang) {
+        gelombangSet.add(gelombang);
+      }
+    });
+
+    return {
+      hotelStats,
+      gelombangCount: gelombangSet.size,
+      hotelCount: hotelStats.size,
+    };
+  }, [rows, COL.hotel, COL.kelas, COL.gelombang]);
+
+  // Filter and sort data
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    let out = rows.filter((r) => {
+      if (
+        filterKecamatan !== "all" &&
+        COL.kecamatan !== -1 &&
+        (r[COL.kecamatan] || "").toString().trim() !== filterKecamatan
+      )
+        return false;
+      if (
+        filterHotel !== "all" &&
+        COL.hotel !== -1 &&
+        (r[COL.hotel] || "").toString().trim() !== filterHotel
+      )
+        return false;
+      if (
+        filterKelas !== "all" &&
+        COL.kelas !== -1 &&
+        (r[COL.kelas] || "").toString().trim() !== filterKelas
+      )
+        return false;
+      if (q) {
+        return r.some((c) => (c || "").toString().toLowerCase().includes(q));
+      }
+      return true;
+    });
+
+    // Sort with blank values at the end for specific columns
+    const sortColIdx = COL[sortKey];
+    if (sortColIdx === -1) return out;
+
+    const blankColumns = ["kecamatan", "nama_petugas", "sobat_id", "jabatan"];
+    const isBlankColumn = blankColumns.includes(sortKey);
+
+    out = [...out].sort((a, b) => {
+      const av = (a[sortColIdx] || "").toString().trim().toLowerCase();
+      const bv = (b[sortColIdx] || "").toString().trim().toLowerCase();
+      
+      // If checking blank columns, put blank values at the end
+      if (isBlankColumn) {
+        const aIsBlank = !av;
+        const bIsBlank = !bv;
+        
+        if (aIsBlank && bIsBlank) return 0;
+        if (aIsBlank) return 1; // a goes to end
+        if (bIsBlank) return -1; // b goes to end
+      }
+      
+      // Special handling for Kelas - natural sort (A, B, C, ... AA, AB ...)
+      if (sortKey === "kelas") {
+        const aVal = classToSortValue(av);
+        const bVal = classToSortValue(bv);
+        if (aVal !== bVal) return sortDir === "asc" ? aVal - bVal : bVal - aVal;
+        return 0;
+      }
+      
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return out;
+  }, [rows, search, filterKecamatan, filterHotel, filterKelas, sortKey, sortDir, COL]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const toggleSort = (key: keyof typeof COLUMN_HEADERS) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4 md:p-8">
       <div className="w-full mx-auto space-y-6">
-        <header className="text-center space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-800">
-            Pelatihan Sensus Ekonomi 2026
-          </h1>
-          <p className="text-slate-600">Program pelatihan untuk petugas Sensus Ekonomi 2026</p>
+        {/* Header */}
+        <header className="text-center space-y-4 pb-8 border-b border-blue-700/30">
+          <div className="space-y-2">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
+              Pelatihan Sensus Ekonomi 2026
+            </h1>
+            <p className="text-xl text-blue-200">
+              BPS Kabupaten Majalengka
+            </p>
+            <p className="text-slate-400 text-sm md:text-base">
+              Informasi lengkap tempat pelatihan, gelombang, kelas, dan data petugas pelatihan
+            </p>
+          </div>
         </header>
 
-        <Card className="border-amber-200 bg-amber-50">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Hammer className="h-8 w-8 text-amber-600" />
-              <div>
-                <CardTitle className="text-amber-900">Under Construction</CardTitle>
-                <CardDescription className="text-amber-800 mt-1">Halaman ini sedang dalam pengembangan</CardDescription>
+        {loading ? (
+          <div className="flex items-center justify-center py-32">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-400" />
+          </div>
+        ) : error ? (
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="py-10 text-center text-red-600">{error}</CardContent>
+          </Card>
+        ) : !showTable ? (
+          // Filter Selection Screen
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Kelas Card */}
+              <Card className="bg-slate-800 border-slate-700 hover:border-blue-500 transition-all cursor-pointer" onClick={() => {}}>
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <Calendar className="h-6 w-6 text-green-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="text-white font-semibold mb-2">Pilih Kelas</h3>
+                      <Select
+                        value={filterKelas}
+                        onValueChange={(v) => setFilterKelas(v)}
+                      >
+                        <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white h-10">
+                          <SelectValue placeholder="Semua Kelas" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-700 border-slate-600">
+                          <SelectItem value="all" className="text-white focus:bg-slate-600 focus:text-white">Semua Kelas</SelectItem>
+                          {kelasOptions.map((k) => (
+                            <SelectItem key={k} value={k} className="text-white focus:bg-slate-600 focus:text-white">{k}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-slate-400 mt-2">{kelasOptions.length} kelas tersedia</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Hotel Card */}
+              <Card className="bg-slate-800 border-slate-700 hover:border-blue-500 transition-all cursor-pointer" onClick={() => {}}>
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <Hotel className="h-6 w-6 text-amber-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="text-white font-semibold mb-2">Pilih Hotel</h3>
+                      <Select
+                        value={filterHotel}
+                        onValueChange={(v) => setFilterHotel(v)}
+                      >
+                        <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white h-10">
+                          <SelectValue placeholder="Semua Hotel" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-700 border-slate-600">
+                          <SelectItem value="all" className="text-white focus:bg-slate-600 focus:text-white">Semua Hotel</SelectItem>
+                          {hotelOptions.map((h) => (
+                            <SelectItem key={h} value={h} className="text-white focus:bg-slate-600 focus:text-white">{h}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-slate-400 mt-2">{hotelOptions.length} hotel tersedia</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Kecamatan Card */}
+              <Card className="bg-slate-800 border-slate-700 hover:border-blue-500 transition-all cursor-pointer" onClick={() => {}}>
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <MapPin className="h-6 w-6 text-blue-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="text-white font-semibold mb-2">Pilih Kecamatan</h3>
+                      <Select
+                        value={filterKecamatan}
+                        onValueChange={(v) => setFilterKecamatan(v)}
+                      >
+                        <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white h-10">
+                          <SelectValue placeholder="Semua Kecamatan" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-700 border-slate-600">
+                          <SelectItem value="all" className="text-white focus:bg-slate-600 focus:text-white">Semua Kecamatan</SelectItem>
+                          {kecamatanOptions.map((k) => (
+                            <SelectItem key={k} value={k} className="text-white focus:bg-slate-600 focus:text-white">{k}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-slate-400 mt-2">{kecamatanOptions.length} kecamatan tersedia</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Total Petugas Card */}
+              <Card className="bg-slate-800 border-slate-700">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <Users className="h-6 w-6 text-purple-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="text-white font-semibold mb-2">Total Petugas</h3>
+                      <p className="text-3xl font-bold text-blue-400">{rows.length}</p>
+                      <p className="text-xs text-slate-400 mt-2">Petugas pelatihan SE26</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Button to View Table */}
+            <div className="flex justify-center pt-6">
+              <Button
+                onClick={() => setShowTable(true)}
+                className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-700 hover:via-blue-600 hover:to-cyan-600 text-white font-bold py-4 px-16 rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 text-lg group"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  Lihat Daftar Petugas
+                  <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transform translate-x-full group-hover:translate-x-0 transition-all duration-500" />
+              </Button>
+            </div>
+
+            {/* Statistics Section */}
+            <div className="space-y-4 pt-8 border-t border-blue-700/30">
+              <h2 className="text-2xl font-bold text-white">📊 Statistik Pelatihan</h2>
+              
+              {/* Gelombang & Hotel Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Gelombang Card */}
+                <Card className="bg-gradient-to-br from-violet-900 to-purple-900 border-purple-700">
+                  <CardContent className="p-6">
+                    <h3 className="text-sm text-purple-200 font-semibold mb-2">Jumlah Gelombang</h3>
+                    <p className="text-4xl font-bold text-purple-300">{stats.gelombangCount}</p>
+                    <p className="text-xs text-purple-400 mt-2">Gelombang pelatihan tersedia</p>
+                  </CardContent>
+                </Card>
+
+                {/* Hotel Overview Card */}
+                <Card className="bg-gradient-to-br from-amber-900 to-orange-900 border-orange-700">
+                  <CardContent className="p-6">
+                    <h3 className="text-sm text-orange-200 font-semibold mb-2">Jumlah Hotel</h3>
+                    <p className="text-4xl font-bold text-orange-300">{stats.hotelCount}</p>
+                    <p className="text-xs text-orange-400 mt-2">Lokasi pelatihan (hotel)</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Hotel Detail Statistics */}
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-white">📍 Rincian per Hotel</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {Array.from(stats.hotelStats.entries()).map(([hotel, data]) => (
+                    <Card key={hotel} className="bg-slate-800 border-slate-700">
+                      <CardContent className="p-4">
+                        <h4 className="text-sm font-semibold text-amber-300 mb-3">{hotel}</h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-slate-400">Jumlah Petugas:</span>
+                            <span className="text-lg font-bold text-blue-400">{data.count}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-slate-400">Jumlah Kelas:</span>
+                            <span className="text-lg font-bold text-green-400">{data.classes.size}</span>
+                          </div>
+                          <div className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-700">
+                            Kelas: {Array.from(data.classes).sort().join(", ")}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <AlertCircle className="h-16 w-16 text-amber-600 opacity-50" />
-              <div className="text-center space-y-2">
-                <h2 className="text-lg font-semibold text-amber-900">Fitur sedang dikembangkan</h2>
-                <p className="text-sm text-amber-800 max-w-md">
-                  Modul pelatihan untuk Sensus Ekonomi 2026 akan segera tersedia. Silakan kembali lagi nanti.
-                </p>
+          </div>
+        ) : (
+          // Data Table Screen
+          <Card className="bg-slate-800 border-slate-700">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-white">Daftar Petugas Pelatihan</CardTitle>
+                  <CardDescription className="text-slate-400">Cari dan filter data petugas pelatihan SE26</CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTable(false)}
+                  className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                >
+                  ← Kembali ke Filter
+                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Search + Filter + Pagination */}
+              <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
+                <div className="relative flex-1 md:max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari nama, jabatan, sobat ID..."
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPage(1);
+                    }}
+                    className="pl-9 h-9 text-sm bg-slate-700 border-slate-600 text-white"
+                  />
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="w-auto h-9 text-xs bg-slate-700 border-slate-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-slate-600 overflow-x-auto bg-slate-800">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-700 border-slate-600 hover:bg-slate-700">
+                      <TableHead className="w-12 text-slate-300">#</TableHead>
+                      <TableHead
+                        className="w-36 cursor-pointer text-slate-300"
+                        onClick={() => toggleSort("nama_petugas")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Nama Petugas <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="w-28 cursor-pointer text-slate-300"
+                        onClick={() => toggleSort("kecamatan")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Kecamatan <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="w-28 cursor-pointer text-slate-300"
+                        onClick={() => toggleSort("sobat_id")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Sobat ID <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="w-32 cursor-pointer text-slate-300"
+                        onClick={() => toggleSort("jabatan")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Jabatan <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="w-32 cursor-pointer text-slate-300"
+                        onClick={() => toggleSort("hotel")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Hotel <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="w-16 cursor-pointer text-slate-300"
+                        onClick={() => toggleSort("gelombang")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Gelombang <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="w-16 cursor-pointer text-slate-300"
+                        onClick={() => toggleSort("kelas")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Kelas <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="w-32 cursor-pointer text-slate-300"
+                        onClick={() => toggleSort("tanggal")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Tanggal <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pageRows.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
+                          Tidak ada data
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      pageRows.map((r, i) => (
+                        <TableRow key={i} className="border-slate-600 hover:bg-slate-700 py-1">
+                          <TableCell className="text-muted-foreground text-xs py-1">
+                            {(currentPage - 1) * pageSize + i + 1}
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-200 py-1">
+                            {COL.nama_petugas !== -1 ? r[COL.nama_petugas] || "-" : "-"}
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-200 py-1">
+                            {COL.kecamatan !== -1 ? r[COL.kecamatan] || "-" : "-"}
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-200 py-1">
+                            {COL.sobat_id !== -1 ? r[COL.sobat_id] || "-" : "-"}
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-200 py-1">
+                            {COL.jabatan !== -1 ? r[COL.jabatan] || "-" : "-"}
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-200 py-1">
+                            {COL.hotel !== -1 ? r[COL.hotel] || "-" : "-"}
+                          </TableCell>
+                          <TableCell className="text-sm py-1">
+                            <span className="bg-orange-600 text-white px-3 py-1 rounded-full font-semibold text-xs">
+                              {COL.gelombang !== -1 ? r[COL.gelombang] || "-" : "-"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm py-1">
+                            {(() => {
+                              const kelasValue = COL.kelas !== -1 ? r[COL.kelas] || "" : "";
+                              const bgColor = classColorMap.get(kelasValue) || "bg-slate-600";
+                              return (
+                                <span className={`${bgColor} text-white px-3 py-1 rounded-full font-semibold text-xs`}>
+                                  {kelasValue || "-"}
+                                </span>
+                              );
+                            })()}
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-200 py-1">
+                            {COL.tanggal !== -1 ? r[COL.tanggal] || "-" : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="text-sm text-slate-400">
+                  Total: <span className="font-medium text-slate-200">{filtered.length}</span> | 
+                  Halaman <span className="font-medium text-slate-200">{currentPage}</span> dari <span className="font-medium text-slate-200">{totalPages}</span> |
+                  Menampilkan {pageRows.length > 0 ? `${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, filtered.length)}` : "0"} dari {filtered.length}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(1)}
+                    disabled={currentPage === 1}
+                    className="text-xs bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                  >
+                    ⏮ Pertama
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="text-xs bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                  >
+                    <ChevronLeft className="h-3 w-3 mr-1" />
+                    Sebelumnya
+                  </Button>
+
+                  {/* Page Number Indicators */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(p => {
+                        const diff = Math.abs(p - currentPage);
+                        return p === 1 || p === totalPages || diff <= 1;
+                      })
+                      .map((p, idx, arr) => (
+                        <div key={p}>
+                          {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-muted-foreground">...</span>}
+                          <Button
+                            variant={p === currentPage ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPage(p)}
+                            className={`text-xs w-8 h-8 p-0 ${p === currentPage ? "bg-blue-600 text-white" : "bg-slate-700 border-slate-600 text-white hover:bg-slate-600"}`}
+                          >
+                            {p}
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="text-xs bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                  >
+                    Selanjutnya
+                    <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="text-xs bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                  >
+                    Terakhir ⏭
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
