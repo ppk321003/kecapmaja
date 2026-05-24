@@ -712,9 +712,11 @@ export default function MitraSE2026() {
             <TabsTrigger value="rekomendasi" className="text-xs md:text-sm bg-purple-50 hover:bg-purple-100">
               Rekomendasi
             </TabsTrigger>
-            <TabsTrigger value="alokasi" className="text-xs md:text-sm bg-orange-50 hover:bg-orange-100">
-              Pelatihan SE26
-            </TabsTrigger>
+            {isPPK && (
+              <TabsTrigger value="alokasi" className="text-xs md:text-sm bg-orange-50 hover:bg-orange-100">
+                Pelatihan SE26
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="rekomendasi" className="space-y-4 mt-6">
@@ -1425,9 +1427,11 @@ export default function MitraSE2026() {
           </TabsContent>
 
           {/* TAB: PELATIHAN SE26 */}
-          <TabsContent value="alokasi" className="space-y-4 mt-6">
-            <PelatihanSE26 />
-          </TabsContent>
+          {isPPK && (
+            <TabsContent value="alokasi" className="space-y-4 mt-6">
+              <PelatihanSE26 />
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Validation Notes Dialog - Catatan Kecap Maja */}
