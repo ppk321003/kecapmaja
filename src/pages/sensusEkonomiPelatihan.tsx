@@ -51,6 +51,15 @@ const classToSortValue = (cls: string): number => {
   return value;
 };
 
+// Get jabatan priority for sorting (when filtering by kelas)
+const getJabatanPriority = (jabatan: string): number => {
+  const j = (jabatan || "").toString().trim();
+  if (j === "Instruktur Daerah") return 1;
+  if (j === "Panitia 1") return 2;
+  if (j === "Panitia 2") return 3;
+  return 4; // others
+};
+
 // Color palette for different class badges - alternating warm/cool for maximum contrast
 const CLASS_COLORS = [
   "bg-gradient-to-r from-red-900 to-red-500",              // A - Red/Warm
@@ -324,6 +333,18 @@ export default function SensusEkonomiPelatihan() {
     const isBlankColumn = blankColumns.includes(sortKey);
 
     out = [...out].sort((a, b) => {
+      // When filtering by kelas, prioritize by jabatan first
+      if (filterKelas !== "all" && COL.jabatan !== -1) {
+        const aJabatan = (a[COL.jabatan] || "").toString().trim();
+        const bJabatan = (b[COL.jabatan] || "").toString().trim();
+        const aPriority = getJabatanPriority(aJabatan);
+        const bPriority = getJabatanPriority(bJabatan);
+        
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority;
+        }
+      }
+
       const av = (a[sortColIdx] || "").toString().trim().toLowerCase();
       const bv = (b[sortColIdx] || "").toString().trim().toLowerCase();
       
