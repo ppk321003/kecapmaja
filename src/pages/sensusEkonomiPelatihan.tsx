@@ -136,6 +136,7 @@ export default function SensusEkonomiPelatihan() {
   const [filterKecamatan, setFilterKecamatan] = useState<string>("all");
   const [filterHotel, setFilterHotel] = useState<string>("all");
   const [filterKelas, setFilterKelas] = useState<string>("all");
+  const [filterInstruktur, setFilterInstruktur] = useState<string>("all");
   const [sortKey, setSortKey] = useState<keyof typeof COLUMN_HEADERS>("kelas");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -230,6 +231,21 @@ export default function SensusEkonomiPelatihan() {
     return Array.from(kelasSet).sort();
   }, [rows, COL.kelas]);
 
+  // Get unique instruktur/panitia names (nama petugas dengan jabatan Instruktur Daerah, Panitia 1, Panitia 2)
+  const instrukturOptions = useMemo(() => {
+    if (COL.nama_petugas === -1 || COL.jabatan === -1) return [];
+    const instrukturSet = new Set<string>();
+    const validJabatan = ["Instruktur Daerah", "Panitia 1", "Panitia 2"];
+    rows.forEach((r) => {
+      const jabatan = (r[COL.jabatan] || "").toString().trim();
+      const nama_petugas = (r[COL.nama_petugas] || "").toString().trim();
+      if (nama_petugas && jabatan && validJabatan.includes(jabatan)) {
+        instrukturSet.add(nama_petugas);
+      }
+    });
+    return Array.from(instrukturSet).sort();
+  }, [rows, COL.nama_petugas, COL.jabatan]);
+
   // Create color map for each unique class
   const classColorMap = useMemo(() => {
     return createClassColorMap(kelasOptions);
@@ -288,6 +304,12 @@ export default function SensusEkonomiPelatihan() {
         (r[COL.kelas] || "").toString().trim() !== filterKelas
       )
         return false;
+      if (
+        filterInstruktur !== "all" &&
+        COL.nama_petugas !== -1 &&
+        (r[COL.nama_petugas] || "").toString().trim() !== filterInstruktur
+      )
+        return false;
       if (q) {
         return r.some((c) => (c || "").toString().toLowerCase().includes(q));
       }
@@ -329,7 +351,7 @@ export default function SensusEkonomiPelatihan() {
     });
 
     return out;
-  }, [rows, search, filterKecamatan, filterHotel, filterKelas, sortKey, sortDir, COL]);
+  }, [rows, search, filterKecamatan, filterHotel, filterKelas, filterInstruktur, sortKey, sortDir, COL]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -454,15 +476,28 @@ export default function SensusEkonomiPelatihan() {
                 </CardContent>
               </Card>
 
-              {/* Total Petugas Card */}
-              <Card className="bg-slate-800 border-slate-700">
+              {/* Instruktur / Panitia Card */}
+              <Card className="bg-slate-800 border-slate-700 hover:border-blue-500 transition-all cursor-pointer" onClick={() => {}}>
                 <CardContent className="p-6">
                   <div className="flex items-start gap-3 mb-4">
-                    <Users className="h-6 w-6 text-purple-400 flex-shrink-0" />
+                    <Users className="h-6 w-6 text-rose-400 flex-shrink-0" />
                     <div className="flex-1">
-                      <h3 className="text-white font-semibold mb-2">Total Petugas</h3>
-                      <p className="text-3xl font-bold text-blue-400">{rows.length}</p>
-                      <p className="text-xs text-slate-400 mt-2">Petugas pelatihan SE26</p>
+                      <h3 className="text-white font-semibold mb-2">Pilih Instruktur / Panitia</h3>
+                      <Select
+                        value={filterInstruktur}
+                        onValueChange={(v) => setFilterInstruktur(v)}
+                      >
+                        <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white h-10">
+                          <SelectValue placeholder="Semua Instruktur" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-700 border-slate-600">
+                          <SelectItem value="all" className="text-white focus:bg-slate-600 focus:text-white">Semua Instruktur</SelectItem>
+                          {instrukturOptions.map((i) => (
+                            <SelectItem key={i} value={i} className="text-white focus:bg-slate-600 focus:text-white">{i}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-slate-400 mt-2">{instrukturOptions.length} instruktur/panitia tersedia</p>
                     </div>
                   </div>
                 </CardContent>
@@ -489,8 +524,8 @@ export default function SensusEkonomiPelatihan() {
             <div className="space-y-4 pt-8 border-t border-blue-700/30">
               <h2 className="text-2xl font-bold text-white">📊 Statistik Pelatihan</h2>
               
-              {/* Gelombang & Hotel Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Gelombang & Hotel & Total Petugas Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Gelombang Card */}
                 <Card className="bg-gradient-to-br from-violet-900 to-purple-900 border-purple-700">
                   <CardContent className="p-6">
@@ -506,6 +541,15 @@ export default function SensusEkonomiPelatihan() {
                     <h3 className="text-sm text-orange-200 font-semibold mb-2">Jumlah Hotel</h3>
                     <p className="text-4xl font-bold text-orange-300">{stats.hotelCount}</p>
                     <p className="text-xs text-orange-400 mt-2">Lokasi pelatihan (hotel)</p>
+                  </CardContent>
+                </Card>
+
+                {/* Total Petugas Card */}
+                <Card className="bg-gradient-to-br from-blue-900 to-cyan-900 border-cyan-700">
+                  <CardContent className="p-6">
+                    <h3 className="text-sm text-cyan-200 font-semibold mb-2">Total Petugas</h3>
+                    <p className="text-4xl font-bold text-cyan-300">{rows.length}</p>
+                    <p className="text-xs text-cyan-400 mt-2">Petugas pelatihan SE26</p>
                   </CardContent>
                 </Card>
               </div>
