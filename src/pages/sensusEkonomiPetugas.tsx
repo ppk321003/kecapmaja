@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, Search, Loader2, ArrowUpDown, ZoomIn, Check, X } from "lucide-react";
+import { Eye, Search, Loader2, ArrowUpDown, ZoomIn, CheckCircle2, XCircle } from "lucide-react";
 import { OptimizedImage } from "@/components/OptimizedImage";
 
 type Row = string[];
@@ -207,38 +207,7 @@ export default function SensusEkonomiPetugas() {
           <p className="text-slate-600">Daftar petugas yang terlibat dalam kegiatan Sensus Ekonomi 2026</p>
         </header>
 
-        {/* Debug Info - Remove in production */}
-        {headers.length > 0 ? (
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="py-3 text-xs text-slate-600">
-              <div className="space-y-2">
-                <div className="font-semibold">Kolom yang ditemukan:</div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <div>Foto: {COL.foto !== -1 ? `✓ Index ${COL.foto}` : "✗ Tidak ditemukan"}</div>
-                  <div>Nama: {COL.nama_lengkap !== -1 ? `✓ Index ${COL.nama_lengkap}` : "✗ Tidak ditemukan"}</div>
-                  <div>NIK: {COL.nik !== -1 ? `✓ Index ${COL.nik}` : "✗ Tidak ditemukan"}</div>
-                  <div>Kecamatan: {COL.kecamatan !== -1 ? `✓ Index ${COL.kecamatan}` : "✗ Tidak ditemukan"}</div>
-                  <div>Desa: {COL.desa !== -1 ? `✓ Index ${COL.desa}` : "✗ Tidak ditemukan"}</div>
-                  <div>Jabatan: {COL.jabatan !== -1 ? `✓ Index ${COL.jabatan}` : "✗ Tidak ditemukan"}</div>
-                  <div>Status: {COL.status_penawaran !== -1 ? `✓ Index ${COL.status_penawaran}` : "✗ Tidak ditemukan"}</div>
-                  <div>Total Data: {rows.length} rows</div>
-                </div>
-                <div className="font-semibold mt-3">Semua headers di sheet:</div>
-                <div className="text-xs bg-white p-2 rounded border max-h-20 overflow-y-auto">
-                  {headers.map((h, i) => (
-                    <div key={i}>{i}: <span className="font-mono text-blue-600">"{h}"</span></div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="bg-amber-50 border-amber-200">
-            <CardContent className="py-3 text-xs text-amber-700">
-              {loading ? "📥 Memuat data..." : error ? `❌ Error: ${error}` : "⚠️ Tidak ada header ditemukan"}
-            </CardContent>
-          </Card>
-        )}
+
 
         <Card>
           <CardHeader>
@@ -298,7 +267,7 @@ export default function SensusEkonomiPetugas() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Semua NIK</SelectItem>
-                    {nikOptions.map(n => <SelectItem key={n} value={n}>{n === "TRUE" ? "✓ Valid" : "✗ Tidak Valid"}</SelectItem>)}
+                    {nikOptions.map(n => <SelectItem key={n} value={n}>{n === "TRUE" ? "✓ VALID" : "✗ TIDAK VALID"}</SelectItem>)}
                   </SelectContent>
                 </Select>
 
@@ -392,9 +361,17 @@ export default function SensusEkonomiPetugas() {
                                 (() => {
                                   const nikValue = (r[COL.nik] || "").toString().trim().toUpperCase();
                                   if (nikValue === "TRUE") {
-                                    return <div className="flex justify-center"><Check className="h-5 w-5 text-green-600" /></div>;
+                                    return (
+                                      <div className="flex justify-center">
+                                        <CheckCircle2 className="h-6 w-6 text-green-600" />
+                                      </div>
+                                    );
                                   } else if (nikValue === "FALSE") {
-                                    return <div className="flex justify-center"><X className="h-5 w-5 text-red-600" /></div>;
+                                    return (
+                                      <div className="flex justify-center">
+                                        <XCircle className="h-6 w-6 text-red-600" />
+                                      </div>
+                                    );
                                   }
                                   return <span className="text-xs text-slate-500">-</span>;
                                 })()
