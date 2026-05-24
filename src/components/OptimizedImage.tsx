@@ -29,6 +29,20 @@ export function OptimizedImage({
     );
   }
 
+  // Ensure URL is valid
+  let imageUrl = src.trim();
+  try {
+    // Check if URL is valid
+    new URL(imageUrl);
+  } catch (e) {
+    // Invalid URL
+    return (
+      <div className={cn("bg-red-100 flex items-center justify-center text-xs text-red-500", className)}>
+        ❌
+      </div>
+    );
+  }
+
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     setHasError(true);
     setIsLoading(false);
@@ -54,9 +68,9 @@ export function OptimizedImage({
 
       {/* Image */}
       <img
-        src={src}
+        src={imageUrl}
         alt={alt}
-        loading={priority ? "eager" : "lazy"}
+        loading={priority ? "eager" : "eager"}
         className={cn(
           "h-full w-full object-cover transition-opacity duration-300",
           isLoading ? "opacity-0" : "opacity-100",

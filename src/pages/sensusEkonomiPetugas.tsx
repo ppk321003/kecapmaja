@@ -307,6 +307,7 @@ export default function SensusEkonomiPetugas() {
                                       src={r[COL.foto]}
                                       alt="Foto"
                                       size="small"
+                                      priority={true}
                                       className="h-10 w-10"
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
@@ -408,7 +409,7 @@ export default function SensusEkonomiPetugas() {
                   src={expandedPhoto}
                   alt="Foto Petugas"
                   className="max-w-full max-h-96 rounded"
-                  loading="lazy"
+                  loading="eager"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "https://via.placeholder.com/300?text=Foto+Tidak+Tersedia";
                   }}
@@ -440,6 +441,7 @@ export default function SensusEkonomiPetugas() {
                         src={detailRow[COL.foto]}
                         alt="Foto"
                         size="large"
+                        priority={true}
                         className="h-32 w-32"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
