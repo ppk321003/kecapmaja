@@ -16,7 +16,7 @@ type Row = string[];
 
 const SPREADSHEET_ID = "1Sa6HeJ_PqRMQOHjJc9gGeuYFgHy8Ed5TSzt9dnztkqE";
 const SHEET_NAME = "Olah";
-const RANGE = `${SHEET_NAME}!A1:BX`;
+const RANGE = `${SHEET_NAME}!A1:BY`;
 const SHEET_NAME_KOMPETENSI = "Scraping Seleksi";
 const RANGE_KOMPETENSI = `${SHEET_NAME_KOMPETENSI}!A1:AI`;
 
@@ -75,6 +75,7 @@ const COL = {
   suratVideo1: colIdx("BV"),  // BV - Surat & Video (link/text)
   suratVideo2: colIdx("BW"),  // BW - Surat & Video (link/text)
   suratVideo3: colIdx("BX"),  // BX - Surat & Video (link/text)
+  pakta: colIdx("BY"),  // BY - Pakta (1=checkmark, 0=X, blank=blank)
 };
 
 // Column mapping untuk Mitra (Manajemen Mitra sheet)
@@ -318,6 +319,7 @@ export default function MitraSE2026() {
   const [search, setSearch] = useState("");
   const [filterKec, setFilterKec] = useState<string>("");
   const [filterSobat, setFilterSobat] = useState<string>("*");
+  const [filterPakta, setFilterPakta] = useState<string>("*");
   const [sortKey, setSortKey] = useState<keyof typeof COL>("nama");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -507,6 +509,20 @@ export default function MitraSE2026() {
     [rows]
   );
 
+  const paktaOptions = useMemo(
+    () => {
+      const options = Array.from(new Set(rows.map(r => {
+        const paktaValue = (r[COL.pakta] || "").toString().trim();
+        if (!paktaValue) return null;
+        if (paktaValue === "1") return "Sudah";
+        if (paktaValue === "0") return "Belum";
+        return null;
+      }).filter(Boolean)));
+      return options.sort();
+    },
+    [rows]
+  );
+
   const filtered = useMemo(() => {
     return rows.filter(r => {
       // Apply search filter
@@ -529,9 +545,18 @@ export default function MitraSE2026() {
       const statusSeleksiAdmin = (r[COL.statusSeleksi] || "").toString().trim();
       const isNotDitolak = statusSeleksiAdmin.toLowerCase() !== "ditolak";
       
-      return matchSearch && matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak;
+      // Apply Pakta filter
+      const paktaValue = (r[COL.pakta] || "").toString().trim();
+      let matchPakta = filterPakta === "*";
+      if (filterPakta === "Sudah") {
+        matchPakta = paktaValue === "1";
+      } else if (filterPakta === "Belum") {
+        matchPakta = paktaValue === "0";
+      }
+      
+      return matchSearch && matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak && matchPakta;
     });
-  }, [rows, search, filterKec, filterSobat]);
+  }, [rows, search, filterKec, filterSobat, filterPakta]);
 
   // Calculate kecamatan-filtered count (without search) for locked display
   const kecamatanFilteredCount = useMemo(() => {
@@ -551,9 +576,18 @@ export default function MitraSE2026() {
       const statusSeleksiAdmin = (r[COL.statusSeleksi] || "").toString().trim();
       const isNotDitolak = statusSeleksiAdmin.toLowerCase() !== "ditolak";
       
-      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak;
+      // Apply Pakta filter
+      const paktaValue = (r[COL.pakta] || "").toString().trim();
+      let matchPakta = filterPakta === "*";
+      if (filterPakta === "Sudah") {
+        matchPakta = paktaValue === "1";
+      } else if (filterPakta === "Belum") {
+        matchPakta = paktaValue === "0";
+      }
+      
+      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak && matchPakta;
     }).length;
-  }, [rows, filterKec, filterSobat]);
+  }, [rows, filterKec, filterSobat, filterPakta]);
 
   const pageRows = useMemo(() => {
     const sorted = [...filtered].sort((a, b) => {
@@ -621,7 +655,16 @@ export default function MitraSE2026() {
       const statusSeleksiAdmin = (r[COL.statusSeleksi] || "").toString().trim();
       const isNotDitolak = statusSeleksiAdmin.toLowerCase() !== "ditolak";
       
-      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak;
+      // Apply Pakta filter
+      const paktaValue = (r[COL.pakta] || "").toString().trim();
+      let matchPakta = filterPakta === "*";
+      if (filterPakta === "Sudah") {
+        matchPakta = paktaValue === "1";
+      } else if (filterPakta === "Belum") {
+        matchPakta = paktaValue === "0";
+      }
+      
+      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak && matchPakta;
     }).forEach(r => {
       const tipeKegiatan = (r[COL.tipeKegiatan] || "").toString().trim();
       const pplPml = (r[COL.pplPml] || "").toString().trim();
@@ -642,7 +685,7 @@ export default function MitraSE2026() {
       rutin: rutinCount,
       total: pplCount + pmlCount,
     };
-  }, [rows, filterKec, filterSobat]);
+  }, [rows, filterKec, filterSobat, filterPakta]);
 
   // Set default filterKec untuk non-PPK ke kecamatan pertama
   useEffect(() => {
@@ -654,7 +697,7 @@ export default function MitraSE2026() {
     }
   }, [isPPK, kecOptions]);
 
-  useEffect(() => { setPage(1); }, [search, filterKec, filterSobat, pageSize]);
+  useEffect(() => { setPage(1); }, [search, filterKec, filterSobat, filterPakta, pageSize]);
 
   // Update cell value ke sheet Olah
   const updateCellValue = async (rowIdx: number, colLetter: string, newValue: string) => {
@@ -686,7 +729,7 @@ export default function MitraSE2026() {
     }
   };
 
-  useEffect(() => { setPage(1); }, [search, filterKec, filterSobat, pageSize]);
+  useEffect(() => { setPage(1); }, [search, filterKec, filterSobat, filterPakta, pageSize]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 p-4 md:p-8">
@@ -758,6 +801,13 @@ export default function MitraSE2026() {
                     <SelectContent>
                       <SelectItem value="*">Semua Status Sobat</SelectItem>
                       {sobatOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterPakta} onValueChange={setFilterPakta}>
+                    <SelectTrigger className="w-full md:w-40"><SelectValue placeholder="Status Pakta" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="*">Semua Pakta</SelectItem>
+                      {paktaOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
@@ -1015,6 +1065,7 @@ export default function MitraSE2026() {
                             <TableHead>Status SOBAT</TableHead>
                             <TableHead>Skor</TableHead>
                             <TableHead className="text-center">Kompetensi</TableHead>
+                            <TableHead className="text-center">Pakta</TableHead>
                             <TableHead className="text-center">Catatan Kecap Maja</TableHead>
                             <TableHead className="text-center">Surat & Video</TableHead>
                             <TableHead className="text-center">Aksi</TableHead>
@@ -1023,7 +1074,7 @@ export default function MitraSE2026() {
                         </TableHeader>
                         <TableBody>
                           {pageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={12} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : pageRows.map((respondenRow, i) => {
                             const mitraRow = findMitraForResponden(respondenRow, mitriRows);
                             return (
@@ -1062,6 +1113,34 @@ export default function MitraSE2026() {
                                   );
                                 })()}
                               </TableCell>
+
+                              {/* Pakta - Normalized from column BY (1=checkmark, 0=X, blank=blank) */}
+                              <TableCell className="text-center">
+                                {(() => {
+                                  const paktaValue = (respondenRow[COL.pakta] || "").toString().trim();
+                                  
+                                  if (!paktaValue) {
+                                    return <span className="text-slate-300">-</span>;
+                                  }
+                                  
+                                  if (paktaValue === "1") {
+                                    return (
+                                      <div className="flex justify-center">
+                                        <CheckCircle2 className="h-5 w-5 text-green-600" title="Pakta: Diterima" />
+                                      </div>
+                                    );
+                                  } else if (paktaValue === "0") {
+                                    return (
+                                      <div className="flex justify-center">
+                                        <XCircle className="h-5 w-5 text-red-600" title="Pakta: Ditolak" />
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  return <span className="text-slate-300">-</span>;
+                                })()}
+                              </TableCell>
+
                               <TableCell className="text-center">
                                 {(() => {
                                   const validationIssues = validateResponden(respondenRow);
