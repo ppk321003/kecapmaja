@@ -547,7 +547,7 @@ export default function SensusEkonomiPelatihan() {
             <div className="space-y-4 pt-8 border-t border-blue-700/30">
               <h2 className="text-2xl font-bold text-white">📊 Statistik Pelatihan</h2>
               
-              {/* Gelombang & Hotel & Total Petugas Overview */}
+              {/* Gelombang & Hotel & Total Peserta Pelatihan Overview */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Gelombang Card */}
                 <Card className="bg-gradient-to-br from-violet-900 to-purple-900 border-purple-700">
