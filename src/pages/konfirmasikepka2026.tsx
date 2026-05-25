@@ -369,16 +369,38 @@ const getOlaRowData = (mitriRow: Row, olaRows: Row[]): { periodStart: string; sk
 const getMatchedOlaRow = (mitriRow: Row, olaRows: Row[]): Row | undefined => {
   const mitriEmail = (mitriRow[COL_MITRA.email] || "").trim().toLowerCase();
   const mitriSobatId = (mitriRow[COL_MITRA.sobatId] || "").trim().toLowerCase();
+  const mitriNama = (mitriRow[COL_MITRA.nama] || "").trim().toLowerCase();
+  const mitriKec = (mitriRow[COL_MITRA.kec] || "").trim().toLowerCase();
   
-  if (!mitriEmail && !mitriSobatId) {
-    return undefined;
+  // Priority 1: Try matching by sobatId (most reliable)
+  if (mitriSobatId) {
+    const matchBySobatId = olaRows.find(olaRow => {
+      const olaSobatId = (olaRow[COL.sobatId] || "").trim().toLowerCase();
+      return olaSobatId === mitriSobatId;
+    });
+    if (matchBySobatId) return matchBySobatId;
   }
   
-  return olaRows.find(olaRow => {
-    const olaEmail = (olaRow[COL.email] || "").trim().toLowerCase();
-    const olaSobatId = (olaRow[COL.sobatId] || "").trim().toLowerCase();
-    return (mitriEmail && olaEmail === mitriEmail) || (mitriSobatId && olaSobatId === mitriSobatId);
-  });
+  // Priority 2: Try matching by name + kecamatan (more reliable than email)
+  if (mitriNama && mitriKec) {
+    const matchByNameKec = olaRows.find(olaRow => {
+      const olaNama = (olaRow[COL.nama] || "").trim().toLowerCase();
+      const olaKec = (olaRow[COL.kec] || "").trim().toLowerCase();
+      return olaNama === mitriNama && olaKec === mitriKec;
+    });
+    if (matchByNameKec) return matchByNameKec;
+  }
+  
+  // Priority 3: Try matching by email (may have issues if data entry error)
+  if (mitriEmail) {
+    const matchByEmail = olaRows.find(olaRow => {
+      const olaEmail = (olaRow[COL.email] || "").trim().toLowerCase();
+      return olaEmail === mitriEmail;
+    });
+    if (matchByEmail) return matchByEmail;
+  }
+  
+  return undefined;
 };
 
 // Helper function untuk check dokumen perlu perbaikan
@@ -389,6 +411,16 @@ const getDocumentsThatNeedRepair = (row: Row): string[] => {
   if ((row[COL.ijazahVerifikasi] || "").toLowerCase().includes("perlu")) docs.push("Ijazah");
   if ((row[COL.screenshotHPVerifikasi] || "").toLowerCase().includes("perlu")) docs.push("HP");
   return docs;
+};
+
+// Helper function untuk mencari row Olah berdasarkan nama dari Mitra Tambahan
+const getOlahRowByMitraName = (mtRow: Row, olaRows: Row[]): Row | undefined => {
+  const mtName = (mtRow[COL_MITRA.nama] || "").trim().toLowerCase();
+  if (!mtName) return undefined;
+  return olaRows.find(olaRow => {
+    const olaName = (olaRow[COL.nama] || "").trim().toLowerCase();
+    return olaName === mtName;
+  });
 };
 
 export default function KonfirmasiKepka2026() {
@@ -2658,7 +2690,7 @@ export default function KonfirmasiKepka2026() {
                                         <Button size="icon" variant="ghost" onClick={() => setMtDetailRow(r)} title="Detail Mitra Tambahan" className="h-9 w-9">
                                           <Eye className="h-4 w-4" />
                                         </Button>
-                                        <Button size="icon" variant="ghost" onClick={() => setDetailRow(matchedOlaRow)} title="Detail Mitra" className="h-9 w-9">
+                                        <Button size="icon" variant="ghost" onClick={() => setDetailRow(getOlahRowByMitraName(r, rows))} title="Detail Mitra" className="h-9 w-9">
                                           <Eye className="h-4 w-4" />
                                         </Button>
                                       </div>
@@ -3064,12 +3096,9 @@ export default function KonfirmasiKepka2026() {
 
         {/* Mitra Tambahan Detail Dialog */}
         <Dialog open={!!mtDetailRow} onOpenChange={(o) => !o && setMtDetailRow(null)}>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-sky-600" />
-                Detail Mitra Tambahan
-              </DialogTitle>
+              <DialogTitle>Detail Mitra</DialogTitle>
               <DialogDescription>
                 {mtDetailRow ? (mtDetailRow[COL_MITRA.nama] || "-") : ""}
               </DialogDescription>
@@ -3079,11 +3108,18 @@ export default function KonfirmasiKepka2026() {
                 {mtHeaders.map((h, i) => {
                   const val = mtDetailRow[i];
                   if (!h && !val) return null;
+                  const isGDriveLink = val && typeof val === "string" && val.includes("drive.google.com");
                   return (
                     <div key={i} className="border-b pb-2">
-                      <div className="text-xs font-semibold text-sky-700/80 uppercase tracking-wide">{h || `Kolom ${i + 1}`}</div>
-                      <div className="text-sm break-words mt-1">
-                        {val || <span className="text-muted-foreground italic">-</span>}
+                      <div className="text-xs font-semibold text-slate-900 bg-slate-100 px-3 py-2 rounded uppercase tracking-wide">{h || `Kolom ${i + 1}`}</div>
+                      <div className="text-sm break-words mt-2 bg-blue-50 px-3 py-2 rounded text-blue-900">
+                        {isGDriveLink ? (
+                          <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline font-medium">
+                            📸 Klik untuk melihat gambar
+                          </a>
+                        ) : (
+                          val || <span className="text-blue-400 italic">-</span>
+                        )}
                       </div>
                     </div>
                   );
