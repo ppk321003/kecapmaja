@@ -91,9 +91,9 @@ const COL_MITRA = {
   periodStart: colIdx("BI"),  // BI - Period Start (dari Mitra Tambahan)
   skor: colIdx("BL"),       // BL - Skor (dari Mitra Tambahan)
   statusSeleksiKompetensi: colIdx("BM"),  // BM - Status Seleksi Kompetensi (dari Mitra Tambahan)
-  sobatId: colIdx("P"),     // P - Sobat ID (untuk matching dengan Google Form)
-  email: colIdx("Q"),       // Q - Email (untuk matching dengan Google Form)
-  statusNik: colIdx("R"),   // R - Status NIK
+  sobatId: colIdx("TP"),    // TP - Sobat ID (untuk matching dengan Google Form)
+  email: colIdx("U"),       // U - Email (untuk matching dengan Google Form)
+  statusNik: colIdx("AL"),  // AL - Status NIK
   statusSeleksiAdmin: colIdx("C"),  // C - Status Seleksi Administrasi (from Mitra Tambahan)
 };
 
