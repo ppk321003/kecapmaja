@@ -295,8 +295,8 @@ export default function MitraSE2026() {
   // Check if user is PPK or Fungsi Neraca
   const isPPK = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Fungsi Neraca";
   
-  // Check if user can edit (PPK or Administrator only)
-  const canEdit = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Administrator";
+  // All roles can perform actions
+  const canEdit = true;
   
   // Data states
   const [rows, setRows] = useState<RowWithMetadata[]>([]);

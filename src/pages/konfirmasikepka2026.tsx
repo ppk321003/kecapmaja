@@ -395,8 +395,8 @@ export default function KonfirmasiKepka2026() {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Check if user can edit (PPK or Administrator)
-  const canEdit = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Administrator";
+  // All roles can perform actions
+  const canEdit = true;
   
   // Responden Sheet
   const [headers, setHeaders] = useState<string[]>([]);
