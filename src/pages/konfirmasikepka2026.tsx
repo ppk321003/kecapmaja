@@ -83,18 +83,18 @@ const COL = {
   tesEnd: colIdx("BS"),     // BS - Test End
 };
 
-// Column mapping untuk MASTER.MITRA
+// Column mapping untuk MASTER.MITRA (Manajemen Mitra sheet A1:S)
 const COL_MITRA = {
   nama: colIdx("A"),        // A - Nama Lengkap
-  kec: colIdx("H"),         // H - Alamat Kecamatan
-  desa: colIdx("I"),        // I - Desa
-  periodStart: colIdx("BI"),  // BI - Period Start (dari Mitra Tambahan)
-  skor: colIdx("BL"),       // BL - Skor (dari Mitra Tambahan)
-  statusSeleksiKompetensi: colIdx("BM"),  // BM - Status Seleksi Kompetensi (dari Mitra Tambahan)
-  sobatId: colIdx("TP"),    // TP - Sobat ID (untuk matching dengan Google Form)
-  email: colIdx("U"),       // U - Email (untuk matching dengan Google Form)
-  statusNik: colIdx("AL"),  // AL - Status NIK
-  statusSeleksiAdmin: colIdx("C"),  // C - Status Seleksi Administrasi (from Mitra Tambahan)
+  kec: colIdx("H"),         // H - Alamat Kec
+  desa: colIdx("I"),        // I - Alamat Desa
+  periodStart: colIdx("BI"),  // BI - Period Start (dari Mitra Tambahan) - NOT IN THIS SHEET
+  skor: colIdx("BL"),       // BL - Skor (dari Mitra Tambahan) - NOT IN THIS SHEET
+  statusSeleksiKompetensi: colIdx("BM"),  // BM - Status Seleksi Kompetensi (dari Mitra Tambahan) - NOT IN THIS SHEET
+  sobatId: colIdx("P"),     // P - SOBAT ID
+  email: colIdx("Q"),       // Q - Email
+  statusNik: colIdx("R"),   // R - Status NIK
+  statusSeleksiAdmin: colIdx("C"),  // C - Status Seleksi (1=Terpilih, 2=Tidak Terpilih)
 };
 
 type Row = string[];
