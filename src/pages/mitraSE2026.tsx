@@ -320,6 +320,8 @@ export default function MitraSE2026() {
   const [filterKec, setFilterKec] = useState<string>("");
   const [filterSobat, setFilterSobat] = useState<string>("*");
   const [filterPakta, setFilterPakta] = useState<string>("*");
+  const [filterAksi, setFilterAksi] = useState<string>("*");
+  const [filterAksiAdmin, setFilterAksiAdmin] = useState<string>("*");
   const [sortKey, setSortKey] = useState<keyof typeof COL>("nama");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -523,6 +525,16 @@ export default function MitraSE2026() {
     [rows]
   );
 
+  const aksiOptions = useMemo(
+    () => Array.from(new Set(rows.map(r => (r[COL.pplPml] || "").toString().trim()).filter(Boolean))).sort(),
+    [rows]
+  );
+
+  const aksiAdminOptions = useMemo(
+    () => Array.from(new Set(rows.map(r => (r[COL.aksiAdmin] || "").toString().trim()).filter(Boolean))).sort(),
+    [rows]
+  );
+
   const filtered = useMemo(() => {
     return rows.filter(r => {
       // Apply search filter
@@ -554,9 +566,17 @@ export default function MitraSE2026() {
         matchPakta = paktaValue === "0";
       }
       
-      return matchSearch && matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak && matchPakta;
+      // Apply Aksi filter (PPL/PML)
+      const aksiValue = (r[COL.pplPml] || "").toString().trim();
+      const matchAksi = filterAksi === "*" || aksiValue === filterAksi;
+      
+      // Apply Aksi Admin filter
+      const aksiAdminValue = (r[COL.aksiAdmin] || "").toString().trim();
+      const matchAksiAdmin = filterAksiAdmin === "*" || aksiAdminValue === filterAksiAdmin;
+      
+      return matchSearch && matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak && matchPakta && matchAksi && matchAksiAdmin;
     });
-  }, [rows, search, filterKec, filterSobat, filterPakta]);
+  }, [rows, search, filterKec, filterSobat, filterPakta, filterAksi, filterAksiAdmin]);
 
   // Calculate kecamatan-filtered count (without search) for locked display
   const kecamatanFilteredCount = useMemo(() => {
@@ -585,9 +605,17 @@ export default function MitraSE2026() {
         matchPakta = paktaValue === "0";
       }
       
-      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak && matchPakta;
+      // Apply Aksi filter (PPL/PML)
+      const aksiValue = (r[COL.pplPml] || "").toString().trim();
+      const matchAksi = filterAksi === "*" || aksiValue === filterAksi;
+      
+      // Apply Aksi Admin filter
+      const aksiAdminValue = (r[COL.aksiAdmin] || "").toString().trim();
+      const matchAksiAdmin = filterAksiAdmin === "*" || aksiAdminValue === filterAksiAdmin;
+      
+      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak && matchPakta && matchAksi && matchAksiAdmin;
     }).length;
-  }, [rows, filterKec, filterSobat, filterPakta]);
+  }, [rows, filterKec, filterSobat, filterPakta, filterAksi, filterAksiAdmin]);
 
   const pageRows = useMemo(() => {
     const sorted = [...filtered].sort((a, b) => {
@@ -664,7 +692,15 @@ export default function MitraSE2026() {
         matchPakta = paktaValue === "0";
       }
       
-      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak && matchPakta;
+      // Apply Aksi filter (PPL/PML)
+      const aksiValue = (r[COL.pplPml] || "").toString().trim();
+      const matchAksi = filterAksi === "*" || aksiValue === filterAksi;
+      
+      // Apply Aksi Admin filter
+      const aksiAdminValue = (r[COL.aksiAdmin] || "").toString().trim();
+      const matchAksiAdmin = filterAksiAdmin === "*" || aksiAdminValue === filterAksiAdmin;
+      
+      return matchKec && isNotTidakDitemukan && matchSobat && isNotDitolak && matchPakta && matchAksi && matchAksiAdmin;
     }).forEach(r => {
       const tipeKegiatan = (r[COL.tipeKegiatan] || "").toString().trim();
       const pplPml = (r[COL.pplPml] || "").toString().trim();
@@ -685,7 +721,7 @@ export default function MitraSE2026() {
       rutin: rutinCount,
       total: pplCount + pmlCount,
     };
-  }, [rows, filterKec, filterSobat, filterPakta]);
+  }, [rows, filterKec, filterSobat, filterPakta, filterAksi, filterAksiAdmin]);
 
   // Set default filterKec untuk non-PPK ke kecamatan pertama
   useEffect(() => {
@@ -697,7 +733,7 @@ export default function MitraSE2026() {
     }
   }, [isPPK, kecOptions]);
 
-  useEffect(() => { setPage(1); }, [search, filterKec, filterSobat, filterPakta, pageSize]);
+  useEffect(() => { setPage(1); }, [search, filterKec, filterSobat, filterPakta, filterAksi, filterAksiAdmin, pageSize]);
 
   // Update cell value ke sheet Olah
   const updateCellValue = async (rowIdx: number, colLetter: string, newValue: string) => {
@@ -808,6 +844,20 @@ export default function MitraSE2026() {
                     <SelectContent>
                       <SelectItem value="*">Semua Pakta</SelectItem>
                       {paktaOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterAksi} onValueChange={setFilterAksi}>
+                    <SelectTrigger className="w-full md:w-40"><SelectValue placeholder="Aksi" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="*">Semua Aksi</SelectItem>
+                      {aksiOptions.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterAksiAdmin} onValueChange={setFilterAksiAdmin}>
+                    <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Aksi Admin" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="*">Semua Aksi Admin</SelectItem>
+                      {aksiAdminOptions.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>

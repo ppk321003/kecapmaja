@@ -1668,14 +1668,6 @@ export default function KonfirmasiKepka2026() {
                       </SelectContent>
                     </Select>
                     
-                    <Select value={filterStatusSeleksi} onValueChange={setFilterStatusSeleksi}>
-                      <SelectTrigger className="w-auto h-9 text-xs"><SelectValue placeholder="Seleksi Admin" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Semua Status Seleksi Administrasi</SelectItem>
-                        {statusSeleksiOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    
                     <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
                       <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -1716,13 +1708,12 @@ export default function KonfirmasiKepka2026() {
                             <TableHead className="text-center">Screenshot HP</TableHead>
                             <TableHead className="min-w-40">Catatan PJ</TableHead>
                             <TableHead className="text-center">Catatan Kecap Maja</TableHead>
-                            <TableHead className="text-center">Status Seleksi Administrasi</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {pageRows.length === 0 ? (
-                            <TableRow><TableCell colSpan={12} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">Tidak ada data</TableCell></TableRow>
                           ) : pageRows.map((r, i) => (
                             <TableRow key={i} className={isNotVerified(r[COL.status]) ? "bg-orange-50/30" : isVerified(r[COL.status]) ? "bg-emerald-50/30" : isMismatch(r[COL.status]) ? "bg-red-50/30" : ""}>
                               <TableCell className="text-muted-foreground">{(currentPage - 1) * pageSize + i + 1}</TableCell>
@@ -1922,13 +1913,6 @@ export default function KonfirmasiKepka2026() {
                                     </button>
                                   );
                                 })()}
-                              </TableCell>
-
-                              {/* Status Seleksi Administrasi */}
-                              <TableCell className="text-center">
-                                <span className="text-sm text-slate-600">
-                                  {r[COL.statusSeleksi] || "-"}
-                                </span>
                               </TableCell>
 
                               {/* Aksi */}
