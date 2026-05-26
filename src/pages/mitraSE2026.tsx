@@ -526,7 +526,22 @@ export default function MitraSE2026() {
   );
 
   const aksiOptions = useMemo(
-    () => Array.from(new Set(rows.map(r => (r[COL.pplPml] || "").toString().trim()).filter(Boolean))).sort(),
+    () => {
+      // Predefined Aksi options
+      const predefinedOptions = ["PPL", "PML", "Cadangan", "PPL UB", "PML UB"];
+      // Get additional options from data
+      const dataOptions = Array.from(new Set(rows.map(r => (r[COL.pplPml] || "").toString().trim()).filter(Boolean)));
+      // Combine and deduplicate, maintaining predefined order
+      const allOptions = Array.from(new Set([...predefinedOptions, ...dataOptions]));
+      return allOptions.sort((a, b) => {
+        const aIndex = predefinedOptions.indexOf(a);
+        const bIndex = predefinedOptions.indexOf(b);
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        return a.localeCompare(b);
+      });
+    },
     [rows]
   );
 
@@ -1403,6 +1418,8 @@ export default function MitraSE2026() {
                                               <SelectItem value="PPL">PPL</SelectItem>
                                               <SelectItem value="PML">PML</SelectItem>
                                               <SelectItem value="Cadangan">Cadangan</SelectItem>
+                                              <SelectItem value="PPL UB">PPL UB</SelectItem>
+                                              <SelectItem value="PML UB">PML UB</SelectItem>
                                             </SelectContent>
                                           </Select>
                                         )}
