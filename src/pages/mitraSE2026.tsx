@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, Loader2, Eye, ArrowUpDown, Users, AlertTriangle, CheckCircle2, XCircle, Circle } from "lucide-react";
-import { PelatihanSE26 } from "@/components/PelatihanSE26";
 
 type Row = string[];
 
@@ -806,11 +805,6 @@ export default function MitraSE2026() {
             <TabsTrigger value="rekomendasi" className="text-xs md:text-sm bg-purple-50 hover:bg-purple-100">
               Rekomendasi
             </TabsTrigger>
-            {isPPK && (
-              <TabsTrigger value="alokasi" className="text-xs md:text-sm bg-orange-50 hover:bg-orange-100">
-                Pelatihan SE26
-              </TabsTrigger>
-            )}
           </TabsList>
 
           <TabsContent value="rekomendasi" className="space-y-4 mt-6">
@@ -1571,13 +1565,6 @@ export default function MitraSE2026() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* TAB: PELATIHAN SE26 */}
-          {isPPK && (
-            <TabsContent value="alokasi" className="space-y-4 mt-6">
-              <PelatihanSE26 />
-            </TabsContent>
-          )}
         </Tabs>
 
         {/* Validation Notes Dialog - Catatan Kecap Maja */}

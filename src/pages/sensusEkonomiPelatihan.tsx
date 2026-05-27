@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, MapPin, Hotel, Calendar, Users } from "lucide-react";
+import { Search, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, MapPin, Hotel, Calendar, Users, BookOpen } from "lucide-react";
+import { PelatihanSE26 } from "@/components/PelatihanSE26";
 
 type Row = string[];
 
@@ -151,6 +152,7 @@ export default function SensusEkonomiPelatihan() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [showTable, setShowTable] = useState(false);
+  const [showPelatihan, setShowPelatihan] = useState(false);
 
   // Get dynamic column indices based on current headers
   const COL = useMemo(() => getColumnIndices(headers), [headers]);
@@ -528,13 +530,33 @@ export default function SensusEkonomiPelatihan() {
             </div>
 
             {/* Button to View Table */}
-            <div className="flex justify-center pt-6">
+            <div className="flex flex-col sm:flex-row justify-center gap-4 pt-6">
               <Button
-                onClick={() => setShowTable(true)}
+                onClick={() => {
+                  setShowTable(true);
+                  setShowPelatihan(false);
+                }}
                 className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-700 hover:via-blue-600 hover:to-cyan-600 text-white font-bold py-4 px-16 rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 text-lg group"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   Lihat Daftar Petugas
+                  <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transform translate-x-full group-hover:translate-x-0 transition-all duration-500" />
+              </Button>
+
+              <Button
+                onClick={() => {
+                  setShowTable(true);
+                  setShowPelatihan(true);
+                }}
+                className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-green-500 to-teal-500 hover:from-emerald-700 hover:via-green-600 hover:to-teal-600 text-white font-bold py-4 px-16 rounded-xl shadow-2xl hover:shadow-emerald-500/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 text-lg group"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  <BookOpen className="w-6 h-6" />
+                  Pelatihan SE26
                   <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
@@ -607,7 +629,7 @@ export default function SensusEkonomiPelatihan() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : !showPelatihan ? (
           // Data Table Screen
           <Card className="bg-slate-800 border-slate-700">
             <CardHeader className="pb-3">
@@ -864,6 +886,33 @@ export default function SensusEkonomiPelatihan() {
               </div>
             </CardContent>
           </Card>
+        ) : (
+          // Pelatihan SE26 Screen
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-white">Pelatihan SE26</h2>
+                <p className="text-slate-400 text-sm mt-1">Data pelatihan Sensus Ekonomi 2026 dari Google Sheets</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowTable(false);
+                  setShowPelatihan(false);
+                  setFilterKecamatan("all");
+                  setFilterHotel("all");
+                  setFilterKelas("all");
+                  setFilterInstruktur("all");
+                  setSearch("");
+                  setPage(1);
+                }}
+                className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+              >
+                ← Kembali ke Menu
+              </Button>
+            </div>
+            <PelatihanSE26 />
+          </div>
         )}
       </div>
     </div>
