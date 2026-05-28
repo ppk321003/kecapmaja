@@ -10,25 +10,25 @@ import { PelatihanSE26 } from "@/components/PelatihanSE26";
 
 type Row = string[];
 
-const SPREADSHEET_ID = "1iCZGbfPgRMiXGO6q_vtklOsJ4gFQoUS2nMwS-HlY0r4";
-const SHEET_NAME = "PETUGAS SE26";
-const RANGE = `${SHEET_NAME}!A1:Z`; // Expanded to Z to catch all columns
+const SPREADSHEET_ID = "1qjI9ZCRGeoe-suPWP8dyjUtqejjBO8qiRaPIyextcg4";
+const SHEET_NAME = "GABUNG KELAS";
+const RANGE = `${SHEET_NAME}!A1:M`; // Range A:M for all data columns
 
 // Column header names (source of truth)
 const COLUMN_HEADERS = {
-  no: "NO",
-  isi: "ISI",
-  kecamatan: "KECAMATAN",
-  nama_petugas: "NAMA PETUGAS",
+  no: "No",
   sobat_id: "SOBAT ID",
-  jabatan: "JABATAN",
+  nama_petugas: "Nama Petugas",
+  nik: "NIK",
+  jabatan: "Jabatan",
+  kecamatan: "Kecamatan",
+  email: "email",
   bank: "BANK",
   nomor_rekening: "NOMOR REKENING",
   idkelas: "IDKELAS",
   hotel: "Hotel",
   gelombang: "Gelombang",
   kelas: "Kelas",
-  tanggal: "Tanggal",
 };
 
 // Alternative header names for flexible matching
@@ -37,6 +37,9 @@ const HEADER_ALIASES: { [key: string]: string[] } = {
   gelombang: ["Gelombang", "Gelombang Pelatihan", "Wave"],
   hotel: ["Hotel", "Hotel Tempat Pelatihan", "Tempat"],
   kelas: ["Kelas", "Kelas Pelatihan", "Class"],
+  nik: ["NIK", "No Induk"],
+  email: ["email", "Email", "EMAIL", "e-mail"],
+  jabatan: ["Jabatan", "JABATAN", "Position", "Role"],
 };
 
 // Natural sort for class names (A, B, C, ... AA, AB, AC ...)
@@ -59,6 +62,39 @@ const getJabatanPriority = (jabatan: string): number => {
   if (j === "Panitia 1") return 2;
   if (j === "Panitia 2") return 3;
   return 4; // others
+};
+
+// Map kelas to date range (Kelas A-L, M-X, Y-AJ, AK-AV)
+const getTanggalFromKelas = (kelas: string): string => {
+  const k = (kelas || "").toString().trim().toUpperCase();
+  if (!k) return "-";
+  
+  // Convert kelas to numeric value for range checking
+  let value = 0;
+  for (let i = 0; i < k.length; i++) {
+    const code = k.charCodeAt(i) - 64; // A=1, B=2, ..., Z=26
+    if (code < 1 || code > 26) return "-";
+    value = value * 26 + code;
+  }
+  
+  // A-L = 1-4 Juni 2026 (A=1, B=2, ... L=12)
+  if (value >= 1 && value <= 12) {
+    return "1-4 Juni 2026";
+  }
+  // M-X = 4-7 Juni 2026 (M=13, N=14, ... X=24)
+  if (value >= 13 && value <= 24) {
+    return "4-7 Juni 2026";
+  }
+  // Y-AJ = 8-11 Juni 2026 (Y=25, Z=26, AA=27, AB=28, AC=29, AD=30, AE=31, AF=32, AG=33, AH=34, AI=35, AJ=36)
+  if (value >= 25 && value <= 36) {
+    return "8-11 Juni 2026";
+  }
+  // AK-AV = 11-14 Juni 2026 (AK=37, AL=38, ... AV=48)
+  if (value >= 37 && value <= 48) {
+    return "11-14 Juni 2026";
+  }
+  
+  return "-";
 };
 
 // Color palette for different class badges - alternating warm/cool for maximum contrast
@@ -123,18 +159,18 @@ const findColumnIndex = (headers: string[], headerKey: string): number => {
 // Get column indices dynamically
 const getColumnIndices = (headers: string[]) => ({
   no: findColumnIndex(headers, "no"),
-  isi: findColumnIndex(headers, "isi"),
-  kecamatan: findColumnIndex(headers, "kecamatan"),
-  nama_petugas: findColumnIndex(headers, "nama_petugas"),
   sobat_id: findColumnIndex(headers, "sobat_id"),
+  nama_petugas: findColumnIndex(headers, "nama_petugas"),
+  nik: findColumnIndex(headers, "nik"),
   jabatan: findColumnIndex(headers, "jabatan"),
+  kecamatan: findColumnIndex(headers, "kecamatan"),
+  email: findColumnIndex(headers, "email"),
   bank: findColumnIndex(headers, "bank"),
   nomor_rekening: findColumnIndex(headers, "nomor_rekening"),
   idkelas: findColumnIndex(headers, "idkelas"),
   hotel: findColumnIndex(headers, "hotel"),
   gelombang: findColumnIndex(headers, "gelombang"),
   kelas: findColumnIndex(headers, "kelas"),
-  tanggal: findColumnIndex(headers, "tanggal"),
 });
 
 export default function SensusEkonomiPelatihan() {
@@ -318,9 +354,15 @@ export default function SensusEkonomiPelatihan() {
       if (
         filterInstruktur !== "all" &&
         COL.nama_petugas !== -1 &&
-        (r[COL.nama_petugas] || "").toString().trim() !== filterInstruktur
-      )
-        return false;
+        COL.jabatan !== -1
+      ) {
+        const nama = (r[COL.nama_petugas] || "").toString().trim();
+        const jabatan = (r[COL.jabatan] || "").toString().trim();
+        const validJabatan = ["Instruktur Daerah", "Panitia 1", "Panitia 2"];
+        if (nama !== filterInstruktur || !validJabatan.includes(jabatan)) {
+          return false;
+        }
+      }
       if (q) {
         return r.some((c) => (c || "").toString().toLowerCase().includes(q));
       }
@@ -335,7 +377,7 @@ export default function SensusEkonomiPelatihan() {
     const isBlankColumn = blankColumns.includes(sortKey);
 
     out = [...out].sort((a, b) => {
-      // When any filter is active, prioritize by jabatan first
+      // ALWAYS prioritize by jabatan first when filter is active
       const isAnyFilterActive = filterKelas !== "all" || filterHotel !== "all" || filterKecamatan !== "all" || filterInstruktur !== "all";
       
       if (isAnyFilterActive && COL.jabatan !== -1) {
@@ -344,9 +386,11 @@ export default function SensusEkonomiPelatihan() {
         const aPriority = getJabatanPriority(aJabatan);
         const bPriority = getJabatanPriority(bJabatan);
         
+        // Priority order: Instruktur Daerah (1) → Panitia 1 (2) → Panitia 2 (3) → Peserta (4)
         if (aPriority !== bPriority) {
           return aPriority - bPriority;
         }
+        // If same priority (same jabatan), then sort by sortKey
       }
 
       const av = (a[sortColIdx] || "").toString().trim().toLowerCase();
@@ -549,8 +593,7 @@ export default function SensusEkonomiPelatihan() {
 
               <Button
                 onClick={() => {
-                  setShowTable(true);
-                  setShowPelatihan(true);
+                  window.open("https://docs.google.com/spreadsheets/d/1qjI9ZCRGeoe-suPWP8dyjUtqejjBO8qiRaPIyextcg4/edit?gid=1725792369#gid=1725792369", "_blank");
                 }}
                 className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-green-500 to-teal-500 hover:from-emerald-700 hover:via-green-600 hover:to-teal-600 text-white font-bold py-4 px-16 rounded-xl shadow-2xl hover:shadow-emerald-500/50 transition-all duration-300 transform hover:scale-110 hover:-translate-y-1 text-lg group"
               >
@@ -747,11 +790,11 @@ export default function SensusEkonomiPelatihan() {
                         </div>
                       </TableHead>
                       <TableHead
-                        className="w-32 cursor-pointer text-slate-300"
+                        className="w-40 cursor-pointer text-slate-300"
                         onClick={() => toggleSort("tanggal")}
                       >
                         <div className="flex items-center gap-1">
-                          Tanggal <ArrowUpDown className="h-3 w-3" />
+                          Tanggal Pelaksanaan <ArrowUpDown className="h-3 w-3" />
                         </div>
                       </TableHead>
                     </TableRow>
@@ -801,7 +844,10 @@ export default function SensusEkonomiPelatihan() {
                             })()}
                           </TableCell>
                           <TableCell className="text-sm text-slate-200 py-1">
-                            {COL.tanggal !== -1 ? r[COL.tanggal] || "-" : "-"}
+                            {(() => {
+                              const kelasValue = COL.kelas !== -1 ? r[COL.kelas] || "" : "";
+                              return getTanggalFromKelas(kelasValue);
+                            })()}
                           </TableCell>
                         </TableRow>
                       ))
