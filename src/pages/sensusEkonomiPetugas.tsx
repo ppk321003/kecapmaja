@@ -12,6 +12,7 @@ import { OptimizedImage } from "@/components/OptimizedImage";
 type Row = string[];
 
 const SPREADSHEET_ID = "1iCZGbfPgRMiXGO6q_vtklOsJ4gFQoUS2nMwS-HlY0r4";
+// Try SCRAPING sheet without PENDATAAN
 const SHEET_NAME = "SCRAPING";
 const RANGE = `${SHEET_NAME}!A1:BT`;
 
@@ -84,20 +85,38 @@ export default function SensusEkonomiPetugas() {
     (async () => {
       try {
         setLoading(true);
+        console.log("📊 Fetching Petugas data...", { SPREADSHEET_ID, SHEET_NAME, RANGE });
         const { data, error } = await supabase.functions.invoke("google-sheets", {
           body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: RANGE },
         });
-        if (error) throw error;
+        
+        console.log("📡 Full response:", { data, error, dataType: typeof data });
+        
+        if (error) {
+          console.error("❌ Supabase error:", error);
+          throw error;
+        }
+        
         const values: Row[] = data?.values || [];
+        console.log("✅ Data received:", { 
+          valuesLength: values?.length, 
+          valuesType: typeof values,
+          firstRow: values?.[0],
+          allData: data 
+        });
+        
         if (values.length === 0) {
+          console.warn("⚠️ No data returned from sheet - values is empty");
           setHeaders([]);
           setRows([]);
         } else {
           setHeaders(values[0]);
           const dataRows = values.slice(1).filter(r => r && r.some(c => (c || "").toString().trim() !== ""));
+          console.log("📈 Processed rows:", { total: values.length, filtered: dataRows.length });
           setRows(dataRows);
         }
       } catch (e: any) {
+        console.error("🔴 Error loading data:", e);
         setError(e.message || "Gagal memuat data");
       } finally {
         setLoading(false);
