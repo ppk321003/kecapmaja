@@ -11,10 +11,10 @@ import { OptimizedImage } from "@/components/OptimizedImage";
 
 type Row = string[];
 
-const SPREADSHEET_ID = "1iCZGbfPgRMiXGO6q_vtklOsJ4gFQoUS2nMwS-HlY0r4";
-// Try SCRAPING sheet without PENDATAAN
-const SHEET_NAME = "SCRAPING";
-const RANGE = `${SHEET_NAME}!A1:BT`;
+const SPREADSHEET_ID = "1qjI9ZCRGeoe-suPWP8dyjUtqejjBO8qiRaPIyextcg4";
+// Using SCRAPING.PENDATAAN sheet - contains 825 data records
+const SHEET_NAME = "SCRAPING.PENDATAAN";
+const RANGE = `${SHEET_NAME}!A:BT`; // Full column range to capture all 825 records
 
 // Column header names (source of truth)
 const COLUMN_HEADERS = {
