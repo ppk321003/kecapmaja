@@ -1229,8 +1229,8 @@ export default function RekapSPKBAST() {
         </Card>
       )}
 
-      {/* Bulk Actions Card - hanya untuk PPK */}
-      {isPPK && filteredAndSortedData.length > 0 && (
+      {/* Bulk Actions Card - hanya untuk PPK satker 3210 */}
+      {(isPPK && user?.satker === "3210") && filteredAndSortedData.length > 0 && (
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-base">
@@ -1245,8 +1245,8 @@ export default function RekapSPKBAST() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Bulk Notif Actions - hanya untuk PPK */}
-              {isPPK && (
+              {/* Bulk Notif Actions - hanya untuk PPK satker 3210 */}
+              {(isPPK && user?.satker === "3210") && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">Notifikasi Massal</Label>
@@ -1478,8 +1478,8 @@ export default function RekapSPKBAST() {
                       </button>
                     </TableHead>
                     <TableHead className="w-16 text-center">SBML</TableHead>
-                    {/* Kolom Notif Mitra - hanya untuk PPK */}
-                    {isPPK && (
+                    {/* Kolom Notif Mitra - hanya untuk PPK satker 3210 */}
+                    {(isPPK && user?.satker === "3210") && (
                       <TableHead className="w-32 text-center">Notif Mitra</TableHead>
                     )}
                     {/* Kolom Status TTD - untuk semua role */}
@@ -1555,8 +1555,8 @@ export default function RekapSPKBAST() {
                         )}
                       </TableCell>
 
-                      {/* Kolom Notif Mitra - hanya untuk PPK */}
-                      {isPPK && (
+                      {/* Kolom Notif Mitra - hanya untuk PPK satker 3210 */}
+                      {(isPPK && user?.satker === "3210") && (
                         <TableCell className="text-center">
                           <div className="flex flex-col items-center gap-3">
                             <NotifTooltip status={row.statusNotif}>
