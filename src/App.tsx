@@ -59,6 +59,7 @@ import KonfirmasiKepka2026 from "./pages/konfirmasikepka2026";
 import MitraSE2026 from "./pages/mitraSE2026";
 import SensusEkonomiPetugas from "./pages/sensusEkonomiPetugas";
 import SensusEkonomiPelatihan from "./pages/sensusEkonomiPelatihan";
+import MonitoringLapangan from "./pages/sensusEkonomi2026/MonitoringLapangan";
 import BahanRevisiAnggaran from "./components/bahanrevisi/BahanRevisiAnggaran";
 
 const queryClient = new QueryClient();
@@ -125,6 +126,7 @@ const App = () => (
             <Route path="/konfirmasikepka2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/petugas" element={<ProtectedRoute><Layout><SensusEkonomiPetugas /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/pelatihan" element={<ProtectedRoute><Layout><SensusEkonomiPelatihan /></Layout></ProtectedRoute>} />
+            <Route path="/sensus-ekonomi-2026/monitoring-lapangan" element={<ProtectedRoute><Layout><MonitoringLapangan /></Layout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>

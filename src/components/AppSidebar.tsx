@@ -22,6 +22,7 @@ import {
   Plus,
   BarChart3,
   Smartphone,
+  TrendingUp,
 } from "lucide-react";
 
 import {
@@ -70,17 +71,17 @@ const kepegawaianItems = [
   { title: "Padamel | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
 ];
 
-// MENU GROUP: SENSUS EKONOMI 2026 SUB ITEMS
-const sensusEkonomiSubItems = [
+// MENU GROUP: SENSUS EKONOMI 2026 ITEMS (MAIN MENU GROUP NOW)
+const sensusEkonomiItems = [
   { title: "Petugas", url: "/sensus-ekonomi-2026/petugas", icon: Users },
   { title: "Pelatihan", url: "/sensus-ekonomi-2026/pelatihan", icon: BookOpen },
+  { title: "Monitorin Lapangan", url: "/sensus-ekonomi-2026/monitoring-lapangan", icon: TrendingUp },
 ];
 
 // MENU GROUP: REKRUTMEN
 const rekrutmenItems = [
   { title: "Mitra Tambahan 2026", url: "/mitra-tambahan-2026", icon: FileCheck, conditional: "showRekrutmen" },
   { title: "Mitra SE2026", url: "/mitra-se2026", icon: Users, conditional: "showRekrutmen" },
-  { title: "Sensus Ekonomi 2026", url: "/sensus-ekonomi-2026", icon: BarChart3, conditional: "showRekrutmen", hasSubItems: true, subItems: sensusEkonomiSubItems },
 ];
 
 // MENU GROUP: e-DOKUMEN SUB ITEMS
@@ -129,15 +130,15 @@ export function AppSidebar() {
     keuangan: false,
     pengadaan: false,
     kepegawaian: false,
+    sensusEkonomi: false,
     rekrutmen: false,
     dokumen: false,
     adminUtilitas: false,
   });
 
-  // State untuk track nested submenu items
+  // State untuk track nested submenu items (for e-Dokumen only now)
   const [expandedSubItems, setExpandedSubItems] = useState<Record<string, boolean>>({
     eDokumen: currentPath.startsWith("/e-dokumen"),
-    sensusEkonomi: currentPath.startsWith("/sensus-ekonomi-2026"),
   });
 
   const toggleSubItem = (itemKey: string) => {
@@ -662,6 +663,59 @@ export function AppSidebar() {
                                   : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"
                               }
                             >
+                              {open && <span>{item.title}</span>}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                )}
+              </SidebarGroup>
+            )}
+
+            {/* MENU GROUP: SENSUS EKONOMI 2026 */}
+            {getVisibleItems(sensusEkonomiItems).length > 0 && (
+              <SidebarGroup className="px-3 py-1">
+                <SidebarGroupContent className="mt-0">
+                  <SidebarMenu className="space-y-1">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <button
+                          onClick={() => toggleGroup("sensusEkonomi")}
+                          className={"flex items-center justify-between w-full transition-all duration-200 " + (true ? "text-white font-semibold" : "text-white/90 hover:text-white")}
+                        >
+                          <div className="flex items-center gap-3">
+                            <BarChart3 className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                            {open && <span className="font-medium">Sensus Ekonomi 2026</span>}
+                          </div>
+                          <ChevronDown
+                            className="h-4 w-4 transition-transform duration-300"
+                            style={{
+                              transform: expandedGroups.sensusEkonomi ? "rotate(180deg)" : "rotate(0deg)",
+                            }}
+                          />
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+                {expandedGroups.sensusEkonomi && (
+                  <SidebarGroupContent className="mt-1">
+                    <SidebarMenu className="space-y-0.5 pl-2">
+                      {getVisibleItems(sensusEkonomiItems).map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild>
+                            <NavLink
+                              to={item.url}
+                              end
+                              className={({ isActive }) =>
+                                isActive
+                                  ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200"
+                                  : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"
+                              }
+                            >
+                              <item.icon className="h-3.5 w-3.5 transition-transform duration-200 text-white/80" />
                               {open && <span>{item.title}</span>}
                             </NavLink>
                           </SidebarMenuButton>
