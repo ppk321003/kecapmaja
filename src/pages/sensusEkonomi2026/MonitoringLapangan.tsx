@@ -67,6 +67,8 @@ interface DashboardStats {
   averageSubmit: number;
   topKecamatan: { name: string; value: number; totalSubmit?: number; countPPL?: number };
   lowestKecamatan: { name: string; value: number; totalSubmit?: number; countPPL?: number };
+  topKecamatanByPercentage?: { name: string; value: number; totalSubmit?: number; totalAssignments?: number };
+  lowestKecamatanByPercentage?: { name: string; value: number; totalSubmit?: number; totalAssignments?: number };
 }
 
 interface ChartData {
@@ -495,6 +497,15 @@ export function MonitoringLapangan() {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
+      // Top & Lowest Kecamatan by Percentage
+      const topKecamatanByPercentage = chartDataKecamatanPercentage.length > 0
+        ? [...chartDataKecamatanPercentage].sort((a, b) => b.value - a.value)[0]
+        : { name: "-", value: 0, totalSubmit: 0, totalAssignments: 0 };
+
+      const lowestKecamatanByPercentage = chartDataKecamatanPercentage.length > 0
+        ? [...chartDataKecamatanPercentage].sort((a, b) => a.value - b.value)[0]
+        : { name: "-", value: 0, totalSubmit: 0, totalAssignments: 0 };
+
       // Chart data for PPL Top 10
       const pplMap = new Map<string, number>();
       Array.from(dataMap.values()).forEach((row) => {
@@ -523,7 +534,7 @@ export function MonitoringLapangan() {
           rows,
           stats: { totalKecamatan, totalSubmit, averageSubmit },
         },
-        dashboardStats: { totalKecamatan, totalSubmit, averageSubmit, topKecamatan, lowestKecamatan },
+        dashboardStats: { totalKecamatan, totalSubmit, averageSubmit, topKecamatan, lowestKecamatan, topKecamatanByPercentage, lowestKecamatanByPercentage },
         chartDataKecamatan,
         chartDataKecamatanAll,
         chartDataKecamatanPercentage,
@@ -603,21 +614,7 @@ export function MonitoringLapangan() {
           <TabsContent value="dashboard" className="space-y-6 mt-6">
             {/* Overview Stats */}
             {dashboardStats && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="border-0 shadow-sm bg-white hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-slate-600">
-                      Total Kecamatan Unik
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-slate-900">
-                      {dashboardStats.totalKecamatan}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">dari 26 kecamatan</p>
-                  </CardContent>
-                </Card>
-
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <Card className="border-0 shadow-sm bg-white hover:shadow-md transition-shadow">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-slate-600">
@@ -632,10 +629,52 @@ export function MonitoringLapangan() {
                   </CardContent>
                 </Card>
 
+                <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-blue-700">
+                      🏆 Performa Terbaik Persentase
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-blue-900">
+                      {dashboardStats.topKecamatanByPercentage.name}
+                    </div>
+                    <p className="text-sm text-blue-700 font-semibold mt-1">
+                      {dashboardStats.topKecamatanByPercentage.value.toLocaleString("id-ID")}%
+                    </p>
+                    {dashboardStats.topKecamatanByPercentage.totalSubmit && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {dashboardStats.topKecamatanByPercentage.totalSubmit.toLocaleString("id-ID")} dari {dashboardStats.topKecamatanByPercentage.totalAssignments.toLocaleString("id-ID")}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-sm bg-gradient-to-br from-orange-50 to-orange-100">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-orange-700">
+                      📉 Performa Terburuk Persentase
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-orange-900">
+                      {dashboardStats.lowestKecamatanByPercentage.name}
+                    </div>
+                    <p className="text-sm text-orange-700 font-semibold mt-1">
+                      {dashboardStats.lowestKecamatanByPercentage.value.toLocaleString("id-ID")}%
+                    </p>
+                    {dashboardStats.lowestKecamatanByPercentage.totalSubmit && (
+                      <p className="text-xs text-orange-600 mt-1">
+                        {dashboardStats.lowestKecamatanByPercentage.totalSubmit.toLocaleString("id-ID")} dari {dashboardStats.lowestKecamatanByPercentage.totalAssignments.toLocaleString("id-ID")}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-green-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-green-700">
-                      🏆 Performa Terbaik
+                      🏆 Performa Terbaik Submit
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -656,7 +695,7 @@ export function MonitoringLapangan() {
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-red-50 to-red-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-red-700">
-                      📉 Performa Terburuk
+                      📉 Performa Terburuk Submit
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -685,7 +724,7 @@ export function MonitoringLapangan() {
                   return (
                     <>
                       <CardTitle className="text-lg">
-                        📊 Persentase Submit per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}%
+                        📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}%
                       </CardTitle>
                       <CardDescription>Persentase jumlah submit terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad)</CardDescription>
                     </>
