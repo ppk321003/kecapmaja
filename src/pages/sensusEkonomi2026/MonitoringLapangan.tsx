@@ -1144,6 +1144,9 @@ export function MonitoringLapangan() {
                             <TableHead className="w-12 text-center text-slate-700 font-semibold">
                               No
                             </TableHead>
+                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
+                              Nama PPL
+                            </TableHead>
                             <TableHead
                               className="text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => toggleSort("kecamatan")}
@@ -1152,9 +1155,6 @@ export function MonitoringLapangan() {
                                 Kecamatan
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
-                            </TableHead>
-                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
-                              Nama PPL
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -1192,11 +1192,11 @@ export function MonitoringLapangan() {
                                 <TableCell className="text-center text-slate-600 font-medium w-12">
                                   {startIndex + index + 1}
                                 </TableCell>
-                                <TableCell className="font-medium text-slate-900 px-4 py-3">
-                                  {row.kecamatan}
-                                </TableCell>
                                 <TableCell className="text-slate-700 px-4 py-3">
                                   {row.nama_ppl || "-"}
+                                </TableCell>
+                                <TableCell className="font-medium text-slate-900 px-4 py-3">
+                                  {row.kecamatan}
                                 </TableCell>
                                 <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                   {row.jumlah_submit.toLocaleString("id-ID")}
@@ -1229,7 +1229,7 @@ export function MonitoringLapangan() {
                                   </span>
                                 </TableCell>
                                 <TableCell className="text-xs text-slate-600 px-4 py-3 max-w-xs">
-                                  <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                                  <div className="bg-blue-50 rounded px-2 py-1">
                                     {scheduleStatus.notification}
                                   </div>
                                 </TableCell>
