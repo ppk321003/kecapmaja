@@ -126,7 +126,7 @@ const App = () => (
             <Route path="/konfirmasikepka2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/petugas" element={<ProtectedRoute><Layout><SensusEkonomiPetugas /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/pelatihan" element={<ProtectedRoute><Layout><SensusEkonomiPelatihan /></Layout></ProtectedRoute>} />
-            <Route path="/sensus-ekonomi-2026/monitoring-lapangan" element={<ProtectedRoute><Layout><MonitoringLapangan /></Layout></ProtectedRoute>} />
+            <Route path="/sensus-ekonomi-2026/monitoring-lapangan" element={<Layout><MonitoringLapangan /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
