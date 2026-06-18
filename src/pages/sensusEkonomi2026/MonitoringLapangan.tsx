@@ -31,6 +31,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
+  Line,
+  ComposedChart,
 } from "recharts";
 
 // Schedule: 15 Juni - 31 Agustus 2026 (77 hari)
@@ -174,15 +177,14 @@ const getScheduleStatus = (jumlahSubmit: number): {
   };
 };
 
-// Function to get color gradient based on value (red to green)
-const getColorGradient = (value: number, min: number, max: number): string => {
-  if (max === min) return "#22c55e";
-  const ratio = (value - min) / (max - min);
-  if (ratio <= 0.2) return "#dc2626"; // Red
-  if (ratio <= 0.4) return "#f97316"; // Orange
-  if (ratio <= 0.6) return "#eab308"; // Yellow
-  if (ratio <= 0.8) return "#84cc16"; // Lime
-  return "#22c55e"; // Green
+// Function to get color gradient based on TARGET (7-12), not min-max
+const getColorGradient = (value: number): string => {
+  // Berbasis target: 7-12 submit/hari
+  if (value >= MAX_DAILY_TARGET) return "#22c55e"; // Hijau (>= 12)
+  if (value >= 10) return "#84cc16"; // Lime (10-11.99)
+  if (value >= MIN_DAILY_TARGET) return "#eab308"; // Yellow (7-9.99)
+  if (value >= 5) return "#f97316"; // Orange (5-6.99)
+  return "#dc2626"; // Red (< 5)
 };
 
 // PERBAIKAN: Custom Tooltip untuk Progres Submit Kecamatan
@@ -556,20 +558,6 @@ export function MonitoringLapangan() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-sm bg-white hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-slate-600">
-                      Rata-rata Submit
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-slate-900">
-                      {dashboardStats.averageSubmit.toLocaleString("id-ID")}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">per PPL</p>
-                  </CardContent>
-                </Card>
-
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-green-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-green-700">
@@ -590,6 +578,27 @@ export function MonitoringLapangan() {
                     )}
                   </CardContent>
                 </Card>
+
+                <Card className="border-0 shadow-sm bg-gradient-to-br from-red-50 to-red-100">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-red-700">
+                      📉 Performa Terburuk
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-red-900">
+                      {dashboardStats.lowestKecamatan.name}
+                    </div>
+                    <p className="text-sm text-red-700 font-semibold mt-1">
+                      Rata-rata/hari: {dashboardStats.lowestKecamatan.value.toLocaleString("id-ID")} submit/PPL
+                    </p>
+                    {dashboardStats.lowestKecamatan.totalSubmit && (
+                      <p className="text-xs text-red-600 mt-1">
+                        Total: {dashboardStats.lowestKecamatan.totalSubmit.toLocaleString("id-ID")} submit ({dashboardStats.lowestKecamatan.countPPL} PPL)
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             )}
 
@@ -597,7 +606,7 @@ export function MonitoringLapangan() {
             <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg">📊 Progres Submit Kecamatan</CardTitle>
-                <CardDescription>Rata-rata submit per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Warna hijau = performa terbaik, merah = performa terendah</CardDescription>
+                <CardDescription>Rata-rata submit per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥12/hari | Kuning 7-11/hari | Merah &lt;7/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -606,27 +615,48 @@ export function MonitoringLapangan() {
                   </div>
                 ) : chartDataKecamatanAll.length > 0 ? (
                   <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={chartDataKecamatanAll}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis
-                        dataKey="name"
-                        angle={-45}
-                        textAnchor="end"
-                        height={100}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip content={<KecamatanTooltip />} />
-                      <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                        {chartDataKecamatanAll.map((entry, index) => {
-                          const values = chartDataKecamatanAll.map(d => d.value);
-                          const minValue = Math.min(...values);
-                          const maxValue = Math.max(...values);
-                          const color = getColorGradient(entry.value, minValue, maxValue);
-                          return <Cell key={`cell-${index}`} fill={color} />;
-                        })}
-                      </Bar>
-                    </BarChart>
+                    {(() => {
+                      // Hitung rata-rata keseluruhan dari semua kecamatan
+                      const avgOverall = chartDataKecamatanAll.length > 0
+                        ? chartDataKecamatanAll.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanAll.length
+                        : 0;
+                      
+                      return (
+                        <ComposedChart data={chartDataKecamatanAll}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis
+                            dataKey="name"
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip content={<KecamatanTooltip />} />
+                          {/* Garis minimal target: 7 submit/hari (biru tegas) */}
+                          <ReferenceLine
+                            y={MIN_DAILY_TARGET}
+                            stroke="#3b82f6"
+                            strokeWidth={2}
+                            label={{ value: `Target minimal: ${MIN_DAILY_TARGET}/hari`, position: "right", fill: "#3b82f6", fontSize: 12 }}
+                          />
+                          {/* Garis rata-rata keseluruhan (ungu putus-putus) */}
+                          <ReferenceLine
+                            y={avgOverall}
+                            stroke="#8b5cf6"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            label={{ value: `Rata-rata: ${avgOverall.toFixed(2)}/hari`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
+                          />
+                          <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                            {chartDataKecamatanAll.map((entry, index) => {
+                              const color = getColorGradient(entry.value);
+                              return <Cell key={`cell-${index}`} fill={color} />;
+                            })}
+                          </Bar>
+                        </ComposedChart>
+                      );
+                    })()}
                   </ResponsiveContainer>
                 ) : (
                   <div className="text-center py-8 text-slate-500">
