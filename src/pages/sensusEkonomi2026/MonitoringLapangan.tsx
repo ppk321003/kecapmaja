@@ -182,11 +182,10 @@ const getScheduleStatus = (jumlahSubmit: number): {
 // Function to get color gradient based on TARGET (7-12), not min-max
 const getColorGradient = (value: number): string => {
   // Berbasis target: 7-12 submit/hari
-  if (value >= MAX_DAILY_TARGET) return "#22c55e"; // Hijau (>= 12)
-  if (value >= 10) return "#84cc16"; // Lime (10-11.99)
-  if (value >= MIN_DAILY_TARGET) return "#eab308"; // Yellow (7-9.99)
-  if (value >= 5) return "#f97316"; // Orange (5-6.99)
-  return "#dc2626"; // Red (< 5)
+  // Sesuai deskripsi: Hijau ≥7/hari | Kuning 4-6/hari | Merah <4/hari
+  if (value >= 7) return "#22c55e"; // Hijau (>= 7)
+  if (value >= 4) return "#eab308"; // Kuning (4-6)
+  return "#dc2626"; // Merah (< 4)
 };
 
 // Function untuk mendapatkan warna persentase berdasarkan hari ke-x dan target fleksibel
@@ -822,7 +821,7 @@ export function MonitoringLapangan() {
                 <CardTitle className="text-lg">
                   📊 Rata-rata PPL Submit per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
                 </CardTitle>
-                <CardDescription>Rata-rata submit per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥12/hari | Kuning 7-11/hari | Merah &lt;7/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan</CardDescription>
+                <CardDescription>Rata-rata submit per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥7/hari | Kuning 4-6/hari | Merah &lt;4/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
