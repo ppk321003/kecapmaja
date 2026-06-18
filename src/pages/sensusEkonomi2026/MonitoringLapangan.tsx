@@ -676,72 +676,6 @@ export function MonitoringLapangan() {
               </div>
             )}
 
-            {/* Charts Row 1: All 26 Kecamatan */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  📊 Rata-rata Submit Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
-                </CardTitle>
-                <CardDescription>Rata-rata submit per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥12/hari | Kuning 7-11/hari | Merah &lt;7/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                  </div>
-                ) : chartDataKecamatanAll.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={400}>
-                    {(() => {
-                      // Hitung rata-rata keseluruhan dari semua kecamatan
-                      const avgOverall = chartDataKecamatanAll.length > 0
-                        ? chartDataKecamatanAll.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanAll.length
-                        : 0;
-                      
-                      return (
-                        <ComposedChart data={chartDataKecamatanAll}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                          <XAxis
-                            dataKey="name"
-                            angle={-45}
-                            textAnchor="end"
-                            height={100}
-                            tick={{ fontSize: 11 }}
-                          />
-                          <YAxis tick={{ fontSize: 12 }} />
-                          <Tooltip content={<KecamatanTooltip />} />
-                          {/* Garis minimal target: 7 submit/hari (biru tegas) */}
-                          <ReferenceLine
-                            y={MIN_DAILY_TARGET}
-                            stroke="#3b82f6"
-                            strokeWidth={2}
-                            label={{ value: `Target minimal: ${MIN_DAILY_TARGET}/hari`, position: "right", fill: "#3b82f6", fontSize: 12 }}
-                          />
-                          {/* Garis rata-rata keseluruhan (ungu putus-putus) */}
-                          <ReferenceLine
-                            y={avgOverall}
-                            stroke="#8b5cf6"
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            label={{ value: `Rata-rata: ${avgOverall.toFixed(2)}/hari`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
-                          />
-                          <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                            {chartDataKecamatanAll.map((entry, index) => {
-                              const color = getColorGradient(entry.value);
-                              return <Cell key={`cell-${index}`} fill={color} />;
-                            })}
-                          </Bar>
-                        </ComposedChart>
-                      );
-                    })()}
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    Tidak ada data
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             {/* Chart: Persentase Submit per Kecamatan */}
             <Card className="border-0 shadow-sm">
               <CardHeader>
@@ -842,6 +776,15 @@ export function MonitoringLapangan() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Charts Row 1: All 26 Kecamatan */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  📊 Rata-rata Submit Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
+                </CardTitle>
+                <CardDescription>Rata-rata submit per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥12/hari | Kuning 7-11/hari | Merah &lt;7/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan</CardDescription>
+              </CardHeader>
 
             {/* Charts Row 2: Top/Lowest PPL (2 columns - Top 10 Terendah removed) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
