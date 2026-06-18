@@ -820,7 +820,7 @@ export function MonitoringLapangan() {
             <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg">
-                  📊 Rata-rata Submit Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
+                  📊 Rata-rata PPL Submit per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
                 </CardTitle>
                 <CardDescription>Rata-rata submit per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥12/hari | Kuning 7-11/hari | Merah &lt;7/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan</CardDescription>
               </CardHeader>
