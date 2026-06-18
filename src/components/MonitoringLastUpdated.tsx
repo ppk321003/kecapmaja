@@ -90,23 +90,23 @@ export function MonitoringLastUpdated() {
   return (
     <>
       <div className="flex items-center justify-between gap-4 mb-6 px-1">
-        <div className="flex-1 text-sm text-slate-700">
+        <div className="flex-1 text-sm">
           {loading ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-red-600">
               <Loader2 className="w-3 h-3 animate-spin" />
               Memuat...
             </div>
           ) : metadata?.lastUpdated ? (
             <div>
-              <span className="font-medium">
+              <span className="font-bold text-red-600">
                 Waktu Update Data Terakhir: {formatTimestamp(metadata.lastUpdated)}
               </span>
-              <span className="text-slate-600 ml-2">
-                Diperbarui: <span className="font-medium">{metadata.updatedBy}</span>
+              <span className="text-red-600 ml-2">
+                Diperbarui: <span className="font-bold">{metadata.updatedBy}</span>
               </span>
             </div>
           ) : (
-            <span>Belum ada data update</span>
+            <span className="text-red-600">Belum ada data update</span>
           )}
           {error && <p className="text-xs text-red-600 mt-1">⚠️ {error}</p>}
         </div>

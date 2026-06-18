@@ -578,6 +578,11 @@ export function MonitoringLapangan() {
           </div>
         </div>
 
+        {/* Last Updated Info - Display on all tabs */}
+        <div className="mb-6">
+          <MonitoringLastUpdated />
+        </div>
+
         {/* Tabs with Icon Navigation - Horizontal */}
         <Tabs
           value={activeTab}
@@ -612,9 +617,6 @@ export function MonitoringLapangan() {
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6 mt-6">
-            {/* Last Updated Info */}
-            <MonitoringLastUpdated />
-
             {/* Overview Stats */}
             {dashboardStats && (
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
