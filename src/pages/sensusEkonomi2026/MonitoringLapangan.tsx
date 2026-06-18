@@ -187,6 +187,36 @@ const getColorGradient = (value: number): string => {
   return "#dc2626"; // Red (< 5)
 };
 
+// Function untuk mendapatkan warna persentase berdasarkan hari ke-x dan target fleksibel
+const getColorForPercentage = (percentage: number): string => {
+  const { daysElapsed, minDayTarget, maxDayTarget } = calculateDayProgress();
+  
+  // Hitung target persentase berdasarkan hari ke-x
+  // Target minimal: persentase yang seharusnya dicapai pada hari ke-x
+  // Asumsi: target adalah 732 submit dalam 77 hari, dengan min 7/hari
+  const minPercentageTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100;
+  const maxPercentageTarget = (daysElapsed * MAX_DAILY_TARGET / TOTAL_TARGET) * 100;
+  
+  // Optimal: mencapai atau melebihi target maksimal
+  if (percentage >= maxPercentageTarget) {
+    return "#22c55e"; // Hijau cerah
+  }
+  
+  // Good: mencapai target minimal
+  if (percentage >= minPercentageTarget) {
+    return "#84cc16"; // Lime
+  }
+  
+  // Warning: mencapai 60% dari target minimal
+  const warningThreshold = minPercentageTarget * 0.6;
+  if (percentage >= warningThreshold) {
+    return "#f97316"; // Orange
+  }
+  
+  // Critical: di bawah warning threshold
+  return "#dc2626"; // Red
+};
+
 // PERBAIKAN: Custom Tooltip untuk Progres Submit Kecamatan
 const KecamatanTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -225,6 +255,28 @@ const KecamatanTooltip = ({ active, payload }: any) => {
   return null;
 };
 
+// Custom Tooltip untuk Persentase Submit per Kecamatan
+const PercentageTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const percentage = data.value || 0;
+    const totalSubmit = data.totalSubmit || 0;
+    const totalAssignments = data.totalAssignments || 0;
+    
+    return (
+      <div className="bg-white p-3 border border-slate-300 rounded-lg shadow-lg">
+        <p className="font-semibold text-slate-900">{data.name}</p>
+        <div className="mt-2 space-y-1 text-xs text-slate-700">
+          <p>📝 <span className="font-medium">Jumlah Submit:</span> {totalSubmit.toLocaleString("id-ID")}</p>
+          <p>📋 <span className="font-medium">Total Assignments:</span> {totalAssignments.toLocaleString("id-ID")}</p>
+          <p className="text-slate-600 mt-2 font-semibold">Persentase: {percentage.toLocaleString("id-ID")}%</p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export function MonitoringLapangan() {
   const { data: sheetData, loading, error } = useGoogleSheetsData({
     spreadsheetId: SPREADSHEET_ID,
@@ -238,7 +290,7 @@ export function MonitoringLapangan() {
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
 
   // Process and aggregate data
-  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataPPLTop, chartDataPPLLowest, totalProgress } =
+  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, totalProgress } =
     useMemo(() => {
       if (!sheetData || sheetData.length === 0)
         return {
@@ -246,6 +298,7 @@ export function MonitoringLapangan() {
           dashboardStats: null,
           chartDataKecamatan: [],
           chartDataKecamatanAll: [],
+          chartDataKecamatanPercentage: [],
           chartDataPPLTop: [],
           chartDataPPLLowest: [],
           totalProgress: { current: 0, target: TOTAL_TARGET, percentage: 0 },
@@ -422,6 +475,26 @@ export function MonitoringLapangan() {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
+      // Chart data: Persentase Submit per Kecamatan (Jumlah Submit / Total Assignments)
+      const kecamatanPercentageMap = new Map<string, { totalSubmit: number; totalAssignments: number }>();
+      Array.from(dataMap.values()).forEach((row) => {
+        const current = kecamatanPercentageMap.get(row.kecamatan) || { totalSubmit: 0, totalAssignments: 0 };
+        current.totalSubmit += row.jumlah_submit;
+        current.totalAssignments += row.total_assignments;
+        kecamatanPercentageMap.set(row.kecamatan, current);
+      });
+
+      const chartDataKecamatanPercentage: any[] = Array.from(kecamatanPercentageMap.entries())
+        .map(([name, data]) => ({
+          name,
+          value: data.totalAssignments > 0 
+            ? Math.round((data.totalSubmit / data.totalAssignments) * 10000) / 100 
+            : 0,
+          totalSubmit: data.totalSubmit,
+          totalAssignments: data.totalAssignments,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
       // Chart data for PPL Top 10
       const pplMap = new Map<string, number>();
       Array.from(dataMap.values()).forEach((row) => {
@@ -453,6 +526,7 @@ export function MonitoringLapangan() {
         dashboardStats: { totalKecamatan, totalSubmit, averageSubmit, topKecamatan, lowestKecamatan },
         chartDataKecamatan,
         chartDataKecamatanAll,
+        chartDataKecamatanPercentage,
         chartDataPPLTop,
         chartDataPPLLowest,
         totalProgress,
@@ -605,7 +679,9 @@ export function MonitoringLapangan() {
             {/* Charts Row 1: All 26 Kecamatan */}
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg">📊 Progres Submit Kecamatan</CardTitle>
+                <CardTitle className="text-lg">
+                  📊 Rata-rata Submit Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
+                </CardTitle>
                 <CardDescription>Rata-rata submit per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥12/hari | Kuning 7-11/hari | Merah &lt;7/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan</CardDescription>
               </CardHeader>
               <CardContent>
@@ -655,6 +731,107 @@ export function MonitoringLapangan() {
                             })}
                           </Bar>
                         </ComposedChart>
+                      );
+                    })()}
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    Tidak ada data
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Chart: Persentase Submit per Kecamatan */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                {(() => {
+                  const { daysElapsed } = calculateDayProgress();
+                  const minPercentageTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100;
+                  return (
+                    <>
+                      <CardTitle className="text-lg">
+                        📊 Persentase Submit per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}%
+                      </CardTitle>
+                      <CardDescription>Persentase jumlah submit terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad)</CardDescription>
+                    </>
+                  );
+                })()}
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                  </div>
+                ) : chartDataKecamatanPercentage.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={400}>
+                    {(() => {
+                      // Hitung rata-rata persentase
+                      const avgPercentage = chartDataKecamatanPercentage.length > 0
+                        ? chartDataKecamatanPercentage.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPercentage.length
+                        : 0;
+
+                      return (
+                        <BarChart data={chartDataKecamatanPercentage}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis
+                            dataKey="name"
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <YAxis 
+                            tick={{ fontSize: 12 }}
+                            label={{ value: 'Persentase (%)', angle: -90, position: 'insideLeft' }}
+                          />
+                          <Tooltip 
+                            content={<PercentageTooltip />}
+                            contentStyle={{
+                              backgroundColor: "#fff",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "8px",
+                            }}
+                          />
+                          {/* Garis rata-rata persentase */}
+                          <ReferenceLine
+                            y={avgPercentage}
+                            stroke="#8b5cf6"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            label={{ value: `Rata-rata: ${avgPercentage.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
+                          />
+                          {/* Garis target minimal berdasarkan hari ke-x */}
+                          {(() => {
+                            const { daysElapsed } = calculateDayProgress();
+                            const minTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100;
+                            return (
+                              <ReferenceLine
+                                y={minTarget}
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                label={{ value: `Target minimal hari ke-${daysElapsed}: ${minTarget.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: 11 }}
+                              />
+                            );
+                          })()}
+                          <Bar 
+                            dataKey="value" 
+                            radius={[8, 8, 0, 0]} 
+                            fill="#3b82f6"
+                            label={{
+                              position: 'top',
+                              fill: '#1f2937',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              formatter: (value: number) => `${value.toFixed(2)}%`
+                            }}
+                          >
+                            {chartDataKecamatanPercentage.map((entry, index) => {
+                              const color = getColorForPercentage(entry.value);
+                              return <Cell key={`cell-${index}`} fill={color} />;
+                            })}
+                          </Bar>
+                        </BarChart>
                       );
                     })()}
                   </ResponsiveContainer>
