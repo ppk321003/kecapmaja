@@ -21,6 +21,7 @@ import {
   Filter,
 } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
+import { MonitoringLastUpdated } from "@/components/MonitoringLastUpdated";
 import {
   BarChart,
   Bar,
@@ -611,6 +612,9 @@ export function MonitoringLapangan() {
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6 mt-6">
+            {/* Last Updated Info */}
+            <MonitoringLastUpdated />
+
             {/* Overview Stats */}
             {dashboardStats && (
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
