@@ -1200,7 +1200,7 @@ export function MonitoringLapangan() {
                                   {row.jumlah_submit.toLocaleString("id-ID")}
                                 </TableCell>
                                 <TableCell className="text-right text-slate-700 px-4 py-3">
-                                  {Math.round(row.jumlah_submit / Math.max(1, daysElapsed))} submit/hari
+                                  {(Math.floor(row.jumlah_submit / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} submit/hari
                                 </TableCell>
                                 <TableCell className="text-center px-4 py-3">
                                   <div className="flex items-center justify-center gap-1.5">
