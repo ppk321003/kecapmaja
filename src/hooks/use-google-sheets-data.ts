@@ -4,9 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface UseGoogleSheetsDataProps {
   spreadsheetId: string;
   sheetName: string;
+  range?: string;
 }
 
-export const useGoogleSheetsData = ({ spreadsheetId, sheetName }: UseGoogleSheetsDataProps) => {
+export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range }: UseGoogleSheetsDataProps) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +20,7 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName }: UseGoogleSheet
           body: {
             spreadsheetId: spreadsheetId,
             operation: "read",
-            range: sheetName
+            range: range || sheetName
           }
         });
 
@@ -48,7 +49,7 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName }: UseGoogleSheet
     };
 
     fetchData();
-  }, [spreadsheetId, sheetName]);
+  }, [spreadsheetId, sheetName, range]);
 
   return { data, loading, error };
 };

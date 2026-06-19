@@ -51,6 +51,7 @@ const ITEMS_PER_PAGE = 20;
 interface AggregatedData {
   kecamatan: string;
   nama_ppl: string;
+  draft: number;
   jumlah_submit: number;
   total_assignments: number;
   status_counts: {
@@ -75,6 +76,14 @@ interface DashboardStats {
 interface ChartData {
   name: string;
   value: number;
+}
+
+interface PMLData {
+  nama_pml: string;
+  kecamatan: string;
+  jumlah_submit_ppl: number;
+  jumlah_approve: number;
+  jumlah_reject: number;
 }
 
 const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
@@ -285,14 +294,18 @@ export function MonitoringLapangan() {
     sheetName: SHEET_NAME,
   });
   const [searchTerm, setSearchTerm] = useState("");
+  const [pmlSearchTerm, setPMLSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl">("submit");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentPage, setCurrentPage] = useState(1);
+  const [currentPagePML, setCurrentPagePML] = useState(1);
+  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject">("approve");
+  const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
 
   // Process and aggregate data
-  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, totalProgress } =
+  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, totalProgress, pmlData } =
     useMemo(() => {
       if (!sheetData || sheetData.length === 0)
         return {
@@ -304,6 +317,7 @@ export function MonitoringLapangan() {
           chartDataPPLTop: [],
           chartDataPPLLowest: [],
           totalProgress: { current: 0, target: TOTAL_TARGET, percentage: 0 },
+          pmlData: [],
         };
 
       const dataMap = new Map<string, AggregatedData>();
@@ -311,13 +325,9 @@ export function MonitoringLapangan() {
 
       // Process data
       sheetData.forEach((row: any) => {
-        const kecamatan = (row.kecamatan || row["Kecamatan"] || "").trim();
-        const nama_ppl =
-          (row.nama_ppl || row["Nama PPL"] || row["nama ppl"] || "").trim();
-        const jumlah_submit =
-          parseInt(
-            row.jumlah_submit || row["Jumlah Submit"] || row["jumlah submit"] || 0
-          ) || 0;
+        const kecamatan = (row.kecamatan || "").trim();
+        const nama_ppl = (row["nama ppl"] || "").trim();
+        const jumlah_submit = parseInt(row["jumlah submit"] || 0) || 0;
 
         if (!kecamatan) return;
 
@@ -328,6 +338,7 @@ export function MonitoringLapangan() {
           dataMap.set(key, {
             kecamatan,
             nama_ppl,
+            draft: 0,
             jumlah_submit: 0,
             total_assignments: 0,
             status_counts: {
@@ -341,40 +352,14 @@ export function MonitoringLapangan() {
         }
 
         const current = dataMap.get(key)!;
+        current.draft += parseInt(row.draft || 0) || 0;
         current.jumlah_submit += jumlah_submit;
-        current.total_assignments +=
-          parseInt(
-            row.totalassignments ||
-              row["totalAssignments"] ||
-              row["Total Assignments"] ||
-              row["total_assignments"] ||
-              0
-          ) || 0;
-        current.status_counts.open +=
-          parseInt(row.open || row["OPEN"] || 0) || 0;
-        current.status_counts.draft +=
-          parseInt(row.draft || row["DRAFT"] || 0) || 0;
-        current.status_counts.submitted +=
-          parseInt(
-            row.submitted_by_pencacah ||
-              row["SUBMITTED_BY_PENCACAH"] ||
-              row["submitted"] ||
-              0
-          ) || 0;
-        current.status_counts.approved +=
-          parseInt(
-            row.approved_by_pengawas ||
-              row["APPROVED_BY_PENGAWAS"] ||
-              row["approved"] ||
-              0
-          ) || 0;
-        current.status_counts.rejected +=
-          parseInt(
-            row.rejected_by_pengawas ||
-              row["REJECTED_BY_PENGAWAS"] ||
-              row["rejected"] ||
-              0
-          ) || 0;
+        current.total_assignments += parseInt(row.totalassignments || 0) || 0;
+        current.status_counts.open += parseInt(row.open || 0) || 0;
+        current.status_counts.draft += parseInt(row.draft || 0) || 0;
+        current.status_counts.submitted += parseInt(row.submitted_by_pencacah || 0) || 0;
+        current.status_counts.approved += parseInt(row.approved_by_pengawas || 0) || 0;
+        current.status_counts.rejected += parseInt(row.rejected_by_pengawas || 0) || 0;
       });
 
       let rows = Array.from(dataMap.values());
@@ -529,6 +514,33 @@ export function MonitoringLapangan() {
         percentage: Math.round((totalSubmit / TOTAL_TARGET) * 100),
       };
 
+      // Process PML data
+      const pmlMap = new Map<string, PMLData>();
+      sheetData.forEach((row: any) => {
+        const nama_pml = (row["nama pml"] || "").trim();
+        const kecamatan = (row.kecamatan || "").trim();
+        
+        if (!nama_pml) return;
+        
+        const key = `${nama_pml}|${kecamatan}`;
+        if (!pmlMap.has(key)) {
+          pmlMap.set(key, {
+            nama_pml,
+            kecamatan,
+            jumlah_submit_ppl: 0,
+            jumlah_approve: 0,
+            jumlah_reject: 0,
+          });
+        }
+
+        const current = pmlMap.get(key)!;
+        current.jumlah_submit_ppl += parseInt(row["jumlah submit ppl"] || 0) || 0;
+        current.jumlah_approve += parseInt(row["jumlah approve"] || 0) || 0;
+        current.jumlah_reject += parseInt(row["jumlah reject"] || 0) || 0;
+      });
+
+      const pmlRows = Array.from(pmlMap.values());
+
       return {
         aggregatedData: {
           rows,
@@ -541,6 +553,7 @@ export function MonitoringLapangan() {
         chartDataPPLTop,
         chartDataPPLLowest,
         totalProgress,
+        pmlData: pmlRows,
       };
     }, [sheetData, searchTerm, sortBy, sortOrder, statusFilter]);
 
@@ -557,6 +570,35 @@ export function MonitoringLapangan() {
   const totalPages = Math.ceil(aggregatedData.rows.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedRows = aggregatedData.rows.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // PML Data sorting and pagination
+  const sortedPMLData = useMemo(() => {
+    let sorted = [...pmlData];
+    
+    // Apply search filter
+    if (pmlSearchTerm) {
+      sorted = sorted.filter((item) =>
+        item.nama_pml.toLowerCase().includes(pmlSearchTerm.toLowerCase()) ||
+        item.kecamatan.toLowerCase().includes(pmlSearchTerm.toLowerCase())
+      );
+    }
+    
+    if (pmlSortBy === "nama_pml") {
+      sorted.sort((a, b) => a.nama_pml.localeCompare(b.nama_pml));
+    } else if (pmlSortBy === "approve") {
+      sorted.sort((a, b) => a.jumlah_approve - b.jumlah_approve);
+    } else if (pmlSortBy === "reject") {
+      sorted.sort((a, b) => a.jumlah_reject - b.jumlah_reject);
+    }
+    if (pmlSortOrder === "desc") {
+      sorted.reverse();
+    }
+    return sorted;
+  }, [pmlData, pmlSortBy, pmlSortOrder, pmlSearchTerm]);
+
+  const totalPagesPML = Math.ceil(sortedPMLData.length / ITEMS_PER_PAGE);
+  const startIndexPML = (currentPagePML - 1) * ITEMS_PER_PAGE;
+  const paginatedRowsPML = sortedPMLData.slice(startIndexPML, startIndexPML + ITEMS_PER_PAGE);
 
   const { daysElapsed, avgDayTarget } = calculateDayProgress();
 
@@ -610,6 +652,13 @@ export function MonitoringLapangan() {
             >
               <Users className="h-5 w-5" />
               <span className="font-medium">PPL</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="pml"
+              className="flex items-center gap-3 justify-center flex-1 py-3 px-4 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
+            >
+              <Users className="h-5 w-5" />
+              <span className="font-medium">PML</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1156,6 +1205,9 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Draft
+                            </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => toggleSort("submit")}
@@ -1197,6 +1249,9 @@ export function MonitoringLapangan() {
                                 </TableCell>
                                 <TableCell className="font-medium text-slate-900 px-4 py-3">
                                   {row.kecamatan}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                  {row.draft.toLocaleString("id-ID")}
                                 </TableCell>
                                 <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                   {row.jumlah_submit.toLocaleString("id-ID")}
@@ -1276,6 +1331,193 @@ export function MonitoringLapangan() {
                         </button>
                         <div className="text-xs text-slate-600 ml-4">
                           Menampilkan {paginatedRows.length} dari {aggregatedData.rows.length} data
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* PML Tab */}
+          <TabsContent value="pml" className="space-y-6 mt-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <CardTitle>Data PML (Pengawas Mitra Lapangan)</CardTitle>
+                    <CardDescription>
+                      Detail monitoring per PML ({sortedPMLData.length} total)
+                    </CardDescription>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
+                    <div className="relative flex-1 md:max-w-xs">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
+                        placeholder="Cari PML atau Kecamatan..."
+                        value={pmlSearchTerm}
+                        onChange={(e) => {
+                          setPMLSearchTerm(e.target.value);
+                          setCurrentPagePML(1);
+                        }}
+                        className="pl-10 h-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    <span className="ml-2 text-slate-600">Memuat data...</span>
+                  </div>
+                ) : sortedPMLData.length === 0 ? (
+                  <div className="flex items-center justify-center py-12 text-slate-500">
+                    <AlertCircle className="h-5 w-5 mr-2" />
+                    Tidak ada data ditemukan
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50 hover:bg-slate-50">
+                            <TableHead className="w-12 text-center text-slate-700 font-semibold">
+                              No
+                            </TableHead>
+                            <TableHead
+                              className="text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "nama_pml") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("nama_pml");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-2">
+                                Nama PML
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
+                              Kecamatan
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Submit PPL
+                            </TableHead>
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "approve") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("approve");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Approve
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
+                            </TableHead>
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "reject") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("reject");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Reject
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedRowsPML.map((row, index) => (
+                            <TableRow
+                              key={`${row.nama_pml}-${row.kecamatan}`}
+                              className="hover:bg-slate-50 border-b transition-colors"
+                            >
+                              <TableCell className="text-center text-slate-600 font-medium w-12">
+                                {startIndexPML + index + 1}
+                              </TableCell>
+                              <TableCell className="font-medium text-slate-900 px-4 py-3">
+                                {row.nama_pml || "-"}
+                              </TableCell>
+                              <TableCell className="text-slate-700 px-4 py-3">
+                                {row.kecamatan || "-"}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                {row.jumlah_submit_ppl.toLocaleString("id-ID")}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
+                                {row.jumlah_approve.toLocaleString("id-ID")}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
+                                {row.jumlah_reject.toLocaleString("id-ID")}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPagesPML > 1 && (
+                      <div className="flex items-center justify-center px-6 py-4 border-t bg-slate-50 gap-2">
+                        <button
+                          onClick={() => setCurrentPagePML(1)}
+                          disabled={currentPagePML === 1}
+                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          «
+                        </button>
+                        <button
+                          onClick={() => setCurrentPagePML(prev => Math.max(1, prev - 1))}
+                          disabled={currentPagePML === 1}
+                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ‹
+                        </button>
+                        {Array.from({ length: totalPagesPML }, (_, i) => i + 1).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPagePML(page)}
+                            className={`px-3 py-2 text-sm font-semibold rounded ${
+                              currentPagePML === page
+                                ? "bg-blue-600 text-white"
+                                : "text-slate-700 hover:bg-slate-100"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setCurrentPagePML(prev => Math.min(totalPagesPML, prev + 1))}
+                          disabled={currentPagePML === totalPagesPML}
+                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ›
+                        </button>
+                        <button
+                          onClick={() => setCurrentPagePML(totalPagesPML)}
+                          disabled={currentPagePML === totalPagesPML}
+                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          »
+                        </button>
+                        <div className="text-xs text-slate-600 ml-4">
+                          Menampilkan {paginatedRowsPML.length} dari {sortedPMLData.length} data
                         </div>
                       </div>
                     )}
