@@ -300,6 +300,8 @@ export function MonitoringLapangan() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentPage, setCurrentPage] = useState(1);
   const [currentPagePML, setCurrentPagePML] = useState(1);
+  const [itemsPerPagePPL, setItemsPerPagePPL] = useState(20);
+  const [itemsPerPagePML, setItemsPerPagePML] = useState(20);
   const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject">("approve");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
@@ -566,10 +568,10 @@ export function MonitoringLapangan() {
     }
   };
 
-  // Pagination
-  const totalPages = Math.ceil(aggregatedData.rows.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedRows = aggregatedData.rows.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  // Pagination PPL
+  const totalPagesPPL = Math.ceil(aggregatedData.rows.length / itemsPerPagePPL);
+  const startIndexPPL = (currentPage - 1) * itemsPerPagePPL;
+  const paginatedRows = aggregatedData.rows.slice(startIndexPPL, startIndexPPL + itemsPerPagePPL);
 
   // PML Data sorting and pagination
   const sortedPMLData = useMemo(() => {
@@ -596,9 +598,9 @@ export function MonitoringLapangan() {
     return sorted;
   }, [pmlData, pmlSortBy, pmlSortOrder, pmlSearchTerm]);
 
-  const totalPagesPML = Math.ceil(sortedPMLData.length / ITEMS_PER_PAGE);
-  const startIndexPML = (currentPagePML - 1) * ITEMS_PER_PAGE;
-  const paginatedRowsPML = sortedPMLData.slice(startIndexPML, startIndexPML + ITEMS_PER_PAGE);
+  const totalPagesPML = Math.ceil(sortedPMLData.length / itemsPerPagePML);
+  const startIndexPML = (currentPagePML - 1) * itemsPerPagePML;
+  const paginatedRowsPML = sortedPMLData.slice(startIndexPML, startIndexPML + itemsPerPagePML);
 
   const { daysElapsed, avgDayTarget } = calculateDayProgress();
 
@@ -1242,7 +1244,7 @@ export function MonitoringLapangan() {
                                 className="hover:bg-slate-50 border-b transition-colors"
                               >
                                 <TableCell className="text-center text-slate-600 font-medium w-12">
-                                  {startIndex + index + 1}
+                                  {startIndexPPL + index + 1}
                                 </TableCell>
                                 <TableCell className="text-slate-700 px-4 py-3">
                                   {row.nama_ppl || "-"}
@@ -1296,41 +1298,61 @@ export function MonitoringLapangan() {
                     </div>
 
                     {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-center px-6 py-4 border-t bg-slate-50 gap-2">
-                        <button
-                          onClick={() => setCurrentPage(1)}
-                          disabled={currentPage === 1}
-                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          «
-                        </button>
-                        <button
-                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                          disabled={currentPage === 1}
-                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          ‹
-                        </button>
-                        <span className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white rounded border border-slate-300">
-                          Hal {currentPage} / {totalPages}
-                        </span>
-                        <button
-                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                          disabled={currentPage === totalPages}
-                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          ›
-                        </button>
-                        <button
-                          onClick={() => setCurrentPage(totalPages)}
-                          disabled={currentPage === totalPages}
-                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          »
-                        </button>
-                        <div className="text-xs text-slate-600 ml-4">
-                          Menampilkan {paginatedRows.length} dari {aggregatedData.rows.length} data
+                    {totalPagesPPL > 1 && (
+                      <div className="flex items-center justify-between px-6 py-4 border-t bg-slate-50 gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-600">Tampilkan:</span>
+                          <select
+                            value={itemsPerPagePPL}
+                            onChange={(e) => {
+                              setItemsPerPagePPL(parseInt(e.target.value));
+                              setCurrentPage(1);
+                            }}
+                            className="h-8 px-2 rounded border border-slate-300 text-slate-700 text-xs bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                          <span className="text-xs text-slate-600">/ halaman</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentPage(1)}
+                            disabled={currentPage === 1}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            «
+                          </button>
+                          <button
+                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                            disabled={currentPage === 1}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ‹
+                          </button>
+                          <span className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white rounded border border-slate-300">
+                            Hal {currentPage} / {totalPagesPPL}
+                          </span>
+                          <button
+                            onClick={() => setCurrentPage(Math.min(totalPagesPPL, currentPage + 1))}
+                            disabled={currentPage === totalPagesPPL}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ›
+                          </button>
+                          <button
+                            onClick={() => setCurrentPage(totalPagesPPL)}
+                            disabled={currentPage === totalPagesPPL}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            »
+                          </button>
+                          <div className="text-xs text-slate-600 ml-4">
+                            Menampilkan {paginatedRows.length} dari {aggregatedData.rows.length} data
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1474,50 +1496,60 @@ export function MonitoringLapangan() {
 
                     {/* Pagination */}
                     {totalPagesPML > 1 && (
-                      <div className="flex items-center justify-center px-6 py-4 border-t bg-slate-50 gap-2">
-                        <button
-                          onClick={() => setCurrentPagePML(1)}
-                          disabled={currentPagePML === 1}
-                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          «
-                        </button>
-                        <button
-                          onClick={() => setCurrentPagePML(prev => Math.max(1, prev - 1))}
-                          disabled={currentPagePML === 1}
-                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          ‹
-                        </button>
-                        {Array.from({ length: totalPagesPML }, (_, i) => i + 1).map((page) => (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentPagePML(page)}
-                            className={`px-3 py-2 text-sm font-semibold rounded ${
-                              currentPagePML === page
-                                ? "bg-blue-600 text-white"
-                                : "text-slate-700 hover:bg-slate-100"
-                            }`}
+                      <div className="flex items-center justify-between px-6 py-4 border-t bg-slate-50 gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-600">Tampilkan:</span>
+                          <select
+                            value={itemsPerPagePML}
+                            onChange={(e) => {
+                              setItemsPerPagePML(parseInt(e.target.value));
+                              setCurrentPagePML(1);
+                            }}
+                            className="h-8 px-2 rounded border border-slate-300 text-slate-700 text-xs bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            {page}
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                          <span className="text-xs text-slate-600">/ halaman</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentPagePML(1)}
+                            disabled={currentPagePML === 1}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            «
                           </button>
-                        ))}
-                        <button
-                          onClick={() => setCurrentPagePML(prev => Math.min(totalPagesPML, prev + 1))}
-                          disabled={currentPagePML === totalPagesPML}
-                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          ›
-                        </button>
-                        <button
-                          onClick={() => setCurrentPagePML(totalPagesPML)}
-                          disabled={currentPagePML === totalPagesPML}
-                          className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          »
-                        </button>
-                        <div className="text-xs text-slate-600 ml-4">
-                          Menampilkan {paginatedRowsPML.length} dari {sortedPMLData.length} data
+                          <button
+                            onClick={() => setCurrentPagePML(prev => Math.max(1, prev - 1))}
+                            disabled={currentPagePML === 1}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ‹
+                          </button>
+                          <span className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white rounded border border-slate-300">
+                            Hal {currentPagePML} / {totalPagesPML}
+                          </span>
+                          <button
+                            onClick={() => setCurrentPagePML(prev => Math.min(totalPagesPML, prev + 1))}
+                            disabled={currentPagePML === totalPagesPML}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ›
+                          </button>
+                          <button
+                            onClick={() => setCurrentPagePML(totalPagesPML)}
+                            disabled={currentPagePML === totalPagesPML}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            »
+                          </button>
+                          <div className="text-xs text-slate-600 ml-4">
+                            Menampilkan {paginatedRowsPML.length} dari {sortedPMLData.length} data
+                          </div>
                         </div>
                       </div>
                     )}
