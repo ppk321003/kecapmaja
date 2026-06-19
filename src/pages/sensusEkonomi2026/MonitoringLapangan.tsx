@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Filter,
 } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
@@ -51,8 +52,11 @@ const ITEMS_PER_PAGE = 20;
 interface AggregatedData {
   kecamatan: string;
   nama_ppl: string;
+  nama_pml: string;
   draft: number;
   jumlah_submit: number;
+  jumlah_approve: number;
+  jumlah_reject: number;
   total_assignments: number;
   status_counts: {
     open: number;
@@ -295,6 +299,7 @@ export function MonitoringLapangan() {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
+  const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl">("submit");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -329,6 +334,7 @@ export function MonitoringLapangan() {
       sheetData.forEach((row: any) => {
         const kecamatan = (row.kecamatan || "").trim();
         const nama_ppl = (row["nama ppl"] || "").trim();
+        const nama_pml = (row["nama pml"] || "").trim();
         const jumlah_submit = parseInt(row["jumlah submit"] || 0) || 0;
 
         if (!kecamatan) return;
@@ -340,8 +346,11 @@ export function MonitoringLapangan() {
           dataMap.set(key, {
             kecamatan,
             nama_ppl,
+            nama_pml,
             draft: 0,
             jumlah_submit: 0,
+            jumlah_approve: 0,
+            jumlah_reject: 0,
             total_assignments: 0,
             status_counts: {
               open: 0,
@@ -356,6 +365,8 @@ export function MonitoringLapangan() {
         const current = dataMap.get(key)!;
         current.draft += parseInt(row.draft || 0) || 0;
         current.jumlah_submit += jumlah_submit;
+        current.jumlah_approve += parseInt(row.approved_by_pengawas || 0) || 0;
+        current.jumlah_reject += parseInt(row.rejected_by_pengawas || 0) || 0;
         current.total_assignments += parseInt(row.totalassignments || 0) || 0;
         current.status_counts.open += parseInt(row.open || 0) || 0;
         current.status_counts.draft += parseInt(row.draft || 0) || 0;
@@ -537,8 +548,8 @@ export function MonitoringLapangan() {
 
         const current = pmlMap.get(key)!;
         current.jumlah_submit_ppl += parseInt(row["jumlah submit ppl"] || 0) || 0;
-        current.jumlah_approve += parseInt(row["jumlah approve"] || 0) || 0;
-        current.jumlah_reject += parseInt(row["jumlah reject"] || 0) || 0;
+        current.jumlah_approve += parseInt(row.approved_by_pengawas || 0) || 0;
+        current.jumlah_reject += parseInt(row.rejected_by_pengawas || 0) || 0;
       });
 
       const pmlRows = Array.from(pmlMap.values());
@@ -1210,14 +1221,20 @@ export function MonitoringLapangan() {
                             <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
                               Draft
                             </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Reject
+                            </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => toggleSort("submit")}
                             >
                               <div className="flex items-center justify-end gap-2">
-                                Jumlah Submit
+                                Submit
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Approve
                             </TableHead>
                             <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
                               Rata-rata Submit Harian
@@ -1255,8 +1272,14 @@ export function MonitoringLapangan() {
                                 <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                   {row.draft.toLocaleString("id-ID")}
                                 </TableCell>
+                                <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
+                                  {row.jumlah_reject.toLocaleString("id-ID")}
+                                </TableCell>
                                 <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                   {row.jumlah_submit.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
+                                  {row.jumlah_approve.toLocaleString("id-ID")}
                                 </TableCell>
                                 <TableCell className="text-right text-slate-700 px-4 py-3">
                                   {(Math.floor(row.jumlah_submit / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} submit/hari
@@ -1368,7 +1391,7 @@ export function MonitoringLapangan() {
               <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
-                    <CardTitle>Data PML (Pengawas Mitra Lapangan)</CardTitle>
+                    <CardTitle>Data PML (Petugas Pengawas Lapangan)</CardTitle>
                     <CardDescription>
                       Detail monitoring per PML ({sortedPMLData.length} total)
                     </CardDescription>
@@ -1465,31 +1488,83 @@ export function MonitoringLapangan() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {paginatedRowsPML.map((row, index) => (
-                            <TableRow
-                              key={`${row.nama_pml}-${row.kecamatan}`}
-                              className="hover:bg-slate-50 border-b transition-colors"
-                            >
-                              <TableCell className="text-center text-slate-600 font-medium w-12">
-                                {startIndexPML + index + 1}
-                              </TableCell>
-                              <TableCell className="font-medium text-slate-900 px-4 py-3">
-                                {row.nama_pml || "-"}
-                              </TableCell>
-                              <TableCell className="text-slate-700 px-4 py-3">
-                                {row.kecamatan || "-"}
-                              </TableCell>
-                              <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                {row.jumlah_submit_ppl.toLocaleString("id-ID")}
-                              </TableCell>
-                              <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
-                                {row.jumlah_approve.toLocaleString("id-ID")}
-                              </TableCell>
-                              <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
-                                {row.jumlah_reject.toLocaleString("id-ID")}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                          {paginatedRowsPML.map((row, index) => {
+                            const isExpanded = expandedPML.has(`${row.nama_pml}|${row.kecamatan}`);
+                            const pplUnderPML = aggregatedData.rows.filter(ppl => 
+                              ppl.nama_pml === row.nama_pml
+                            );
+                            
+                            return (
+                              <React.Fragment key={`${row.nama_pml}-${row.kecamatan}`}>
+                                <TableRow className="hover:bg-slate-50 border-b transition-colors cursor-pointer">
+                                  <TableCell className="text-center text-slate-600 font-medium w-12">
+                                    {startIndexPML + index + 1}
+                                  </TableCell>
+                                  <TableCell 
+                                    className="font-medium text-slate-900 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2"
+                                    onClick={() => {
+                                      const key = `${row.nama_pml}|${row.kecamatan}`;
+                                      setExpandedPML(prev => {
+                                        const newSet = new Set(prev);
+                                        if (newSet.has(key)) {
+                                          newSet.delete(key);
+                                        } else {
+                                          newSet.add(key);
+                                        }
+                                        return newSet;
+                                      });
+                                    }}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4 transition-transform inline flex-shrink-0" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4 transition-transform inline -rotate-90 flex-shrink-0" />
+                                    )}
+                                    {row.nama_pml || "-"}
+                                  </TableCell>
+                                  <TableCell className="text-slate-700 px-4 py-3">
+                                    {row.kecamatan || "-"}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                    {row.jumlah_submit_ppl.toLocaleString("id-ID")}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
+                                    {row.jumlah_approve.toLocaleString("id-ID")}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
+                                    {row.jumlah_reject.toLocaleString("id-ID")}
+                                  </TableCell>
+                                </TableRow>
+
+                                {/* Expanded PPL Details */}
+                                {isExpanded && pplUnderPML.length > 0 && (
+                                  pplUnderPML.map(ppl => (
+                                    <TableRow 
+                                      key={`${ppl.kecamatan}-${ppl.nama_ppl}-detail`}
+                                      className="bg-slate-100 border-b hover:bg-slate-200 transition-colors"
+                                    >
+                                      <TableCell className="px-4 py-2" />
+                                      <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8">
+                                        {ppl.nama_ppl}
+                                      </TableCell>
+                                      <TableCell className="text-sm text-slate-600 px-4 py-2">
+                                        Draft: {ppl.draft}
+                                      </TableCell>
+                                      <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
+                                        {ppl.jumlah_submit.toLocaleString("id-ID")}
+                                      </TableCell>
+                                      <TableCell className="text-sm text-green-700 font-semibold px-4 py-2 text-right">
+                                        {ppl.jumlah_approve.toLocaleString("id-ID")}
+                                      </TableCell>
+                                      <TableCell className="text-sm text-red-700 font-semibold px-4 py-2 text-right">
+                                        {ppl.jumlah_reject.toLocaleString("id-ID")}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
