@@ -1491,8 +1491,11 @@ export function MonitoringLapangan() {
                           {paginatedRowsPML.map((row, index) => {
                             const isExpanded = expandedPML.has(`${row.nama_pml}|${row.kecamatan}`);
                             const pplUnderPML = aggregatedData.rows.filter(ppl => 
-                              ppl.nama_pml === row.nama_pml
+                              ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan
                             );
+                            
+                            // Calculate jumlah_submit from expanded PPL rows
+                            const calculatedSubmitPPL = pplUnderPML.reduce((sum, ppl) => sum + ppl.jumlah_submit, 0);
                             
                             return (
                               <React.Fragment key={`${row.nama_pml}-${row.kecamatan}`}>
@@ -1526,7 +1529,7 @@ export function MonitoringLapangan() {
                                     {row.kecamatan || "-"}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                    {row.jumlah_submit_ppl.toLocaleString("id-ID")}
+                                    {calculatedSubmitPPL.toLocaleString("id-ID")}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
                                     {row.jumlah_approve.toLocaleString("id-ID")}
