@@ -127,8 +127,8 @@ const calculateDayProgress = (): {
   };
 };
 
-// Get status and notification for current day with flexible targets
-const getScheduleStatus = (jumlahSubmit: number): {
+  // Get status and notification for current day with flexible targets
+const getScheduleStatus = (jumlahAktivitas: number): {
   status: "optimal" | "warning" | "critical" | "pending";
   label: string;
   targetLabel: string;
@@ -149,24 +149,24 @@ const getScheduleStatus = (jumlahSubmit: number): {
     };
 
   // Optimal: above max target
-  if (jumlahSubmit >= maxDayTarget) {
+  if (jumlahAktivitas >= maxDayTarget) {
     return {
       status: "optimal",
       label: "Sesuai Jadwal",
       targetLabel: "Diatas target harian",
-      notification: `Sudah submit ${jumlahSubmit} dari target ${minDayTarget}-${maxDayTarget} submit (Hari ke-${daysElapsed})`,
+      notification: `${jumlahAktivitas} aktivitas (target ${minDayTarget}-${maxDayTarget}, hari ke-${daysElapsed})`,
       icon: CheckCircle2,
       color: COLORS.optimal,
     };
   }
 
   // Good: between min and max target
-  if (jumlahSubmit >= minDayTarget && jumlahSubmit < maxDayTarget) {
+  if (jumlahAktivitas >= minDayTarget && jumlahAktivitas < maxDayTarget) {
     return {
       status: "optimal",
       label: "Sesuai Jadwal",
       targetLabel: "Sesuai target harian",
-      notification: `Sudah submit ${jumlahSubmit} dari target ${minDayTarget}-${maxDayTarget} submit (Hari ke-${daysElapsed})`,
+      notification: `${jumlahAktivitas} aktivitas (target ${minDayTarget}-${maxDayTarget}, hari ke-${daysElapsed})`,
       icon: CheckCircle2,
       color: COLORS.optimal,
     };
@@ -174,12 +174,12 @@ const getScheduleStatus = (jumlahSubmit: number): {
 
   // Warning: between 60% of min target and min target
   const warningThreshold = minDayTarget * 0.6;
-  if (jumlahSubmit >= warningThreshold) {
+  if (jumlahAktivitas >= warningThreshold) {
     return {
       status: "warning",
       label: "Tertinggal",
       targetLabel: "Dibawah target harian",
-      notification: `Sudah submit ${jumlahSubmit} dari target ${minDayTarget}-${maxDayTarget} submit (Hari ke-${daysElapsed}). Kurang ${minDayTarget - jumlahSubmit}`,
+      notification: `${jumlahAktivitas} aktivitas, kurang ${minDayTarget - jumlahAktivitas} (hari ke-${daysElapsed})`,
       icon: AlertTriangle,
       color: COLORS.warning,
     };
@@ -190,7 +190,7 @@ const getScheduleStatus = (jumlahSubmit: number): {
     status: "critical",
     label: "Sangat Tertinggal",
     targetLabel: "Dibawah target harian",
-    notification: `Sudah submit ${jumlahSubmit} dari target ${minDayTarget}-${maxDayTarget} submit (Hari ke-${daysElapsed}). Kurang ${minDayTarget - jumlahSubmit}`,
+    notification: `${jumlahAktivitas} aktivitas, kurang ${minDayTarget - jumlahAktivitas} (hari ke-${daysElapsed})`,
     icon: AlertCircle,
     color: COLORS.critical,
   };
@@ -292,13 +292,22 @@ const PercentageTooltip = ({ active, payload }: any) => {
 
 // Export PPL data to Excel
 const exportPPLToExcel = (data: AggregatedData['rows']) => {
+  // Calculate days elapsed for daily average
+  const today = new Date();
+  const daysElapsed = Math.floor(
+    (today.getTime() - SCHEDULE_START.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
+  const elapsedDays = Math.max(0, Math.min(daysElapsed, TOTAL_DAYS));
+
   const aoa: (string | number)[][] = [
     ['DATA INDIVIDU PPL (PETUGAS PENCACAH LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Kecamatan', 'Nama PPL', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Total Assignment', 'Persentase Submit'],
+    ['No', 'Kecamatan', 'Nama PPL', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Total Assignment', 'Persentase Submit', 'Rata-rata Submit+Draft/Harian'],
     ...data.map((row, idx) => {
       const percentage = row.total_assignments > 0 ? ((row.jumlah_submit / row.total_assignments) * 100).toFixed(2) : '0.00';
+      const dailyAverage = (row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, elapsedDays);
+      const dailyAverageFormatted = Math.round(dailyAverage * 100) / 100;
       return [
         idx + 1,
         row.kecamatan,
@@ -309,7 +318,8 @@ const exportPPLToExcel = (data: AggregatedData['rows']) => {
         row.jumlah_approve,
         row.jumlah_reject,
         row.total_assignments,
-        `${percentage}%`
+        `${percentage}%`,
+        dailyAverageFormatted
       ];
     })
   ];
@@ -329,7 +339,8 @@ const exportPPLToExcel = (data: AggregatedData['rows']) => {
     { wch: 10 },
     { wch: 10 },
     { wch: 15 },
-    { wch: 15 }
+    { wch: 15 },
+    { wch: 22 }
   ];
 
   XLSX.writeFile(wb, `Data_PPL_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -345,6 +356,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData['rows']) => {
     jumlah_submit_ppl: number; 
     jumlah_approve: number; 
     jumlah_reject: number;
+    totalDraft: number;
   }>();
 
   aggregatedRows.forEach(row => {
@@ -356,14 +368,23 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData['rows']) => {
         jumlah_submit_ppl: 0,
         jumlah_approve: 0,
         jumlah_reject: 0,
+        totalDraft: 0,
       });
     }
     const current = pmlMap.get(key)!;
     // Sum all values from individual PPL rows
+    current.totalDraft += row.draft;
     current.jumlah_submit_ppl += row.jumlah_submit;
     current.jumlah_approve += row.jumlah_approve;
     current.jumlah_reject += row.jumlah_reject;
   });
+
+  // Calculate days elapsed for daily average
+  const today = new Date();
+  const daysElapsed = Math.floor(
+    (today.getTime() - SCHEDULE_START.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
+  const elapsedDays = Math.max(0, Math.min(daysElapsed, TOTAL_DAYS));
 
   // Sort by % Pemeriksaan (descending) - same as UI default
   const pmlRows = Array.from(pmlMap.values()).sort((a, b) => {
@@ -376,17 +397,22 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData['rows']) => {
     ['DATA PML (PETUGAS PENGAWAS LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Nama PML', 'Kecamatan', 'Submit PPL', 'Approve', 'Reject', '% Pemeriksaan'],
+    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Submit PPL', 'Approve', 'Reject', '% Pemeriksaan', 'Rata-rata Submit+Draft/Harian'],
     ...pmlRows.map((row, idx) => {
       const percentage = row.jumlah_submit_ppl > 0 ? (((row.jumlah_approve + row.jumlah_reject) / row.jumlah_submit_ppl) * 100).toFixed(2) : '0.00';
+      const countPPL = aggregatedRows.filter(ppl => ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan).length;
+      const dailyAverage = countPPL > 0 ? (row.totalDraft + row.jumlah_reject + row.jumlah_submit_ppl + row.jumlah_approve) / (elapsedDays * countPPL) : 0;
+      const dailyAverageFormatted = Math.round(dailyAverage * 100) / 100;
       return [
         idx + 1,
         row.nama_pml,
         row.kecamatan,
+        row.totalDraft,
         row.jumlah_submit_ppl,
         row.jumlah_approve,
         row.jumlah_reject,
-        `${percentage}%`
+        `${percentage}%`,
+        dailyAverageFormatted
       ];
     })
   ];
@@ -400,10 +426,12 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData['rows']) => {
     { wch: 5 },
     { wch: 20 },
     { wch: 18 },
+    { wch: 8 },
     { wch: 15 },
     { wch: 10 },
     { wch: 10 },
-    { wch: 15 }
+    { wch: 15 },
+    { wch: 22 }
   ];
 
   XLSX.writeFile(wb, `Data_PML_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -420,7 +448,7 @@ export function MonitoringLapangan() {
   const [searchTerm, setSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve">("submit");
+  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "dailyavg">("submit");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentPage, setCurrentPage] = useState(1);
@@ -527,6 +555,11 @@ export function MonitoringLapangan() {
           compareValue = a.jumlah_reject - b.jumlah_reject;
         } else if (sortBy === "approve") {
           compareValue = a.jumlah_approve - b.jumlah_approve;
+        } else if (sortBy === "dailyavg") {
+          const { daysElapsed: elapsedDays } = calculateDayProgress();
+          const avgA = (a.draft + a.jumlah_reject + a.jumlah_submit + a.jumlah_approve) / Math.max(1, elapsedDays);
+          const avgB = (b.draft + b.jumlah_reject + b.jumlah_submit + b.jumlah_approve) / Math.max(1, elapsedDays);
+          compareValue = avgA - avgB;
         } else if (sortBy === "kecamatan") {
           compareValue = a.kecamatan.localeCompare(b.kecamatan);
         } else if (sortBy === "ppl") {
@@ -741,7 +774,7 @@ export function MonitoringLapangan() {
       };
     }, [sheetData, searchTerm, sortBy, sortOrder, statusFilter]);
 
-  const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve") => {
+  const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "dailyavg") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -1531,8 +1564,14 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              Rata-rata Submit Harian
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => toggleSort("dailyavg")}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Rata-rata Submit Harian
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
                             <TableHead className="text-center text-slate-700 font-semibold px-4 py-3">
                               Status
@@ -1547,7 +1586,8 @@ export function MonitoringLapangan() {
                         </TableHeader>
                         <TableBody>
                           {paginatedRows.map((row, index) => {
-                            const scheduleStatus = getScheduleStatus(row.jumlah_submit);
+                            const totalAktivitas = row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve;
+                            const scheduleStatus = getScheduleStatus(totalAktivitas);
                             const StatusIcon = scheduleStatus.icon;
 
                             return (
@@ -1577,7 +1617,7 @@ export function MonitoringLapangan() {
                                   {row.jumlah_approve.toLocaleString("id-ID")}
                                 </TableCell>
                                 <TableCell className="text-right text-slate-700 px-4 py-3">
-                                  {(Math.floor(row.jumlah_submit / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} submit/hari
+                                  {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} submit+draft/hari
                                 </TableCell>
                                 <TableCell className="text-center px-4 py-3">
                                   <div className="flex items-center justify-center gap-1.5">
@@ -1593,15 +1633,23 @@ export function MonitoringLapangan() {
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-center px-4 py-3">
-                                  <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                                    scheduleStatus.targetLabel === "Diatas target harian"
-                                      ? "bg-green-100 text-green-700"
-                                      : scheduleStatus.targetLabel === "Sesuai target harian"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-amber-100 text-amber-700"
-                                  }`}>
-                                    {scheduleStatus.targetLabel}
-                                  </span>
+                                  {scheduleStatus.targetLabel === "Diatas target harian" ? (
+                                    <div className="flex items-center justify-center gap-1.5 text-green-700" title="Diatas Target">
+                                      <TrendingUp className="h-5 w-5" />
+                                    </div>
+                                  ) : scheduleStatus.targetLabel === "Sesuai target harian" ? (
+                                    <div className="flex items-center justify-center gap-1.5 text-blue-700" title="Sesuai Target">
+                                      <CheckCircle2 className="h-5 w-5" />
+                                    </div>
+                                  ) : scheduleStatus.targetLabel === "-" ? (
+                                    <div className="flex items-center justify-center gap-1.5 text-slate-400" title="Belum Dimulai">
+                                      <Calendar className="h-5 w-5" />
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-center gap-1.5 text-amber-700" title="Dibawah Target">
+                                      <AlertTriangle className="h-5 w-5" />
+                                    </div>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-xs text-slate-600 px-4 py-3 max-w-xs">
                                   <div className="bg-blue-50 rounded px-2 py-1">
