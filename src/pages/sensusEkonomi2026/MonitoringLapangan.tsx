@@ -340,14 +340,49 @@ const exportPPLToExcel = (data: AggregatedData['rows']) => {
   XLSX.writeFile(wb, `Data_PPL_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
 
-// Export PML data to Excel
-const exportPMLToExcel = (data: PMLData[]) => {
+// Export PML data to Excel (recalculated from aggregatedData for accuracy)
+const exportPMLToExcel = (aggregatedRows: AggregatedData['rows']) => {
+  // Rebuild PML data with EXACT same calculation as UI table
+  // All values (Submit, Approve, Reject) must be calculated from individual PPL data
+  const pmlMap = new Map<string, { 
+    nama_pml: string; 
+    kecamatan: string; 
+    jumlah_submit_ppl: number; 
+    jumlah_approve: number; 
+    jumlah_reject: number;
+  }>();
+
+  aggregatedRows.forEach(row => {
+    const key = `${row.nama_pml}|${row.kecamatan}`;
+    if (!pmlMap.has(key)) {
+      pmlMap.set(key, {
+        nama_pml: row.nama_pml,
+        kecamatan: row.kecamatan,
+        jumlah_submit_ppl: 0,
+        jumlah_approve: 0,
+        jumlah_reject: 0,
+      });
+    }
+    const current = pmlMap.get(key)!;
+    // Sum all values from individual PPL rows
+    current.jumlah_submit_ppl += row.jumlah_submit;
+    current.jumlah_approve += row.jumlah_approve;
+    current.jumlah_reject += row.jumlah_reject;
+  });
+
+  // Sort by % Pemeriksaan (descending) - same as UI default
+  const pmlRows = Array.from(pmlMap.values()).sort((a, b) => {
+    const percA = a.jumlah_submit_ppl > 0 ? ((a.jumlah_approve + a.jumlah_reject) / a.jumlah_submit_ppl) * 100 : 0;
+    const percB = b.jumlah_submit_ppl > 0 ? ((b.jumlah_approve + b.jumlah_reject) / b.jumlah_submit_ppl) * 100 : 0;
+    return percB - percA;
+  });
+
   const aoa: (string | number)[][] = [
     ['DATA PML (PETUGAS PENGAWAS LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
     ['No', 'Nama PML', 'Kecamatan', 'Submit PPL', 'Approve', 'Reject', '% Pemeriksaan'],
-    ...data.map((row, idx) => {
+    ...pmlRows.map((row, idx) => {
       const percentage = row.jumlah_submit_ppl > 0 ? (((row.jumlah_approve + row.jumlah_reject) / row.jumlah_submit_ppl) * 100).toFixed(2) : '0.00';
       return [
         idx + 1,
@@ -1510,9 +1545,9 @@ export function MonitoringLapangan() {
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
-                    {isPPK && pmlData.length > 0 && (
+                    {isPPK && aggregatedData.rows.length > 0 && (
                       <button
-                        onClick={() => exportPMLToExcel(pmlData)}
+                        onClick={() => exportPMLToExcel(aggregatedData.rows)}
                         className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
                       >
                         <Download className="h-4 w-4" />
