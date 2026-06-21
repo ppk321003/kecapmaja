@@ -420,7 +420,7 @@ export function MonitoringLapangan() {
   const [searchTerm, setSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl">("submit");
+  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve">("submit");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentPage, setCurrentPage] = useState(1);
@@ -432,7 +432,7 @@ export function MonitoringLapangan() {
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
 
   // Process and aggregate data
-  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, totalProgress, pmlData } =
+  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, chartDataPMLTop, chartDataPMLLowest, totalProgress, pmlData } =
     useMemo(() => {
       if (!sheetData || sheetData.length === 0)
         return {
@@ -443,6 +443,8 @@ export function MonitoringLapangan() {
           chartDataKecamatanPercentage: [],
           chartDataPPLTop: [],
           chartDataPPLLowest: [],
+          chartDataPMLTop: [],
+          chartDataPMLLowest: [],
           totalProgress: { current: 0, target: TOTAL_TARGET, percentage: 0 },
           pmlData: [],
         };
@@ -519,6 +521,12 @@ export function MonitoringLapangan() {
         let compareValue = 0;
         if (sortBy === "submit") {
           compareValue = a.jumlah_submit - b.jumlah_submit;
+        } else if (sortBy === "draft") {
+          compareValue = a.draft - b.draft;
+        } else if (sortBy === "reject") {
+          compareValue = a.jumlah_reject - b.jumlah_reject;
+        } else if (sortBy === "approve") {
+          compareValue = a.jumlah_approve - b.jumlah_approve;
         } else if (sortBy === "kecamatan") {
           compareValue = a.kecamatan.localeCompare(b.kecamatan);
         } else if (sortBy === "ppl") {
@@ -676,6 +684,45 @@ export function MonitoringLapangan() {
 
       const pmlRows = Array.from(pmlMap.values());
 
+      // Chart data for PML Top 10 by Pemeriksaan % - use same calculation as table
+      // Group PPL by PML to match table calculation
+      const pmlChartMap = new Map<string, { totalSubmit: number; totalApprove: number; totalReject: number }>();
+      rows.forEach(ppl => {
+        if (ppl.nama_pml) {
+          const key = `${ppl.nama_pml}|${ppl.kecamatan}`;
+          if (!pmlChartMap.has(key)) {
+            pmlChartMap.set(key, { totalSubmit: 0, totalApprove: 0, totalReject: 0 });
+          }
+          const current = pmlChartMap.get(key)!;
+          current.totalSubmit += ppl.jumlah_submit;
+          current.totalApprove += ppl.jumlah_approve;
+          current.totalReject += ppl.jumlah_reject;
+        }
+      });
+
+      const pmlWithPercentage = Array.from(pmlChartMap.values()).map((data, idx) => {
+        const entries = Array.from(pmlChartMap.entries());
+        const [key] = entries[idx];
+        const [nama_pml] = key.split('|');
+        const pemeriksaanPercent = data.totalSubmit > 0 
+          ? Math.round(((data.totalApprove + data.totalReject) / data.totalSubmit) * 10000) / 100
+          : 0;
+        return {
+          nama_pml,
+          pemeriksaanPercent,
+        };
+      });
+
+      const pmlSortedByPemeriksaan = pmlWithPercentage.sort((a, b) => b.pemeriksaanPercent - a.pemeriksaanPercent);
+      const chartDataPMLTop: ChartData[] = pmlSortedByPemeriksaan.slice(0, 10).map(item => ({
+        name: item.nama_pml,
+        value: item.pemeriksaanPercent,
+      }));
+      const chartDataPMLLowest: ChartData[] = pmlSortedByPemeriksaan.slice(-10).reverse().map(item => ({
+        name: item.nama_pml,
+        value: item.pemeriksaanPercent,
+      }));
+
       return {
         aggregatedData: {
           rows,
@@ -687,12 +734,14 @@ export function MonitoringLapangan() {
         chartDataKecamatanPercentage,
         chartDataPPLTop,
         chartDataPPLLowest,
+        chartDataPMLTop,
+        chartDataPMLLowest,
         totalProgress,
         pmlData: pmlRows,
       };
     }, [sheetData, searchTerm, sortBy, sortOrder, statusFilter]);
 
-  const toggleSort = (field: "submit" | "kecamatan" | "ppl") => {
+  const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -819,21 +868,21 @@ export function MonitoringLapangan() {
                 <Card className="border-0 shadow-sm bg-white hover:shadow-md transition-shadow">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-slate-600">
-                      Total Submit
+                      Total Pendataan
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold text-slate-900">
                       {dashboardStats.totalSubmit.toLocaleString("id-ID")}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">formulir tersubmit</p>
+                    <p className="text-xs text-slate-500 mt-1">Nilai merupakan Draft + Reject + Approve + Submit</p>
                   </CardContent>
                 </Card>
 
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-blue-700">
-                      🏆 Performa Terbaik Persentase
+                      🏆 Persentase Tertinggi
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -854,7 +903,7 @@ export function MonitoringLapangan() {
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-orange-50 to-orange-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-orange-700">
-                      📉 Performa Terburuk Persentase
+                      📉 Persentase Terendah
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -875,7 +924,7 @@ export function MonitoringLapangan() {
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-green-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-green-700">
-                      🏆 Performa Terbaik Submit
+                      🏆 Rata-rata Submit Tertinggi
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -896,7 +945,7 @@ export function MonitoringLapangan() {
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-red-50 to-red-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-red-700">
-                      📉 Performa Terburuk Submit
+                      📉 Rata-rata Submit Terendah
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -1164,6 +1213,90 @@ export function MonitoringLapangan() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Top 10 Pemeriksaan PML Terbanyak Chart */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg">🔝 Top 10 Pemeriksaan PML Terbanyak</CardTitle>
+                  <CardDescription>Persentase pemeriksaan PML tertinggi</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    </div>
+                  ) : chartDataPMLTop.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={chartDataPMLTop}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis
+                          dataKey="name"
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          tick={{ fontSize: 11 }}
+                        />
+                        <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#fff",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                          }}
+                          formatter={(value) => `${value.toFixed(2)}%`}
+                        />
+                        <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      Tidak ada data
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Top 10 Pemeriksaan PML Terendah Chart */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg">📉 Top 10 Pemeriksaan PML Terendah</CardTitle>
+                  <CardDescription>Persentase pemeriksaan PML terendah</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    </div>
+                  ) : chartDataPMLLowest.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={chartDataPMLLowest}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis
+                          dataKey="name"
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          tick={{ fontSize: 11 }}
+                        />
+                        <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#fff",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                          }}
+                          formatter={(value) => `${value.toFixed(2)}%`}
+                        />
+                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      Tidak ada data
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -1362,11 +1495,23 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              Draft
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => toggleSort("draft")}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Draft
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              Reject
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => toggleSort("reject")}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Reject
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -1377,8 +1522,14 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              Approve
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => toggleSort("approve")}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Approve
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
                             <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
                               Rata-rata Submit Harian
@@ -1732,6 +1883,9 @@ export function MonitoringLapangan() {
                                       <TableCell className="text-sm text-red-700 font-semibold px-4 py-2 text-right">
                                         {ppl.jumlah_reject.toLocaleString("id-ID")}
                                       </TableCell>
+                                      <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">
+                                        {ppl.jumlah_submit > 0 ? (((ppl.jumlah_approve + ppl.jumlah_reject) / ppl.jumlah_submit) * 100).toFixed(2) : "0.00"}%
+                                      </TableCell>
                                     </TableRow>
                                   ))
                                 )}
@@ -1809,14 +1963,7 @@ export function MonitoringLapangan() {
           </div>
         </Tabs>
 
-        {/* Footer */}
-        <div className="mt-8 text-xs text-slate-500 text-center space-y-1">
-          <p>📊 Data terakhir diperbarui dari sheet REKAP_SCRP</p>
-          <p>
-            🎯 Target: ~{TOTAL_TARGET.toLocaleString("id-ID")} submit ({MIN_DAILY_TARGET}-{MAX_DAILY_TARGET} submit/hari × {TOTAL_DAYS} hari)
-          </p>
-          <p className="text-xs text-slate-400">Dashboard ini memberikan inovasi: unique kecamatan count, flexible target range, status filter, pagination, dan multiple analytics views</p>
-        </div>
+
       </div>
     </div>
   );
