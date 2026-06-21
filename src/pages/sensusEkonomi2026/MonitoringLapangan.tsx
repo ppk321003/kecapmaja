@@ -215,24 +215,19 @@ const getColorForPercentage = (percentage: number): string => {
   const minPercentageTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100;
   const maxPercentageTarget = (daysElapsed * MAX_DAILY_TARGET / TOTAL_TARGET) * 100;
   
-  // Optimal: mencapai atau melebihi target maksimal
-  if (percentage >= maxPercentageTarget) {
-    return "#22c55e"; // Hijau cerah
+  // SAMAKAN DENGAN getColorGradient untuk konsistensi visual
+  // Optimal: mencapai atau melebihi target maksimal (>= 7%)
+  if (percentage >= 7) {
+    return "#22c55e"; // Hijau (sesuai dengan >= 7/hari di rata-rata PPL)
   }
   
-  // Good: mencapai target minimal
-  if (percentage >= minPercentageTarget) {
-    return "#84cc16"; // Lime
+  // Good: 4-6%
+  if (percentage >= 4) {
+    return "#eab308"; // Kuning (sesuai dengan 4-6/hari di rata-rata PPL)
   }
   
-  // Warning: mencapai 60% dari target minimal
-  const warningThreshold = minPercentageTarget * 0.6;
-  if (percentage >= warningThreshold) {
-    return "#f97316"; // Orange
-  }
-  
-  // Critical: di bawah warning threshold
-  return "#dc2626"; // Red
+  // Critical: < 4%
+  return "#dc2626"; // Merah (sesuai dengan < 4/hari di rata-rata PPL)
 };
 
 // PERBAIKAN: Custom Tooltip untuk Progres Submit Kecamatan
@@ -630,11 +625,13 @@ export function MonitoringLapangan() {
         : { name: "-", value: 0, totalSubmit: 0, totalAssignments: 0 };
 
       // Chart data for PPL Top 10
+      // Hitung total keseluruhan: draft + submit + approve + reject
       const pplMap = new Map<string, number>();
       Array.from(dataMap.values()).forEach((row) => {
         if (row.nama_ppl) {
           const current = pplMap.get(row.nama_ppl) || 0;
-          pplMap.set(row.nama_ppl, current + row.jumlah_submit);
+          const totalActivity = row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject;
+          pplMap.set(row.nama_ppl, current + totalActivity);
         }
       });
 
