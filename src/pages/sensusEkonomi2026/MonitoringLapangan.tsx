@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -20,8 +21,10 @@ import {
   ChevronRight,
   ChevronDown,
   Filter,
+  Download,
 } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
+import { useAuth } from "@/contexts/AuthContext";
 import { MonitoringLastUpdated } from "@/components/MonitoringLastUpdated";
 import {
   BarChart,
@@ -292,7 +295,94 @@ const PercentageTooltip = ({ active, payload }: any) => {
   return null;
 };
 
+// Export PPL data to Excel
+const exportPPLToExcel = (data: AggregatedData['rows']) => {
+  const aoa: (string | number)[][] = [
+    ['DATA INDIVIDU PPL (PETUGAS PENCACAH LAPANGAN)'],
+    ['Tanggal Export', new Date().toLocaleString('id-ID')],
+    [],
+    ['No', 'Kecamatan', 'Nama PPL', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Total Assignment', 'Persentase Submit'],
+    ...data.map((row, idx) => {
+      const percentage = row.total_assignments > 0 ? ((row.jumlah_submit / row.total_assignments) * 100).toFixed(2) : '0.00';
+      return [
+        idx + 1,
+        row.kecamatan,
+        row.nama_ppl,
+        row.nama_pml,
+        row.draft,
+        row.jumlah_submit,
+        row.jumlah_approve,
+        row.jumlah_reject,
+        row.total_assignments,
+        `${percentage}%`
+      ];
+    })
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'PPL');
+  
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 5 },
+    { wch: 18 },
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 8 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 15 },
+    { wch: 15 }
+  ];
+
+  XLSX.writeFile(wb, `Data_PPL_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+// Export PML data to Excel
+const exportPMLToExcel = (data: PMLData[]) => {
+  const aoa: (string | number)[][] = [
+    ['DATA PML (PETUGAS PENGAWAS LAPANGAN)'],
+    ['Tanggal Export', new Date().toLocaleString('id-ID')],
+    [],
+    ['No', 'Nama PML', 'Kecamatan', 'Submit PPL', 'Approve', 'Reject', '% Pemeriksaan'],
+    ...data.map((row, idx) => {
+      const percentage = row.jumlah_submit_ppl > 0 ? (((row.jumlah_approve + row.jumlah_reject) / row.jumlah_submit_ppl) * 100).toFixed(2) : '0.00';
+      return [
+        idx + 1,
+        row.nama_pml,
+        row.kecamatan,
+        row.jumlah_submit_ppl,
+        row.jumlah_approve,
+        row.jumlah_reject,
+        `${percentage}%`
+      ];
+    })
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'PML');
+  
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 5 },
+    { wch: 20 },
+    { wch: 18 },
+    { wch: 15 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 15 }
+  ];
+
+  XLSX.writeFile(wb, `Data_PML_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
 export function MonitoringLapangan() {
+  const { user } = useAuth();
+  const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
+  
   const { data: sheetData, loading, error } = useGoogleSheetsData({
     spreadsheetId: SPREADSHEET_ID,
     sheetName: SHEET_NAME,
@@ -307,7 +397,7 @@ export function MonitoringLapangan() {
   const [currentPagePML, setCurrentPagePML] = useState(1);
   const [itemsPerPagePPL, setItemsPerPagePPL] = useState(20);
   const [itemsPerPagePML, setItemsPerPagePML] = useState(20);
-  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject">("approve");
+  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "pemeriksaan">("pemeriksaan");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
 
@@ -588,6 +678,16 @@ export function MonitoringLapangan() {
   const sortedPMLData = useMemo(() => {
     let sorted = [...pmlData];
     
+    // Recalculate actual submit PPL based on aggregatedData for accurate sorting
+    sorted = sorted.map(pml => {
+      const pplUnderPML = aggregatedData.rows.filter(ppl => 
+        ppl.nama_pml === pml.nama_pml && ppl.kecamatan === pml.kecamatan
+      );
+      const actualSubmit = pplUnderPML.reduce((sum, ppl) => sum + ppl.jumlah_submit, 0);
+      const pemeriksaan = actualSubmit > 0 ? ((pml.jumlah_approve + pml.jumlah_reject) / actualSubmit) * 100 : 0;
+      return { ...pml, actualSubmit, pemeriksaan };
+    });
+    
     // Apply search filter
     if (pmlSearchTerm) {
       sorted = sorted.filter((item) =>
@@ -602,12 +702,14 @@ export function MonitoringLapangan() {
       sorted.sort((a, b) => a.jumlah_approve - b.jumlah_approve);
     } else if (pmlSortBy === "reject") {
       sorted.sort((a, b) => a.jumlah_reject - b.jumlah_reject);
+    } else if (pmlSortBy === "pemeriksaan") {
+      sorted.sort((a, b) => a.pemeriksaan - b.pemeriksaan);
     }
     if (pmlSortOrder === "desc") {
       sorted.reverse();
     }
     return sorted;
-  }, [pmlData, pmlSortBy, pmlSortOrder, pmlSearchTerm]);
+  }, [pmlData, pmlSortBy, pmlSortOrder, pmlSearchTerm, aggregatedData]);
 
   const totalPagesPML = Math.ceil(sortedPMLData.length / itemsPerPagePML);
   const startIndexPML = (currentPagePML - 1) * itemsPerPagePML;
@@ -1151,6 +1253,16 @@ export function MonitoringLapangan() {
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
+                    {isPPK && aggregatedData.rows.length > 0 && (
+                      <button
+                        onClick={() => exportPPLToExcel(aggregatedData.rows)}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Excel
+                      </button>
+                    )}
+                    
                     <div className="relative flex-1 md:max-w-xs">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input
@@ -1398,6 +1510,16 @@ export function MonitoringLapangan() {
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
+                    {isPPK && pmlData.length > 0 && (
+                      <button
+                        onClick={() => exportPMLToExcel(pmlData)}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Excel
+                      </button>
+                    )}
+                    
                     <div className="relative flex-1 md:max-w-xs">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input
@@ -1485,6 +1607,21 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "pemeriksaan") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("pemeriksaan");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                % Pemeriksaan
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1493,8 +1630,6 @@ export function MonitoringLapangan() {
                             const pplUnderPML = aggregatedData.rows.filter(ppl => 
                               ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan
                             );
-                            
-                            // Calculate jumlah_submit from expanded PPL rows
                             const calculatedSubmitPPL = pplUnderPML.reduce((sum, ppl) => sum + ppl.jumlah_submit, 0);
                             
                             return (
@@ -1536,6 +1671,9 @@ export function MonitoringLapangan() {
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
                                     {row.jumlah_reject.toLocaleString("id-ID")}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                    {calculatedSubmitPPL > 0 ? (((row.jumlah_approve + row.jumlah_reject) / calculatedSubmitPPL) * 100).toFixed(2) : "0.00"}%
                                   </TableCell>
                                 </TableRow>
 
