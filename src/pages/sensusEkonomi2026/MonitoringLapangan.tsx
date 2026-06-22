@@ -1604,6 +1604,7 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
+                            <TableHead className="w-10 px-2 py-3" />
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => toggleSort("dailyavg")}
@@ -1700,6 +1701,7 @@ export function MonitoringLapangan() {
                                   <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
                                     {row.jumlah_approve.toLocaleString("id-ID")}
                                   </TableCell>
+                                  <TableCell className="px-2 py-3" />
                                   <TableCell className="text-right text-slate-700 px-4 py-3">
                                     {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} submit+draft/hari
                                   </TableCell>
@@ -1768,12 +1770,29 @@ export function MonitoringLapangan() {
                                           <TableCell className="text-sm text-green-700 font-semibold px-4 py-2 text-right">
                                             {getColumnValue(user, "approved_by_pengawas", ["appr", "APPROVED_BY_PENGAWAS", "approved", "Approved", "Approve"], "0")}
                                           </TableCell>
+                                          <TableCell className="px-2 py-2 text-center">
+                                            {(() => {
+                                              const toNum = (v: any) => {
+                                                const n = parseFloat(String(v ?? "0").replace(/[^\d.-]/g, ""));
+                                                return isNaN(n) ? 0 : n;
+                                              };
+                                              const openVal = toNum(getColumnValue(user, "open", ["OPEN", "Open"], "0"));
+                                              const submitted = toNum(getColumnValue(user, "submitted_by_pencacah", ["subi", "SUBMITTED_BY_PENCACAH", "submitted", "Submitted", "Submit"], "0"));
+                                              const approved = toNum(getColumnValue(user, "approved_by_pengawas", ["appr", "APPROVED_BY_PENGAWAS", "approved", "Approved", "Approve"], "0"));
+                                              const rejected = toNum(getColumnValue(user, "rejected_by_pengawas", ["reje", "REJECTED_BY_PENGAWAS", "rejected", "Rejected", "Reject"], "0"));
+                                              const subResp = toNum(getColumnValue(user, "submitted_respondent", ["SUBMITTED_RESPONDENT", "submittedRespondent", "submitted_respondent"], "0"));
+                                              const sum = submitted + approved + rejected + subResp;
+                                              return openVal <= sum ? (
+                                                <CheckCircle2 className="h-5 w-5 text-green-600 inline" />
+                                              ) : null;
+                                            })()}
+                                          </TableCell>
                                           <TableCell colSpan={3} className="text-sm text-slate-600 px-4 py-2 italic" />
                                         </TableRow>
                                       ))
                                     ) : (
                                       <TableRow className="bg-amber-50 border-b">
-                                        <TableCell colSpan={10} className="px-4 py-3 text-sm text-amber-700 italic">
+                                        <TableCell colSpan={12} className="px-4 py-3 text-sm text-amber-700 italic">
                                           ⚠️ Tidak ada data dari sheet "Semua Users" untuk: {row.nama_ppl}
                                         </TableCell>
                                       </TableRow>
