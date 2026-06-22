@@ -1318,7 +1318,7 @@ export function MonitoringLapangan() {
                           }}
                           formatter={(value) => `${value.toFixed(2)}%`}
                         />
-                        <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
+                        <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 13, fontWeight: 400, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
