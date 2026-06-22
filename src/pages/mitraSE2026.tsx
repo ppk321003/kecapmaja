@@ -1184,14 +1184,14 @@ export default function MitraSE2026() {
                                   
                                   if (paktaValue === "1") {
                                     return (
-                                      <div className="flex justify-center">
-                                        <CheckCircle2 className="h-5 w-5 text-green-600" title="Pakta: Diterima" />
+                                       <div className="flex justify-center" title="Pakta: Diterima">
+                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
                                       </div>
                                     );
                                   } else if (paktaValue === "0") {
                                     return (
-                                      <div className="flex justify-center">
-                                        <XCircle className="h-5 w-5 text-red-600" title="Pakta: Ditolak" />
+                                       <div className="flex justify-center" title="Pakta: Ditolak">
+                                        <XCircle className="h-5 w-5 text-red-600" />
                                       </div>
                                     );
                                   }
