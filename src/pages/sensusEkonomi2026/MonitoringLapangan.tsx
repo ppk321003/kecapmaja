@@ -73,12 +73,13 @@ interface AggregatedData {
 
 interface DashboardStats {
   totalKecamatan: number;
+  totalActivity: number;
   totalSubmit: number;
   averageSubmit: number;
-  topKecamatan: { name: string; value: number; totalSubmit?: number; countPPL?: number };
-  lowestKecamatan: { name: string; value: number; totalSubmit?: number; countPPL?: number };
-  topKecamatanByPercentage?: { name: string; value: number; totalSubmit?: number; totalAssignments?: number };
-  lowestKecamatanByPercentage?: { name: string; value: number; totalSubmit?: number; totalAssignments?: number };
+  topKecamatan: { name: string; value: number; totalActivity?: number; countPPL?: number };
+  lowestKecamatan: { name: string; value: number; totalActivity?: number; countPPL?: number };
+  topKecamatanByPercentage?: { name: string; value: number; totalActivity?: number; totalAssignments?: number };
+  lowestKecamatanByPercentage?: { name: string; value: number; totalActivity?: number; totalAssignments?: number };
 }
 
 interface ChartData {
@@ -418,7 +419,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData['rows']) => {
     ['DATA PML (PETUGAS PENGAWAS LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Submit PPL', 'Approve', 'Reject', '% Pemeriksaan', 'Rata-rata Submit+Draft/Harian'],
+    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Total Status', 'Approve', 'Reject', '% Pemeriksaan', 'Rata-rata Submit+Draft/Harian'],
     ...pmlRows.map((row, idx) => {
       const percentage = row.jumlah_submit_ppl > 0 ? (((row.jumlah_approve + row.jumlah_reject) / row.jumlah_submit_ppl) * 100).toFixed(2) : '0.00';
       const countPPL = aggregatedRows.filter(ppl => ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan).length;
@@ -598,26 +599,29 @@ export function MonitoringLapangan() {
 
       // Calculate statistics with UNIQUE kecamatan count
       const totalKecamatan = kecamatanSet.size; // Unique count, not row count
+      // Total Pendataan = Draft + Reject + Approve + Submit
+      const totalActivity = rows.reduce((sum, row) => sum + (row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject), 0);
       const totalSubmit = rows.reduce((sum, row) => sum + row.jumlah_submit, 0);
       const averageSubmit =
         rows.length > 0
-          ? Math.round(totalSubmit / rows.length)
+          ? Math.round(totalActivity / rows.length)
           : 0;
 
-      const sortedBySubmit = [...Array.from(dataMap.values())].sort(
-        (a, b) => b.jumlah_submit - a.jumlah_submit
+      const sortedByActivity = [...Array.from(dataMap.values())].sort(
+        (a, b) => (b.draft + b.jumlah_submit + b.jumlah_approve + b.jumlah_reject) - (a.draft + a.jumlah_submit + a.jumlah_approve + a.jumlah_reject)
       );
       
-      // PERBAIKAN: Hitung Performa Terbaik berdasarkan rata-rata submit per hari per PPL per kecamatan
+      // Hitung Performa Terbaik: Rata-rata (Submit+Reject+Approve)/hari/PPL
       const { daysElapsed: elapsedDays } = calculateDayProgress();
-      const kecamatanPerformaMap = new Map<string, { totalSubmit: number; countPPL: number; averageSubmit: number; averageSubmitPerHari: number }>();
+      const kecamatanPerformaMap = new Map<string, { totalActivity: number; totalRejectApprove: number; countPPL: number; averageActivity: number; averagePerHari: number }>();
       Array.from(dataMap.values()).forEach((row) => {
-        const current = kecamatanPerformaMap.get(row.kecamatan) || { totalSubmit: 0, countPPL: 0, averageSubmit: 0, averageSubmitPerHari: 0 };
-        current.totalSubmit += row.jumlah_submit;
+        const current = kecamatanPerformaMap.get(row.kecamatan) || { totalActivity: 0, totalRejectApprove: 0, countPPL: 0, averageActivity: 0, averagePerHari: 0 };
+        current.totalActivity += (row.jumlah_submit + row.jumlah_approve + row.jumlah_reject);
+        current.totalRejectApprove += (row.jumlah_approve + row.jumlah_reject);
         current.countPPL += 1;
-        current.averageSubmit = Math.round(current.totalSubmit / current.countPPL);
-        // Hitung rata-rata per hari: (Total Submit / Hari yang berlalu) / Jumlah PPL
-        current.averageSubmitPerHari = elapsedDays > 0 ? Math.round((current.totalSubmit / elapsedDays) / Math.max(1, current.countPPL) * 100) / 100 : 0;
+        current.averageActivity = Math.round(current.totalActivity / current.countPPL);
+        // Rata-rata per hari: ((Submit+Reject+Approve) / Hari) / Jumlah PPL
+        current.averagePerHari = elapsedDays > 0 ? Math.round((current.totalActivity / elapsedDays) / Math.max(1, current.countPPL) * 100) / 100 : 0;
         kecamatanPerformaMap.set(row.kecamatan, current);
       });
       
@@ -625,49 +629,56 @@ export function MonitoringLapangan() {
         ? Array.from(kecamatanPerformaMap.entries())
             .map(([name, data]) => ({
               name,
-              value: data.averageSubmitPerHari,
-              totalSubmit: data.totalSubmit,
+              value: data.averagePerHari,
+              totalActivity: data.totalActivity,
               countPPL: data.countPPL,
             }))
             .sort((a, b) => b.value - a.value)[0]
-        : { name: "-", value: 0, totalSubmit: 0, countPPL: 0 };
+        : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
 
       const lowestKecamatan = kecamatanPerformaMap.size > 0
         ? Array.from(kecamatanPerformaMap.entries())
             .map(([name, data]) => ({
               name,
-              value: data.averageSubmitPerHari,
-              totalSubmit: data.totalSubmit,
+              value: data.averagePerHari,
+              totalActivity: data.totalActivity,
               countPPL: data.countPPL,
             }))
             .sort((a, b) => a.value - b.value)[0]
-        : { name: "-", value: 0, totalSubmit: 0, countPPL: 0 };
+        : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
 
-      // Chart data: Top 10 Kecamatan (Terendah)
-      const chartDataKecamatan: ChartData[] = sortedBySubmit
+      // Chart data: Top 10 Kecamatan (Total Activity: Draft+Reject+Approve+Submit)
+      const chartDataKecamatan: ChartData[] = sortedByActivity
         .slice(-10)
         .reverse()
         .map((row) => ({
           name: row.kecamatan,
-          value: row.jumlah_submit,
+          value: row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject,
         }));
 
-      // Chart data: Semua 26 Kecamatan (sorted abjad)
-      // PERBAIKAN: Gunakan rata-rata per hari per PPL, sama dengan tooltip hover
+      // Chart data: Semua 26 Kecamatan (Rata-rata (Submit+Reject+Approve)/hari/PPL, sorted abjad)
+      // Track totalSubmit per kecamatan for table display
+      const kecamatanSubmitMap = new Map<string, number>();
+      Array.from(dataMap.values()).forEach((row) => {
+        const current = kecamatanSubmitMap.get(row.kecamatan) || 0;
+        kecamatanSubmitMap.set(row.kecamatan, current + row.jumlah_submit);
+      });
+
       const chartDataKecamatanAll: any[] = Array.from(kecamatanPerformaMap.entries())
         .map(([name, data]) => ({ 
           name, 
-          value: data.averageSubmitPerHari,
+          value: data.averagePerHari,
           countPPL: data.countPPL,
-          totalSubmit: data.totalSubmit
+          totalActivity: data.totalActivity,
+          totalSubmit: kecamatanSubmitMap.get(name) || 0
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      // Chart data: Persentase Submit per Kecamatan (Jumlah Submit / Total Assignments)
-      const kecamatanPercentageMap = new Map<string, { totalSubmit: number; totalAssignments: number }>();
+      // Chart data: Persentase per Kecamatan = (Draft+Submit+Reject+Approve) / Total Assignments × 100
+      const kecamatanPercentageMap = new Map<string, { totalActivity: number; totalAssignments: number }>();
       Array.from(dataMap.values()).forEach((row) => {
-        const current = kecamatanPercentageMap.get(row.kecamatan) || { totalSubmit: 0, totalAssignments: 0 };
-        current.totalSubmit += row.jumlah_submit;
+        const current = kecamatanPercentageMap.get(row.kecamatan) || { totalActivity: 0, totalAssignments: 0 };
+        current.totalActivity += (row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject);
         current.totalAssignments += row.total_assignments;
         kecamatanPercentageMap.set(row.kecamatan, current);
       });
@@ -676,9 +687,9 @@ export function MonitoringLapangan() {
         .map(([name, data]) => ({
           name,
           value: data.totalAssignments > 0 
-            ? Math.round((data.totalSubmit / data.totalAssignments) * 10000) / 100 
+            ? Math.round((data.totalActivity / data.totalAssignments) * 10000) / 100 
             : 0,
-          totalSubmit: data.totalSubmit,
+          totalActivity: data.totalActivity,
           totalAssignments: data.totalAssignments,
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
@@ -686,11 +697,11 @@ export function MonitoringLapangan() {
       // Top & Lowest Kecamatan by Percentage
       const topKecamatanByPercentage = chartDataKecamatanPercentage.length > 0
         ? [...chartDataKecamatanPercentage].sort((a, b) => b.value - a.value)[0]
-        : { name: "-", value: 0, totalSubmit: 0, totalAssignments: 0 };
+        : { name: "-", value: 0, totalActivity: 0, totalAssignments: 1 };
 
       const lowestKecamatanByPercentage = chartDataKecamatanPercentage.length > 0
         ? [...chartDataKecamatanPercentage].sort((a, b) => a.value - b.value)[0]
-        : { name: "-", value: 0, totalSubmit: 0, totalAssignments: 0 };
+        : { name: "-", value: 0, totalActivity: 0, totalAssignments: 1 };
 
       // Chart data for PPL Top 10
       // Hitung total keseluruhan: draft + submit + approve + reject
@@ -710,11 +721,11 @@ export function MonitoringLapangan() {
       const chartDataPPLTop: ChartData[] = pplSorted.slice(0, 10);
       const chartDataPPLLowest: ChartData[] = pplSorted.slice(-10).reverse();
 
-      // Calculate total progress
+      // Calculate total progress (based on totalActivity)
       const totalProgress = {
-        current: totalSubmit,
+        current: totalActivity,
         target: Math.round(TOTAL_TARGET),
-        percentage: Math.round((totalSubmit / TOTAL_TARGET) * 100),
+        percentage: Math.round((totalActivity / TOTAL_TARGET) * 100),
       };
 
       // Process PML data
@@ -764,8 +775,10 @@ export function MonitoringLapangan() {
         const entries = Array.from(pmlChartMap.entries());
         const [key] = entries[idx];
         const [nama_pml] = key.split('|');
-        const pemeriksaanPercent = data.totalSubmit > 0 
-          ? Math.round(((data.totalApprove + data.totalReject) / data.totalSubmit) * 10000) / 100
+        // Match table calculation: (Approve+Reject) / (Submit+Approve+Reject) * 100
+        const totalStatus = data.totalSubmit + data.totalApprove + data.totalReject;
+        const pemeriksaanPercent = totalStatus > 0 
+          ? Math.round(((data.totalApprove + data.totalReject) / totalStatus) * 10000) / 100
           : 0;
         return {
           nama_pml,
@@ -788,7 +801,7 @@ export function MonitoringLapangan() {
           rows,
           stats: { totalKecamatan, totalSubmit, averageSubmit },
         },
-        dashboardStats: { totalKecamatan, totalSubmit, averageSubmit, topKecamatan, lowestKecamatan, topKecamatanByPercentage, lowestKecamatanByPercentage },
+        dashboardStats: { totalKecamatan, totalActivity, totalSubmit, averageSubmit, topKecamatan, lowestKecamatan, topKecamatanByPercentage, lowestKecamatanByPercentage },
         chartDataKecamatan,
         chartDataKecamatanAll,
         chartDataKecamatanPercentage,
@@ -933,7 +946,7 @@ export function MonitoringLapangan() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold text-slate-900">
-                      {dashboardStats.totalSubmit.toLocaleString("id-ID")}
+                      {(dashboardStats?.totalActivity ?? 0).toLocaleString("id-ID")}
                     </div>
                     <p className="text-xs text-slate-500 mt-1">Nilai merupakan Draft + Reject + Approve + Submit</p>
                   </CardContent>
@@ -947,14 +960,14 @@ export function MonitoringLapangan() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-lg font-bold text-blue-900">
-                      {dashboardStats.topKecamatanByPercentage.name}
+                      {dashboardStats.topKecamatanByPercentage?.name ?? "-"}
                     </div>
                     <p className="text-sm text-blue-700 font-semibold mt-1">
-                      {dashboardStats.topKecamatanByPercentage.value.toLocaleString("id-ID")}%
+                      {(dashboardStats.topKecamatanByPercentage?.value ?? 0).toLocaleString("id-ID")}%
                     </p>
-                    {dashboardStats.topKecamatanByPercentage.totalSubmit && (
+                    {dashboardStats.topKecamatanByPercentage?.totalActivity && (
                       <p className="text-xs text-blue-600 mt-1">
-                        {dashboardStats.topKecamatanByPercentage.totalSubmit.toLocaleString("id-ID")} dari {dashboardStats.topKecamatanByPercentage.totalAssignments.toLocaleString("id-ID")}
+                        {(dashboardStats.topKecamatanByPercentage?.totalActivity ?? 0).toLocaleString("id-ID")} dari {(dashboardStats.topKecamatanByPercentage?.totalAssignments ?? 0).toLocaleString("id-ID")}
                       </p>
                     )}
                   </CardContent>
@@ -968,14 +981,14 @@ export function MonitoringLapangan() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-lg font-bold text-orange-900">
-                      {dashboardStats.lowestKecamatanByPercentage.name}
+                      {dashboardStats.lowestKecamatanByPercentage?.name ?? "-"}
                     </div>
                     <p className="text-sm text-orange-700 font-semibold mt-1">
-                      {dashboardStats.lowestKecamatanByPercentage.value.toLocaleString("id-ID")}%
+                      {(dashboardStats.lowestKecamatanByPercentage?.value ?? 0).toLocaleString("id-ID")}%
                     </p>
-                    {dashboardStats.lowestKecamatanByPercentage.totalSubmit && (
+                    {dashboardStats.lowestKecamatanByPercentage?.totalActivity && (
                       <p className="text-xs text-orange-600 mt-1">
-                        {dashboardStats.lowestKecamatanByPercentage.totalSubmit.toLocaleString("id-ID")} dari {dashboardStats.lowestKecamatanByPercentage.totalAssignments.toLocaleString("id-ID")}
+                        {(dashboardStats.lowestKecamatanByPercentage?.totalActivity ?? 0).toLocaleString("id-ID")} dari {(dashboardStats.lowestKecamatanByPercentage?.totalAssignments ?? 0).toLocaleString("id-ID")}
                       </p>
                     )}
                   </CardContent>
@@ -984,19 +997,19 @@ export function MonitoringLapangan() {
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-green-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-green-700">
-                      🏆 Rata-rata Submit Tertinggi
+                      🏆 Rata-rata Tertinggi
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-lg font-bold text-green-900">
-                      {dashboardStats.topKecamatan.name}
+                      {dashboardStats.topKecamatan?.name ?? "-"}
                     </div>
                     <p className="text-sm text-green-700 font-semibold mt-1">
-                      Rata-rata/hari: {dashboardStats.topKecamatan.value.toLocaleString("id-ID")} submit/PPL
+                      Rata-rata/hari: {(dashboardStats.topKecamatan?.value ?? 0).toLocaleString("id-ID")} (S+A+R)/PPL
                     </p>
-                    {dashboardStats.topKecamatan.totalSubmit && (
+                    {dashboardStats.topKecamatan?.totalActivity && (
                       <p className="text-xs text-green-600 mt-1">
-                        Total: {dashboardStats.topKecamatan.totalSubmit.toLocaleString("id-ID")} submit ({dashboardStats.topKecamatan.countPPL} PPL)
+                        Total: {(dashboardStats.topKecamatan?.totalActivity ?? 0).toLocaleString("id-ID")} (S+A+R) ({dashboardStats.topKecamatan?.countPPL} PPL)
                       </p>
                     )}
                   </CardContent>
@@ -1005,19 +1018,19 @@ export function MonitoringLapangan() {
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-red-50 to-red-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-red-700">
-                      📉 Rata-rata Submit Terendah
+                      📉 Rata-rata Terendah
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-lg font-bold text-red-900">
-                      {dashboardStats.lowestKecamatan.name}
+                      {dashboardStats.lowestKecamatan?.name ?? "-"}
                     </div>
                     <p className="text-sm text-red-700 font-semibold mt-1">
-                      Rata-rata/hari: {dashboardStats.lowestKecamatan.value.toLocaleString("id-ID")} submit/PPL
+                      Rata-rata/hari: {(dashboardStats.lowestKecamatan?.value ?? 0).toLocaleString("id-ID")} (S+A+R)/PPL
                     </p>
-                    {dashboardStats.lowestKecamatan.totalSubmit && (
+                    {dashboardStats.lowestKecamatan?.totalActivity && (
                       <p className="text-xs text-red-600 mt-1">
-                        Total: {dashboardStats.lowestKecamatan.totalSubmit.toLocaleString("id-ID")} submit ({dashboardStats.lowestKecamatan.countPPL} PPL)
+                        Total: {(dashboardStats.lowestKecamatan?.totalActivity ?? 0).toLocaleString("id-ID")} (S+A+R) ({dashboardStats.lowestKecamatan?.countPPL} PPL)
                       </p>
                     )}
                   </CardContent>
@@ -1036,7 +1049,7 @@ export function MonitoringLapangan() {
                       <CardTitle className="text-lg">
                         📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}%
                       </CardTitle>
-                      <CardDescription>Persentase jumlah submit terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad)</CardDescription>
+                      <CardDescription>Persentase (Draft+Reject+Approve+Submit) terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad)</CardDescription>
                     </>
                   );
                 })()}
@@ -1174,7 +1187,7 @@ export function MonitoringLapangan() {
                             strokeDasharray="5 5"
                             label={{ value: `Rata-rata: ${avgOverall.toFixed(2)}/hari`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
                           />
-                          <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                          <Bar dataKey="value" radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }}>
                             {chartDataKecamatanAll.map((entry, index) => {
                               const color = getColorGradient(entry.value);
                               return <Cell key={`cell-${index}`} fill={color} />;
@@ -1222,7 +1235,7 @@ export function MonitoringLapangan() {
                             borderRadius: "8px",
                           }}
                         />
-                        <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -1263,7 +1276,7 @@ export function MonitoringLapangan() {
                             borderRadius: "8px",
                           }}
                         />
-                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -1305,7 +1318,7 @@ export function MonitoringLapangan() {
                           }}
                           formatter={(value) => `${value.toFixed(2)}%`}
                         />
-                        <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -1347,7 +1360,7 @@ export function MonitoringLapangan() {
                           }}
                           formatter={(value) => `${value.toFixed(2)}%`}
                         />
-                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -1770,6 +1783,27 @@ export function MonitoringLapangan() {
                               </React.Fragment>
                             );
                           })}
+                          {/* PPL Table Footer - Total Row */}
+                          <TableRow className="bg-slate-200 font-bold border-t-2 border-slate-400">
+                            <TableCell className="text-center text-slate-700 font-semibold w-12">-</TableCell>
+                            <TableCell className="text-slate-700 px-4 py-3 font-semibold">TOTAL</TableCell>
+                            <TableCell className="text-slate-700 px-4 py-3 font-semibold">-</TableCell>
+                            <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + row.draft, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-red-700 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + row.jumlah_reject, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + row.jumlah_submit, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-green-700 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + row.jumlah_approve, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right text-slate-700 px-4 py-3 font-semibold">-</TableCell>
+                            <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
+                            <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
+                          </TableRow>
                         </TableBody>
                       </Table>
                     </div>
@@ -1917,7 +1951,7 @@ export function MonitoringLapangan() {
                               Kecamatan
                             </TableHead>
                             <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              Submit PPL
+                              Total Status
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -2006,7 +2040,7 @@ export function MonitoringLapangan() {
                                     {row.kecamatan || "-"}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                    {calculatedSubmitPPL.toLocaleString("id-ID")}
+                                    {(calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject).toLocaleString("id-ID")}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
                                     {row.jumlah_approve.toLocaleString("id-ID")}
@@ -2015,7 +2049,10 @@ export function MonitoringLapangan() {
                                     {row.jumlah_reject.toLocaleString("id-ID")}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                    {calculatedSubmitPPL > 0 ? (((row.jumlah_approve + row.jumlah_reject) / calculatedSubmitPPL) * 100).toFixed(2) : "0.00"}%
+                                    {(() => {
+                                      const totalStatus = calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject;
+                                      return totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject) / totalStatus) * 100).toFixed(2) : "0.00";
+                                    })()} %
                                   </TableCell>
                                 </TableRow>
 
@@ -2051,6 +2088,43 @@ export function MonitoringLapangan() {
                               </React.Fragment>
                             );
                           })}
+                          {/* PML Table Footer - Total Row */}
+                          <TableRow className="bg-slate-200 font-bold border-t-2 border-slate-400">
+                            <TableCell className="text-center text-slate-700 font-semibold w-12">-</TableCell>
+                            <TableCell className="text-slate-700 px-4 py-3 font-semibold">TOTAL</TableCell>
+                            <TableCell className="text-slate-700 px-4 py-3 font-semibold">-</TableCell>
+                            <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
+                              {paginatedRowsPML.reduce((sum, row) => {
+                                const pplUnderPML = aggregatedData.rows.filter(ppl => 
+                                  ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan
+                                );
+                                const calculatedSubmitPPL = pplUnderPML.reduce((s, ppl) => s + ppl.jumlah_submit, 0);
+                                return sum + calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject;
+                              }, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-green-700 px-4 py-3">
+                              {paginatedRowsPML.reduce((sum, row) => sum + row.jumlah_approve, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-red-700 px-4 py-3">
+                              {paginatedRowsPML.reduce((sum, row) => sum + row.jumlah_reject, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
+                              {(() => {
+                                const avgPercentage = paginatedRowsPML.reduce((sum, row) => {
+                                  const pplUnderPML = aggregatedData.rows.filter(ppl => 
+                                    ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan
+                                  );
+                                  const calculatedSubmitPPL = pplUnderPML.reduce((s, ppl) => s + ppl.jumlah_submit, 0);
+                                  const totalStatus = calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject;
+                                  if (totalStatus > 0) {
+                                    return sum + ((row.jumlah_approve + row.jumlah_reject) / totalStatus * 100);
+                                  }
+                                  return sum;
+                                }, 0) / paginatedRowsPML.length;
+                                return avgPercentage.toFixed(2);
+                              })()} %
+                            </TableCell>
+                          </TableRow>
                         </TableBody>
                       </Table>
                     </div>
