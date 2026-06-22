@@ -1613,7 +1613,7 @@ export function MonitoringLapangan() {
                               onClick={() => toggleSort("dailyavg")}
                             >
                               <div className="flex items-center justify-end gap-2">
-                                Rata-rata Submit Harian
+                                Rata-rata Harian
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
@@ -1706,7 +1706,7 @@ export function MonitoringLapangan() {
                                   </TableCell>
                                   <TableCell className="px-2 py-3" />
                                   <TableCell className="text-right text-slate-700 px-4 py-3">
-                                    {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} submit+draft/hari
+                                    {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} aktivitas/hari
                                   </TableCell>
                                   <TableCell className="text-center px-4 py-3">
                                     <div className="flex items-center justify-center gap-1.5">
