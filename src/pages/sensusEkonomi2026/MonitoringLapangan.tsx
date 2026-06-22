@@ -941,100 +941,153 @@ export function MonitoringLapangan() {
             {/* Overview Stats */}
             {dashboardStats && (
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <Card className="border-0 shadow-sm bg-white hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-slate-600">
-                      Total Pendataan
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-slate-900">
+                {/* Total Pendataan */}
+                <Card className="relative overflow-hidden border border-slate-200/70 shadow-sm bg-gradient-to-br from-white to-slate-50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-slate-700 to-slate-400" />
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-slate-100 text-slate-700">
+                          <Database className="h-4 w-4" />
+                        </div>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Pendataan</span>
+                      </div>
+                    </div>
+                    <div className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
                       {(dashboardStats?.totalActivity ?? 0).toLocaleString("id-ID")}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">Nilai merupakan Draft + Reject + Approve + Submit</p>
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {["Draft", "Reject", "Approve", "Submit"].map((label) => (
+                        <span key={label} className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-600">
+                          {label}
+                        </span>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-blue-700">
-                      🏆 Persentase Tertinggi
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-bold text-blue-900">
+                {/* Persentase Tertinggi */}
+                <Card className="relative overflow-hidden border border-blue-200/70 shadow-sm bg-gradient-to-br from-blue-50 via-white to-blue-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-blue-600 to-cyan-400" />
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
+                        <Trophy className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Persentase Tertinggi</span>
+                    </div>
+                    <div className="text-base font-bold text-slate-900 truncate" title={dashboardStats.topKecamatanByPercentage?.name ?? "-"}>
                       {dashboardStats.topKecamatanByPercentage?.name ?? "-"}
                     </div>
-                    <p className="text-sm text-blue-700 font-semibold mt-1">
-                      {(dashboardStats.topKecamatanByPercentage?.value ?? 0).toLocaleString("id-ID")}%
-                    </p>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold text-blue-700 tabular-nums">
+                        {(dashboardStats.topKecamatanByPercentage?.value ?? 0).toLocaleString("id-ID")}
+                      </span>
+                      <span className="text-sm font-semibold text-blue-600">%</span>
+                    </div>
                     {dashboardStats.topKecamatanByPercentage?.totalActivity && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        {(dashboardStats.topKecamatanByPercentage?.totalActivity ?? 0).toLocaleString("id-ID")} dari {(dashboardStats.topKecamatanByPercentage?.totalAssignments ?? 0).toLocaleString("id-ID")}
-                      </p>
+                      <div className="mt-2 pt-2 border-t border-blue-100 text-[11px] text-slate-600">
+                        <span className="font-semibold text-slate-800 tabular-nums">{(dashboardStats.topKecamatanByPercentage?.totalActivity ?? 0).toLocaleString("id-ID")}</span>
+                        <span className="text-slate-400"> dari </span>
+                        <span className="font-semibold text-slate-800 tabular-nums">{(dashboardStats.topKecamatanByPercentage?.totalAssignments ?? 0).toLocaleString("id-ID")}</span>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-orange-50 to-orange-100">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-orange-700">
-                      📉 Persentase Terendah
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-bold text-orange-900">
+                {/* Persentase Terendah */}
+                <Card className="relative overflow-hidden border border-orange-200/70 shadow-sm bg-gradient-to-br from-orange-50 via-white to-orange-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-orange-500 to-amber-400" />
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-2 rounded-lg bg-orange-100 text-orange-700">
+                        <TrendingDown className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-orange-700">Persentase Terendah</span>
+                    </div>
+                    <div className="text-base font-bold text-slate-900 truncate" title={dashboardStats.lowestKecamatanByPercentage?.name ?? "-"}>
                       {dashboardStats.lowestKecamatanByPercentage?.name ?? "-"}
                     </div>
-                    <p className="text-sm text-orange-700 font-semibold mt-1">
-                      {(dashboardStats.lowestKecamatanByPercentage?.value ?? 0).toLocaleString("id-ID")}%
-                    </p>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold text-orange-700 tabular-nums">
+                        {(dashboardStats.lowestKecamatanByPercentage?.value ?? 0).toLocaleString("id-ID")}
+                      </span>
+                      <span className="text-sm font-semibold text-orange-600">%</span>
+                    </div>
                     {dashboardStats.lowestKecamatanByPercentage?.totalActivity && (
-                      <p className="text-xs text-orange-600 mt-1">
-                        {(dashboardStats.lowestKecamatanByPercentage?.totalActivity ?? 0).toLocaleString("id-ID")} dari {(dashboardStats.lowestKecamatanByPercentage?.totalAssignments ?? 0).toLocaleString("id-ID")}
-                      </p>
+                      <div className="mt-2 pt-2 border-t border-orange-100 text-[11px] text-slate-600">
+                        <span className="font-semibold text-slate-800 tabular-nums">{(dashboardStats.lowestKecamatanByPercentage?.totalActivity ?? 0).toLocaleString("id-ID")}</span>
+                        <span className="text-slate-400"> dari </span>
+                        <span className="font-semibold text-slate-800 tabular-nums">{(dashboardStats.lowestKecamatanByPercentage?.totalAssignments ?? 0).toLocaleString("id-ID")}</span>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-green-100">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-green-700">
-                      🏆 Rata-rata Tertinggi
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-bold text-green-900">
+                {/* Rata-rata Tertinggi */}
+                <Card className="relative overflow-hidden border border-emerald-200/70 shadow-sm bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-emerald-600 to-teal-400" />
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
+                        <Trophy className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Rata-rata Tertinggi</span>
+                    </div>
+                    <div className="text-base font-bold text-slate-900 truncate" title={dashboardStats.topKecamatan?.name ?? "-"}>
                       {dashboardStats.topKecamatan?.name ?? "-"}
                     </div>
-                    <p className="text-sm text-green-700 font-semibold mt-1">
-                      Rata-rata/hari: {(dashboardStats.topKecamatan?.value ?? 0).toLocaleString("id-ID")} (S+A+R)/PPL
-                    </p>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold text-emerald-700 tabular-nums">
+                        {(dashboardStats.topKecamatan?.value ?? 0).toLocaleString("id-ID")}
+                      </span>
+                      <span className="text-[11px] font-medium text-emerald-600">/PPL/hari</span>
+                    </div>
                     {dashboardStats.topKecamatan?.totalActivity && (
-                      <p className="text-xs text-green-600 mt-1">
-                        Total: {(dashboardStats.topKecamatan?.totalActivity ?? 0).toLocaleString("id-ID")} (S+A+R) ({dashboardStats.topKecamatan?.countPPL} PPL)
-                      </p>
+                      <div className="mt-2 pt-2 border-t border-emerald-100 flex items-center justify-between text-[11px] text-slate-600">
+                        <span>
+                          <span className="text-slate-400">Total </span>
+                          <span className="font-semibold text-slate-800 tabular-nums">{(dashboardStats.topKecamatan?.totalActivity ?? 0).toLocaleString("id-ID")}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold">
+                          <Users className="h-3 w-3" />
+                          {dashboardStats.topKecamatan?.countPPL}
+                        </span>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-red-50 to-red-100">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-red-700">
-                      📉 Rata-rata Terendah
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-lg font-bold text-red-900">
+                {/* Rata-rata Terendah */}
+                <Card className="relative overflow-hidden border border-rose-200/70 shadow-sm bg-gradient-to-br from-rose-50 via-white to-rose-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-rose-500 to-red-400" />
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-2 rounded-lg bg-rose-100 text-rose-700">
+                        <TrendingDown className="h-4 w-4" />
+                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-rose-700">Rata-rata Terendah</span>
+                    </div>
+                    <div className="text-base font-bold text-slate-900 truncate" title={dashboardStats.lowestKecamatan?.name ?? "-"}>
                       {dashboardStats.lowestKecamatan?.name ?? "-"}
                     </div>
-                    <p className="text-sm text-red-700 font-semibold mt-1">
-                      Rata-rata/hari: {(dashboardStats.lowestKecamatan?.value ?? 0).toLocaleString("id-ID")} (S+A+R)/PPL
-                    </p>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold text-rose-700 tabular-nums">
+                        {(dashboardStats.lowestKecamatan?.value ?? 0).toLocaleString("id-ID")}
+                      </span>
+                      <span className="text-[11px] font-medium text-rose-600">/PPL/hari</span>
+                    </div>
                     {dashboardStats.lowestKecamatan?.totalActivity && (
-                      <p className="text-xs text-red-600 mt-1">
-                        Total: {(dashboardStats.lowestKecamatan?.totalActivity ?? 0).toLocaleString("id-ID")} (S+A+R) ({dashboardStats.lowestKecamatan?.countPPL} PPL)
-                      </p>
+                      <div className="mt-2 pt-2 border-t border-rose-100 flex items-center justify-between text-[11px] text-slate-600">
+                        <span>
+                          <span className="text-slate-400">Total </span>
+                          <span className="font-semibold text-slate-800 tabular-nums">{(dashboardStats.lowestKecamatan?.totalActivity ?? 0).toLocaleString("id-ID")}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-semibold">
+                          <Users className="h-3 w-3" />
+                          {dashboardStats.lowestKecamatan?.countPPL}
+                        </span>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
