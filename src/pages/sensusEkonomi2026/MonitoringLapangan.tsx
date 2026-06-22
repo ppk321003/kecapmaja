@@ -1616,7 +1616,7 @@ export function MonitoringLapangan() {
                               Nama PPL
                             </TableHead>
                             <TableHead
-                              className="text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              className="text-slate-700 cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => toggleSort("kecamatan")}
                             >
                               <div className="flex items-center gap-2">
@@ -1722,7 +1722,7 @@ export function MonitoringLapangan() {
                                     {startIndexPPL + index + 1}
                                   </TableCell>
                                   <TableCell 
-                                    className="text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2"
+                                    className="text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center align-middle gap-2 font-semibold"
                                     onClick={() => {
                                       setExpandedPPL(prev => {
                                         const newSet = new Set(prev);
@@ -1742,7 +1742,7 @@ export function MonitoringLapangan() {
                                     )}
                                     {row.nama_ppl || "-"}
                                   </TableCell>
-                                  <TableCell className="font-medium text-slate-900 px-4 py-3">
+                                  <TableCell className="text-slate-900 px-4 py-3">
                                     {row.kecamatan}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
@@ -2141,7 +2141,7 @@ export function MonitoringLapangan() {
                                         Draft: {ppl.draft}
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
-                                        {ppl.jumlah_submit.toLocaleString("id-ID")}
+                                        {(ppl.jumlah_submit + ppl.jumlah_approve + ppl.jumlah_reject).toLocaleString("id-ID")}
                                       </TableCell>
                                       <TableCell className="text-sm text-green-700 font-semibold px-4 py-2 text-right">
                                         {ppl.jumlah_approve.toLocaleString("id-ID")}
@@ -2150,7 +2150,10 @@ export function MonitoringLapangan() {
                                         {ppl.jumlah_reject.toLocaleString("id-ID")}
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">
-                                        {ppl.jumlah_submit > 0 ? (((ppl.jumlah_approve + ppl.jumlah_reject) / ppl.jumlah_submit) * 100).toFixed(2) : "0.00"}%
+                                        {(() => {
+                                          const totalStatus = ppl.jumlah_submit + ppl.jumlah_approve + ppl.jumlah_reject;
+                                          return totalStatus > 0 ? (((ppl.jumlah_approve + ppl.jumlah_reject) / totalStatus) * 100).toFixed(2) : "0.00";
+                                        })()} %
                                       </TableCell>
                                     </TableRow>
                                   ))
