@@ -313,7 +313,7 @@ const PercentageTooltip = ({ active, payload }: any) => {
 };
 
 // Export PPL data to Excel
-const exportPPLToExcel = (data: AggregatedData['rows']) => {
+const exportPPLToExcel = (data: AggregatedData[]) => {
   // Calculate days elapsed for daily average
   const today = new Date();
   const daysElapsed = Math.floor(
@@ -369,7 +369,7 @@ const exportPPLToExcel = (data: AggregatedData['rows']) => {
 };
 
 // Export PML data to Excel (recalculated from aggregatedData for accuracy)
-const exportPMLToExcel = (aggregatedRows: AggregatedData['rows']) => {
+const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
   // Rebuild PML data with EXACT same calculation as UI table
   // All values (Submit, Approve, Reject) must be calculated from individual PPL data
   const pmlMap = new Map<string, { 
@@ -830,7 +830,7 @@ export function MonitoringLapangan() {
 
   // PML Data sorting and pagination
   const sortedPMLData = useMemo(() => {
-    let sorted = [...pmlData];
+    let sorted: (PMLData & { actualSubmit?: number; pemeriksaan?: number })[] = [...pmlData];
     
     // Recalculate actual submit PPL based on aggregatedData for accurate sorting
     sorted = sorted.map(pml => {
@@ -857,7 +857,7 @@ export function MonitoringLapangan() {
     } else if (pmlSortBy === "reject") {
       sorted.sort((a, b) => a.jumlah_reject - b.jumlah_reject);
     } else if (pmlSortBy === "pemeriksaan") {
-      sorted.sort((a, b) => a.pemeriksaan - b.pemeriksaan);
+      sorted.sort((a, b) => (a.pemeriksaan ?? 0) - (b.pemeriksaan ?? 0));
     }
     if (pmlSortOrder === "desc") {
       sorted.reverse();
@@ -1316,7 +1316,7 @@ export function MonitoringLapangan() {
                             border: "1px solid #e2e8f0",
                             borderRadius: "8px",
                           }}
-                          formatter={(value) => `${value.toFixed(2)}%`}
+                          formatter={(value) => `${Number(value).toFixed(2)}%`}
                         />
                         <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 13, fontWeight: 400, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
                       </BarChart>
@@ -1358,7 +1358,7 @@ export function MonitoringLapangan() {
                             border: "1px solid #e2e8f0",
                             borderRadius: "8px",
                           }}
-                          formatter={(value) => `${value.toFixed(2)}%`}
+                          formatter={(value) => `${Number(value).toFixed(2)}%`}
                         />
                         <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
                       </BarChart>
