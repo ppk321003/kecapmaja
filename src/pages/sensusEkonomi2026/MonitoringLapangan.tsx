@@ -56,6 +56,7 @@ interface AggregatedData {
   kecamatan: string;
   nama_ppl: string;
   nama_pml: string;
+  email_ppl?: string;
   draft: number;
   jumlah_submit: number;
   jumlah_approve: number;
@@ -95,6 +96,7 @@ interface PMLData {
 
 const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
 const SHEET_NAME = "REKAP_SCRP";
+const SHEET_USERS = "Semua Users";
 
 const COLORS = {
   optimal: "#10b981",
@@ -207,27 +209,46 @@ const getColorGradient = (value: number): string => {
 
 // Function untuk mendapatkan warna persentase berdasarkan hari ke-x dan target fleksibel
 const getColorForPercentage = (percentage: number): string => {
-  const { daysElapsed, minDayTarget, maxDayTarget } = calculateDayProgress();
+  const { daysElapsed } = calculateDayProgress();
   
-  // Hitung target persentase berdasarkan hari ke-x
-  // Target minimal: persentase yang seharusnya dicapai pada hari ke-x
-  // Asumsi: target adalah 732 submit dalam 77 hari, dengan min 7/hari
-  const minPercentageTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100;
-  const maxPercentageTarget = (daysElapsed * MAX_DAILY_TARGET / TOTAL_TARGET) * 100;
+  // Hitung target persentase DINAMIS berdasarkan hari ke-x
+  // Minimal target: 7 submit/hari (target yang harus dicapai)
+  // Warning threshold: 4 submit/hari (threshold kuning)
+  const minPercentageTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100; // 7/hari
+  const warningPercentageTarget = (daysElapsed * 4 / TOTAL_TARGET) * 100; // 4/hari
   
-  // SAMAKAN DENGAN getColorGradient untuk konsistensi visual
-  // Optimal: mencapai atau melebihi target maksimal (>= 7%)
-  if (percentage >= 7) {
-    return "#22c55e"; // Hijau (sesuai dengan >= 7/hari di rata-rata PPL)
+  // Gunakan threshold DINAMIS berdasarkan daily target minimal
+  // Optimal: mencapai atau melebihi target minimal (>= 7/hari)
+  if (percentage >= minPercentageTarget) {
+    return "#22c55e"; // Hijau (sesuai atau melebihi target minimal)
   }
   
-  // Good: 4-6%
-  if (percentage >= 4) {
-    return "#eab308"; // Kuning (sesuai dengan 4-6/hari di rata-rata PPL)
+  // Good: 4-7/hari
+  if (percentage >= warningPercentageTarget) {
+    return "#eab308"; // Kuning (antara 4-7/hari)
   }
   
-  // Critical: < 4%
-  return "#dc2626"; // Merah (sesuai dengan < 4/hari di rata-rata PPL)
+  // Critical: < 4/hari
+  return "#dc2626"; // Merah (di bawah 4/hari)
+};
+
+// Helper function untuk robust column access dengan fallback
+const getColumnValue = (obj: any, primaryName: string, fallbackNames: string[] = [], defaultValue: any = "-"): any => {
+  if (!obj) return defaultValue;
+  
+  // Try primary name first
+  if (obj[primaryName] !== undefined && obj[primaryName] !== null && obj[primaryName] !== "") {
+    return obj[primaryName];
+  }
+  
+  // Try fallback names
+  for (const name of fallbackNames) {
+    if (obj[name] !== undefined && obj[name] !== null && obj[name] !== "") {
+      return obj[name];
+    }
+  }
+  
+  return defaultValue;
 };
 
 // PERBAIKAN: Custom Tooltip untuk Progres Submit Kecamatan
@@ -445,9 +466,14 @@ export function MonitoringLapangan() {
     spreadsheetId: SPREADSHEET_ID,
     sheetName: SHEET_NAME,
   });
+  const { data: usersData, loading: usersLoading } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: SHEET_USERS,
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
+  const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "dailyavg">("dailyavg");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -485,7 +511,7 @@ export function MonitoringLapangan() {
         const kecamatan = (row.kecamatan || "").trim();
         const nama_ppl = (row["nama ppl"] || "").trim();
         const nama_pml = (row["nama pml"] || "").trim();
-        const jumlah_submit = parseInt(row["jumlah submit"] || 0) || 0;
+        const jumlah_submit = parseInt(row["submitted_by_pencacah"] || 0) || 0;
 
         if (!kecamatan) return;
 
@@ -497,6 +523,7 @@ export function MonitoringLapangan() {
             kecamatan,
             nama_ppl,
             nama_pml,
+            email_ppl: (row["email"] || row["Email"] || row["email_ppl"] || row["Email PPL"] || "").trim(),
             draft: 0,
             jumlah_submit: 0,
             jumlah_approve: 0,
@@ -1589,74 +1616,158 @@ export function MonitoringLapangan() {
                             const totalAktivitas = row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve;
                             const scheduleStatus = getScheduleStatus(totalAktivitas);
                             const StatusIcon = scheduleStatus.icon;
+                            const isExpanded = expandedPPL.has(row.nama_ppl);
+                            
+                            // Filter data dari Semua Users berdasarkan email dengan matching yang robust
+                            const userDetailRows = usersData?.filter((user: any) => {
+                              const userEmail = (user["email"] || user["Email"] || "").trim().toLowerCase();
+                              const rowEmail = (row.email_ppl || "").trim().toLowerCase();
+                              const isMatch = userEmail === rowEmail && userEmail.length > 0;
+                              
+                              // Debug logging (first row only and more detailed)
+                              if (index === 0) {
+                                console.log(`[PPL Debug ${index}] Row: "${row.nama_ppl}" | email_ppl from REKAP: "${row.email_ppl}" | processed: "${rowEmail}"`);
+                                if (userEmail.length > 0) {
+                                  console.log(`[PPL User Match] User Email: "${userEmail}" | Match: ${isMatch}`);
+                                }
+                              }
+                              
+                              return isMatch;
+                            }) || [];
+                            
+                            if (index === 0) {
+                              console.log(`[PPL Debug] usersData length: ${usersData?.length || 0}, matched rows: ${userDetailRows.length}`);
+                              // Log first 2 matched rows to see data
+                              if (userDetailRows.length > 0) {
+                                console.log(`[PPL Debug] First match regionCode: "${userDetailRows[0]['regionCode']}", DRAFT: "${userDetailRows[0]['DRAFT']}"`);
+                              }
+                            }
 
                             return (
-                              <TableRow
-                                key={`${row.kecamatan}-${row.nama_ppl}`}
-                                className="hover:bg-slate-50 border-b transition-colors"
-                              >
-                                <TableCell className="text-center text-slate-600 font-medium w-12">
-                                  {startIndexPPL + index + 1}
-                                </TableCell>
-                                <TableCell className="text-slate-700 px-4 py-3">
-                                  {row.nama_ppl || "-"}
-                                </TableCell>
-                                <TableCell className="font-medium text-slate-900 px-4 py-3">
-                                  {row.kecamatan}
-                                </TableCell>
-                                <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                  {row.draft.toLocaleString("id-ID")}
-                                </TableCell>
-                                <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
-                                  {row.jumlah_reject.toLocaleString("id-ID")}
-                                </TableCell>
-                                <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                  {row.jumlah_submit.toLocaleString("id-ID")}
-                                </TableCell>
-                                <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
-                                  {row.jumlah_approve.toLocaleString("id-ID")}
-                                </TableCell>
-                                <TableCell className="text-right text-slate-700 px-4 py-3">
-                                  {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} submit+draft/hari
-                                </TableCell>
-                                <TableCell className="text-center px-4 py-3">
-                                  <div className="flex items-center justify-center gap-1.5">
-                                    <StatusIcon
-                                      className="h-4 w-4"
-                                      style={{
-                                        color: scheduleStatus.color,
-                                      }}
-                                    />
-                                    <span className="text-xs font-semibold text-slate-700">
-                                      {scheduleStatus.label}
-                                    </span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center px-4 py-3">
-                                  {scheduleStatus.targetLabel === "Diatas target harian" ? (
-                                    <div className="flex items-center justify-center gap-1.5 text-green-700" title="Diatas Target">
-                                      <TrendingUp className="h-5 w-5" />
+                              <React.Fragment key={`${row.kecamatan}-${row.nama_ppl}`}>
+                                <TableRow
+                                  className="hover:bg-slate-50 border-b transition-colors cursor-pointer"
+                                >
+                                  <TableCell className="text-center text-slate-600 font-medium w-12">
+                                    {startIndexPPL + index + 1}
+                                  </TableCell>
+                                  <TableCell 
+                                    className="text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2"
+                                    onClick={() => {
+                                      setExpandedPPL(prev => {
+                                        const newSet = new Set(prev);
+                                        if (newSet.has(row.nama_ppl)) {
+                                          newSet.delete(row.nama_ppl);
+                                        } else {
+                                          newSet.add(row.nama_ppl);
+                                        }
+                                        return newSet;
+                                      });
+                                    }}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4 transition-transform inline flex-shrink-0" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4 transition-transform inline -rotate-90 flex-shrink-0" />
+                                    )}
+                                    {row.nama_ppl || "-"}
+                                  </TableCell>
+                                  <TableCell className="font-medium text-slate-900 px-4 py-3">
+                                    {row.kecamatan}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                    {row.draft.toLocaleString("id-ID")}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
+                                    {row.jumlah_reject.toLocaleString("id-ID")}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                    {row.jumlah_submit.toLocaleString("id-ID")}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
+                                    {row.jumlah_approve.toLocaleString("id-ID")}
+                                  </TableCell>
+                                  <TableCell className="text-right text-slate-700 px-4 py-3">
+                                    {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} submit+draft/hari
+                                  </TableCell>
+                                  <TableCell className="text-center px-4 py-3">
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <StatusIcon
+                                        className="h-4 w-4"
+                                        style={{
+                                          color: scheduleStatus.color,
+                                        }}
+                                      />
+                                      <span className="text-xs font-semibold text-slate-700">
+                                        {scheduleStatus.label}
+                                      </span>
                                     </div>
-                                  ) : scheduleStatus.targetLabel === "Sesuai target harian" ? (
-                                    <div className="flex items-center justify-center gap-1.5 text-blue-700" title="Sesuai Target">
-                                      <CheckCircle2 className="h-5 w-5" />
+                                  </TableCell>
+                                  <TableCell className="text-center px-4 py-3">
+                                    {scheduleStatus.targetLabel === "Diatas target harian" ? (
+                                      <div className="flex items-center justify-center gap-1.5 text-green-700" title="Diatas Target">
+                                        <TrendingUp className="h-5 w-5" />
+                                      </div>
+                                    ) : scheduleStatus.targetLabel === "Sesuai target harian" ? (
+                                      <div className="flex items-center justify-center gap-1.5 text-blue-700" title="Sesuai Target">
+                                        <CheckCircle2 className="h-5 w-5" />
+                                      </div>
+                                    ) : scheduleStatus.targetLabel === "-" ? (
+                                      <div className="flex items-center justify-center gap-1.5 text-slate-400" title="Belum Dimulai">
+                                        <Calendar className="h-5 w-5" />
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-center gap-1.5 text-amber-700" title="Dibawah Target">
+                                        <AlertTriangle className="h-5 w-5" />
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-xs text-slate-600 px-4 py-3 max-w-xs">
+                                    <div className="bg-blue-50 rounded px-2 py-1">
+                                      {scheduleStatus.notification}
                                     </div>
-                                  ) : scheduleStatus.targetLabel === "-" ? (
-                                    <div className="flex items-center justify-center gap-1.5 text-slate-400" title="Belum Dimulai">
-                                      <Calendar className="h-5 w-5" />
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center justify-center gap-1.5 text-amber-700" title="Dibawah Target">
-                                      <AlertTriangle className="h-5 w-5" />
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-xs text-slate-600 px-4 py-3 max-w-xs">
-                                  <div className="bg-blue-50 rounded px-2 py-1">
-                                    {scheduleStatus.notification}
-                                  </div>
-                                </TableCell>
-                              </TableRow>
+                                  </TableCell>
+                                </TableRow>
+
+                                {/* Expanded User Details from Semua Users sheet */}
+                                {isExpanded && (
+                                  <>
+                                    {userDetailRows.length > 0 ? (
+                                      userDetailRows.map((user: any, userIdx: number) => (
+                                        <TableRow 
+                                          key={`${row.nama_ppl}-user-${userIdx}`}
+                                          className="bg-slate-100 border-b hover:bg-slate-200 transition-colors"
+                                        >
+                                          <TableCell className="px-4 py-2" />
+                                          <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8" />
+                                          <TableCell className="text-sm text-slate-600 px-4 py-2">
+                                            {getColumnValue(user, "regioncode", ["regionCode", "region", "Region Code", "kecamatan", "Kecamatan"], "-")}
+                                          </TableCell>
+                                          <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
+                                            {getColumnValue(user, "draft", ["DRAFT", "Draft", "DRAFT"], "0")}
+                                          </TableCell>
+                                          <TableCell className="text-sm text-red-700 font-semibold px-4 py-2 text-right">
+                                            {getColumnValue(user, "rejected_by_pengawas", ["reje", "REJECTED_BY_PENGAWAS", "rejected", "Rejected", "Reject"], "0")}
+                                          </TableCell>
+                                          <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
+                                            {getColumnValue(user, "submitted_by_pencacah", ["subi", "SUBMITTED_BY_PENCACAH", "submitted", "Submitted", "Submit"], "0")}
+                                          </TableCell>
+                                          <TableCell className="text-sm text-green-700 font-semibold px-4 py-2 text-right">
+                                            {getColumnValue(user, "approved_by_pengawas", ["appr", "APPROVED_BY_PENGAWAS", "approved", "Approved", "Approve"], "0")}
+                                          </TableCell>
+                                          <TableCell colSpan={3} className="text-sm text-slate-600 px-4 py-2 italic" />
+                                        </TableRow>
+                                      ))
+                                    ) : (
+                                      <TableRow className="bg-amber-50 border-b">
+                                        <TableCell colSpan={10} className="px-4 py-3 text-sm text-amber-700 italic">
+                                          ⚠️ Tidak ada data dari sheet "Semua Users" untuk: {row.nama_ppl}
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
+                                  </>
+                                )}
+                              </React.Fragment>
                             );
                           })}
                         </TableBody>
