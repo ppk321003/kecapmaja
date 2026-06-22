@@ -1776,13 +1776,8 @@ export function MonitoringLapangan() {
                                                 const n = parseFloat(String(v ?? "0").replace(/[^\d.-]/g, ""));
                                                 return isNaN(n) ? 0 : n;
                                               };
-                                              const totalAssignmentsVal = toNum(getColumnValue(user, "totalAssignments", ["TOTAL_ASSIGNMENTS", "TotalAssignments", "total_assignments", "totalAssignments"], "0"));
-                                              const submitted = toNum(getColumnValue(user, "submitted_by_pencacah", ["subi", "SUBMITTED_BY_PENCACAH", "submitted", "Submitted", "Submit"], "0"));
-                                              const approved = toNum(getColumnValue(user, "approved_by_pengawas", ["appr", "APPROVED_BY_PENGAWAS", "approved", "Approved", "Approve"], "0"));
-                                              const rejected = toNum(getColumnValue(user, "rejected_by_pengawas", ["reje", "REJECTED_BY_PENGAWAS", "rejected", "Rejected", "Reject"], "0"));
-                                              const subResp = toNum(getColumnValue(user, "submitted_respondent", ["SUBMITTED_RESPONDENT", "submittedRespondent", "submitted_respondent"], "0"));
-                                              const sum = submitted + approved + rejected + subResp;
-                                              return totalAssignmentsVal <= sum ? (
+                                              const openVal = toNum(getColumnValue(user, "open", ["OPEN", "Open", "open"], "0"));
+                                              return openVal === 0 ? (
                                                 <CheckCircle2 className="h-5 w-5 text-green-600 inline" />
                                               ) : null;
                                             })()}
