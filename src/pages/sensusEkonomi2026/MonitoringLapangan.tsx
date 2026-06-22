@@ -22,6 +22,9 @@ import {
   ChevronDown,
   Filter,
   Download,
+  Trophy,
+  TrendingDown,
+  Database,
 } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { useAuth } from "@/contexts/AuthContext";
