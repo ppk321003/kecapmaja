@@ -29,6 +29,7 @@ const COLUMN_HEADERS = {
   hotel: "Hotel",
   gelombang: "Gelombang",
   kelas: "Kelas",
+  tanggal: "Tanggal Pelaksanaan",
 };
 
 // Alternative header names for flexible matching
@@ -142,14 +143,14 @@ const findColumnIndex = (headers: string[], headerKey: string): number => {
       (h) => h && h.toLowerCase().trim() === name.toLowerCase().trim()
     );
     if (index >= 0) {
-      if (process.env.NODE_ENV === "development") {
+      if (import.meta.env.DEV) {
         console.log(`✓ Found "${headerKey}" at index ${index} (header: "${name}")`);
       }
       return index;
     }
   }
   
-  if (process.env.NODE_ENV === "development") {
+  if (import.meta.env.DEV) {
     console.warn(`✗ Column "${headerKey}" not found. Tried: ${possibleNames.join(", ")}`);
     console.log(`Available headers: ${headerNames.join(", ")}`);
   }
