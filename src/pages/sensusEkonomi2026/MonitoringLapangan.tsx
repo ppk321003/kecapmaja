@@ -633,28 +633,6 @@ export function MonitoringLapangan() {
         current.averagePerHari = elapsedDays > 0 ? Math.round((current.totalActivity / elapsedDays) / Math.max(1, current.countPPL) * 100) / 100 : 0;
         kecamatanPerformaMap.set(row.kecamatan, current);
       });
-      
-      const topKecamatan = kecamatanPerformaMap.size > 0
-        ? Array.from(kecamatanPerformaMap.entries())
-            .map(([name, data]) => ({
-              name,
-              value: data.averagePerHari,
-              totalActivity: data.totalActivity,
-              countPPL: data.countPPL,
-            }))
-            .sort((a, b) => b.value - a.value)[0]
-        : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
-
-      const lowestKecamatan = kecamatanPerformaMap.size > 0
-        ? Array.from(kecamatanPerformaMap.entries())
-            .map(([name, data]) => ({
-              name,
-              value: data.averagePerHari,
-              totalActivity: data.totalActivity,
-              countPPL: data.countPPL,
-            }))
-            .sort((a, b) => a.value - b.value)[0]
-        : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
 
       // Chart data: Top 10 Kecamatan (Total Activity: Draft+Reject+Approve+Submit)
       const chartDataKecamatan: ChartData[] = sortedByActivity
@@ -697,6 +675,15 @@ export function MonitoringLapangan() {
         })
         .sort((a, b) => a.name.localeCompare(b.name));
 
+      // Calculate top and lowest kecamatan AFTER chartDataKecamatanAll is defined
+      const topKecamatan = chartDataKecamatanAll.length > 0
+        ? chartDataKecamatanAll.sort((a, b) => b.value - a.value)[0]
+        : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
+
+      const lowestKecamatan = chartDataKecamatanAll.length > 0
+        ? chartDataKecamatanAll.sort((a, b) => a.value - b.value)[0]
+        : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
+
       // Chart data: Persentase per Kecamatan - dynamic based on selected components
       const kecamatanPercentageMap = new Map<string, { totalActivity: number; totalAssignments: number }>();
       Array.from(dataMap.values()).forEach((row) => {
@@ -731,14 +718,18 @@ export function MonitoringLapangan() {
         ? [...chartDataKecamatanPercentage].sort((a, b) => a.value - b.value)[0]
         : { name: "-", value: 0, totalActivity: 0, totalAssignments: 1 };
 
-      // Chart data for PPL Top 10
-      // Hitung total keseluruhan: draft + submit + approve + reject
+      // Chart data for PPL Top 10 - dynamic based on selected components
+      // Hitung total keseluruhan berdasarkan komponen terpilih
       const pplMap = new Map<string, number>();
       Array.from(dataMap.values()).forEach((row) => {
         if (row.nama_ppl) {
           const current = pplMap.get(row.nama_ppl) || 0;
-          const totalActivity = row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject;
-          pplMap.set(row.nama_ppl, current + totalActivity);
+          let activityToAdd = 0;
+          if (kecamatanActivityComponents.draft) activityToAdd += row.draft;
+          if (kecamatanActivityComponents.submit) activityToAdd += row.jumlah_submit;
+          if (kecamatanActivityComponents.approve) activityToAdd += row.jumlah_approve;
+          if (kecamatanActivityComponents.reject) activityToAdd += row.jumlah_reject;
+          pplMap.set(row.nama_ppl, current + activityToAdd);
         }
       });
 
@@ -999,7 +990,14 @@ export function MonitoringLapangan() {
                       <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
                         <Trophy className="h-4 w-4" />
                       </div>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Persentase Tertinggi</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+                        Persentase Tertinggi ({[
+                          kecamatanPercentageComponents.draft && 'Draft',
+                          kecamatanPercentageComponents.submit && 'Submit',
+                          kecamatanPercentageComponents.approve && 'Approve',
+                          kecamatanPercentageComponents.reject && 'Reject'
+                        ].filter(Boolean).join('+')})
+                      </span>
                     </div>
                     <div className="text-base font-bold text-slate-900 truncate" title={dashboardStats.topKecamatanByPercentage?.name ?? "-"}>
                       {dashboardStats.topKecamatanByPercentage?.name ?? "-"}
@@ -1028,7 +1026,14 @@ export function MonitoringLapangan() {
                       <div className="p-2 rounded-lg bg-orange-100 text-orange-700">
                         <TrendingDown className="h-4 w-4" />
                       </div>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-orange-700">Persentase Terendah</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-orange-700">
+                        Persentase Terendah ({[
+                          kecamatanPercentageComponents.draft && 'Draft',
+                          kecamatanPercentageComponents.submit && 'Submit',
+                          kecamatanPercentageComponents.approve && 'Approve',
+                          kecamatanPercentageComponents.reject && 'Reject'
+                        ].filter(Boolean).join('+')})
+                      </span>
                     </div>
                     <div className="text-base font-bold text-slate-900 truncate" title={dashboardStats.lowestKecamatanByPercentage?.name ?? "-"}>
                       {dashboardStats.lowestKecamatanByPercentage?.name ?? "-"}
@@ -1057,7 +1062,14 @@ export function MonitoringLapangan() {
                       <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
                         <Trophy className="h-4 w-4" />
                       </div>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Rata-rata Tertinggi</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+                        Rata-rata Tertinggi ({[
+                          kecamatanActivityComponents.draft && 'Draft',
+                          kecamatanActivityComponents.submit && 'Submit',
+                          kecamatanActivityComponents.approve && 'Approve',
+                          kecamatanActivityComponents.reject && 'Reject'
+                        ].filter(Boolean).join('+')})
+                      </span>
                     </div>
                     <div className="text-base font-bold text-slate-900 truncate" title={dashboardStats.topKecamatan?.name ?? "-"}>
                       {dashboardStats.topKecamatan?.name ?? "-"}
@@ -1091,7 +1103,14 @@ export function MonitoringLapangan() {
                       <div className="p-2 rounded-lg bg-rose-100 text-rose-700">
                         <TrendingDown className="h-4 w-4" />
                       </div>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-rose-700">Rata-rata Terendah</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-rose-700">
+                        Rata-rata Terendah ({[
+                          kecamatanActivityComponents.draft && 'Draft',
+                          kecamatanActivityComponents.submit && 'Submit',
+                          kecamatanActivityComponents.approve && 'Approve',
+                          kecamatanActivityComponents.reject && 'Reject'
+                        ].filter(Boolean).join('+')})
+                      </span>
                     </div>
                     <div className="text-base font-bold text-slate-900 truncate" title={dashboardStats.lowestKecamatan?.name ?? "-"}>
                       {dashboardStats.lowestKecamatan?.name ?? "-"}
