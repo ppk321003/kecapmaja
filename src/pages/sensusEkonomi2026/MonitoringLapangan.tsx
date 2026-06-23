@@ -719,22 +719,23 @@ export function MonitoringLapangan() {
         : { name: "-", value: 0, totalActivity: 0, totalAssignments: 1 };
 
       // Chart data for PPL Top 10 - dynamic based on selected components
-      // Hitung total keseluruhan berdasarkan komponen terpilih
-      const pplMap = new Map<string, number>();
+      // Use email as key to differentiate PPL with same name, but display nama_ppl
+      const pplMap = new Map<string, { value: number; nama_ppl: string }>();
       Array.from(dataMap.values()).forEach((row) => {
-        if (row.nama_ppl) {
-          const current = pplMap.get(row.nama_ppl) || 0;
+        if (row.email_ppl) {
+          const current = pplMap.get(row.email_ppl) || { value: 0, nama_ppl: row.nama_ppl };
           let activityToAdd = 0;
           if (kecamatanActivityComponents.draft) activityToAdd += row.draft;
           if (kecamatanActivityComponents.submit) activityToAdd += row.jumlah_submit;
           if (kecamatanActivityComponents.approve) activityToAdd += row.jumlah_approve;
           if (kecamatanActivityComponents.reject) activityToAdd += row.jumlah_reject;
-          pplMap.set(row.nama_ppl, current + activityToAdd);
+          current.value += activityToAdd;
+          pplMap.set(row.email_ppl, current);
         }
       });
 
       const pplSorted = Array.from(pplMap.entries())
-        .map(([name, value]) => ({ name, value }))
+        .map(([email, data]) => ({ name: data.nama_ppl, value: data.value }))
         .sort((a, b) => b.value - a.value);
 
       const chartDataPPLTop: ChartData[] = pplSorted.slice(0, 10);
@@ -776,12 +777,13 @@ export function MonitoringLapangan() {
 
       // Chart data for PML Top 10 by Pemeriksaan % - use same calculation as table
       // Group PPL by PML to match table calculation
-      const pmlChartMap = new Map<string, { totalSubmit: number; totalApprove: number; totalReject: number }>();
+      // Use combination of nama_pml + kecamatan as unique key
+      const pmlChartMap = new Map<string, { totalSubmit: number; totalApprove: number; totalReject: number; nama_pml: string }>();
       rows.forEach(ppl => {
         if (ppl.nama_pml) {
           const key = `${ppl.nama_pml}|${ppl.kecamatan}`;
           if (!pmlChartMap.has(key)) {
-            pmlChartMap.set(key, { totalSubmit: 0, totalApprove: 0, totalReject: 0 });
+            pmlChartMap.set(key, { totalSubmit: 0, totalApprove: 0, totalReject: 0, nama_pml: ppl.nama_pml });
           }
           const current = pmlChartMap.get(key)!;
           current.totalSubmit += ppl.jumlah_submit;
@@ -790,17 +792,14 @@ export function MonitoringLapangan() {
         }
       });
 
-      const pmlWithPercentage = Array.from(pmlChartMap.values()).map((data, idx) => {
-        const entries = Array.from(pmlChartMap.entries());
-        const [key] = entries[idx];
-        const [nama_pml] = key.split('|');
+      const pmlWithPercentage = Array.from(pmlChartMap.entries()).map(([key, data]) => {
         // Match table calculation: (Approve+Reject) / (Submit+Approve+Reject) * 100
         const totalStatus = data.totalSubmit + data.totalApprove + data.totalReject;
         const pemeriksaanPercent = totalStatus > 0 
           ? Math.round(((data.totalApprove + data.totalReject) / totalStatus) * 10000) / 100
           : 0;
         return {
-          nama_pml,
+          nama_pml: data.nama_pml,
           pemeriksaanPercent,
         };
       });
