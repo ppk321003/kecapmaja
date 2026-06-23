@@ -488,6 +488,12 @@ export function MonitoringLapangan() {
   const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "pemeriksaan">("pemeriksaan");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
+  const [kecamatanPercentageComponents, setKecamatanPercentageComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean}>(
+    { draft: false, submit: true, approve: true, reject: true }
+  );
+  const [kecamatanActivityComponents, setKecamatanActivityComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean}>(
+    { draft: false, submit: true, approve: true, reject: true }
+  );
 
   // Process and aggregate data
   const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, chartDataPMLTop, chartDataPMLLowest, totalProgress, pmlData } =
@@ -659,29 +665,48 @@ export function MonitoringLapangan() {
           value: row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject,
         }));
 
-      // Chart data: Semua 26 Kecamatan (Rata-rata (Submit+Reject+Approve)/hari/PPL, sorted abjad)
-      // Track totalSubmit per kecamatan for table display
-      const kecamatanSubmitMap = new Map<string, number>();
+      // Get daysElapsed for chart calculations
+      const { daysElapsed } = calculateDayProgress();
+
+      // Chart data: Semua 26 Kecamatan - dynamic based on selected components
+      // Track activity per kecamatan for chart display
+      const kecamatanActivityMap = new Map<string, { totalActivity: number; totalSubmit: number; countPPL: number }>();
       Array.from(dataMap.values()).forEach((row) => {
-        const current = kecamatanSubmitMap.get(row.kecamatan) || 0;
-        kecamatanSubmitMap.set(row.kecamatan, current + row.jumlah_submit);
+        const current = kecamatanActivityMap.get(row.kecamatan) || { totalActivity: 0, totalSubmit: 0, countPPL: 0 };
+        let activityToAdd = 0;
+        if (kecamatanActivityComponents.draft) activityToAdd += row.draft;
+        if (kecamatanActivityComponents.submit) activityToAdd += row.jumlah_submit;
+        if (kecamatanActivityComponents.approve) activityToAdd += row.jumlah_approve;
+        if (kecamatanActivityComponents.reject) activityToAdd += row.jumlah_reject;
+        current.totalActivity += activityToAdd;
+        current.totalSubmit += row.jumlah_submit;
+        current.countPPL += 1;
+        kecamatanActivityMap.set(row.kecamatan, current);
       });
 
-      const chartDataKecamatanAll: any[] = Array.from(kecamatanPerformaMap.entries())
-        .map(([name, data]) => ({ 
-          name, 
-          value: data.averagePerHari,
-          countPPL: data.countPPL,
-          totalActivity: data.totalActivity,
-          totalSubmit: kecamatanSubmitMap.get(name) || 0
-        }))
+      const chartDataKecamatanAll: any[] = Array.from(kecamatanActivityMap.entries())
+        .map(([name, data]) => { 
+          const elapsedDays = Math.max(1, daysElapsed);
+          return {
+            name, 
+            value: data.countPPL > 0 ? Math.round((data.totalActivity / elapsedDays) / data.countPPL * 100) / 100 : 0,
+            countPPL: data.countPPL,
+            totalActivity: data.totalActivity,
+            totalSubmit: data.totalSubmit,
+          };
+        })
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      // Chart data: Persentase per Kecamatan = (Draft+Submit+Reject+Approve) / Total Assignments × 100
+      // Chart data: Persentase per Kecamatan - dynamic based on selected components
       const kecamatanPercentageMap = new Map<string, { totalActivity: number; totalAssignments: number }>();
       Array.from(dataMap.values()).forEach((row) => {
         const current = kecamatanPercentageMap.get(row.kecamatan) || { totalActivity: 0, totalAssignments: 0 };
-        current.totalActivity += (row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject);
+        let activityToAdd = 0;
+        if (kecamatanPercentageComponents.draft) activityToAdd += row.draft;
+        if (kecamatanPercentageComponents.submit) activityToAdd += row.jumlah_submit;
+        if (kecamatanPercentageComponents.approve) activityToAdd += row.jumlah_approve;
+        if (kecamatanPercentageComponents.reject) activityToAdd += row.jumlah_reject;
+        current.totalActivity += activityToAdd;
         current.totalAssignments += row.total_assignments;
         kecamatanPercentageMap.set(row.kecamatan, current);
       });
@@ -815,7 +840,7 @@ export function MonitoringLapangan() {
         totalProgress,
         pmlData: pmlRows,
       };
-    }, [sheetData, searchTerm, sortBy, sortOrder, statusFilter]);
+    }, [sheetData, searchTerm, sortBy, sortOrder, statusFilter, kecamatanPercentageComponents, kecamatanActivityComponents]);
 
   const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "dailyavg") => {
     if (sortBy === field) {
@@ -1097,18 +1122,67 @@ export function MonitoringLapangan() {
             {/* Chart: Persentase Submit per Kecamatan */}
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                {(() => {
-                  const { daysElapsed } = calculateDayProgress();
-                  const minPercentageTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100;
-                  return (
-                    <>
-                      <CardTitle className="text-lg">
-                        📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}%
-                      </CardTitle>
-                      <CardDescription>Persentase (Draft+Reject+Approve+Submit) terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad)</CardDescription>
-                    </>
-                  );
-                })()}
+                <div className="flex flex-col gap-4">
+                  <div>
+                    {(() => {
+                      const { daysElapsed } = calculateDayProgress();
+                      const minPercentageTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100;
+                      return (
+                        <>
+                          <CardTitle className="text-lg">
+                            📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}%
+                          </CardTitle>
+                          <CardDescription>
+                            Persentase ({[
+                              kecamatanPercentageComponents.draft && 'Draft',
+                              kecamatanPercentageComponents.submit && 'Submit',
+                              kecamatanPercentageComponents.approve && 'Approve',
+                              kecamatanPercentageComponents.reject && 'Reject'
+                            ].filter(Boolean).join('+')}) terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad)
+                          </CardDescription>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div className="flex flex-wrap gap-4 pt-2 border-t">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={kecamatanPercentageComponents.draft}
+                        onChange={(e) => setKecamatanPercentageComponents({...kecamatanPercentageComponents, draft: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Draft</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={kecamatanPercentageComponents.submit}
+                        onChange={(e) => setKecamatanPercentageComponents({...kecamatanPercentageComponents, submit: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Submit</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={kecamatanPercentageComponents.approve}
+                        onChange={(e) => setKecamatanPercentageComponents({...kecamatanPercentageComponents, approve: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Approve</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={kecamatanPercentageComponents.reject}
+                        onChange={(e) => setKecamatanPercentageComponents({...kecamatanPercentageComponents, reject: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Reject</span>
+                    </label>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -1198,10 +1272,59 @@ export function MonitoringLapangan() {
             {/* Charts Row 1: All 26 Kecamatan */}
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg">
-                  📊 Rata-rata PPL Submit per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
-                </CardTitle>
-                <CardDescription>Rata-rata submit per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥7/hari | Kuning 4-6/hari | Merah &lt;4/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan</CardDescription>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <CardTitle className="text-lg">
+                      📊 Rata-rata Aktifitas PPL per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
+                    </CardTitle>
+                    <CardDescription>
+                      Rata-rata ({[
+                        kecamatanActivityComponents.draft && 'Draft',
+                        kecamatanActivityComponents.submit && 'Submit',
+                        kecamatanActivityComponents.approve && 'Approve',
+                        kecamatanActivityComponents.reject && 'Reject'
+                      ].filter(Boolean).join('+')}) per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥7/hari | Kuning 4-6/hari | Merah &lt;4/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-4 pt-2 border-t">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={kecamatanActivityComponents.draft}
+                        onChange={(e) => setKecamatanActivityComponents({...kecamatanActivityComponents, draft: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Draft</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={kecamatanActivityComponents.submit}
+                        onChange={(e) => setKecamatanActivityComponents({...kecamatanActivityComponents, submit: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Submit</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={kecamatanActivityComponents.approve}
+                        onChange={(e) => setKecamatanActivityComponents({...kecamatanActivityComponents, approve: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Approve</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={kecamatanActivityComponents.reject}
+                        onChange={(e) => setKecamatanActivityComponents({...kecamatanActivityComponents, reject: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Reject</span>
+                    </label>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {loading ? (
