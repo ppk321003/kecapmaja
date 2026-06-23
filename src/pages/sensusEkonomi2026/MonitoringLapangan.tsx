@@ -1133,12 +1133,7 @@ export function MonitoringLapangan() {
                             📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}%
                           </CardTitle>
                           <CardDescription>
-                            Persentase ({[
-                              kecamatanPercentageComponents.draft && 'Draft',
-                              kecamatanPercentageComponents.submit && 'Submit',
-                              kecamatanPercentageComponents.approve && 'Approve',
-                              kecamatanPercentageComponents.reject && 'Reject'
-                            ].filter(Boolean).join('+')}) terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad)
+                            Persentase komponen terpilih terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥target | Kuning 50-99% target | Merah &lt;50% target. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
                           </CardDescription>
                         </>
                       );
@@ -1197,6 +1192,10 @@ export function MonitoringLapangan() {
                         ? chartDataKecamatanPercentage.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPercentage.length
                         : 0;
 
+                      // Determine Y axis max based on days elapsed
+                      const { daysElapsed } = calculateDayProgress();
+                      const yAxisMax = daysElapsed <= 30 ? 50 : 100;
+
                       return (
                         <BarChart data={chartDataKecamatanPercentage}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1209,6 +1208,7 @@ export function MonitoringLapangan() {
                           />
                           <YAxis 
                             tick={{ fontSize: 12 }}
+                            domain={[0, yAxisMax]}
                             label={{ value: 'Persentase (%)', angle: -90, position: 'insideLeft' }}
                           />
                           <Tooltip 
@@ -1278,12 +1278,7 @@ export function MonitoringLapangan() {
                       📊 Rata-rata Aktifitas PPL per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
                     </CardTitle>
                     <CardDescription>
-                      Rata-rata ({[
-                        kecamatanActivityComponents.draft && 'Draft',
-                        kecamatanActivityComponents.submit && 'Submit',
-                        kecamatanActivityComponents.approve && 'Approve',
-                        kecamatanActivityComponents.reject && 'Reject'
-                      ].filter(Boolean).join('+')}) per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥7/hari | Kuning 4-6/hari | Merah &lt;4/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan
+                      Rata-rata aktivitas komponen terpilih per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥7/hari | Kuning 4-6/hari | Merah &lt;4/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-4 pt-2 border-t">
