@@ -298,14 +298,14 @@ const PercentageTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const percentage = data.value || 0;
-    const totalSubmit = data.totalSubmit || 0;
+    const totalActivity = data.totalActivity || 0;
     const totalAssignments = data.totalAssignments || 0;
     
     return (
       <div className="bg-white p-3 border border-slate-300 rounded-lg shadow-lg">
         <p className="font-semibold text-slate-900">{data.name}</p>
         <div className="mt-2 space-y-1 text-xs text-slate-700">
-          <p>📝 <span className="font-medium">Jumlah Submit:</span> {totalSubmit.toLocaleString("id-ID")}</p>
+          <p>📝 <span className="font-medium">Jumlah Activity:</span> {totalActivity.toLocaleString("id-ID")}</p>
           <p>📋 <span className="font-medium">Total Assignments:</span> {totalAssignments.toLocaleString("id-ID")}</p>
           <p className="text-slate-600 mt-2 font-semibold">Persentase: {percentage.toLocaleString("id-ID")}%</p>
         </div>
