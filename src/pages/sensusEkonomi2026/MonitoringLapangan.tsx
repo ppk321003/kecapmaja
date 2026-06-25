@@ -2528,7 +2528,7 @@ export function MonitoringLapangan() {
               <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
-                    <CardTitle>Data TA - Ratih Megasari</CardTitle>
+                    <CardTitle>Data TA - Ratih Megasari Singkarru, MSc.</CardTitle>
                     <CardDescription>
                       Total: {afirmasiPPLData.ratih.length} data
                     </CardDescription>
@@ -2723,7 +2723,7 @@ export function MonitoringLapangan() {
               <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
-                    <CardTitle>Data TA - Ledya</CardTitle>
+                    <CardTitle>Data TA - Hj. Ledia Hanifa A., S.Si., M.Psi.T.</CardTitle>
                     <CardDescription>
                       Total: {afirmasiPPLData.ledya.length} data
                     </CardDescription>
