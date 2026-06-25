@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -55,6 +55,12 @@ const AVG_DAILY_TARGET = 9.5; // (7 + 12) / 2
 const TOTAL_TARGET = TOTAL_DAYS * AVG_DAILY_TARGET; // ~732 submit
 const ITEMS_PER_PAGE = 20;
 
+interface AfirmasiData {
+  nama: string;
+  email: string;
+  kategori: string; // "Ratih Megasari" or "Ledya"
+}
+
 interface AggregatedData {
   kecamatan: string;
   nama_ppl: string;
@@ -101,6 +107,7 @@ interface PMLData {
 const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
 const SHEET_NAME = "REKAP_SCRP";
 const SHEET_USERS = "Semua Users";
+const SHEET_AFIRMASI = "AFIRMASI";
 
 const COLORS = {
   optimal: "#10b981",
@@ -465,7 +472,8 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
 export function MonitoringLapangan() {
   const { user } = useAuth();
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
-  
+  const isLoggedIn = !!user;
+
   const { data: sheetData, loading, error } = useGoogleSheetsData({
     spreadsheetId: SPREADSHEET_ID,
     sheetName: SHEET_NAME,
@@ -474,17 +482,29 @@ export function MonitoringLapangan() {
     spreadsheetId: SPREADSHEET_ID,
     sheetName: SHEET_USERS,
   });
+  const { data: afirmasiData, loading: afirmasiLoading } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: SHEET_AFIRMASI,
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
+  const [afirmasiSearchTerm, setAfirmasiSearchTerm] = useState("");
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "dailyavg">("dailyavg");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
+  useEffect(() => {
+    if (!isLoggedIn && (activeTab === 'afirmasi-ratih' || activeTab === 'afirmasi-ledya')) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, isLoggedIn]);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentPagePML, setCurrentPagePML] = useState(1);
   const [itemsPerPagePPL, setItemsPerPagePPL] = useState(20);
   const [itemsPerPagePML, setItemsPerPagePML] = useState(20);
+  const [currentPageAfirmasi, setCurrentPageAfirmasi] = useState(1);
+  const [itemsPerPageAfirmasi, setItemsPerPageAfirmasi] = useState(20);
   const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "pemeriksaan">("pemeriksaan");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
@@ -887,6 +907,86 @@ export function MonitoringLapangan() {
   const startIndexPML = (currentPagePML - 1) * itemsPerPagePML;
   const paginatedRowsPML = sortedPMLData.slice(startIndexPML, startIndexPML + itemsPerPagePML);
 
+  // Process AFIRMASI data - Extract emails for matching
+  const afirmasiEmails = useMemo(() => {
+    if (!afirmasiData || afirmasiData.length === 0) {
+      return {
+        ratih: new Set<string>(),
+        ledya: new Set<string>(),
+      };
+    }
+
+    const allKeys = Object.keys(afirmasiData[0]);
+
+    // Use fixed AFIRMASI sheet layout: column B = Ratih email, column D = Ledya email
+    const emailRatihKey = allKeys[1] || "";
+    const emailLedyaKey = allKeys[3] || "";
+
+    const ratihEmails = new Set<string>();
+    const ledyaEmails = new Set<string>();
+
+    afirmasiData.forEach((row: any) => {
+      const emailRatih = (row[emailRatihKey] || "").trim().toLowerCase();
+      const emailLedya = (row[emailLedyaKey] || "").trim().toLowerCase();
+
+      if (emailRatih && emailRatih !== "-" && emailRatih.includes("@")) {
+        ratihEmails.add(emailRatih);
+      }
+
+      if (emailLedya && emailLedya !== "-" && emailLedya.includes("@")) {
+        ledyaEmails.add(emailLedya);
+      }
+    });
+
+    return {
+      ratih: ratihEmails,
+      ledya: ledyaEmails,
+    };
+  }, [afirmasiData]);
+
+  // Filter PPL data by AFIRMASI emails
+  const afirmasiPPLData = useMemo(() => {
+    const ratihPPL: (AggregatedData & { kategori: string })[] = [];
+    const ledyaPPL: (AggregatedData & { kategori: string })[] = [];
+
+    aggregatedData.rows.forEach((ppl) => {
+      const pplEmail = (ppl.email_ppl || "").trim().toLowerCase();
+      
+      if (afirmasiEmails.ratih.has(pplEmail)) {
+        ratihPPL.push({ ...ppl, kategori: "Ratih Megasari" });
+      } else if (afirmasiEmails.ledya.has(pplEmail)) {
+        ledyaPPL.push({ ...ppl, kategori: "Ledya" });
+      }
+    });
+
+    // Apply search filter
+    const filterData = (data: (AggregatedData & { kategori: string })[], searchTerm: string) => {
+      if (!searchTerm) return data;
+      return data.filter(
+        (item) =>
+          item.nama_ppl.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.email_ppl || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.kecamatan.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    };
+
+    return {
+      ratih: filterData(ratihPPL, afirmasiSearchTerm),
+      ledya: filterData(ledyaPPL, afirmasiSearchTerm),
+    };
+  }, [aggregatedData.rows, afirmasiEmails, afirmasiSearchTerm]);
+
+  // Pagination AFIRMASI
+  const totalPagesAfirmasi = Math.ceil(
+    (afirmasiPPLData.ratih.length + afirmasiPPLData.ledya.length) / itemsPerPageAfirmasi
+  );
+  const startIndexAfirmasi = (currentPageAfirmasi - 1) * itemsPerPageAfirmasi;
+  const combinedAfirmasiData = [...afirmasiPPLData.ratih, ...afirmasiPPLData.ledya];
+  const paginatedAfirmasiData = combinedAfirmasiData.slice(
+    startIndexAfirmasi,
+    startIndexAfirmasi + itemsPerPageAfirmasi
+  );
+
   const { daysElapsed, avgDayTarget } = calculateDayProgress();
 
   return (
@@ -947,6 +1047,24 @@ export function MonitoringLapangan() {
               <Users className="h-5 w-5" />
               <span className="font-medium">PML</span>
             </TabsTrigger>
+            {isLoggedIn && (
+              <>
+                <TabsTrigger
+                  value="afirmasi-ratih"
+                  className="flex items-center gap-3 justify-center flex-1 py-3 px-4 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
+                >
+                  <Trophy className="h-5 w-5" />
+                  <span className="font-medium">TA - Ratih Megasari</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="afirmasi-ledya"
+                  className="flex items-center gap-3 justify-center flex-1 py-3 px-4 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
+                >
+                  <Trophy className="h-5 w-5" />
+                  <span className="font-medium">TA - Ledya</span>
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <div className="w-full">
@@ -2402,6 +2520,396 @@ export function MonitoringLapangan() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* AFIRMASI Ratih Tab */}
+          {isLoggedIn && (
+            <TabsContent value="afirmasi-ratih" className="space-y-6 mt-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <CardTitle>Data TA - Ratih Megasari</CardTitle>
+                    <CardDescription>
+                      Total: {afirmasiPPLData.ratih.length} data
+                    </CardDescription>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
+                    <div className="relative flex-1 md:max-w-xs">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
+                        placeholder="Cari nama PPL atau kecamatan..."
+                        value={afirmasiSearchTerm}
+                        onChange={(e) => {
+                          setAfirmasiSearchTerm(e.target.value);
+                          setCurrentPageAfirmasi(1);
+                        }}
+                        className="pl-10 h-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-0">
+                {afirmasiLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    <span className="ml-2 text-slate-600">Memuat data...</span>
+                  </div>
+                ) : afirmasiPPLData.ratih.length === 0 ? (
+                  <div className="flex items-center justify-center py-12 text-slate-500">
+                    <AlertCircle className="h-5 w-5 mr-2" />
+                    Tidak ada data ditemukan
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50 hover:bg-slate-50">
+                            <TableHead className="w-12 text-center text-slate-700 font-semibold">
+                              No
+                            </TableHead>
+                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
+                              Nama PPL
+                            </TableHead>
+                            <TableHead className="text-slate-700 px-4 py-3">
+                              Kecamatan
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Draft
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Reject
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Submit
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Approve
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Rata-rata Harian
+                            </TableHead>
+                            <TableHead className="text-center text-slate-700 font-semibold px-4 py-3">
+                              Status
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {afirmasiPPLData.ratih.slice(startIndexAfirmasi, startIndexAfirmasi + itemsPerPageAfirmasi).map((item, index) => {
+                            const totalAktivitas = item.draft + item.jumlah_reject + item.jumlah_submit + item.jumlah_approve;
+                            const scheduleStatus = getScheduleStatus(totalAktivitas);
+                            const StatusIcon = scheduleStatus.icon;
+
+                            return (
+                              <TableRow
+                                key={`${item.email_ppl}-${index}`}
+                                className="hover:bg-slate-50 border-b transition-colors"
+                              >
+                                <TableCell className="text-center text-slate-600 font-medium w-12">
+                                  {startIndexAfirmasi + index + 1}
+                                </TableCell>
+                                <TableCell className="text-slate-700 px-4 py-3 font-semibold">
+                                  {item.nama_ppl || "-"}
+                                </TableCell>
+                                <TableCell className="text-slate-900 px-4 py-3">
+                                  {item.kecamatan}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                  {item.draft.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
+                                  {item.jumlah_reject.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                  {item.jumlah_submit.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
+                                  {item.jumlah_approve.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right text-slate-700 px-4 py-3">
+                                  {(Math.floor((item.draft + item.jumlah_reject + item.jumlah_submit + item.jumlah_approve) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} aktivitas/hari
+                                </TableCell>
+                                <TableCell className="text-center px-4 py-3">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <StatusIcon className="h-4 w-4" style={{ color: scheduleStatus.color }} />
+                                    <span className="text-xs font-semibold text-slate-700">
+                                      {scheduleStatus.label}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {Math.ceil(afirmasiPPLData.ratih.length / itemsPerPageAfirmasi) > 1 && (
+                      <div className="border-t bg-white px-4 py-3 flex items-center justify-between">
+                        <div className="text-xs text-slate-600">
+                          Total: {afirmasiPPLData.ratih.length} data
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <select
+                            value={itemsPerPageAfirmasi}
+                            onChange={(e) => {
+                              setItemsPerPageAfirmasi(parseInt(e.target.value));
+                              setCurrentPageAfirmasi(1);
+                            }}
+                            className="h-8 px-2 rounded border border-slate-300 text-slate-700 text-xs bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                          <span className="text-xs text-slate-600">/ halaman</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentPageAfirmasi(1)}
+                            disabled={currentPageAfirmasi === 1}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            «
+                          </button>
+                          <button
+                            onClick={() => setCurrentPageAfirmasi(prev => Math.max(1, prev - 1))}
+                            disabled={currentPageAfirmasi === 1}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ‹
+                          </button>
+                          <span className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white rounded border border-slate-300">
+                            Hal {currentPageAfirmasi} / {Math.ceil(afirmasiPPLData.ratih.length / itemsPerPageAfirmasi)}
+                          </span>
+                          <button
+                            onClick={() => setCurrentPageAfirmasi(prev => Math.min(Math.ceil(afirmasiPPLData.ratih.length / itemsPerPageAfirmasi), prev + 1))}
+                            disabled={currentPageAfirmasi === Math.ceil(afirmasiPPLData.ratih.length / itemsPerPageAfirmasi)}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ›
+                          </button>
+                          <button
+                            onClick={() => setCurrentPageAfirmasi(Math.ceil(afirmasiPPLData.ratih.length / itemsPerPageAfirmasi))}
+                            disabled={currentPageAfirmasi === Math.ceil(afirmasiPPLData.ratih.length / itemsPerPageAfirmasi)}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            »
+                          </button>
+                          <div className="text-xs text-slate-600 ml-4">
+                            Menampilkan {Math.min(itemsPerPageAfirmasi, afirmasiPPLData.ratih.length - startIndexAfirmasi)} dari {afirmasiPPLData.ratih.length} data
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          )}
+
+          {/* AFIRMASI Ledya Tab */}
+          {isLoggedIn && (
+            <TabsContent value="afirmasi-ledya" className="space-y-6 mt-6">
+              <Card className="border-0 shadow-sm">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <CardTitle>Data TA - Ledya</CardTitle>
+                    <CardDescription>
+                      Total: {afirmasiPPLData.ledya.length} data
+                    </CardDescription>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
+                    <div className="relative flex-1 md:max-w-xs">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
+                        placeholder="Cari nama PPL atau kecamatan..."
+                        value={afirmasiSearchTerm}
+                        onChange={(e) => {
+                          setAfirmasiSearchTerm(e.target.value);
+                          setCurrentPageAfirmasi(1);
+                        }}
+                        className="pl-10 h-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-0">
+                {afirmasiLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    <span className="ml-2 text-slate-600">Memuat data...</span>
+                  </div>
+                ) : afirmasiPPLData.ledya.length === 0 ? (
+                  <div className="flex items-center justify-center py-12 text-slate-500">
+                    <AlertCircle className="h-5 w-5 mr-2" />
+                    Tidak ada data ditemukan
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50 hover:bg-slate-50">
+                            <TableHead className="w-12 text-center text-slate-700 font-semibold">
+                              No
+                            </TableHead>
+                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
+                              Nama PPL
+                            </TableHead>
+                            <TableHead className="text-slate-700 px-4 py-3">
+                              Kecamatan
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Draft
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Reject
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Submit
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Approve
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Rata-rata Harian
+                            </TableHead>
+                            <TableHead className="text-center text-slate-700 font-semibold px-4 py-3">
+                              Status
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {afirmasiPPLData.ledya.slice(startIndexAfirmasi, startIndexAfirmasi + itemsPerPageAfirmasi).map((item, index) => {
+                            const totalAktivitas = item.draft + item.jumlah_reject + item.jumlah_submit + item.jumlah_approve;
+                            const scheduleStatus = getScheduleStatus(totalAktivitas);
+                            const StatusIcon = scheduleStatus.icon;
+
+                            return (
+                              <TableRow
+                                key={`${item.email_ppl}-${index}`}
+                                className="hover:bg-slate-50 border-b transition-colors"
+                              >
+                                <TableCell className="text-center text-slate-600 font-medium w-12">
+                                  {startIndexAfirmasi + index + 1}
+                                </TableCell>
+                                <TableCell className="text-slate-700 px-4 py-3 font-semibold">
+                                  {item.nama_ppl || "-"}
+                                </TableCell>
+                                <TableCell className="text-slate-900 px-4 py-3">
+                                  {item.kecamatan}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                  {item.draft.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
+                                  {item.jumlah_reject.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                  {item.jumlah_submit.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
+                                  {item.jumlah_approve.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right text-slate-700 px-4 py-3">
+                                  {(Math.floor((item.draft + item.jumlah_reject + item.jumlah_submit + item.jumlah_approve) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} aktivitas/hari
+                                </TableCell>
+                                <TableCell className="text-center px-4 py-3">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <StatusIcon className="h-4 w-4" style={{ color: scheduleStatus.color }} />
+                                    <span className="text-xs font-semibold text-slate-700">
+                                      {scheduleStatus.label}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {Math.ceil(afirmasiPPLData.ledya.length / itemsPerPageAfirmasi) > 1 && (
+                      <div className="border-t bg-white px-4 py-3 flex items-center justify-between">
+                        <div className="text-xs text-slate-600">
+                          Total: {afirmasiPPLData.ledya.length} data
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <select
+                            value={itemsPerPageAfirmasi}
+                            onChange={(e) => {
+                              setItemsPerPageAfirmasi(parseInt(e.target.value));
+                              setCurrentPageAfirmasi(1);
+                            }}
+                            className="h-8 px-2 rounded border border-slate-300 text-slate-700 text-xs bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                          <span className="text-xs text-slate-600">/ halaman</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentPageAfirmasi(1)}
+                            disabled={currentPageAfirmasi === 1}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            «
+                          </button>
+                          <button
+                            onClick={() => setCurrentPageAfirmasi(prev => Math.max(1, prev - 1))}
+                            disabled={currentPageAfirmasi === 1}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ‹
+                          </button>
+                          <span className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white rounded border border-slate-300">
+                            Hal {currentPageAfirmasi} / {Math.ceil(afirmasiPPLData.ledya.length / itemsPerPageAfirmasi)}
+                          </span>
+                          <button
+                            onClick={() => setCurrentPageAfirmasi(prev => Math.min(Math.ceil(afirmasiPPLData.ledya.length / itemsPerPageAfirmasi), prev + 1))}
+                            disabled={currentPageAfirmasi === Math.ceil(afirmasiPPLData.ledya.length / itemsPerPageAfirmasi)}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ›
+                          </button>
+                          <button
+                            onClick={() => setCurrentPageAfirmasi(Math.ceil(afirmasiPPLData.ledya.length / itemsPerPageAfirmasi))}
+                            disabled={currentPageAfirmasi === Math.ceil(afirmasiPPLData.ledya.length / itemsPerPageAfirmasi)}
+                            className="px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            »
+                          </button>
+                          <div className="text-xs text-slate-600 ml-4">
+                            Menampilkan {Math.min(itemsPerPageAfirmasi, afirmasiPPLData.ledya.length - startIndexAfirmasi)} dari {afirmasiPPLData.ledya.length} data
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          )}
           </div>
         </Tabs>
 

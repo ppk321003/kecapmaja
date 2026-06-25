@@ -28,13 +28,22 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range }: UseGoog
 
         const rows = response?.values || [];
         
-        // Convert to objects with header keys
+        // Convert to objects with header keys, preserving duplicate headers as numbered keys
         if (rows.length > 1) {
           const headers = rows[0];
           const dataRows = rows.slice(1).map((row: any[]) => {
             const obj: any = {};
+            const headerCount: Record<string, number> = {};
+
             headers.forEach((header: string, index: number) => {
-              obj[header.toLowerCase()] = row[index] || '';
+              const normalizedHeader = String(header || '').trim().toLowerCase();
+              if (!normalizedHeader) return;
+
+              const count = (headerCount[normalizedHeader] || 0) + 1;
+              headerCount[normalizedHeader] = count;
+
+              const key = count === 1 ? normalizedHeader : `${normalizedHeader}_${count}`;
+              obj[key] = row[index] || '';
             });
             return obj;
           });
