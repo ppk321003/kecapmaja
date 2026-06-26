@@ -806,7 +806,7 @@ export function MonitoringLapangan() {
         .map(([email, data]) => {
           // Get the most frequent kecamatan
           const mainKecamatan = Array.from(data.kecamatanMap.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-          return { name: `${data.nama_ppl}\n${mainKecamatan}`, value: data.value };
+          return { name: `${data.nama_ppl} — ${mainKecamatan}`, value: data.value };
         })
         .sort((a, b) => b.value - a.value);
 
@@ -881,11 +881,11 @@ export function MonitoringLapangan() {
 
       const pmlSortedByPemeriksaan = pmlWithPercentage.sort((a, b) => b.pemeriksaanPercent - a.pemeriksaanPercent);
       const chartDataPMLTop: ChartData[] = pmlSortedByPemeriksaan.slice(0, 10).map(item => ({
-        name: `${item.nama_pml}\n${item.kecamatan}`,
+        name: `${item.nama_pml} — ${item.kecamatan}`,
         value: item.pemeriksaanPercent,
       }));
       const chartDataPMLLowest: ChartData[] = pmlSortedByPemeriksaan.slice(-10).reverse().map(item => ({
-        name: `${item.nama_pml}\n${item.kecamatan}`,
+        name: `${item.nama_pml} — ${item.kecamatan}`,
         value: item.pemeriksaanPercent,
       }));
 
@@ -1392,10 +1392,11 @@ export function MonitoringLapangan() {
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                           <XAxis
                             dataKey="name"
-                            angle={-45}
+                            angle={-90}
                             textAnchor="end"
-                            height={100}
+                            height={140}
                             tick={{ fontSize: 11 }}
+                            interval={0}
                           />
                           <YAxis 
                             tick={{ fontSize: 12 }}
@@ -1530,10 +1531,11 @@ export function MonitoringLapangan() {
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                           <XAxis
                             dataKey="name"
-                            angle={-45}
+                            angle={-90}
                             textAnchor="end"
-                            height={100}
+                            height={140}
                             tick={{ fontSize: 11 }}
+                            interval={0}
                           />
                           <YAxis tick={{ fontSize: 12 }} />
                           <Tooltip content={<KecamatanTooltip />} />
@@ -1587,8 +1589,10 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
-                          tick={<MultiLineLabel />}
+                          angle={-90}
+                          textAnchor="end"
+                          height={140}
+                          tick={{ fontSize: 10, fill: '#64748b' }}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
@@ -1627,8 +1631,10 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
-                          tick={<MultiLineLabel />}
+                          angle={-90}
+                          textAnchor="end"
+                          height={140}
+                          tick={{ fontSize: 10, fill: '#64748b' }}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
@@ -1667,8 +1673,10 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
-                          tick={<MultiLineLabel />}
+                          angle={-90}
+                          textAnchor="end"
+                          height={140}
+                          tick={{ fontSize: 10, fill: '#64748b' }}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
@@ -1708,8 +1716,10 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
-                          tick={<MultiLineLabel />}
+                          angle={-90}
+                          textAnchor="end"
+                          height={140}
+                          tick={{ fontSize: 10, fill: '#64748b' }}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
