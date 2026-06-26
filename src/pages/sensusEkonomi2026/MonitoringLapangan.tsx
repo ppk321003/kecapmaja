@@ -96,6 +96,28 @@ interface ChartData {
   value: number;
 }
 
+const TwoLineVerticalTick = ({ x, y, payload }: any) => {
+  const text = payload?.value || "";
+  const parts = text.split(" — ");
+  const line1 = parts[0] || "";
+  const line2 = parts.slice(1).join(" — ") || "";
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text transform="rotate(-90)" textAnchor="end" fill="#334155" fontSize={10} fontWeight={500} x={0} y={0}>
+        {line1}
+      </text>
+      {line2 && (
+        <g transform="translate(18, 0)">
+          <text transform="rotate(-90)" textAnchor="end" fill="#64748b" fontSize={9} x={0} y={0}>
+            {line2}
+          </text>
+        </g>
+      )}
+    </g>
+  );
+};
+
 interface PMLData {
   nama_pml: string;
 }
@@ -1589,10 +1611,8 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          angle={-90}
-                          textAnchor="end"
                           height={140}
-                          tick={{ fontSize: 10, fill: '#64748b' }}
+                          tick={TwoLineVerticalTick}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
@@ -1631,10 +1651,8 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          angle={-90}
-                          textAnchor="end"
                           height={140}
-                          tick={{ fontSize: 10, fill: '#64748b' }}
+                          tick={TwoLineVerticalTick}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
@@ -1673,10 +1691,8 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          angle={-90}
-                          textAnchor="end"
                           height={140}
-                          tick={{ fontSize: 10, fill: '#64748b' }}
+                          tick={TwoLineVerticalTick}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
@@ -1716,10 +1732,8 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          angle={-90}
-                          textAnchor="end"
                           height={140}
-                          tick={{ fontSize: 10, fill: '#64748b' }}
+                          tick={TwoLineVerticalTick}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
