@@ -98,6 +98,51 @@ interface ChartData {
 
 interface PMLData {
   nama_pml: string;
+}
+
+// Custom component for multi-line X-axis labels with better visibility
+const MultiLineLabel = (props: any) => {
+  const { x, y, payload } = props;
+  if (!payload?.value) return null;
+  
+  const lines = String(payload.value).split('\n');
+  const lineHeight = 14;
+  const totalHeight = lines.length * lineHeight;
+  
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <foreignObject 
+        x={-50} 
+        y={5} 
+        width={100} 
+        height={totalHeight + 10}
+        style={{ overflow: 'visible' }}
+      >
+        <div style={{
+          textAlign: 'center',
+          fontSize: '11px',
+          color: '#666666',
+          fontFamily: 'Arial, sans-serif',
+          lineHeight: '1.3',
+          whiteSpace: 'pre-wrap',
+          wordWrap: 'break-word',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}>
+          {lines.map((line, index) => (
+            <div key={index} style={{ marginBottom: '2px' }}>
+              {line}
+            </div>
+          ))}
+        </div>
+      </foreignObject>
+    </g>
+  );
+};
+
+interface PMLData {
+  nama_pml: string;
   kecamatan: string;
   jumlah_submit_ppl: number;
   jumlah_approve: number;
@@ -740,22 +785,29 @@ export function MonitoringLapangan() {
 
       // Chart data for PPL Top 10 - dynamic based on selected components
       // Use email as key to differentiate PPL with same name, but display nama_ppl
-      const pplMap = new Map<string, { value: number; nama_ppl: string }>();
+      const pplMap = new Map<string, { value: number; nama_ppl: string; kecamatanMap: Map<string, number> }>();
       Array.from(dataMap.values()).forEach((row) => {
         if (row.email_ppl) {
-          const current = pplMap.get(row.email_ppl) || { value: 0, nama_ppl: row.nama_ppl };
+          const current = pplMap.get(row.email_ppl) || { value: 0, nama_ppl: row.nama_ppl, kecamatanMap: new Map() };
           let activityToAdd = 0;
           if (kecamatanActivityComponents.draft) activityToAdd += row.draft;
           if (kecamatanActivityComponents.submit) activityToAdd += row.jumlah_submit;
           if (kecamatanActivityComponents.approve) activityToAdd += row.jumlah_approve;
           if (kecamatanActivityComponents.reject) activityToAdd += row.jumlah_reject;
           current.value += activityToAdd;
+          // Track kecamatan frequency
+          const kecCount = current.kecamatanMap.get(row.kecamatan) || 0;
+          current.kecamatanMap.set(row.kecamatan, kecCount + 1);
           pplMap.set(row.email_ppl, current);
         }
       });
 
       const pplSorted = Array.from(pplMap.entries())
-        .map(([email, data]) => ({ name: data.nama_ppl, value: data.value }))
+        .map(([email, data]) => {
+          // Get the most frequent kecamatan
+          const mainKecamatan = Array.from(data.kecamatanMap.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+          return { name: `${data.nama_ppl}\n${mainKecamatan}`, value: data.value };
+        })
         .sort((a, b) => b.value - a.value);
 
       const chartDataPPLTop: ChartData[] = pplSorted.slice(0, 10);
@@ -818,19 +870,22 @@ export function MonitoringLapangan() {
         const pemeriksaanPercent = totalStatus > 0 
           ? Math.round(((data.totalApprove + data.totalReject) / totalStatus) * 10000) / 100
           : 0;
+        // Extract kecamatan from key (format: nama_pml|kecamatan)
+        const [, kecamatan] = key.split('|');
         return {
           nama_pml: data.nama_pml,
+          kecamatan: kecamatan || '',
           pemeriksaanPercent,
         };
       });
 
       const pmlSortedByPemeriksaan = pmlWithPercentage.sort((a, b) => b.pemeriksaanPercent - a.pemeriksaanPercent);
       const chartDataPMLTop: ChartData[] = pmlSortedByPemeriksaan.slice(0, 10).map(item => ({
-        name: item.nama_pml,
+        name: `${item.nama_pml}\n${item.kecamatan}`,
         value: item.pemeriksaanPercent,
       }));
       const chartDataPMLLowest: ChartData[] = pmlSortedByPemeriksaan.slice(-10).reverse().map(item => ({
-        name: item.nama_pml,
+        name: `${item.nama_pml}\n${item.kecamatan}`,
         value: item.pemeriksaanPercent,
       }));
 
@@ -1532,10 +1587,9 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                          tick={{ fontSize: 11 }}
+                          height={120}
+                          tick={<MultiLineLabel />}
+                          interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
                         <Tooltip
@@ -1573,10 +1627,9 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                          tick={{ fontSize: 11 }}
+                          height={120}
+                          tick={<MultiLineLabel />}
+                          interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
                         <Tooltip
@@ -1614,10 +1667,9 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                          tick={{ fontSize: 11 }}
+                          height={120}
+                          tick={<MultiLineLabel />}
+                          interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
                         <Tooltip
@@ -1656,10 +1708,9 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                          tick={{ fontSize: 11 }}
+                          height={120}
+                          tick={<MultiLineLabel />}
+                          interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
                         <Tooltip
