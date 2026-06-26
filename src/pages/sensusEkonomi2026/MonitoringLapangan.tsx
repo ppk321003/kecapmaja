@@ -1392,10 +1392,11 @@ export function MonitoringLapangan() {
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                           <XAxis
                             dataKey="name"
-                            angle={-45}
+                            angle={-90}
                             textAnchor="end"
-                            height={100}
+                            height={140}
                             tick={{ fontSize: 11 }}
+                            interval={0}
                           />
                           <YAxis 
                             tick={{ fontSize: 12 }}
