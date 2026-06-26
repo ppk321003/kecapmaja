@@ -806,7 +806,7 @@ export function MonitoringLapangan() {
         .map(([email, data]) => {
           // Get the most frequent kecamatan
           const mainKecamatan = Array.from(data.kecamatanMap.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-          return { name: `${data.nama_ppl}\n${mainKecamatan}`, value: data.value };
+          return { name: `${data.nama_ppl} — ${mainKecamatan}`, value: data.value };
         })
         .sort((a, b) => b.value - a.value);
 
@@ -881,11 +881,11 @@ export function MonitoringLapangan() {
 
       const pmlSortedByPemeriksaan = pmlWithPercentage.sort((a, b) => b.pemeriksaanPercent - a.pemeriksaanPercent);
       const chartDataPMLTop: ChartData[] = pmlSortedByPemeriksaan.slice(0, 10).map(item => ({
-        name: `${item.nama_pml}\n${item.kecamatan}`,
+        name: `${item.nama_pml la} — ${item.kecamatan}`,
         value: item.pemeriksaanPercent,
       }));
       const chartDataPMLLowest: ChartData[] = pmlSortedByPemeriksaan.slice(-10).reverse().map(item => ({
-        name: `${item.nama_pml}\n${item.kecamatan}`,
+        name: `${item.nama_pml} — ${item.kecamatan}`,
         value: item.pemeriksaanPercent,
       }));
 
