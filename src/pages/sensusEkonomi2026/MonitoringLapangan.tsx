@@ -104,12 +104,12 @@ const TwoLineVerticalTick = ({ x, y, payload }: any) => {
 
   return (
     <g transform={`translate(${x},${y})`}>
-      <text transform="rotate(-90)" textAnchor="end" fill="#64748b" fontSize={10} x={0} y={0}>
+      <text transform="rotate(-90)" textAnchor="end" fill="#334155" fontSize={10} fontWeight={500} x={0} y={0}>
         {line1}
       </text>
       {line2 && (
-        <g transform="translate(14, 0)">
-          <text transform="rotate(-90)" textAnchor="end" fill="#64748b" fontSize={10} x={0} y={0}>
+        <g transform="translate(18, 0)">
+          <text transform="rotate(-90)" textAnchor="end" fill="#64748b" fontSize={9} x={0} y={0}>
             {line2}
           </text>
         </g>
