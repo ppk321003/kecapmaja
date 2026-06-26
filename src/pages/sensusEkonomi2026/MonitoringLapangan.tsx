@@ -881,7 +881,7 @@ export function MonitoringLapangan() {
 
       const pmlSortedByPemeriksaan = pmlWithPercentage.sort((a, b) => b.pemeriksaanPercent - a.pemeriksaanPercent);
       const chartDataPMLTop: ChartData[] = pmlSortedByPemeriksaan.slice(0, 10).map(item => ({
-        name: `${item.nama_pml la} — ${item.kecamatan}`,
+        name: `${item.nama_pml} — ${item.kecamatan}`,
         value: item.pemeriksaanPercent,
       }));
       const chartDataPMLLowest: ChartData[] = pmlSortedByPemeriksaan.slice(-10).reverse().map(item => ({
