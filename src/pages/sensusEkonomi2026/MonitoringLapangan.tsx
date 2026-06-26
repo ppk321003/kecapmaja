@@ -1589,8 +1589,10 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
-                          tick={<MultiLineLabel />}
+                          angle={-90}
+                          textAnchor="end"
+                          height={140}
+                          tick={{ fontSize: 10, fill: '#64748b' }}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
@@ -1629,8 +1631,10 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
-                          tick={<MultiLineLabel />}
+                          angle={-90}
+                          textAnchor="end"
+                          height={140}
+                          tick={{ fontSize: 10, fill: '#64748b' }}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} />
@@ -1669,8 +1673,10 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
-                          tick={<MultiLineLabel />}
+                          angle={-90}
+                          textAnchor="end"
+                          height={140}
+                          tick={{ fontSize: 10, fill: '#64748b' }}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
@@ -1710,8 +1716,10 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
-                          tick={<MultiLineLabel />}
+                          angle={-90}
+                          textAnchor="end"
+                          height={140}
+                          tick={{ fontSize: 10, fill: '#64748b' }}
                           interval={0}
                         />
                         <YAxis tick={{ fontSize: 12 }} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
