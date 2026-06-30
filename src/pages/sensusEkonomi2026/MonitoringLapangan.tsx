@@ -44,15 +44,24 @@ import {
   ComposedChart,
 } from "recharts";
 
-// Schedule: 15 Juni - 31 Agustus 2026 (77 hari)
-// Target: flexible 7-12 submit per hari (average 9-10)
+// Schedule: 15 Juni - 17 Agustus 2026 (63 hari)
+// Target: flexible 7-12 submit per hari (average 9-10), 100% reached on day 63
 const SCHEDULE_START = new Date(2026, 5, 15); // 15 June 2026
-const SCHEDULE_END = new Date(2026, 7, 31); // 31 August 2026
-const TOTAL_DAYS = 77; // 15 Juni - 31 Agustus = 77 hari
+const SCHEDULE_END = new Date(2026, 7, 17); // 17 August 2026
+const TOTAL_DAYS = 63; // 15 Juni - 17 Agustus = 63 hari
 const MIN_DAILY_TARGET = 7;
 const MAX_DAILY_TARGET = 12;
 const AVG_DAILY_TARGET = 9.5; // (7 + 12) / 2
-const TOTAL_TARGET = TOTAL_DAYS * AVG_DAILY_TARGET; // ~732 submit
+const TOTAL_TARGET = TOTAL_DAYS * AVG_DAILY_TARGET; // ~599 submit
+
+const getTargetMinimalPercentage = (daysElapsed: number): number => {
+  // Linear progress: Day 16 = 27.20%, daily rate = 1.7% per day
+  // 100% reached on approximately Day 59 (August 13, 2026)
+  const dailyRate = 27.2 / 16; // ≈ 1.7% per day
+  const rawPercentage = dailyRate * daysElapsed;
+  const cappedPercentage = Math.max(0, Math.min(rawPercentage, 100));
+  return Math.round(cappedPercentage * 100) / 100;
+};
 const ITEMS_PER_PAGE = 20;
 
 interface AfirmasiData {
@@ -100,43 +109,23 @@ interface PMLData {
   nama_pml: string;
 }
 
-// Custom component for multi-line X-axis labels with better visibility
+// Custom component for multi-line X-axis labels with diagonal rotation for better readability
 const MultiLineLabel = (props: any) => {
   const { x, y, payload } = props;
   if (!payload?.value) return null;
-  
+
   const lines = String(payload.value).split('\n');
   const lineHeight = 14;
-  const totalHeight = lines.length * lineHeight;
-  
+
   return (
-    <g transform={`translate(${x},${y})`}>
-      <foreignObject 
-        x={-50} 
-        y={5} 
-        width={100} 
-        height={totalHeight + 10}
-        style={{ overflow: 'visible' }}
-      >
-        <div style={{
-          textAlign: 'center',
-          fontSize: '11px',
-          color: '#666666',
-          fontFamily: 'Arial, sans-serif',
-          lineHeight: '1.3',
-          whiteSpace: 'pre-wrap',
-          wordWrap: 'break-word',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-        }}>
-          {lines.map((line, index) => (
-            <div key={index} style={{ marginBottom: '2px' }}>
-              {line}
-            </div>
-          ))}
-        </div>
-      </foreignObject>
+    <g transform={`translate(${x},${y}) rotate(-45)`}>
+      <text x={0} y={0} textAnchor="end" fontSize={11} fill="#475569">
+        {lines.map((line: string, index: number) => (
+          <tspan key={index} x={0} dy={index === 0 ? 0 : lineHeight}>
+            {line}
+          </tspan>
+        ))}
+      </text>
     </g>
   );
 };
@@ -268,13 +257,12 @@ const getColorForPercentage = (percentage: number): string => {
   const { daysElapsed } = calculateDayProgress();
   
   // Hitung target persentase DINAMIS berdasarkan hari ke-x
-  // Minimal target: 7 submit/hari (target yang harus dicapai)
-  // Warning threshold: 4 submit/hari (threshold kuning)
-  const minPercentageTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100; // 7/hari
-  const warningPercentageTarget = (daysElapsed * 4 / TOTAL_TARGET) * 100; // 4/hari
+  // 100% target tercapai di hari ke-63, sehingga hari ke-16 = 25,5%
+  const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
+  const warningPercentageTarget = Math.max(0, minPercentageTarget * 0.6);
   
-  // Gunakan threshold DINAMIS berdasarkan daily target minimal
-  // Optimal: mencapai atau melebihi target minimal (>= 7/hari)
+  // Gunakan threshold DINAMIS berdasarkan progres hari
+  // Optimal: mencapai atau melebihi target minimal
   if (percentage >= minPercentageTarget) {
     return "#22c55e"; // Hijau (sesuai atau melebihi target minimal)
   }
@@ -785,30 +773,22 @@ export function MonitoringLapangan() {
 
       // Chart data for PPL Top 10 - dynamic based on selected components
       // Use email as key to differentiate PPL with same name, but display nama_ppl
-      const pplMap = new Map<string, { value: number; nama_ppl: string; kecamatanMap: Map<string, number> }>();
+      const pplMap = new Map<string, { value: number; nama_ppl: string; kecamatan: string }>();
       Array.from(dataMap.values()).forEach((row) => {
-        if (row.email_ppl) {
-          const current = pplMap.get(row.email_ppl) || { value: 0, nama_ppl: row.nama_ppl, kecamatanMap: new Map() };
-          let activityToAdd = 0;
-          if (kecamatanActivityComponents.draft) activityToAdd += row.draft;
-          if (kecamatanActivityComponents.submit) activityToAdd += row.jumlah_submit;
-          if (kecamatanActivityComponents.approve) activityToAdd += row.jumlah_approve;
-          if (kecamatanActivityComponents.reject) activityToAdd += row.jumlah_reject;
-          current.value += activityToAdd;
-          // Track kecamatan frequency
-          const kecCount = current.kecamatanMap.get(row.kecamatan) || 0;
-          current.kecamatanMap.set(row.kecamatan, kecCount + 1);
-          pplMap.set(row.email_ppl, current);
-        }
+        const key = `${(row.email_ppl || row.nama_ppl).trim().toLowerCase()}|${row.kecamatan}`;
+        const current = pplMap.get(key) || { value: 0, nama_ppl: row.nama_ppl, kecamatan: row.kecamatan };
+        let activityToAdd = 0;
+        if (kecamatanActivityComponents.draft) activityToAdd += row.draft;
+        if (kecamatanActivityComponents.submit) activityToAdd += row.jumlah_submit;
+        if (kecamatanActivityComponents.approve) activityToAdd += row.jumlah_approve;
+        if (kecamatanActivityComponents.reject) activityToAdd += row.jumlah_reject;
+        current.value += activityToAdd;
+        pplMap.set(key, current);
       });
 
-      const pplSorted = Array.from(pplMap.entries())
-        .map(([email, data]) => {
-          // Get the most frequent kecamatan
-          const mainKecamatan = Array.from(data.kecamatanMap.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-          return { name: `${data.nama_ppl}\n${mainKecamatan}`, value: data.value };
-        })
-        .sort((a, b) => b.value - a.value);
+      const pplSorted = Array.from(pplMap.values())
+        .sort((a, b) => b.value - a.value)
+        .map((data) => ({ name: `${data.nama_ppl}\n${data.kecamatan}`, value: data.value }));
 
       const chartDataPPLTop: ChartData[] = pplSorted.slice(0, 10);
       const chartDataPPLLowest: ChartData[] = pplSorted.slice(-10).reverse();
@@ -1317,7 +1297,7 @@ export function MonitoringLapangan() {
                   <div>
                     {(() => {
                       const { daysElapsed } = calculateDayProgress();
-                      const minPercentageTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100;
+                      const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
                       return (
                         <>
                           <CardTitle className="text-lg">
@@ -1421,7 +1401,7 @@ export function MonitoringLapangan() {
                           {/* Garis target minimal berdasarkan hari ke-x */}
                           {(() => {
                             const { daysElapsed } = calculateDayProgress();
-                            const minTarget = (daysElapsed * MIN_DAILY_TARGET / TOTAL_TARGET) * 100;
+                            const minTarget = getTargetMinimalPercentage(daysElapsed);
                             return (
                               <ReferenceLine
                                 y={minTarget}
@@ -1587,7 +1567,7 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
+                          height={150}
                           tick={<MultiLineLabel />}
                           interval={0}
                         />
@@ -1627,7 +1607,7 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
+                          height={150}
                           tick={<MultiLineLabel />}
                           interval={0}
                         />
@@ -1667,7 +1647,7 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
+                          height={150}
                           tick={<MultiLineLabel />}
                           interval={0}
                         />
@@ -1708,7 +1688,7 @@ export function MonitoringLapangan() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                           dataKey="name"
-                          height={120}
+                          height={150}
                           tick={<MultiLineLabel />}
                           interval={0}
                         />
