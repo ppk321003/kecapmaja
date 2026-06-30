@@ -255,25 +255,23 @@ const getColorGradient = (value: number): string => {
 // Function untuk mendapatkan warna persentase berdasarkan hari ke-x dan target fleksibel
 const getColorForPercentage = (percentage: number): string => {
   const { daysElapsed } = calculateDayProgress();
-  
+
   // Hitung target persentase DINAMIS berdasarkan hari ke-x
-  // 100% target tercapai di hari ke-63, sehingga hari ke-16 = 25,5%
   const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
-  const warningPercentageTarget = Math.max(0, minPercentageTarget * 0.6);
-  
-  // Gunakan threshold DINAMIS berdasarkan progres hari
-  // Optimal: mencapai atau melebihi target minimal
+  const deviation = minPercentageTarget - percentage;
+
+  // Hijau: mencapai atau melebihi target minimal
   if (percentage >= minPercentageTarget) {
-    return "#22c55e"; // Hijau (sesuai atau melebihi target minimal)
+    return "#22c55e";
   }
-  
-  // Good: 4-7/hari
-  if (percentage >= warningPercentageTarget) {
-    return "#eab308"; // Kuning (antara 4-7/hari)
+
+  // Kuning: deviasi sampai 5 persentase poin dari target minimal
+  if (deviation > 0 && deviation <= 5) {
+    return "#eab308";
   }
-  
-  // Critical: < 4/hari
-  return "#dc2626"; // Merah (di bawah 4/hari)
+
+  // Merah: deviasi lebih dari 5 persentase poin dari target minimal
+  return "#dc2626";
 };
 
 // Helper function untuk robust column access dengan fallback
@@ -1334,7 +1332,7 @@ export function MonitoringLapangan() {
                             📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Kabupaten Majalengka {averageKecamatanPercentage.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                           </CardTitle>
                           <CardDescription>
-                            Persentase komponen terpilih terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥target | Kuning 50-99% target | Merah &lt;50% target. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
+                            Persentase komponen terpilih terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥target | Kuning deviasi ≤5% dari target minimal | Merah deviasi &gt;5% dari target minimal. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
                           </CardDescription>
                         </>
                       );
