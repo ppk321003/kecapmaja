@@ -542,10 +542,10 @@ export function MonitoringLapangan() {
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
   const [kecamatanPercentageComponents, setKecamatanPercentageComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean}>(
-    { draft: false, submit: true, approve: true, reject: true }
+    { draft: true, submit: true, approve: true, reject: true }
   );
   const [kecamatanActivityComponents, setKecamatanActivityComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean}>(
-    { draft: false, submit: true, approve: true, reject: true }
+    { draft: true, submit: true, approve: true, reject: true }
   );
 
   // Process and aggregate data
@@ -1023,6 +1023,30 @@ export function MonitoringLapangan() {
   );
 
   const { daysElapsed, avgDayTarget } = calculateDayProgress();
+  const selectedPercentageLabels = Object.entries(kecamatanPercentageComponents)
+    .filter(([, isSelected]) => isSelected)
+    .map(([key]) => {
+      switch (key) {
+        case "draft": return "Draft";
+        case "submit": return "Submit";
+        case "approve": return "Approve";
+        case "reject": return "Reject";
+        default: return key;
+      }
+    });
+
+  const selectedPercentageTotal = aggregatedData.rows.reduce((sum, row) => {
+    let activity = 0;
+    if (kecamatanPercentageComponents.draft) activity += row.draft;
+    if (kecamatanPercentageComponents.submit) activity += row.jumlah_submit;
+    if (kecamatanPercentageComponents.approve) activity += row.jumlah_approve;
+    if (kecamatanPercentageComponents.reject) activity += row.jumlah_reject;
+    return sum + activity;
+  }, 0);
+
+  const averageKecamatanPercentage = chartDataKecamatanPercentage.length > 0
+    ? chartDataKecamatanPercentage.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPercentage.length
+    : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
@@ -1122,14 +1146,20 @@ export function MonitoringLapangan() {
                       </div>
                     </div>
                     <div className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
-                      {(dashboardStats?.totalActivity ?? 0).toLocaleString("id-ID")}
+                      {selectedPercentageTotal.toLocaleString("id-ID")}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1">
-                      {["Draft", "Reject", "Approve", "Submit"].map((label) => (
-                        <span key={label} className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-600">
-                          {label}
+                      {selectedPercentageLabels.length > 0 ? (
+                        selectedPercentageLabels.map((label) => (
+                          <span key={label} className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-600">
+                            {label}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-600">
+                          Tidak ada status dipilih
                         </span>
-                      ))}
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1301,7 +1331,7 @@ export function MonitoringLapangan() {
                       return (
                         <>
                           <CardTitle className="text-lg">
-                            📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}%
+                            📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Kabupaten Majalengka {averageKecamatanPercentage.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                           </CardTitle>
                           <CardDescription>
                             Persentase komponen terpilih terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥target | Kuning 50-99% target | Merah &lt;50% target. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
