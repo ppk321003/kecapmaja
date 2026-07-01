@@ -470,13 +470,14 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
 
       const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).toLowerCase();
       const desaKel = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).toLowerCase();
+      const namaUsaha = String(getColumnValue(row, "nama_usaha", ["nama usaha", "nama usaha / kk", "nama usaha kk", "nama usaha"], "")).toLowerCase();
       const catatanPetugas = String(getAnomalyCatatanPetugasValue(row, "")).toLowerCase();
       const perlakuan = String(getAnomalyPerlakuanValue(row, "")).toLowerCase();
       const ppl = String(getAnomalyPPLValue(row, "")).toLowerCase();
       const pml = String(getAnomalyPMLValue(row, "")).toLowerCase();
       const anomalyText = anomalyName;
 
-      return [kecamatan, desaKel, catatanPetugas, perlakuan, ppl, pml, anomalyText].some((value) => value.includes(normalizedSearch));
+      return [kecamatan, desaKel, namaUsaha, catatanPetugas, perlakuan, ppl, pml, anomalyText].some((value) => value.includes(normalizedSearch));
     });
 
     const sorted = [...filtered].sort((a, b) => {
@@ -529,7 +530,7 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Cari Kecamatan / Desa / PPL / PML"
+                placeholder={isUsaha ? "Cari Kecamatan / Desa / Usaha / PPL / PML" : "Cari Kecamatan / Desa / PPL / PML"}
                 className="border-0 p-0 shadow-none focus-visible:ring-0"
               />
             </div>
@@ -1097,8 +1098,76 @@ export function MonitoringLapangan() {
   const [currentPageAfirmasi, setCurrentPageAfirmasi] = useState(1);
   const [itemsPerPageAfirmasi, setItemsPerPageAfirmasi] = useState(20);
   const [activeAnomaliTab, setActiveAnomaliTab] = useState<"dashboard" | "usaha" | "keluarga">("dashboard");
+  const [pendingPPLPage, setPendingPPLPage] = useState(1);
+  const [pendingPPLSearch, setPendingPPLSearch] = useState("");
   const anomaliUsahaInfo = anomaliUsahaInfoData?.[0] || "-";
   const anomaliKeluargaInfo = anomaliKeluargaInfoData?.[0] || "-";
+
+  const pendingAnomalyPPL = useMemo(() => {
+    const allRows = [
+      ...anomaliUsahaData.map((row) => ({ row, source: "Usaha" })),
+      ...anomaliKeluargaData.map((row) => ({ row, source: "Keluarga" })),
+    ];
+
+    const grouped = new Map<string, { name: string; pendingCount: number; totalCount: number; completed: number; districts: Set<string> }>();
+    let totalMissingRows = 0;
+
+    allRows.forEach(({ row }) => {
+      const ppl = String(getAnomalyPPLValue(row, "")).trim();
+      if (!ppl) return;
+
+      const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+      const perlakuan = getAnomalyPerlakuanValue(row, "");
+      const isCompleted = isFilled(perlakuan);
+
+      if (!grouped.has(ppl)) {
+        grouped.set(ppl, { name: ppl, pendingCount: 0, totalCount: 0, completed: 0, districts: new Set<string>() });
+      }
+      const entry = grouped.get(ppl)!;
+      entry.totalCount += 1;
+      if (isCompleted) {
+        entry.completed += 1;
+      } else {
+        entry.pendingCount += 1;
+        totalMissingRows += 1;
+      }
+      if (kecamatan) entry.districts.add(kecamatan);
+    });
+
+    const entries = Array.from(grouped.values())
+      .filter((entry) => entry.pendingCount > 0)
+      .sort((a, b) => b.pendingCount - a.pendingCount || a.name.localeCompare(b.name));
+
+    return {
+      totalPPL: entries.length,
+      totalRows: totalMissingRows,
+      entries,
+    };
+  }, [anomaliUsahaData, anomaliKeluargaData]);
+
+  useEffect(() => {
+    setPendingPPLPage(1);
+  }, [pendingAnomalyPPL.totalPPL]);
+
+  useEffect(() => {
+    setPendingPPLPage(1);
+  }, [pendingPPLSearch]);
+
+  const filteredPendingAnomalyPPL = useMemo(() => {
+    const term = pendingPPLSearch.trim().toLowerCase();
+    if (!term) {
+      return pendingAnomalyPPL.entries;
+    }
+    return pendingAnomalyPPL.entries.filter((entry) => {
+      const districtText = Array.from(entry.districts).join(' ').toLowerCase();
+      return entry.name.toLowerCase().includes(term) || districtText.includes(term);
+    });
+  }, [pendingAnomalyPPL.entries, pendingPPLSearch]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredPendingAnomalyPPL.length / 20));
+    setPendingPPLPage((prev) => Math.min(prev, totalPages));
+  }, [filteredPendingAnomalyPPL.length]);
 
   const anomalyDashboardSummary = useMemo(() => {
     const allRows = [...anomaliUsahaData, ...anomaliKeluargaData];
@@ -1107,7 +1176,7 @@ export function MonitoringLapangan() {
     const pplCounts = new Map<string, number>();
     const pmlCounts = new Map<string, number>();
     const desaSet = new Set<string>();
-    let withLink = 0;
+    let completedAnomalyCount = 0;
 
     allRows.forEach((row) => {
       const anomalyName = String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim();
@@ -1129,8 +1198,8 @@ export function MonitoringLapangan() {
       const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
       if (desa) desaSet.add(`${districtName}|${desa}`);
 
-      const link = String(getColumnValue(row, "link_fasih", ["link fasih", "linkfasih", "link_fasih", "url fasih", "link", "url"], "")).trim();
-      if (link) withLink += 1;
+      const catatanPetugas = getAnomalyCatatanPetugasValue(row, "").trim();
+      if (isFilled(catatanPetugas)) completedAnomalyCount += 1;
     });
 
     return {
@@ -1142,7 +1211,7 @@ export function MonitoringLapangan() {
       totalDesa: desaSet.size,
       totalPPL: pplCounts.size,
       totalPML: pmlCounts.size,
-      withLink,
+      completedAnomalyCount,
       total: allRows.length,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
@@ -2929,14 +2998,14 @@ export function MonitoringLapangan() {
                         const total = anomaliUsahaData.length + anomaliKeluargaData.length;
                         const pctUsaha = total ? Math.round((anomaliUsahaData.length / total) * 1000) / 10 : 0;
                         const pctKel = total ? Math.round((anomaliKeluargaData.length / total) * 1000) / 10 : 0;
-                        const linkPct = total ? Math.round((anomalyDashboardSummary.withLink / total) * 1000) / 10 : 0;
+                        const linkPct = total ? Math.round((anomalyDashboardSummary.completedAnomalyCount / total) * 1000) / 10 : 0;
                         const kpis = [
                           { label: "Total Anomali", value: total, sub: `${anomaliUsahaData.length} usaha + ${anomaliKeluargaData.length} keluarga`, color: "slate" },
                           { label: "Anomali Usaha", value: anomaliUsahaData.length, sub: `${pctUsaha}% dari total`, color: "amber" },
                           { label: "Anomali Keluarga", value: anomaliKeluargaData.length, sub: `${pctKel}% dari total`, color: "rose" },
                           { label: "Kecamatan Terdampak", value: anomalyDashboardSummary.totalKecamatan, sub: `${anomalyDashboardSummary.totalDesa} desa/kel`, color: "blue" },
                           { label: "Petugas Terdampak", value: anomalyDashboardSummary.totalPPL, sub: `${anomalyDashboardSummary.totalPML} PML`, color: "indigo" },
-                          { label: "Terverifikasi Link", value: anomalyDashboardSummary.withLink, sub: `${linkPct}% memiliki link Fasih`, color: "emerald" },
+                          { label: "Tindak Lanjut Anomali", value: anomalyDashboardSummary.completedAnomalyCount, sub: `${linkPct}% dari total anomali`, color: "emerald" },
                         ];
                         const palette: Record<string, string> = {
                           slate: "border-slate-200 bg-slate-50 text-slate-800",
@@ -2972,26 +3041,27 @@ export function MonitoringLapangan() {
                                 <TableHead className="text-right text-slate-700 font-semibold">Usaha</TableHead>
                                 <TableHead className="text-right text-slate-700 font-semibold">Keluarga</TableHead>
                                 <TableHead className="text-right text-slate-700 font-semibold">Total</TableHead>
-                                <TableHead className="text-right text-slate-700 font-semibold">Desa/Kel</TableHead>
-                                <TableHead className="text-right text-slate-700 font-semibold">PPL</TableHead>
-                                <TableHead className="text-right text-slate-700 font-semibold">PML</TableHead>
-                                <TableHead className="text-right text-slate-700 font-semibold">Link Fasih</TableHead>
+                                <TableHead className="text-right text-slate-700 font-semibold">Sudah Tindak Lanjut</TableHead>
+                                <TableHead className="text-right text-slate-700 font-semibold">%</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {(() => {
-                                const districtMap = new Map<string, { kecamatan: string; usaha: number; keluarga: number; total: number; desaSet: Set<string>; pplSet: Set<string>; pmlSet: Set<string>; linkCount: number; }>();
-                                const districtPMLCounts = new Map<string, Map<string, { count: number; pplCounts: Map<string, number> }>>();
+                                const districtMap = new Map<string, { kecamatan: string; usaha: number; keluarga: number; total: number; completed: number; desaSet: Set<string>; pplSet: Set<string>; pmlSet: Set<string>; linkCount: number; }>();
+                                const districtPMLCounts = new Map<string, Map<string, { count: number; completed: number; pplCounts: Map<string, { count: number; completed: number }> }>>();
                                 const addRows = (rows: any[], type: "usaha" | "keluarga") => {
                                   rows.forEach((row) => {
                                     const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
                                     if (!kecamatan) return;
                                     if (!districtMap.has(kecamatan)) {
-                                      districtMap.set(kecamatan, { kecamatan, usaha: 0, keluarga: 0, total: 0, desaSet: new Set<string>(), pplSet: new Set<string>(), pmlSet: new Set<string>(), linkCount: 0 });
+                                      districtMap.set(kecamatan, { kecamatan, usaha: 0, keluarga: 0, total: 0, completed: 0, desaSet: new Set<string>(), pplSet: new Set<string>(), pmlSet: new Set<string>(), linkCount: 0 });
                                     }
                                     const bucket = districtMap.get(kecamatan)!;
                                     if (type === "keluarga") bucket.keluarga += 1; else bucket.usaha += 1;
                                     bucket.total += 1;
+                                    const perlakuan = getAnomalyPerlakuanValue(row, "");
+                                    const hasCompleted = isFilled(perlakuan);
+                                    if (hasCompleted) bucket.completed += 1;
                                     const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
                                     if (desa) bucket.desaSet.add(desa);
                                     const ppl = String(getAnomalyPPLValue(row, "")).trim();
@@ -2999,11 +3069,15 @@ export function MonitoringLapangan() {
                                     const pml = String(getAnomalyPMLValue(row, "")).trim();
                                     if (pml) {
                                       bucket.pmlSet.add(pml);
-                                      const pmlMap = districtPMLCounts.get(kecamatan) || new Map<string, { count: number; pplCounts: Map<string, number> }>();
-                                      const pmlBucket = pmlMap.get(pml) || { count: 0, pplCounts: new Map<string, number>() };
+                                      const pmlMap = districtPMLCounts.get(kecamatan) || new Map<string, { count: number; completed: number; pplCounts: Map<string, { count: number; completed: number }> }>();
+                                      const pmlBucket = pmlMap.get(pml) || { count: 0, completed: 0, pplCounts: new Map<string, { count: number; completed: number }>() };
                                       pmlBucket.count += 1;
+                                      if (hasCompleted) pmlBucket.completed += 1;
                                       if (ppl) {
-                                        pmlBucket.pplCounts.set(ppl, (pmlBucket.pplCounts.get(ppl) || 0) + 1);
+                                        const pplBucket = pmlBucket.pplCounts.get(ppl) || { count: 0, completed: 0 };
+                                        pplBucket.count += 1;
+                                        if (hasCompleted) pplBucket.completed += 1;
+                                        pmlBucket.pplCounts.set(ppl, pplBucket);
                                       }
                                       pmlMap.set(pml, pmlBucket);
                                       districtPMLCounts.set(kecamatan, pmlMap);
@@ -3019,18 +3093,16 @@ export function MonitoringLapangan() {
                                   acc.usaha += item.usaha;
                                   acc.keluarga += item.keluarga;
                                   acc.total += item.total;
-                                  acc.desaCount += item.desaSet.size;
-                                  acc.pplCount += item.pplSet.size;
-                                  acc.pmlCount += item.pmlSet.size;
-                                  acc.linkCount += item.linkCount;
+                                  acc.completed += item.completed;
                                   return acc;
-                                }, { usaha: 0, keluarga: 0, total: 0, desaCount: 0, pplCount: 0, pmlCount: 0, linkCount: 0 });
+                                }, { usaha: 0, keluarga: 0, total: 0, completed: 0 });
                                 return (
                                   <>
                                     {districtRows.map((item) => {
                                       const isExpanded = expandedDistricts.has(item.kecamatan);
-                                      const pmlCounts = districtPMLCounts.get(item.kecamatan) || new Map<string, { count: number; pplCounts: Map<string, number> }>();
+                                      const pmlCounts = districtPMLCounts.get(item.kecamatan) || new Map<string, { count: number; completed: number; pplCounts: Map<string, { count: number; completed: number }> }>();
                                       const pmlDetails = Array.from(pmlCounts.entries()).sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]));
+                                      const completionPct = item.total ? Math.round((item.completed / item.total) * 1000) / 10 : 0;
                                       return (
                                         <React.Fragment key={item.kecamatan}>
                                           <TableRow className="even:bg-slate-50">
@@ -3057,14 +3129,12 @@ export function MonitoringLapangan() {
                                             <TableCell className="text-right text-slate-700">{item.usaha}</TableCell>
                                             <TableCell className="text-right text-slate-700">{item.keluarga}</TableCell>
                                             <TableCell className="text-right font-semibold text-slate-900">{item.total}</TableCell>
-                                            <TableCell className="text-right text-slate-700">{item.desaSet.size}</TableCell>
-                                            <TableCell className="text-right text-slate-700">{item.pplSet.size}</TableCell>
-                                            <TableCell className="text-right text-slate-700">{item.pmlSet.size}</TableCell>
-                                            <TableCell className="text-right text-slate-700">{item.linkCount}</TableCell>
+                                            <TableCell className="text-right text-slate-700">{item.completed}</TableCell>
+                                            <TableCell className="text-right text-slate-700">{completionPct.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%</TableCell>
                                           </TableRow>
                                           {isExpanded && (
                                             <TableRow className="bg-slate-50">
-                                              <TableCell colSpan={8} className="px-4 py-3 bg-slate-100">
+                                              <TableCell colSpan={6} className="px-4 py-3 bg-slate-100">
                                                 <div className="space-y-2">
                                                   <div className="text-sm font-semibold text-slate-800">
                                                     Detail PML di {item.kecamatan}
@@ -3074,7 +3144,7 @@ export function MonitoringLapangan() {
                                                       {pmlDetails.map(([pmlName, detail]) => {
                                                         const pmlKey = `${item.kecamatan}::${pmlName}`;
                                                         const isPMLExpanded = expandedPML.has(pmlKey);
-                                                        const pplEntries = Array.from(detail.pplCounts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+                                                        const pplEntries = Array.from(detail.pplCounts.entries()).sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]));
                                                         return (
                                                           <div key={pmlName} className="rounded-xl border border-slate-200 bg-white">
                                                             <button
@@ -3095,7 +3165,9 @@ export function MonitoringLapangan() {
                                                               <div className="flex items-center justify-between gap-3">
                                                                 <div>
                                                                   <div className="font-semibold text-slate-900">{pmlName}</div>
-                                                                  <div className="text-sm text-slate-600">{detail.count} anomali · {pplEntries.length} PPL</div>
+                                                                  <div className="text-sm text-slate-600">
+                                                                    {detail.count} anomali · {pplEntries.length} PPL · {detail.completed} sudah tindak lanjut · {detail.count ? Math.round((detail.completed / detail.count) * 1000) / 10 : 0}%
+                                                                  </div>
                                                                 </div>
                                                                 <span className="text-slate-500">{isPMLExpanded ? "▼" : "▶"}</span>
                                                               </div>
@@ -3105,10 +3177,12 @@ export function MonitoringLapangan() {
                                                                 <div className="font-medium text-slate-800 mb-2">Daftar PPL</div>
                                                                 {pplEntries.length > 0 ? (
                                                                   <ul className="space-y-1 text-slate-700">
-                                                                    {pplEntries.map(([pplName, count]) => (
+                                                                    {pplEntries.map(([pplName, stats]) => (
                                                                       <li key={pplName} className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 shadow-sm border border-slate-200">
                                                                         <span>{pplName}</span>
-                                                                        <span className="text-xs font-semibold text-slate-600">{count} anomali</span>
+                                                                        <span className="text-xs font-semibold text-slate-600">
+                                                                          {stats.count} anomali · {stats.completed} sudah tindak lanjut · {stats.count ? Math.round((stats.completed / stats.count) * 1000) / 10 : 0}%
+                                                                        </span>
                                                                       </li>
                                                                     ))}
                                                                   </ul>
@@ -3136,10 +3210,8 @@ export function MonitoringLapangan() {
                                       <TableCell className="text-right text-slate-900">{totals.usaha}</TableCell>
                                       <TableCell className="text-right text-slate-900">{totals.keluarga}</TableCell>
                                       <TableCell className="text-right text-slate-900">{totals.total}</TableCell>
-                                      <TableCell className="text-right text-slate-900">{totals.desaCount}</TableCell>
-                                      <TableCell className="text-right text-slate-900">{totals.pplCount}</TableCell>
-                                      <TableCell className="text-right text-slate-900">{totals.pmlCount}</TableCell>
-                                      <TableCell className="text-right text-slate-900">{totals.linkCount}</TableCell>
+                                      <TableCell className="text-right text-slate-900">{totals.completed}</TableCell>
+                                      <TableCell className="text-right text-slate-900">{totals.total ? Math.round((totals.completed / totals.total) * 1000) / 10 : 0}%</TableCell>
                                     </TableRow>
                                   </>
                                 );
@@ -3180,6 +3252,81 @@ export function MonitoringLapangan() {
                             </div>
                           );
                         })}
+                      </div>
+
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-sm xl:col-span-3">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <h4 className="text-lg font-semibold text-rose-900">🚨 PPL dengan Anomali Belum Ditindaklanjuti</h4>
+                            <p className="text-sm text-rose-700">PPL yang memiliki anomali belum dilakukan konfirmasi.</p>
+                          </div>
+                          <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-sm font-medium text-rose-900 shadow-sm">
+                            <span className="text-slate-500">Total PPL</span>
+                            <span className="text-rose-900">{pendingAnomalyPPL.totalPPL.toLocaleString("id-ID")}</span>
+                            <span className="text-slate-400">·</span>
+                            <span className="text-slate-500">Total baris</span>
+                            <span className="text-rose-900">{pendingAnomalyPPL.totalRows.toLocaleString("id-ID")}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3">
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                            <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Cari nama atau kecamatan</label>
+                            <input
+                              type="search"
+                              value={pendingPPLSearch}
+                              onChange={(e) => setPendingPPLSearch(e.target.value)}
+                              placeholder="Cari PPL atau Kecamatan..."
+                              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100"
+                            />
+                          </div>
+
+                          {filteredPendingAnomalyPPL.length === 0 ? (
+                          <div className="rounded-xl border border-rose-200 bg-white p-3 text-sm text-rose-700">Tidak ada PPL yang cocok dengan pencarian.</div>
+                        ) : (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {filteredPendingAnomalyPPL.slice((pendingPPLPage - 1) * 20, pendingPPLPage * 20).map((entry) => {
+                              const completionPct = entry.totalCount ? Math.round((entry.completed / entry.totalCount) * 1000) / 10 : 0;
+                              return (
+                                <div key={entry.name} className="flex items-center justify-between rounded-2xl border border-rose-200 bg-white px-3 py-2 text-sm shadow-sm">
+                                  <div className="min-w-0">
+                                    <p className="truncate font-semibold text-slate-900">{entry.name}</p>
+                                    <p className="truncate text-xs text-slate-500">{Array.from(entry.districts).join(', ')}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-xs font-semibold text-rose-700">{entry.pendingCount.toLocaleString('id-ID')} anomali</p>
+                                    <p className="text-[11px] text-slate-500">{entry.completed.toLocaleString('id-ID')} sudah ditindaklanjuti · {completionPct}%</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        </div>
+
+                        {filteredPendingAnomalyPPL.length > 0 && (
+                          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="text-xs text-slate-600">Hal {pendingPPLPage} dari {Math.max(1, Math.ceil(filteredPendingAnomalyPPL.length / 20))}</div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPendingPPLPage((prev) => Math.max(1, prev - 1))}
+                                disabled={pendingPPLPage === 1}
+                                className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-medium text-rose-700 transition duration-150 hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Sebelumnya
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPendingPPLPage((prev) => Math.min(Math.max(1, Math.ceil(filteredPendingAnomalyPPL.length / 20)), prev + 1))}
+                                disabled={pendingPPLPage === Math.max(1, Math.ceil(filteredPendingAnomalyPPL.length / 20))}
+                                className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-medium text-rose-700 transition duration-150 hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Berikutnya
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
