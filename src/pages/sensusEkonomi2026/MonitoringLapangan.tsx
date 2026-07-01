@@ -823,6 +823,53 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
   XLSX.writeFile(wb, `Data_PML_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
 
+// Export TA (Tenaga Ahli) data to Excel
+const exportTAToExcel = (
+  data: (AggregatedData & { kategori: string })[],
+  taLabel: string,
+  fileSuffix: string
+) => {
+  const today = new Date();
+  const daysElapsed = Math.floor(
+    (today.getTime() - SCHEDULE_START.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
+  const elapsedDays = Math.max(1, Math.min(daysElapsed, TOTAL_DAYS));
+
+  const aoa: (string | number)[][] = [
+    [`DATA PPL AFIRMASI TA - ${taLabel}`],
+    ['Tanggal Export', new Date().toLocaleString('id-ID')],
+    ['Total Baris', data.length],
+    [],
+    ['No', 'Nama PPL', 'Email PPL', 'Kecamatan', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Total Aktivitas', 'Rata-rata Harian (aktivitas/hari)'],
+    ...data.map((row, idx) => {
+      const total = row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve;
+      const dailyAverage = Math.round((total / elapsedDays) * 100) / 100;
+      return [
+        idx + 1,
+        row.nama_ppl,
+        row.email_ppl || '',
+        row.kecamatan,
+        row.nama_pml,
+        row.draft,
+        row.jumlah_submit,
+        row.jumlah_approve,
+        row.jumlah_reject,
+        total,
+        dailyAverage,
+      ];
+    }),
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [
+    { wch: 5 }, { wch: 22 }, { wch: 26 }, { wch: 18 }, { wch: 22 },
+    { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 26 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'TA');
+  XLSX.writeFile(wb, `Data_TA_${fileSuffix}_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
 export function MonitoringLapangan() {
   const { user } = useAuth();
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
