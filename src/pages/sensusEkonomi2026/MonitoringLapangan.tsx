@@ -2744,20 +2744,38 @@ export function MonitoringLapangan() {
               </CardHeader>
               <CardContent>
                 {activeAnomaliTab === "dashboard" ? (
-                  <div className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                        <p className="text-sm text-amber-700">Total Anomali Usaha</p>
-                        <p className="mt-2 text-2xl font-semibold text-amber-900">{anomaliUsahaData.length}</p>
-                      </div>
-                      <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-                        <p className="text-sm text-rose-700">Total Anomali Keluarga</p>
-                        <p className="mt-2 text-2xl font-semibold text-rose-900">{anomaliKeluargaData.length}</p>
-                      </div>
-                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                        <p className="text-sm text-emerald-700">Total Potensi Tindak Lanjut</p>
-                        <p className="mt-2 text-2xl font-semibold text-emerald-900">{anomaliUsahaData.length + anomaliKeluargaData.length}</p>
-                      </div>
+                  <div className="space-y-5">
+                    {/* KPI Strip */}
+                    <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+                      {(() => {
+                        const total = anomaliUsahaData.length + anomaliKeluargaData.length;
+                        const pctUsaha = total ? Math.round((anomaliUsahaData.length / total) * 1000) / 10 : 0;
+                        const pctKel = total ? Math.round((anomaliKeluargaData.length / total) * 1000) / 10 : 0;
+                        const linkPct = total ? Math.round((anomalyDashboardSummary.withLink / total) * 1000) / 10 : 0;
+                        const kpis = [
+                          { label: "Total Anomali", value: total, sub: `${anomaliUsahaData.length} usaha + ${anomaliKeluargaData.length} keluarga`, color: "slate" },
+                          { label: "Anomali Usaha", value: anomaliUsahaData.length, sub: `${pctUsaha}% dari total`, color: "amber" },
+                          { label: "Anomali Keluarga", value: anomaliKeluargaData.length, sub: `${pctKel}% dari total`, color: "rose" },
+                          { label: "Kecamatan Terdampak", value: anomalyDashboardSummary.totalKecamatan, sub: `${anomalyDashboardSummary.totalDesa} desa/kel`, color: "blue" },
+                          { label: "Petugas Terdampak", value: anomalyDashboardSummary.totalPPL, sub: `${anomalyDashboardSummary.totalPML} PML`, color: "indigo" },
+                          { label: "Terverifikasi Link", value: anomalyDashboardSummary.withLink, sub: `${linkPct}% memiliki link Fasih`, color: "emerald" },
+                        ];
+                        const palette: Record<string, string> = {
+                          slate: "border-slate-200 bg-slate-50 text-slate-800",
+                          amber: "border-amber-200 bg-amber-50 text-amber-900",
+                          rose: "border-rose-200 bg-rose-50 text-rose-900",
+                          blue: "border-blue-200 bg-blue-50 text-blue-900",
+                          indigo: "border-indigo-200 bg-indigo-50 text-indigo-900",
+                          emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
+                        };
+                        return kpis.map((k) => (
+                          <div key={k.label} className={`rounded-xl border p-3 ${palette[k.color]}`}>
+                            <p className="text-xs font-medium opacity-80">{k.label}</p>
+                            <p className="mt-1 text-2xl font-bold leading-none">{k.value.toLocaleString("id-ID")}</p>
+                            <p className="mt-1 text-[11px] opacity-70">{k.sub}</p>
+                          </div>
+                        ));
+                      })()}
                     </div>
 
                     <div className="grid gap-4 xl:grid-cols-3">
@@ -2850,14 +2868,37 @@ export function MonitoringLapangan() {
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
-                        <h4 className="font-semibold text-slate-800">Insight Ringkas</h4>
-                        <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                          <li>• Nama anomali terbanyak: {anomalyDashboardSummary.topAnomalies[0]?.[0] || "-"} ({anomalyDashboardSummary.topAnomalies[0]?.[1] || 0})</li>
-                          <li>• Daftar anomali lain: {anomalyDashboardSummary.topAnomalies.slice(1, 4).map(([name, count]) => `${name} (${count})`).join(", ") || "-"}</li>
-                          <li>• Kecamatan paling banyak muncul: {anomalyDashboardSummary.topDistricts[0]?.[0] || "-"} ({anomalyDashboardSummary.topDistricts[0]?.[1] || 0})</li>
-                          <li>• Prioritaskan tindak lanjut yang masih belum selesai dan pantau link Fasih untuk verifikasi cepat.</li>
-                        </ul>
+                      <div className="space-y-4">
+                        {[
+                          { title: "Top Jenis Anomali", data: anomalyDashboardSummary.topAnomalies, accent: "bg-amber-500" },
+                          { title: "Top Kecamatan", data: anomalyDashboardSummary.topDistricts, accent: "bg-blue-500" },
+                          { title: "Top PPL Terdampak", data: anomalyDashboardSummary.topPPL, accent: "bg-indigo-500" },
+                          { title: "Top PML Terdampak", data: anomalyDashboardSummary.topPML, accent: "bg-rose-500" },
+                        ].map((section) => {
+                          const max = section.data[0]?.[1] || 1;
+                          return (
+                            <div key={section.title} className="rounded-xl border border-slate-200 bg-white p-4">
+                              <h4 className="text-sm font-semibold text-slate-800">{section.title}</h4>
+                              {section.data.length === 0 ? (
+                                <p className="mt-2 text-xs text-slate-400">Tidak ada data</p>
+                              ) : (
+                                <ul className="mt-2 space-y-2">
+                                  {section.data.map(([name, count]) => (
+                                    <li key={String(name)} className="text-xs">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="truncate text-slate-700" title={String(name)}>{String(name)}</span>
+                                        <span className="font-semibold text-slate-900">{count}</span>
+                                      </div>
+                                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div className={`h-full ${section.accent}`} style={{ width: `${(Number(count) / Number(max)) * 100}%` }} />
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
