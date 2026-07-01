@@ -1193,7 +1193,9 @@ export function MonitoringLapangan() {
     mode: "single-cell",
   });
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
+  const [debouncedPMLSearchTerm, setDebouncedPMLSearchTerm] = useState("");
   const [afirmasiSearchTerm, setAfirmasiSearchTerm] = useState("");
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
@@ -1336,7 +1338,7 @@ export function MonitoringLapangan() {
       const dataMap = new Map<string, AggregatedData>();
       const kecamatanSet = new Set<string>();
 
-      // Process data
+      // Process raw data into unique PPL rows
       sheetData.forEach((row: any) => {
         const kecamatan = (row.kecamatan || "").trim();
         const nama_ppl = (row["nama ppl"] || "").trim();
@@ -1382,68 +1384,23 @@ export function MonitoringLapangan() {
         current.status_counts.rejected += parseInt(row.rejected_by_pengawas || 0) || 0;
       });
 
-      let rows = Array.from(dataMap.values());
-
-      // Filter by search term
-      if (searchTerm) {
-        rows = rows.filter(
-          (row) =>
-            row.kecamatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            row.nama_ppl.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-
-      // Filter by status
-      if (statusFilter !== "all") {
-        rows = rows.filter((row) => {
-          const status = getScheduleStatus(row.jumlah_submit).status;
-          return status === statusFilter;
-        });
-      }
-
-      // Sort
-      rows.sort((a, b) => {
-        let compareValue = 0;
-        if (sortBy === "submit") {
-          compareValue = a.jumlah_submit - b.jumlah_submit;
-        } else if (sortBy === "draft") {
-          compareValue = a.draft - b.draft;
-        } else if (sortBy === "reject") {
-          compareValue = a.jumlah_reject - b.jumlah_reject;
-        } else if (sortBy === "approve") {
-          compareValue = a.jumlah_approve - b.jumlah_approve;
-        } else if (sortBy === "dailyavg") {
-          const { daysElapsed: elapsedDays } = calculateDayProgress();
-          const avgA = (a.draft + a.jumlah_reject + a.jumlah_submit + a.jumlah_approve) / Math.max(1, elapsedDays);
-          const avgB = (b.draft + b.jumlah_reject + b.jumlah_submit + b.jumlah_approve) / Math.max(1, elapsedDays);
-          compareValue = avgA - avgB;
-        } else if (sortBy === "kecamatan") {
-          compareValue = a.kecamatan.localeCompare(b.kecamatan);
-        } else if (sortBy === "ppl") {
-          compareValue = a.nama_ppl.localeCompare(b.nama_ppl);
-        }
-
-        return sortOrder === "desc" ? -compareValue : compareValue;
-      });
+      const rows = Array.from(dataMap.values());
 
       // Calculate statistics with UNIQUE kecamatan count
       const totalKecamatan = kecamatanSet.size; // Unique count, not row count
       // Total Pendataan = Draft + Reject + Approve + Submit
       const totalActivity = rows.reduce((sum, row) => sum + (row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject), 0);
       const totalSubmit = rows.reduce((sum, row) => sum + row.jumlah_submit, 0);
-      const averageSubmit =
-        rows.length > 0
-          ? Math.round(totalActivity / rows.length)
-          : 0;
+      const averageSubmit = rows.length > 0 ? Math.round(totalActivity / rows.length) : 0;
 
-      const sortedByActivity = [...Array.from(dataMap.values())].sort(
+      const sortedByActivity = [...rows].sort(
         (a, b) => (b.draft + b.jumlah_submit + b.jumlah_approve + b.jumlah_reject) - (a.draft + a.jumlah_submit + a.jumlah_approve + a.jumlah_reject)
       );
       
       // Hitung Performa Terbaik: Rata-rata (Submit+Reject+Approve)/hari/PPL
       const { daysElapsed: elapsedDays } = calculateDayProgress();
       const kecamatanPerformaMap = new Map<string, { totalActivity: number; totalRejectApprove: number; countPPL: number; averageActivity: number; averagePerHari: number }>();
-      Array.from(dataMap.values()).forEach((row) => {
+      rows.forEach((row) => {
         const current = kecamatanPerformaMap.get(row.kecamatan) || { totalActivity: 0, totalRejectApprove: 0, countPPL: 0, averageActivity: 0, averagePerHari: 0 };
         current.totalActivity += (row.jumlah_submit + row.jumlah_approve + row.jumlah_reject);
         current.totalRejectApprove += (row.jumlah_approve + row.jumlah_reject);
@@ -1469,7 +1426,7 @@ export function MonitoringLapangan() {
       // Chart data: Semua 26 Kecamatan - dynamic based on selected components
       // Track activity per kecamatan for chart display
       const kecamatanActivityMap = new Map<string, { totalActivity: number; totalSubmit: number; countPPL: number }>();
-      Array.from(dataMap.values()).forEach((row) => {
+      rows.forEach((row) => {
         const current = kecamatanActivityMap.get(row.kecamatan) || { totalActivity: 0, totalSubmit: 0, countPPL: 0 };
         let activityToAdd = 0;
         if (kecamatanActivityComponents.draft) activityToAdd += row.draft;
@@ -1483,10 +1440,10 @@ export function MonitoringLapangan() {
       });
 
       const chartDataKecamatanAll: any[] = Array.from(kecamatanActivityMap.entries())
-        .map(([name, data]) => { 
+        .map(([name, data]) => {
           const elapsedDays = Math.max(1, daysElapsed);
           return {
-            name, 
+            name,
             value: data.countPPL > 0 ? Math.round((data.totalActivity / elapsedDays) / data.countPPL * 100) / 100 : 0,
             countPPL: data.countPPL,
             totalActivity: data.totalActivity,
@@ -1506,7 +1463,7 @@ export function MonitoringLapangan() {
 
       // Chart data: Persentase per Kecamatan - dynamic based on selected components
       const kecamatanPercentageMap = new Map<string, { totalActivity: number; totalAssignments: number }>();
-      Array.from(dataMap.values()).forEach((row) => {
+      rows.forEach((row) => {
         const current = kecamatanPercentageMap.get(row.kecamatan) || { totalActivity: 0, totalAssignments: 0 };
         let activityToAdd = 0;
         if (kecamatanPercentageComponents.draft) activityToAdd += row.draft;
@@ -1521,8 +1478,8 @@ export function MonitoringLapangan() {
       const chartDataKecamatanPercentage: any[] = Array.from(kecamatanPercentageMap.entries())
         .map(([name, data]) => ({
           name,
-          value: data.totalAssignments > 0 
-            ? Math.round((data.totalActivity / data.totalAssignments) * 10000) / 100 
+          value: data.totalAssignments > 0
+            ? Math.round((data.totalActivity / data.totalAssignments) * 10000) / 100
             : 0,
           totalActivity: data.totalActivity,
           totalAssignments: data.totalAssignments,
@@ -1541,7 +1498,7 @@ export function MonitoringLapangan() {
       // Chart data for PPL Top 10 - dynamic based on selected components
       // Use email as key to differentiate PPL with same name, but display nama_ppl
       const pplMap = new Map<string, { value: number; nama_ppl: string; kecamatan: string }>();
-      Array.from(dataMap.values()).forEach((row) => {
+      rows.forEach((row) => {
         const key = `${(row.email_ppl || row.nama_ppl).trim().toLowerCase()}|${row.kecamatan}`;
         const current = pplMap.get(key) || { value: 0, nama_ppl: row.nama_ppl, kecamatan: row.kecamatan };
         let activityToAdd = 0;
@@ -1652,7 +1609,17 @@ export function MonitoringLapangan() {
         totalProgress,
         pmlData: pmlRows,
       };
-    }, [sheetData, searchTerm, sortBy, sortOrder, statusFilter, kecamatanPercentageComponents, kecamatanActivityComponents]);
+    }, [sheetData, kecamatanPercentageComponents, kecamatanActivityComponents]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearchTerm(searchTerm), 200);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedPMLSearchTerm(pmlSearchTerm), 200);
+    return () => clearTimeout(handler);
+  }, [pmlSearchTerm]);
 
   const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "dailyavg") => {
     if (sortBy === field) {
@@ -1664,29 +1631,95 @@ export function MonitoringLapangan() {
   };
 
   // Pagination PPL
-  const totalPagesPPL = Math.ceil(aggregatedData.rows.length / itemsPerPagePPL);
+  const filteredPPLRows = useMemo(() => {
+    let rows = [...aggregatedData.rows];
+
+    if (debouncedSearchTerm) {
+      const normalizedSearch = debouncedSearchTerm.trim().toLowerCase();
+      rows = rows.filter(
+        (row) =>
+          row.kecamatan.toLowerCase().includes(normalizedSearch) ||
+          row.nama_ppl.toLowerCase().includes(normalizedSearch)
+      );
+    }
+
+    if (statusFilter !== "all") {
+      rows = rows.filter((row) => getScheduleStatus(row.jumlah_submit).status === statusFilter);
+    }
+
+    rows.sort((a, b) => {
+      let compareValue = 0;
+      if (sortBy === "submit") {
+        compareValue = a.jumlah_submit - b.jumlah_submit;
+      } else if (sortBy === "draft") {
+        compareValue = a.draft - b.draft;
+      } else if (sortBy === "reject") {
+        compareValue = a.jumlah_reject - b.jumlah_reject;
+      } else if (sortBy === "approve") {
+        compareValue = a.jumlah_approve - b.jumlah_approve;
+      } else if (sortBy === "dailyavg") {
+        const { daysElapsed: elapsedDays } = calculateDayProgress();
+        const avgA = (a.draft + a.jumlah_reject + a.jumlah_submit + a.jumlah_approve) / Math.max(1, elapsedDays);
+        const avgB = (b.draft + b.jumlah_reject + b.jumlah_submit + b.jumlah_approve) / Math.max(1, elapsedDays);
+        compareValue = avgA - avgB;
+      } else if (sortBy === "kecamatan") {
+        compareValue = a.kecamatan.localeCompare(b.kecamatan);
+      } else if (sortBy === "ppl") {
+        compareValue = a.nama_ppl.localeCompare(b.nama_ppl);
+      }
+
+      return sortOrder === "desc" ? -compareValue : compareValue;
+    });
+
+    return rows;
+  }, [aggregatedData.rows, debouncedSearchTerm, statusFilter, sortBy, sortOrder]);
+
+  const totalPagesPPL = Math.ceil(filteredPPLRows.length / itemsPerPagePPL);
   const startIndexPPL = (currentPage - 1) * itemsPerPagePPL;
-  const paginatedRows = aggregatedData.rows.slice(startIndexPPL, startIndexPPL + itemsPerPagePPL);
+  const paginatedRows = filteredPPLRows.slice(startIndexPPL, startIndexPPL + itemsPerPagePPL);
+
+  const usersByEmail = useMemo(() => {
+    const map = new Map<string, any[]>();
+    usersData?.forEach((user: any) => {
+      const email = String(user["email"] || user["Email"] || "").trim().toLowerCase();
+      if (!email) return;
+      const existing = map.get(email) || [];
+      existing.push(user);
+      map.set(email, existing);
+    });
+    return map;
+  }, [usersData]);
+
+  const pmlGroups = useMemo(() => {
+    const map = new Map<string, AggregatedData[]>();
+    aggregatedData.rows.forEach((ppl) => {
+      const key = `${ppl.nama_pml}|${ppl.kecamatan}`;
+      const list = map.get(key) || [];
+      list.push(ppl);
+      map.set(key, list);
+    });
+    return map;
+  }, [aggregatedData.rows]);
+
+  const pmlDataWithActualSubmit = useMemo(() => {
+    return pmlData.map((pml) => {
+      const key = `${pml.nama_pml}|${pml.kecamatan}`;
+      const pplUnderPML = pmlGroups.get(key) || [];
+      const actualSubmit = pplUnderPML.reduce((sum, ppl) => sum + ppl.jumlah_submit, 0);
+      const pemeriksaan = actualSubmit > 0 ? ((pml.jumlah_approve + pml.jumlah_reject) / actualSubmit) * 100 : 0;
+      return { ...pml, actualSubmit, pemeriksaan, pplUnderPML };
+    });
+  }, [pmlData, pmlGroups]);
 
   // PML Data sorting and pagination
   const sortedPMLData = useMemo(() => {
-    let sorted: (PMLData & { actualSubmit?: number; pemeriksaan?: number })[] = [...pmlData];
+    let sorted: (PMLData & { actualSubmit?: number; pemeriksaan?: number; pplUnderPML?: AggregatedData[] })[] = [...pmlDataWithActualSubmit];
     
-    // Recalculate actual submit PPL based on aggregatedData for accurate sorting
-    sorted = sorted.map(pml => {
-      const pplUnderPML = aggregatedData.rows.filter(ppl => 
-        ppl.nama_pml === pml.nama_pml && ppl.kecamatan === pml.kecamatan
-      );
-      const actualSubmit = pplUnderPML.reduce((sum, ppl) => sum + ppl.jumlah_submit, 0);
-      const pemeriksaan = actualSubmit > 0 ? ((pml.jumlah_approve + pml.jumlah_reject) / actualSubmit) * 100 : 0;
-      return { ...pml, actualSubmit, pemeriksaan };
-    });
-    
-    // Apply search filter
-    if (pmlSearchTerm) {
+    if (debouncedPMLSearchTerm) {
+      const normalizedSearch = debouncedPMLSearchTerm.trim().toLowerCase();
       sorted = sorted.filter((item) =>
-        item.nama_pml.toLowerCase().includes(pmlSearchTerm.toLowerCase()) ||
-        item.kecamatan.toLowerCase().includes(pmlSearchTerm.toLowerCase())
+        item.nama_pml.toLowerCase().includes(normalizedSearch) ||
+        item.kecamatan.toLowerCase().includes(normalizedSearch)
       );
     }
     
@@ -1703,7 +1736,7 @@ export function MonitoringLapangan() {
       sorted.reverse();
     }
     return sorted;
-  }, [pmlData, pmlSortBy, pmlSortOrder, pmlSearchTerm, aggregatedData]);
+  }, [pmlDataWithActualSubmit, pmlSortBy, pmlSortOrder, debouncedPMLSearchTerm]);
 
   const totalPagesPML = Math.ceil(sortedPMLData.length / itemsPerPagePML);
   const startIndexPML = (currentPagePML - 1) * itemsPerPagePML;
@@ -2776,31 +2809,8 @@ export function MonitoringLapangan() {
                             const scheduleStatus = getScheduleStatus(totalAktivitas);
                             const StatusIcon = scheduleStatus.icon;
                             const isExpanded = expandedPPL.has(row.nama_ppl);
-                            
-                            // Filter data dari Semua Users berdasarkan email dengan matching yang robust
-                            const userDetailRows = usersData?.filter((user: any) => {
-                              const userEmail = (user["email"] || user["Email"] || "").trim().toLowerCase();
-                              const rowEmail = (row.email_ppl || "").trim().toLowerCase();
-                              const isMatch = userEmail === rowEmail && userEmail.length > 0;
-                              
-                              // Debug logging (first row only and more detailed)
-                              if (index === 0) {
-                                console.log(`[PPL Debug ${index}] Row: "${row.nama_ppl}" | email_ppl from REKAP: "${row.email_ppl}" | processed: "${rowEmail}"`);
-                                if (userEmail.length > 0) {
-                                  console.log(`[PPL User Match] User Email: "${userEmail}" | Match: ${isMatch}`);
-                                }
-                              }
-                              
-                              return isMatch;
-                            }) || [];
-                            
-                            if (index === 0) {
-                              console.log(`[PPL Debug] usersData length: ${usersData?.length || 0}, matched rows: ${userDetailRows.length}`);
-                              // Log first 2 matched rows to see data
-                              if (userDetailRows.length > 0) {
-                                console.log(`[PPL Debug] First match regionCode: "${userDetailRows[0]['regionCode']}", DRAFT: "${userDetailRows[0]['DRAFT']}"`);
-                              }
-                            }
+                            const rowEmail = (row.email_ppl || "").trim().toLowerCase();
+                            const userDetailRows = rowEmail ? usersByEmail.get(rowEmail) || [] : [];
 
                             return (
                               <React.Fragment key={`${row.kecamatan}-${row.nama_ppl}`}>
@@ -3498,9 +3508,8 @@ export function MonitoringLapangan() {
                         <TableBody>
                           {paginatedRowsPML.map((row, index) => {
                             const isExpanded = expandedPML.has(`${row.nama_pml}|${row.kecamatan}`);
-                            const pplUnderPML = aggregatedData.rows.filter(ppl => 
-                              ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan
-                            );
+                            const key = `${row.nama_pml}|${row.kecamatan}`;
+                            const pplUnderPML = pmlGroups.get(key) || [];
                             const calculatedSubmitPPL = pplUnderPML.reduce((sum, ppl) => sum + ppl.jumlah_submit, 0);
                             
                             return (
@@ -3593,9 +3602,8 @@ export function MonitoringLapangan() {
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">-</TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {paginatedRowsPML.reduce((sum, row) => {
-                                const pplUnderPML = aggregatedData.rows.filter(ppl => 
-                                  ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan
-                                );
+                                const key = `${row.nama_pml}|${row.kecamatan}`;
+                                const pplUnderPML = pmlGroups.get(key) || [];
                                 const calculatedSubmitPPL = pplUnderPML.reduce((s, ppl) => s + ppl.jumlah_submit, 0);
                                 return sum + calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject;
                               }, 0).toLocaleString("id-ID")}
@@ -3609,9 +3617,8 @@ export function MonitoringLapangan() {
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {(() => {
                                 const avgPercentage = paginatedRowsPML.reduce((sum, row) => {
-                                  const pplUnderPML = aggregatedData.rows.filter(ppl => 
-                                    ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan
-                                  );
+                                  const key = `${row.nama_pml}|${row.kecamatan}`;
+                                  const pplUnderPML = pmlGroups.get(key) || [];
                                   const calculatedSubmitPPL = pplUnderPML.reduce((s, ppl) => s + ppl.jumlah_submit, 0);
                                   const totalStatus = calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject;
                                   if (totalStatus > 0) {
