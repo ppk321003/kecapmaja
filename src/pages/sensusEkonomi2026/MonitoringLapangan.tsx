@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Search,
   Loader2,
@@ -26,6 +27,7 @@ import {
   TrendingDown,
   Database,
   Link,
+  Eye,
 } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { useAuth } from "@/contexts/AuthContext";
@@ -353,6 +355,8 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
   const [sortBy, setSortBy] = useState<"kecamatan" | "desa" | "nama_usaha" | "catatan_petugas" | "perlakuan" | "nama_anomali" | "ppl" | "pml">("kecamatan");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [anomalyFilter, setAnomalyFilter] = useState("all");
+  const [selectedRow, setSelectedRow] = useState<any | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const getSortIndicator = (field: "kecamatan" | "desa" | "nama_usaha" | "catatan_petugas" | "perlakuan" | "nama_anomali" | "ppl" | "pml") => {
     if (sortBy !== field) return "↕";
@@ -566,19 +570,32 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
                       <TableCell className="text-slate-700 px-4 py-3">{ppl}</TableCell>
                       <TableCell className="text-slate-700 px-4 py-3">{pml}</TableCell>
                       <TableCell className="text-center px-4 py-3">
-                        {linkFasih ? (
-                          <a
-                            href={linkFasih}
-                            target="_blank"
-                            rel="noreferrer noopener"
+                        <div className="inline-flex items-center justify-center gap-2">
+                          {linkFasih ? (
+                            <a
+                              href={linkFasih}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="inline-flex items-center justify-center rounded-md bg-slate-100 text-slate-700 p-2 hover:bg-slate-200"
+                              title="Lihat Link Fasih"
+                            >
+                              <Link className="h-4 w-4" />
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-400">Tidak ada link</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedRow(row);
+                              setIsDialogOpen(true);
+                            }}
                             className="inline-flex items-center justify-center rounded-md bg-slate-100 text-slate-700 p-2 hover:bg-slate-200"
-                            title="Lihat Link Fasih"
+                            title="Lihat detail baris"
                           >
-                            <Link className="h-4 w-4" />
-                          </a>
-                        ) : (
-                          <span className="text-xs text-slate-400">Tidak ada link</span>
-                        )}
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -586,6 +603,72 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
               </TableBody>
             </Table>
           </div>
+
+<Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) setSelectedRow(null);
+            }}>
+              <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>Detail Baris Anomali</DialogTitle>
+                  <DialogDescription>Menampilkan informasi utama dan pertanyaan lengkap dalam beberapa halaman.</DialogDescription>
+                </DialogHeader>
+                {selectedRow ? (
+                  <Tabs defaultValue="overview" className="space-y-4">
+                    <TabsList className="grid w-full grid-cols-2 rounded-xl border border-slate-200 bg-slate-50 p-1">
+                      <TabsTrigger value="overview" className="rounded-xl py-2 text-sm font-semibold">Ringkas</TabsTrigger>
+                      <TabsTrigger value="details" className="rounded-xl py-2 text-sm font-semibold">Semua Pertanyaan</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="overview" className="space-y-4">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {[
+                          ["Kecamatan", String(getColumnValue(selectedRow, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "-"))],
+                          ["Desa/Kel", String(getColumnValue(selectedRow, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "-"))],
+                          ["Nama Usaha", String(getColumnValue(selectedRow, "nama_usaha", ["nama usaha", "nama usaha / kk", "nama usaha kk", "nama usaha"], "-"))],
+                          ["Nama SLS", String(getColumnValue(selectedRow, "nama_sls", ["nama sls", "nama_sls", "sls"], "-"))],
+                          ["Nama Anomali", String(getColumnValue(selectedRow, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "-"))],
+                          ["Catatan Petugas", String(getAnomalyCatatanPetugasValue(selectedRow, "-"))],
+                          ["Perlakuan", String(getAnomalyPerlakuanValue(selectedRow, "-"))],
+                          ["PPL", String(getAnomalyPPLValue(selectedRow, "-"))],
+                          ["PML", String(getAnomalyPMLValue(selectedRow, "-"))],
+                          ["Link Fasih", String(getColumnValue(selectedRow, "link_fasih", ["link fasih", "linkfasih", "link_fasih", "url fasih", "link", "url"], "-"))],
+                        ].map(([label, value]) => (
+                          <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+                            <p className="mt-2 text-sm text-slate-800 break-words">{value || "-"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </TabsContent>
+                      <TabsContent value="details" className="space-y-4">
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {Object.entries(selectedRow)
+                          .filter(([key]) => {
+                            const normalizedKey = String(key).trim().toLowerCase();
+                            return ![
+                              "no",
+                              "32",
+                              "nama usaha",
+                              "kode prov",
+                              "nama provinsi",
+                              "kode kab/kota",
+                              "nama kab/kota",
+                            ].includes(normalizedKey);
+                          })
+                          .map(([key, value]) => (
+                            <div key={key} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                              <div className="font-medium text-slate-800">{String(key)}</div>
+                              <div className="mt-1 text-slate-700 break-words">{value === null || value === undefined ? "-" : String(value)}</div>
+                            </div>
+                          ))}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+              ) : (
+                <div className="mt-4 text-sm text-slate-500">Data tidak tersedia.</div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-600">Menampilkan {paginatedRows.length} dari {rows.length} baris</div>
@@ -2728,10 +2811,18 @@ export function MonitoringLapangan() {
                   <CardDescription>
                     Pilih sub-tab untuk melihat daftar anomali usaha atau keluarga.
                   </CardDescription>
-                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                    <p className="font-semibold text-slate-900">Informasi data terakhir</p>
-                    <p className="mt-1">Usaha: {anomaliUsahaInfo}</p>
-                    <p className="mt-1">Keluarga: {anomaliKeluargaInfo}</p>
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-100 p-4 shadow-sm text-slate-800">
+                    <p className="text-sm font-semibold uppercase tracking-wide text-slate-900">Informasi data terakhir</p>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="text-sm font-semibold text-slate-900">Usaha</div>
+                        <div className="mt-2 text-sm text-slate-700">{anomaliUsahaInfo}</div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="text-sm font-semibold text-slate-900">Keluarga</div>
+                        <div className="mt-2 text-sm text-slate-700">{anomaliKeluargaInfo}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -2819,7 +2910,7 @@ export function MonitoringLapangan() {
                             <TableBody>
                               {(() => {
                                 const districtMap = new Map<string, { kecamatan: string; usaha: number; keluarga: number; total: number; desaSet: Set<string>; pplSet: Set<string>; pmlSet: Set<string>; linkCount: number; }>();
-                                const districtPMLCounts = new Map<string, Map<string, number>>();
+                                const districtPMLCounts = new Map<string, Map<string, { count: number; pplCounts: Map<string, number> }>>();
                                 const addRows = (rows: any[], type: "usaha" | "keluarga") => {
                                   rows.forEach((row) => {
                                     const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
@@ -2837,8 +2928,13 @@ export function MonitoringLapangan() {
                                     const pml = String(getAnomalyPMLValue(row, "")).trim();
                                     if (pml) {
                                       bucket.pmlSet.add(pml);
-                                      const pmlMap = districtPMLCounts.get(kecamatan) || new Map<string, number>();
-                                      pmlMap.set(pml, (pmlMap.get(pml) || 0) + 1);
+                                      const pmlMap = districtPMLCounts.get(kecamatan) || new Map<string, { count: number; pplCounts: Map<string, number> }>();
+                                      const pmlBucket = pmlMap.get(pml) || { count: 0, pplCounts: new Map<string, number>() };
+                                      pmlBucket.count += 1;
+                                      if (ppl) {
+                                        pmlBucket.pplCounts.set(ppl, (pmlBucket.pplCounts.get(ppl) || 0) + 1);
+                                      }
+                                      pmlMap.set(pml, pmlBucket);
                                       districtPMLCounts.set(kecamatan, pmlMap);
                                     }
                                     const link = String(getColumnValue(row, "link_fasih", ["link fasih", "linkfasih", "link_fasih", "url fasih", "link", "url"], "")).trim();
@@ -2862,8 +2958,8 @@ export function MonitoringLapangan() {
                                   <>
                                     {districtRows.map((item) => {
                                       const isExpanded = expandedDistricts.has(item.kecamatan);
-                                      const pmlCounts = districtPMLCounts.get(item.kecamatan) || new Map<string, number>();
-                                      const pmlDetails = Array.from(pmlCounts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+                                      const pmlCounts = districtPMLCounts.get(item.kecamatan) || new Map<string, { count: number; pplCounts: Map<string, number> }>();
+                                      const pmlDetails = Array.from(pmlCounts.entries()).sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]));
                                       return (
                                         <React.Fragment key={item.kecamatan}>
                                           <TableRow className="even:bg-slate-50">
@@ -2903,13 +2999,56 @@ export function MonitoringLapangan() {
                                                     Detail PML di {item.kecamatan}
                                                   </div>
                                                   {pmlDetails.length > 0 ? (
-                                                    <div className="grid gap-2 sm:grid-cols-2">
-                                                      {pmlDetails.map(([pmlName, count]) => (
-                                                        <div key={pmlName} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                                                          <div className="font-medium text-slate-900">{pmlName}</div>
-                                                          <div className="text-slate-600">{count} anomali</div>
-                                                        </div>
-                                                      ))}
+                                                    <div className="space-y-2">
+                                                      {pmlDetails.map(([pmlName, detail]) => {
+                                                        const pmlKey = `${item.kecamatan}::${pmlName}`;
+                                                        const isPMLExpanded = expandedPML.has(pmlKey);
+                                                        const pplEntries = Array.from(detail.pplCounts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+                                                        return (
+                                                          <div key={pmlName} className="rounded-xl border border-slate-200 bg-white">
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => {
+                                                                setExpandedPML((prev) => {
+                                                                  const next = new Set(prev);
+                                                                  if (next.has(pmlKey)) {
+                                                                    next.delete(pmlKey);
+                                                                  } else {
+                                                                    next.add(pmlKey);
+                                                                  }
+                                                                  return next;
+                                                                });
+                                                              }}
+                                                              className="w-full px-3 py-3 text-left"
+                                                            >
+                                                              <div className="flex items-center justify-between gap-3">
+                                                                <div>
+                                                                  <div className="font-semibold text-slate-900">{pmlName}</div>
+                                                                  <div className="text-sm text-slate-600">{detail.count} anomali · {pplEntries.length} PPL</div>
+                                                                </div>
+                                                                <span className="text-slate-500">{isPMLExpanded ? "▼" : "▶"}</span>
+                                                              </div>
+                                                            </button>
+                                                            {isPMLExpanded && (
+                                                              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                                                                <div className="font-medium text-slate-800 mb-2">Daftar PPL</div>
+                                                                {pplEntries.length > 0 ? (
+                                                                  <ul className="space-y-1 text-slate-700">
+                                                                    {pplEntries.map(([pplName, count]) => (
+                                                                      <li key={pplName} className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 shadow-sm border border-slate-200">
+                                                                        <span>{pplName}</span>
+                                                                        <span className="text-xs font-semibold text-slate-600">{count} anomali</span>
+                                                                      </li>
+                                                                    ))}
+                                                                  </ul>
+                                                                ) : (
+                                                                  <div className="text-slate-600">Nama PPL belum tersedia untuk PML ini.</div>
+                                                                )}
+                                                              </div>
+                                                            )}
+                                                          </div>
+                                                        );
+                                                      })}
                                                     </div>
                                                   ) : (
                                                     <div className="text-sm text-slate-600">Tidak ada data PML yang tercatat untuk kecamatan ini.</div>
