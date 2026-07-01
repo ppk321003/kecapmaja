@@ -490,7 +490,6 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-slate-500">Klik header kolom untuk mengurutkan data</span>
           </div>
         </div>
       </div>
