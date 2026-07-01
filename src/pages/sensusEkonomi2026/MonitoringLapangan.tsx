@@ -934,6 +934,10 @@ export function MonitoringLapangan() {
     const allRows = [...anomaliUsahaData, ...anomaliKeluargaData];
     const anomalyCounts = new Map<string, number>();
     const districtCounts = new Map<string, number>();
+    const pplCounts = new Map<string, number>();
+    const pmlCounts = new Map<string, number>();
+    const desaSet = new Set<string>();
+    let withLink = 0;
 
     allRows.forEach((row) => {
       const anomalyName = String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim();
@@ -945,11 +949,31 @@ export function MonitoringLapangan() {
       if (districtName) {
         districtCounts.set(districtName, (districtCounts.get(districtName) || 0) + 1);
       }
+
+      const ppl = String(getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl"], "")).trim();
+      if (ppl) pplCounts.set(ppl, (pplCounts.get(ppl) || 0) + 1);
+
+      const pml = String(getColumnValue(row, "pml", ["pml", "nama pml", "nama_pml"], "")).trim();
+      if (pml) pmlCounts.set(pml, (pmlCounts.get(pml) || 0) + 1);
+
+      const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
+      if (desa) desaSet.add(`${districtName}|${desa}`);
+
+      const link = String(getColumnValue(row, "link_fasih", ["link fasih", "linkfasih", "link_fasih", "url fasih", "link", "url"], "")).trim();
+      if (link) withLink += 1;
     });
 
     return {
       topAnomalies: [...anomalyCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
       topDistricts: [...districtCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      topPPL: [...pplCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      topPML: [...pmlCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      totalKecamatan: districtCounts.size,
+      totalDesa: desaSet.size,
+      totalPPL: pplCounts.size,
+      totalPML: pmlCounts.size,
+      withLink,
+      total: allRows.length,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
   const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "pemeriksaan">("pemeriksaan");
