@@ -328,6 +328,11 @@ const getColumnValue = (obj: any, primaryName: string, fallbackNames: string[] =
   return defaultValue;
 };
 
+const isFilled = (v: any) => {
+  const s = String(v ?? "").trim().toLowerCase();
+  return !(s === "" || s === "-" || s === "na" || s === "n/a" || s === "null" || s === "none");
+};
+
 const getAnomalyPPLValue = (row: any, defaultValue: any = "-"): any =>
   getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl", "nama_ppl", "y"], defaultValue);
 
@@ -337,8 +342,50 @@ const getAnomalyPMLValue = (row: any, defaultValue: any = "-"): any =>
 const getAnomalyCatatanPetugasValue = (row: any, defaultValue: any = "-"): any =>
   getColumnValue(row, "catatan_petugas", ["catatan petugas", "catatan_petugas", "catatan", "w"], defaultValue);
 
-const getAnomalyPerlakuanValue = (row: any, defaultValue: any = "-"): any =>
-  getColumnValue(row, "perlakuan", ["perlakuan", "x"], defaultValue);
+const getAnomalyPerlakuanValue = (row: any, defaultValue: any = "-"): any => {
+  // First try the normalized column access (by header names)
+  const val = getColumnValue(row, "perlakuan", ["perlakuan", "x"], undefined);
+  const normalizeVal = (v: any) => (v === undefined || v === null) ? "" : String(v).trim();
+  const isEmptyLike = (s: string) => {
+    const t = s.trim().toLowerCase();
+    return t === "" || t === "-" || t === "na" || t === "n/a" || t === "null" || t === "none";
+  };
+
+  if (val !== undefined && val !== null) {
+    const s = normalizeVal(val);
+    if (!isEmptyLike(s)) return val;
+  }
+
+  // If not found via header names, try direct column-letter access (column X)
+  if (row && typeof row === "object") {
+    // common keys: 'X' or 'x'
+    if ("X" in row || "x" in row) {
+      const direct = row["X"] ?? row["x"];
+      const s = normalizeVal(direct);
+      if (!isEmptyLike(s)) return direct;
+    }
+
+    // as a last resort, attempt positional access: column X is index 23 (0-based)
+    // Also check for preserved placeholder key created by the sheet loader: __col_23
+    if (row && typeof row === "object") {
+      const placeholderKey = `__col_23`;
+      if (placeholderKey in row) {
+        const pos = row[placeholderKey];
+        const s = normalizeVal(pos);
+        if (!isEmptyLike(s)) return pos;
+      }
+
+      const values = Object.values(row || {});
+      if (values.length >= 24) {
+        const pos = values[23];
+        const s = normalizeVal(pos);
+        if (!isEmptyLike(s)) return pos;
+      }
+    }
+  }
+
+  return defaultValue;
+};
 
 interface AnomaliTableProps {
   data?: any[];
@@ -355,6 +402,7 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
   const [sortBy, setSortBy] = useState<"kecamatan" | "desa" | "nama_usaha" | "catatan_petugas" | "perlakuan" | "nama_anomali" | "ppl" | "pml">("kecamatan");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [anomalyFilter, setAnomalyFilter] = useState("all");
+  const [perlakuanFilter, setPerlakuanFilter] = useState<"all" | "filled" | "empty">("all");
   const [selectedRow, setSelectedRow] = useState<any | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -410,6 +458,14 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
         return false;
       }
 
+      // Filter by perlakuan (treatment) status
+      if (perlakuanFilter !== "all") {
+        const perlakuanVal = getAnomalyPerlakuanValue(row, "");
+        const hasPerlakuan = isFilled(perlakuanVal);
+        if (perlakuanFilter === "filled" && !hasPerlakuan) return false;
+        if (perlakuanFilter === "empty" && hasPerlakuan) return false;
+      }
+
       if (!normalizedSearch) return true;
 
       const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).toLowerCase();
@@ -432,14 +488,14 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
     });
 
     return sorted;
-  }, [rows, searchTerm, anomalyFilter, sortBy, sortOrder]);
+  }, [rows, searchTerm, anomalyFilter, perlakuanFilter, sortBy, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
   const paginatedRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [rows, itemsPerPage, searchTerm, anomalyFilter, sortBy, sortOrder]);
+  }, [rows, itemsPerPage, searchTerm, anomalyFilter, perlakuanFilter, sortBy, sortOrder]);
 
   return (
     <div>
@@ -486,6 +542,16 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
               {anomalyOptions.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
+            </select>
+            <select
+              value={perlakuanFilter}
+              onChange={(e) => setPerlakuanFilter(e.target.value as any)}
+              className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+              title="Filter berdasarkan apakah kolom Perlakuan sudah diisi"
+            >
+              <option value="all">Semua Perlakuan</option>
+              <option value="filled">Sudah diisi</option>
+              <option value="empty">Belum diisi</option>
             </select>
           </div>
 

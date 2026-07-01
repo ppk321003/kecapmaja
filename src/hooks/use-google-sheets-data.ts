@@ -78,14 +78,16 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
             const headerCount: Record<string, number> = {};
 
             headers.forEach((header: string, index: number) => {
-              const normalizedHeader = String(header || '').trim().toLowerCase();
-              if (!normalizedHeader) return;
+              const raw = String(header || '');
+              const normalizedHeader = raw.trim().toLowerCase();
+              // Preserve empty header columns with positional placeholder to keep column positions
+              const headerKeyBase = normalizedHeader || `__col_${index}`;
 
-              const count = (headerCount[normalizedHeader] || 0) + 1;
-              headerCount[normalizedHeader] = count;
+              const count = (headerCount[headerKeyBase] || 0) + 1;
+              headerCount[headerKeyBase] = count;
 
-              const key = count === 1 ? normalizedHeader : `${normalizedHeader}_${count}`;
-              obj[key] = row[index] || '';
+              const key = count === 1 ? headerKeyBase : `${headerKeyBase}_${count}`;
+              obj[key] = row[index] ?? '';
             });
             return obj;
           });
