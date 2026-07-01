@@ -2307,7 +2307,7 @@ export function MonitoringLapangan() {
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
-                    {isPPK && aggregatedData.rows.length > 0 && (
+                    {isLoggedIn && aggregatedData.rows.length > 0 && (
                       <button
                         onClick={() => exportPPLToExcel(aggregatedData.rows)}
                         className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
