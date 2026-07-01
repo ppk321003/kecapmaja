@@ -1040,6 +1040,121 @@ const exportTAToExcel = (
   XLSX.writeFile(wb, `Data_TA_${fileSuffix}_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
 
+interface PendingPPLEntry {
+  name: string;
+  pendingCount: number;
+  totalCount: number;
+  completed: number;
+  districts: Set<string>;
+}
+
+interface PendingPPLCardProps {
+  entries: PendingPPLEntry[];
+  totalPPL: number;
+  totalRows: number;
+}
+
+const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLCardProps) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredEntries = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return entries;
+    return entries.filter((entry) => {
+      const districtText = Array.from(entry.districts).join(" ").toLowerCase();
+      return entry.name.toLowerCase().includes(term) || districtText.includes(term);
+    });
+  }, [entries, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, entries]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / 20));
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  return (
+    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-sm xl:col-span-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h4 className="text-lg font-semibold text-rose-900">🚨 PPL dengan Anomali Belum Ditindaklanjuti</h4>
+          <p className="text-sm text-rose-700">PPL yang memiliki anomali belum dilakukan konfirmasi.</p>
+        </div>
+        <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-sm font-medium text-rose-900 shadow-sm">
+          <span className="text-slate-500">Total PPL</span>
+          <span className="text-rose-900">{totalPPL.toLocaleString("id-ID")}</span>
+          <span className="text-slate-400">·</span>
+          <span className="text-slate-500">Total baris</span>
+          <span className="text-rose-900">{totalRows.toLocaleString("id-ID")}</span>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+          <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Cari nama atau kecamatan</label>
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari PPL atau Kecamatan..."
+            className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100"
+          />
+        </div>
+
+        {filteredEntries.length === 0 ? (
+          <div className="rounded-xl border border-rose-200 bg-white p-3 text-sm text-rose-700">Tidak ada PPL yang cocok dengan pencarian.</div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {filteredEntries.slice((currentPage - 1) * 20, currentPage * 20).map((entry) => {
+              const completionPct = entry.totalCount ? Math.round((entry.completed / entry.totalCount) * 1000) / 10 : 0;
+              return (
+                <div key={entry.name} className="flex items-center justify-between rounded-2xl border border-rose-200 bg-white px-3 py-2 text-sm shadow-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{entry.name}</p>
+                    <p className="truncate text-xs text-slate-500">{Array.from(entry.districts).join(', ')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-rose-700">{entry.pendingCount.toLocaleString('id-ID')} anomali</p>
+                    <p className="text-[11px] text-slate-500">{entry.completed.toLocaleString('id-ID')} sudah ditindaklanjuti · {completionPct}%</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {filteredEntries.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs text-slate-600">Hal {currentPage} dari {totalPages}</div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-medium text-rose-700 transition duration-150 hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Sebelumnya
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-medium text-rose-700 transition duration-150 hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Berikutnya
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
 export function MonitoringLapangan() {
   const { user } = useAuth();
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
@@ -1098,8 +1213,6 @@ export function MonitoringLapangan() {
   const [currentPageAfirmasi, setCurrentPageAfirmasi] = useState(1);
   const [itemsPerPageAfirmasi, setItemsPerPageAfirmasi] = useState(20);
   const [activeAnomaliTab, setActiveAnomaliTab] = useState<"dashboard" | "usaha" | "keluarga">("dashboard");
-  const [pendingPPLPage, setPendingPPLPage] = useState(1);
-  const [pendingPPLSearch, setPendingPPLSearch] = useState("");
   const anomaliUsahaInfo = anomaliUsahaInfoData?.[0] || "-";
   const anomaliKeluargaInfo = anomaliKeluargaInfoData?.[0] || "-";
 
@@ -1145,29 +1258,6 @@ export function MonitoringLapangan() {
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
 
-  useEffect(() => {
-    setPendingPPLPage(1);
-  }, [pendingAnomalyPPL.totalPPL]);
-
-  useEffect(() => {
-    setPendingPPLPage(1);
-  }, [pendingPPLSearch]);
-
-  const filteredPendingAnomalyPPL = useMemo(() => {
-    const term = pendingPPLSearch.trim().toLowerCase();
-    if (!term) {
-      return pendingAnomalyPPL.entries;
-    }
-    return pendingAnomalyPPL.entries.filter((entry) => {
-      const districtText = Array.from(entry.districts).join(' ').toLowerCase();
-      return entry.name.toLowerCase().includes(term) || districtText.includes(term);
-    });
-  }, [pendingAnomalyPPL.entries, pendingPPLSearch]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(filteredPendingAnomalyPPL.length / 20));
-    setPendingPPLPage((prev) => Math.min(prev, totalPages));
-  }, [filteredPendingAnomalyPPL.length]);
 
   const anomalyDashboardSummary = useMemo(() => {
     const allRows = [...anomaliUsahaData, ...anomaliKeluargaData];
@@ -3254,80 +3344,11 @@ export function MonitoringLapangan() {
                         })}
                       </div>
 
-                      <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-sm xl:col-span-3">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div>
-                            <h4 className="text-lg font-semibold text-rose-900">🚨 PPL dengan Anomali Belum Ditindaklanjuti</h4>
-                            <p className="text-sm text-rose-700">PPL yang memiliki anomali belum dilakukan konfirmasi.</p>
-                          </div>
-                          <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-sm font-medium text-rose-900 shadow-sm">
-                            <span className="text-slate-500">Total PPL</span>
-                            <span className="text-rose-900">{pendingAnomalyPPL.totalPPL.toLocaleString("id-ID")}</span>
-                            <span className="text-slate-400">·</span>
-                            <span className="text-slate-500">Total baris</span>
-                            <span className="text-rose-900">{pendingAnomalyPPL.totalRows.toLocaleString("id-ID")}</span>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 grid gap-3">
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                            <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Cari nama atau kecamatan</label>
-                            <input
-                              type="search"
-                              value={pendingPPLSearch}
-                              onChange={(e) => setPendingPPLSearch(e.target.value)}
-                              placeholder="Cari PPL atau Kecamatan..."
-                              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100"
-                            />
-                          </div>
-
-                          {filteredPendingAnomalyPPL.length === 0 ? (
-                          <div className="rounded-xl border border-rose-200 bg-white p-3 text-sm text-rose-700">Tidak ada PPL yang cocok dengan pencarian.</div>
-                        ) : (
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {filteredPendingAnomalyPPL.slice((pendingPPLPage - 1) * 20, pendingPPLPage * 20).map((entry) => {
-                              const completionPct = entry.totalCount ? Math.round((entry.completed / entry.totalCount) * 1000) / 10 : 0;
-                              return (
-                                <div key={entry.name} className="flex items-center justify-between rounded-2xl border border-rose-200 bg-white px-3 py-2 text-sm shadow-sm">
-                                  <div className="min-w-0">
-                                    <p className="truncate font-semibold text-slate-900">{entry.name}</p>
-                                    <p className="truncate text-xs text-slate-500">{Array.from(entry.districts).join(', ')}</p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-xs font-semibold text-rose-700">{entry.pendingCount.toLocaleString('id-ID')} anomali</p>
-                                    <p className="text-[11px] text-slate-500">{entry.completed.toLocaleString('id-ID')} sudah ditindaklanjuti · {completionPct}%</p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        </div>
-
-                        {filteredPendingAnomalyPPL.length > 0 && (
-                          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="text-xs text-slate-600">Hal {pendingPPLPage} dari {Math.max(1, Math.ceil(filteredPendingAnomalyPPL.length / 20))}</div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setPendingPPLPage((prev) => Math.max(1, prev - 1))}
-                                disabled={pendingPPLPage === 1}
-                                className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-medium text-rose-700 transition duration-150 hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                Sebelumnya
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setPendingPPLPage((prev) => Math.min(Math.max(1, Math.ceil(filteredPendingAnomalyPPL.length / 20)), prev + 1))}
-                                disabled={pendingPPLPage === Math.max(1, Math.ceil(filteredPendingAnomalyPPL.length / 20))}
-                                className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-medium text-rose-700 transition duration-150 hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                Berikutnya
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      <PendingPPLCard
+                        entries={pendingAnomalyPPL.entries}
+                        totalPPL={pendingAnomalyPPL.totalPPL}
+                        totalRows={pendingAnomalyPPL.totalRows}
+                      />
                     </div>
                   </div>
                 ) : activeAnomaliTab === "usaha" ? (
