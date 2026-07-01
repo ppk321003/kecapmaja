@@ -522,6 +522,9 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
                   <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("desa")}> 
                     <div className="flex items-center gap-2">Nama Desa/Kel <span className="text-xs">{getSortIndicator("desa")}</span></div>
                   </TableHead>
+                  {!isUsaha && (
+                    <TableHead className="text-slate-700 font-semibold">Nama KRT</TableHead>
+                  )}
                   {isUsaha && (
                     <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("nama_usaha")}> 
                       <div className="flex items-center gap-2">Nama Usaha <span className="text-xs">{getSortIndicator("nama_usaha")}</span></div>
@@ -550,6 +553,7 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
                   const kecamatan = getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "-");
                   const desaKel = getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "-");
                   const namaUsaha = getColumnValue(row, "nama_usaha", ["nama usaha", "nama usaha / kk", "nama usaha kk", "nama usaha"], "-");
+                  const namaKRT = getColumnValue(row, "nama_krt", ["nama krt", "nama_krt", "krt", "nama kepala rumah tangga", "nama kepala keluarga"], "-");
                   const namaAnomali = getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "-");
                   const catatanPetugas = getAnomalyCatatanPetugasValue(row, "-");
                   const perlakuan = getAnomalyPerlakuanValue(row, "-");
@@ -562,6 +566,7 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
                       <TableCell className="text-center text-slate-700">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
                       <TableCell className="text-slate-700 px-4 py-3">{kecamatan}</TableCell>
                       <TableCell className="text-slate-700 px-4 py-3">{desaKel}</TableCell>
+                      {!isUsaha && <TableCell className="text-slate-700 px-4 py-3">{namaKRT}</TableCell>}
                       {isUsaha && <TableCell className="text-slate-700 px-4 py-3">{namaUsaha}</TableCell>}
                       <TableCell className="text-slate-700 px-4 py-3">{namaAnomali}</TableCell>
                       <TableCell className="text-slate-700 px-4 py-3">{catatanPetugas}</TableCell>
