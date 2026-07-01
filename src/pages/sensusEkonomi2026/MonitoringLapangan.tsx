@@ -3257,6 +3257,15 @@ export function MonitoringLapangan() {
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
+                    {isLoggedIn && afirmasiPPLData.ratih.length > 0 && (
+                      <button
+                        onClick={() => exportTAToExcel(afirmasiPPLData.ratih, "Ratih Megasari Singkarru, MSc.", "Ratih_Megasari")}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Excel
+                      </button>
+                    )}
                     <div className="relative flex-1 md:max-w-xs">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input
