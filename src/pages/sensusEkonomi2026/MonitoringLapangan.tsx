@@ -326,19 +326,20 @@ interface AnomaliTableProps {
 
 const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
   const rows = data ?? [];
+  const isUsaha = title.toLowerCase().includes("usaha");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<"kecamatan" | "desa" | "kode_sls" | "sub_sls" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali">("kecamatan");
+  const [sortBy, setSortBy] = useState<"kecamatan" | "desa" | "kode_sls" | "sub_sls" | "nama_usaha" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali">("kecamatan");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [anomalyFilter, setAnomalyFilter] = useState("all");
 
-  const getSortIndicator = (field: "kecamatan" | "desa" | "kode_sls" | "sub_sls" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali") => {
+  const getSortIndicator = (field: "kecamatan" | "desa" | "kode_sls" | "sub_sls" | "nama_usaha" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali") => {
     if (sortBy !== field) return "↕";
     return sortOrder === "asc" ? "↑" : "↓";
   };
 
-  const handleSort = (field: "kecamatan" | "desa" | "kode_sls" | "sub_sls" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali") => {
+  const handleSort = (field: "kecamatan" | "desa" | "kode_sls" | "sub_sls" | "nama_usaha" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali") => {
     if (sortBy === field) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -347,7 +348,7 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
     }
   };
 
-  const getSortValue = (row: any, field: "kecamatan" | "desa" | "kode_sls" | "sub_sls" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali") => {
+  const getSortValue = (row: any, field: "kecamatan" | "desa" | "kode_sls" | "sub_sls" | "nama_usaha" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali") => {
     switch (field) {
       case "desa":
         return String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).toLowerCase();
@@ -355,6 +356,8 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
         return String(getColumnValue(row, "kode_sls", ["kode_sls", "kodesls", "kode sls", "sls"], "")).toLowerCase();
       case "sub_sls":
         return String(getColumnValue(row, "sub_sls", ["sub_sls", "subsls", "sub sls", "sub"], "")).toLowerCase();
+      case "nama_usaha":
+        return String(getColumnValue(row, "nama_usaha", ["nama usaha", "nama usaha / kk", "nama usaha kk", "nama usaha"], "")).toLowerCase();
       case "ppl":
         return String(getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl"], "")).toLowerCase();
       case "pml":
@@ -502,6 +505,11 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
                   <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("sub_sls")}> 
                     <div className="flex items-center gap-2">Sub SLS <span className="text-xs">{getSortIndicator("sub_sls")}</span></div>
                   </TableHead>
+                  {isUsaha && (
+                    <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("nama_usaha")}> 
+                      <div className="flex items-center gap-2">Nama Usaha <span className="text-xs">{getSortIndicator("nama_usaha")}</span></div>
+                    </TableHead>
+                  )}
                   <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("nama_anomali")}> 
                     <div className="flex items-center gap-2">Nama Anomali <span className="text-xs">{getSortIndicator("nama_anomali")}</span></div>
                   </TableHead>
@@ -523,6 +531,7 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
                   const desaKel = getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "-");
                   const kodeSLS = getColumnValue(row, "kode_sls", ["kode_sls", "kodesls", "kode sls", "sls"], "-");
                   const subSLS = getColumnValue(row, "sub_sls", ["sub_sls", "subsls", "sub sls", "sub"], "-");
+                  const namaUsaha = getColumnValue(row, "nama_usaha", ["nama usaha", "nama usaha / kk", "nama usaha kk", "nama usaha"], "-");
                   const namaAnomali = getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "-");
                   const tindakLanjut = getColumnValue(row, "tindak_lanjut", ["tindak lanjut", "tindak_lanjut", "tindaklanjut", "follow_up", "follow up", "action"], "-");
                   const ppl = getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl"], "-");
@@ -536,6 +545,7 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
                       <TableCell className="text-slate-700 px-4 py-3">{desaKel}</TableCell>
                       <TableCell className="text-slate-700 px-4 py-3">{kodeSLS}</TableCell>
                       <TableCell className="text-slate-700 px-4 py-3">{subSLS}</TableCell>
+                      {isUsaha && <TableCell className="text-slate-700 px-4 py-3">{namaUsaha}</TableCell>}
                       <TableCell className="text-slate-700 px-4 py-3">{namaAnomali}</TableCell>
                       <TableCell className="text-slate-700 px-4 py-3">{tindakLanjut}</TableCell>
                       <TableCell className="text-slate-700 px-4 py-3">{ppl}</TableCell>
