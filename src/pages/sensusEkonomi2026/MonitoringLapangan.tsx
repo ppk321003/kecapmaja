@@ -25,6 +25,7 @@ import {
   Trophy,
   TrendingDown,
   Database,
+  Eye,
 } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { useAuth } from "@/contexts/AuthContext";
@@ -142,6 +143,8 @@ const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
 const SHEET_NAME = "REKAP_SCRP";
 const SHEET_USERS = "Semua Users";
 const SHEET_AFIRMASI = "AFIRMASI";
+const SHEET_ANOMALI_USAHA = "Mikro Anomali Usaha";
+const SHEET_ANOMALI_KELUARGA = "Mikro Anomali Keluarga";
 
 const COLORS = {
   optimal: "#10b981",
@@ -274,23 +277,333 @@ const getColorForPercentage = (percentage: number): string => {
   return "#dc2626";
 };
 
-// Helper function untuk robust column access dengan fallback
+// Helper untuk normalisasi nama kolom agar cocok dengan header sheet yang bervariasi
+const normalizeColumnKey = (key: string): string => {
+  return String(key || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+};
+
+// Helper function untuk robust column access dengan fallback dan normalisasi kolom
 const getColumnValue = (obj: any, primaryName: string, fallbackNames: string[] = [], defaultValue: any = "-"): any => {
-  if (!obj) return defaultValue;
-  
-  // Try primary name first
-  if (obj[primaryName] !== undefined && obj[primaryName] !== null && obj[primaryName] !== "") {
-    return obj[primaryName];
-  }
-  
-  // Try fallback names
-  for (const name of fallbackNames) {
-    if (obj[name] !== undefined && obj[name] !== null && obj[name] !== "") {
-      return obj[name];
+  if (!obj || typeof obj !== "object") return defaultValue;
+
+  const normalizedMap: Record<string, string> = {};
+  for (const key of Object.keys(obj)) {
+    const normalizedKey = normalizeColumnKey(key);
+    if (normalizedKey) {
+      normalizedMap[normalizedKey] = obj[key];
     }
   }
-  
+
+  const tryKeys = [primaryName, ...fallbackNames];
+  for (const key of tryKeys) {
+    const normalizedKey = normalizeColumnKey(key);
+    if (normalizedKey && normalizedMap[normalizedKey] !== undefined && normalizedMap[normalizedKey] !== null && normalizedMap[normalizedKey] !== "") {
+      return normalizedMap[normalizedKey];
+    }
+  }
+
+  // If no exact normalized match, attempt partial matching by contains
+  for (const key of Object.keys(normalizedMap)) {
+    if (tryKeys.some((candidate) => normalizeColumnKey(candidate).includes(key) || key.includes(normalizeColumnKey(candidate)))) {
+      const value = normalizedMap[key];
+      if (value !== undefined && value !== null && value !== "") {
+        return value;
+      }
+    }
+  }
+
   return defaultValue;
+};
+
+interface AnomaliTableProps {
+  data?: any[];
+  loading: boolean;
+  title: string;
+}
+
+const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
+  const rows = data ?? [];
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"kecamatan" | "desa" | "kode_sls" | "sub_sls" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali">("kecamatan");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [anomalyFilter, setAnomalyFilter] = useState("all");
+
+  const getSortIndicator = (field: "kecamatan" | "desa" | "kode_sls" | "sub_sls" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali") => {
+    if (sortBy !== field) return "↕";
+    return sortOrder === "asc" ? "↑" : "↓";
+  };
+
+  const handleSort = (field: "kecamatan" | "desa" | "kode_sls" | "sub_sls" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali") => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const getSortValue = (row: any, field: "kecamatan" | "desa" | "kode_sls" | "sub_sls" | "ppl" | "pml" | "tindak_lanjut" | "nama_anomali") => {
+    switch (field) {
+      case "desa":
+        return String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).toLowerCase();
+      case "kode_sls":
+        return String(getColumnValue(row, "kode_sls", ["kode_sls", "kodesls", "kode sls", "sls"], "")).toLowerCase();
+      case "sub_sls":
+        return String(getColumnValue(row, "sub_sls", ["sub_sls", "subsls", "sub sls", "sub"], "")).toLowerCase();
+      case "ppl":
+        return String(getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl"], "")).toLowerCase();
+      case "pml":
+        return String(getColumnValue(row, "pml", ["pml", "nama pml", "nama_pml"], "")).toLowerCase();
+      case "tindak_lanjut":
+        return String(getColumnValue(row, "tindak_lanjut", ["tindak lanjut", "tindak_lanjut", "tindaklanjut", "follow_up", "follow up", "action"], "")).toLowerCase();
+      case "nama_anomali":
+        return String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).toLowerCase();
+      case "kecamatan":
+      default:
+        return String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).toLowerCase();
+    }
+  };
+
+  const anomalyOptions = useMemo(() => {
+    const values = rows
+      .map((row) => String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim())
+      .filter(Boolean);
+    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    const filtered = rows.filter((row) => {
+      const anomalyName = String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim().toLowerCase();
+      if (anomalyFilter !== "all" && anomalyName !== anomalyFilter.toLowerCase()) {
+        return false;
+      }
+
+      if (!normalizedSearch) return true;
+
+      const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).toLowerCase();
+      const desaKel = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).toLowerCase();
+      const ppl = String(getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl"], "")).toLowerCase();
+      const pml = String(getColumnValue(row, "pml", ["pml", "nama pml", "nama_pml"], "")).toLowerCase();
+      const anomalyText = anomalyName;
+
+      return [kecamatan, desaKel, ppl, pml, anomalyText].some((value) => value.includes(normalizedSearch));
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      const valueA = getSortValue(a, sortBy);
+      const valueB = getSortValue(b, sortBy);
+      if (valueA < valueB) return sortOrder === "asc" ? -1 : 1;
+      if (valueA > valueB) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [rows, searchTerm, anomalyFilter, sortBy, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
+  const paginatedRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rows, itemsPerPage, searchTerm, anomalyFilter, sortBy, sortOrder]);
+
+  return (
+    <div>
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+            <p className="text-sm text-slate-500">Menampilkan {filteredRows.length} dari {rows.length} baris data</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-sm text-slate-600">
+              <span className="mr-2">Per halaman:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700"
+              >
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </label>
+            <span className="text-sm text-slate-500">Hal {currentPage} dari {totalPages}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            <div className="flex min-w-[240px] flex-1 items-center gap-2 rounded border border-slate-300 bg-white px-3 py-2 shadow-sm">
+              <Search className="h-4 w-4 text-slate-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Cari Kecamatan / Desa / PPL / PML"
+                className="border-0 p-0 shadow-none focus-visible:ring-0"
+              />
+            </div>
+            <select
+              value={anomalyFilter}
+              onChange={(e) => setAnomalyFilter(e.target.value)}
+              className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="all">Semua Nama Anomali</option>
+              {anomalyOptions.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-slate-500">Klik header kolom untuk mengurutkan data</span>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <span className="ml-2 text-slate-600">Memuat data...</span>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="flex items-center justify-center py-12 text-slate-500">
+          <AlertCircle className="h-5 w-5 mr-2" />
+          Tidak ada data anomali ditemukan
+        </div>
+      ) : filteredRows.length === 0 ? (
+        <div className="flex items-center justify-center py-12 text-slate-500">
+          <AlertCircle className="h-5 w-5 mr-2" />
+          Tidak ada data yang sesuai pencarian/urutan
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
+                  <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("kecamatan")}> 
+                    <div className="flex items-center gap-2">Kecamatan <span className="text-xs">{getSortIndicator("kecamatan")}</span></div>
+                  </TableHead>
+                  <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("desa")}> 
+                    <div className="flex items-center gap-2">Nama Desa/Kel <span className="text-xs">{getSortIndicator("desa")}</span></div>
+                  </TableHead>
+                  <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("kode_sls")}> 
+                    <div className="flex items-center gap-2">Kode SLS <span className="text-xs">{getSortIndicator("kode_sls")}</span></div>
+                  </TableHead>
+                  <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("sub_sls")}> 
+                    <div className="flex items-center gap-2">Sub SLS <span className="text-xs">{getSortIndicator("sub_sls")}</span></div>
+                  </TableHead>
+                  <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("nama_anomali")}> 
+                    <div className="flex items-center gap-2">Nama Anomali <span className="text-xs">{getSortIndicator("nama_anomali")}</span></div>
+                  </TableHead>
+                  <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("tindak_lanjut")}> 
+                    <div className="flex items-center gap-2">Tindak Lanjut <span className="text-xs">{getSortIndicator("tindak_lanjut")}</span></div>
+                  </TableHead>
+                  <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("ppl")}> 
+                    <div className="flex items-center gap-2">PPL <span className="text-xs">{getSortIndicator("ppl")}</span></div>
+                  </TableHead>
+                  <TableHead className="text-slate-700 font-semibold cursor-pointer select-none hover:bg-slate-100" onClick={() => handleSort("pml")}> 
+                    <div className="flex items-center gap-2">PML <span className="text-xs">{getSortIndicator("pml")}</span></div>
+                  </TableHead>
+                  <TableHead className="text-center text-slate-700 font-semibold">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedRows.map((row, index) => {
+                  const kecamatan = getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "-");
+                  const desaKel = getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "-");
+                  const kodeSLS = getColumnValue(row, "kode_sls", ["kode_sls", "kodesls", "kode sls", "sls"], "-");
+                  const subSLS = getColumnValue(row, "sub_sls", ["sub_sls", "subsls", "sub sls", "sub"], "-");
+                  const namaAnomali = getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "-");
+                  const tindakLanjut = getColumnValue(row, "tindak_lanjut", ["tindak lanjut", "tindak_lanjut", "tindaklanjut", "follow_up", "follow up", "action"], "-");
+                  const ppl = getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl"], "-");
+                  const pml = getColumnValue(row, "pml", ["pml", "nama pml", "nama_pml"], "-");
+                  const linkFasih = getColumnValue(row, "link_fasih", ["link fasih", "linkfasih", "link_fasih", "url fasih", "link", "url"], "");
+
+                  return (
+                    <TableRow key={`${title}-${index}`} className="even:bg-slate-50">
+                      <TableCell className="text-center text-slate-700">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
+                      <TableCell className="text-slate-700 px-4 py-3">{kecamatan}</TableCell>
+                      <TableCell className="text-slate-700 px-4 py-3">{desaKel}</TableCell>
+                      <TableCell className="text-slate-700 px-4 py-3">{kodeSLS}</TableCell>
+                      <TableCell className="text-slate-700 px-4 py-3">{subSLS}</TableCell>
+                      <TableCell className="text-slate-700 px-4 py-3">{namaAnomali}</TableCell>
+                      <TableCell className="text-slate-700 px-4 py-3">{tindakLanjut}</TableCell>
+                      <TableCell className="text-slate-700 px-4 py-3">{ppl}</TableCell>
+                      <TableCell className="text-slate-700 px-4 py-3">{pml}</TableCell>
+                      <TableCell className="text-center px-4 py-3">
+                        {linkFasih ? (
+                          <a
+                            href={linkFasih}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="inline-flex items-center justify-center rounded-md bg-slate-100 text-slate-700 p-2 hover:bg-slate-200"
+                            title="Lihat Link Fasih"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </a>
+                        ) : (
+                          <span className="text-xs text-slate-400">Tidak ada link</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-600">Menampilkan {paginatedRows.length} dari {rows.length} baris</div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                «
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ‹
+              </button>
+              <span className="text-sm text-slate-700">Hal {currentPage} / {totalPages}</span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ›
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                »
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 };
 
 // PERBAIKAN: Custom Tooltip untuk Progres Submit Kecamatan
@@ -517,6 +830,26 @@ export function MonitoringLapangan() {
     spreadsheetId: SPREADSHEET_ID,
     sheetName: SHEET_AFIRMASI,
   });
+  const { data: anomaliUsahaData, loading: anomaliUsahaLoading, error: anomaliUsahaError } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: SHEET_ANOMALI_USAHA,
+  });
+  const { data: anomaliKeluargaData, loading: anomaliKeluargaLoading, error: anomaliKeluargaError } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: SHEET_ANOMALI_KELUARGA,
+  });
+  const { data: anomaliUsahaInfoData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: SHEET_ANOMALI_USAHA,
+    range: `${SHEET_ANOMALI_USAHA}!A2`,
+    mode: "single-cell",
+  });
+  const { data: anomaliKeluargaInfoData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: SHEET_ANOMALI_KELUARGA,
+    range: `${SHEET_ANOMALI_KELUARGA}!A2`,
+    mode: "single-cell",
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
   const [afirmasiSearchTerm, setAfirmasiSearchTerm] = useState("");
@@ -536,6 +869,32 @@ export function MonitoringLapangan() {
   const [itemsPerPagePML, setItemsPerPagePML] = useState(20);
   const [currentPageAfirmasi, setCurrentPageAfirmasi] = useState(1);
   const [itemsPerPageAfirmasi, setItemsPerPageAfirmasi] = useState(20);
+  const [activeAnomaliTab, setActiveAnomaliTab] = useState<"dashboard" | "usaha" | "keluarga">("dashboard");
+  const anomaliUsahaInfo = anomaliUsahaInfoData?.[0] || "-";
+  const anomaliKeluargaInfo = anomaliKeluargaInfoData?.[0] || "-";
+
+  const anomalyDashboardSummary = useMemo(() => {
+    const allRows = [...anomaliUsahaData, ...anomaliKeluargaData];
+    const anomalyCounts = new Map<string, number>();
+    const districtCounts = new Map<string, number>();
+
+    allRows.forEach((row) => {
+      const anomalyName = String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim();
+      if (anomalyName) {
+        anomalyCounts.set(anomalyName, (anomalyCounts.get(anomalyName) || 0) + 1);
+      }
+
+      const districtName = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+      if (districtName) {
+        districtCounts.set(districtName, (districtCounts.get(districtName) || 0) + 1);
+      }
+    });
+
+    return {
+      topAnomalies: [...anomalyCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      topDistricts: [...districtCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+    };
+  }, [anomaliUsahaData, anomaliKeluargaData]);
   const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "pemeriksaan">("pemeriksaan");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
@@ -1122,6 +1481,13 @@ export function MonitoringLapangan() {
                 </TabsTrigger>
               </>
             )}
+            <TabsTrigger
+              value="anomali"
+              className="flex items-center gap-3 justify-center flex-1 py-3 px-4 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
+            >
+              <AlertTriangle className="h-5 w-5" />
+              <span className="font-medium">Anomali</span>
+            </TabsTrigger>
           </TabsList>
 
           <div className="w-full">
@@ -2251,6 +2617,181 @@ export function MonitoringLapangan() {
                       </div>
                     )}
                   </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Anomali Tab */}
+          <TabsContent value="anomali" className="space-y-6 mt-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="flex flex-col gap-4">
+                <div>
+                  <CardTitle className="text-lg">⚠️ Anomali</CardTitle>
+                  <CardDescription>
+                    Pilih sub-tab untuk melihat daftar anomali usaha atau keluarga.
+                  </CardDescription>
+                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                    <p className="font-semibold text-slate-900">Informasi data terakhir</p>
+                    <p className="mt-1">Usaha: {anomaliUsahaInfo}</p>
+                    <p className="mt-1">Keluarga: {anomaliKeluargaInfo}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveAnomaliTab("dashboard")}
+                    className={`px-4 py-2 rounded-lg border font-medium ${activeAnomaliTab === "dashboard" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 border-slate-200"}`}
+                  >
+                    Dashboard Anomali
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveAnomaliTab("usaha")}
+                    className={`px-4 py-2 rounded-lg border font-medium ${activeAnomaliTab === "usaha" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 border-slate-200"}`}
+                  >
+                    Mikro Anomali Usaha
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveAnomaliTab("keluarga")}
+                    className={`px-4 py-2 rounded-lg border font-medium ${activeAnomaliTab === "keluarga" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 border-slate-200"}`}
+                  >
+                    Mikro Anomali Keluarga
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {activeAnomaliTab === "dashboard" ? (
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <p className="text-sm text-amber-700">Total Anomali Usaha</p>
+                        <p className="mt-2 text-2xl font-semibold text-amber-900">{anomaliUsahaData.length}</p>
+                      </div>
+                      <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                        <p className="text-sm text-rose-700">Total Anomali Keluarga</p>
+                        <p className="mt-2 text-2xl font-semibold text-rose-900">{anomaliKeluargaData.length}</p>
+                      </div>
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                        <p className="text-sm text-emerald-700">Total Potensi Tindak Lanjut</p>
+                        <p className="mt-2 text-2xl font-semibold text-emerald-900">{anomaliUsahaData.length + anomaliKeluargaData.length}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 xl:grid-cols-3">
+                      <div className="rounded-xl border border-slate-200 bg-white p-4 xl:col-span-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="font-semibold text-slate-800">Detail per Kecamatan</h4>
+                            <p className="text-sm text-slate-500">Semua kecamatan yang tercatat memiliki anomali</p>
+                          </div>
+                        </div>
+                        <div className="mt-3 overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-slate-50 hover:bg-slate-50">
+                                <TableHead className="text-slate-700 font-semibold">Kecamatan</TableHead>
+                                <TableHead className="text-right text-slate-700 font-semibold">Usaha</TableHead>
+                                <TableHead className="text-right text-slate-700 font-semibold">Keluarga</TableHead>
+                                <TableHead className="text-right text-slate-700 font-semibold">Total</TableHead>
+                                <TableHead className="text-right text-slate-700 font-semibold">Desa/Kel</TableHead>
+                                <TableHead className="text-right text-slate-700 font-semibold">PPL</TableHead>
+                                <TableHead className="text-right text-slate-700 font-semibold">PML</TableHead>
+                                <TableHead className="text-right text-slate-700 font-semibold">Link Fasih</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {(() => {
+                                const districtMap = new Map<string, { kecamatan: string; usaha: number; keluarga: number; total: number; desaSet: Set<string>; pplSet: Set<string>; pmlSet: Set<string>; linkCount: number; }>();
+                                const addRows = (rows: any[], type: "usaha" | "keluarga") => {
+                                  rows.forEach((row) => {
+                                    const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+                                    if (!kecamatan) return;
+                                    if (!districtMap.has(kecamatan)) {
+                                      districtMap.set(kecamatan, { kecamatan, usaha: 0, keluarga: 0, total: 0, desaSet: new Set<string>(), pplSet: new Set<string>(), pmlSet: new Set<string>(), linkCount: 0 });
+                                    }
+                                    const bucket = districtMap.get(kecamatan)!;
+                                    if (type === "keluarga") bucket.keluarga += 1; else bucket.usaha += 1;
+                                    bucket.total += 1;
+                                    const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
+                                    if (desa) bucket.desaSet.add(desa);
+                                    const ppl = String(getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl"], "")).trim();
+                                    if (ppl) bucket.pplSet.add(ppl);
+                                    const pml = String(getColumnValue(row, "pml", ["pml", "nama pml", "nama_pml"], "")).trim();
+                                    if (pml) bucket.pmlSet.add(pml);
+                                    const link = String(getColumnValue(row, "link_fasih", ["link fasih", "linkfasih", "link_fasih", "url fasih", "link", "url"], "")).trim();
+                                    if (link) bucket.linkCount += 1;
+                                  });
+                                };
+                                addRows(anomaliUsahaData, "usaha");
+                                addRows(anomaliKeluargaData, "keluarga");
+                                const districtRows = [...districtMap.values()].sort((a, b) => b.total - a.total || a.kecamatan.localeCompare(b.kecamatan));
+                                const totals = districtRows.reduce((acc, item) => {
+                                  acc.usaha += item.usaha;
+                                  acc.keluarga += item.keluarga;
+                                  acc.total += item.total;
+                                  acc.desaCount += item.desaSet.size;
+                                  acc.pplCount += item.pplSet.size;
+                                  acc.pmlCount += item.pmlSet.size;
+                                  acc.linkCount += item.linkCount;
+                                  return acc;
+                                }, { usaha: 0, keluarga: 0, total: 0, desaCount: 0, pplCount: 0, pmlCount: 0, linkCount: 0 });
+                                return (
+                                  <>
+                                    {districtRows.map((item) => (
+                                      <TableRow key={item.kecamatan} className="even:bg-slate-50">
+                                        <TableCell className="font-medium text-slate-900">{item.kecamatan}</TableCell>
+                                        <TableCell className="text-right text-slate-700">{item.usaha}</TableCell>
+                                        <TableCell className="text-right text-slate-700">{item.keluarga}</TableCell>
+                                        <TableCell className="text-right font-semibold text-slate-900">{item.total}</TableCell>
+                                        <TableCell className="text-right text-slate-700">{item.desaSet.size}</TableCell>
+                                        <TableCell className="text-right text-slate-700">{item.pplSet.size}</TableCell>
+                                        <TableCell className="text-right text-slate-700">{item.pmlSet.size}</TableCell>
+                                        <TableCell className="text-right text-slate-700">{item.linkCount}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                    <TableRow className="bg-slate-100 font-semibold">
+                                      <TableCell className="text-slate-900">Jumlah</TableCell>
+                                      <TableCell className="text-right text-slate-900">{totals.usaha}</TableCell>
+                                      <TableCell className="text-right text-slate-900">{totals.keluarga}</TableCell>
+                                      <TableCell className="text-right text-slate-900">{totals.total}</TableCell>
+                                      <TableCell className="text-right text-slate-900">{totals.desaCount}</TableCell>
+                                      <TableCell className="text-right text-slate-900">{totals.pplCount}</TableCell>
+                                      <TableCell className="text-right text-slate-900">{totals.pmlCount}</TableCell>
+                                      <TableCell className="text-right text-slate-900">{totals.linkCount}</TableCell>
+                                    </TableRow>
+                                  </>
+                                );
+                              })()}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+                        <h4 className="font-semibold text-slate-800">Insight Ringkas</h4>
+                        <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                          <li>• Nama anomali terbanyak: {anomalyDashboardSummary.topAnomalies[0]?.[0] || "-"} ({anomalyDashboardSummary.topAnomalies[0]?.[1] || 0})</li>
+                          <li>• Daftar anomali lain: {anomalyDashboardSummary.topAnomalies.slice(1, 4).map(([name, count]) => `${name} (${count})`).join(", ") || "-"}</li>
+                          <li>• Kecamatan paling banyak muncul: {anomalyDashboardSummary.topDistricts[0]?.[0] || "-"} ({anomalyDashboardSummary.topDistricts[0]?.[1] || 0})</li>
+                          <li>• Prioritaskan tindak lanjut yang masih belum selesai dan pantau link Fasih untuk verifikasi cepat.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ) : activeAnomaliTab === "usaha" ? (
+                  <AnomaliTable
+                    data={anomaliUsahaData}
+                    loading={anomaliUsahaLoading}
+                    title="Mikro Anomali Usaha"
+                  />
+                ) : (
+                  <AnomaliTable
+                    data={anomaliKeluargaData}
+                    loading={anomaliKeluargaLoading}
+                    title="Mikro Anomali Keluarga"
+                  />
                 )}
               </CardContent>
             </Card>

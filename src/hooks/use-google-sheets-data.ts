@@ -5,9 +5,10 @@ interface UseGoogleSheetsDataProps {
   spreadsheetId: string;
   sheetName: string;
   range?: string;
+  mode?: "rows" | "single-cell";
 }
 
-export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range }: UseGoogleSheetsDataProps) => {
+export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "rows" }: UseGoogleSheetsDataProps) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,11 +28,52 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range }: UseGoog
         if (error) throw error;
 
         const rows = response?.values || [];
-        
-        // Convert to objects with header keys, preserving duplicate headers as numbered keys
-        if (rows.length > 1) {
-          const headers = rows[0];
-          const dataRows = rows.slice(1).map((row: any[]) => {
+
+        if (mode === "single-cell") {
+          const firstCell = Array.isArray(rows[0]) ? rows[0][0] : rows[0];
+          setData(firstCell !== undefined && firstCell !== null && firstCell !== "" ? [String(firstCell)] : []);
+          return;
+        }
+
+        const isHeaderRow = (row: any[]): boolean => {
+          const headerText = row.map((cell) => String(cell || '').trim().toLowerCase());
+          const headerCandidates = [
+            'nama',
+            'kode',
+            'kecamatan',
+            'desa',
+            'sls',
+            'link',
+            'tindak',
+            'ppl',
+            'pml',
+            'assignment',
+            'provinsi'
+          ];
+          const matches = headerText.reduce((count, value) => {
+            if (!value) return count;
+            return headerCandidates.some((candidate) => value.includes(candidate)) ? count + 1 : count;
+          }, 0);
+          return matches >= 4;
+        };
+
+        // Detect actual header row if sheet contains title / metadata rows above it
+        let headerRowIndex = 0;
+        if (rows.length > 1 && !isHeaderRow(rows[0])) {
+          const preferredHeaderRowIndex = rows.length > 3 ? 3 : 0;
+          if (rows[preferredHeaderRowIndex] && isHeaderRow(rows[preferredHeaderRowIndex])) {
+            headerRowIndex = preferredHeaderRowIndex;
+          } else {
+            headerRowIndex = rows.findIndex((row: any[], index: number) => index >= 3 && isHeaderRow(row));
+            if (headerRowIndex === -1) {
+              headerRowIndex = 0;
+            }
+          }
+        }
+
+        if (rows.length > headerRowIndex + 2) {
+          const headers = rows[headerRowIndex];
+          const dataRows = rows.slice(headerRowIndex + 2).map((row: any[]) => {
             const obj: any = {};
             const headerCount: Record<string, number> = {};
 
