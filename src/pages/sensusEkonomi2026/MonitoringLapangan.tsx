@@ -823,6 +823,53 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
   XLSX.writeFile(wb, `Data_PML_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
 
+// Export TA (Tenaga Ahli) data to Excel
+const exportTAToExcel = (
+  data: (AggregatedData & { kategori: string })[],
+  taLabel: string,
+  fileSuffix: string
+) => {
+  const today = new Date();
+  const daysElapsed = Math.floor(
+    (today.getTime() - SCHEDULE_START.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
+  const elapsedDays = Math.max(1, Math.min(daysElapsed, TOTAL_DAYS));
+
+  const aoa: (string | number)[][] = [
+    [`DATA PPL AFIRMASI TA - ${taLabel}`],
+    ['Tanggal Export', new Date().toLocaleString('id-ID')],
+    ['Total Baris', data.length],
+    [],
+    ['No', 'Nama PPL', 'Email PPL', 'Kecamatan', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Total Aktivitas', 'Rata-rata Harian (aktivitas/hari)'],
+    ...data.map((row, idx) => {
+      const total = row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve;
+      const dailyAverage = Math.round((total / elapsedDays) * 100) / 100;
+      return [
+        idx + 1,
+        row.nama_ppl,
+        row.email_ppl || '',
+        row.kecamatan,
+        row.nama_pml,
+        row.draft,
+        row.jumlah_submit,
+        row.jumlah_approve,
+        row.jumlah_reject,
+        total,
+        dailyAverage,
+      ];
+    }),
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [
+    { wch: 5 }, { wch: 22 }, { wch: 26 }, { wch: 18 }, { wch: 22 },
+    { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 26 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'TA');
+  XLSX.writeFile(wb, `Data_TA_${fileSuffix}_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
 export function MonitoringLapangan() {
   const { user } = useAuth();
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
@@ -887,6 +934,10 @@ export function MonitoringLapangan() {
     const allRows = [...anomaliUsahaData, ...anomaliKeluargaData];
     const anomalyCounts = new Map<string, number>();
     const districtCounts = new Map<string, number>();
+    const pplCounts = new Map<string, number>();
+    const pmlCounts = new Map<string, number>();
+    const desaSet = new Set<string>();
+    let withLink = 0;
 
     allRows.forEach((row) => {
       const anomalyName = String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim();
@@ -898,11 +949,31 @@ export function MonitoringLapangan() {
       if (districtName) {
         districtCounts.set(districtName, (districtCounts.get(districtName) || 0) + 1);
       }
+
+      const ppl = String(getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl"], "")).trim();
+      if (ppl) pplCounts.set(ppl, (pplCounts.get(ppl) || 0) + 1);
+
+      const pml = String(getColumnValue(row, "pml", ["pml", "nama pml", "nama_pml"], "")).trim();
+      if (pml) pmlCounts.set(pml, (pmlCounts.get(pml) || 0) + 1);
+
+      const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
+      if (desa) desaSet.add(`${districtName}|${desa}`);
+
+      const link = String(getColumnValue(row, "link_fasih", ["link fasih", "linkfasih", "link_fasih", "url fasih", "link", "url"], "")).trim();
+      if (link) withLink += 1;
     });
 
     return {
       topAnomalies: [...anomalyCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
       topDistricts: [...districtCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      topPPL: [...pplCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      topPML: [...pmlCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      totalKecamatan: districtCounts.size,
+      totalDesa: desaSet.size,
+      totalPPL: pplCounts.size,
+      totalPML: pmlCounts.size,
+      withLink,
+      total: allRows.length,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
   const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "pemeriksaan">("pemeriksaan");
@@ -2236,7 +2307,7 @@ export function MonitoringLapangan() {
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
-                    {isPPK && aggregatedData.rows.length > 0 && (
+                    {isLoggedIn && aggregatedData.rows.length > 0 && (
                       <button
                         onClick={() => exportPPLToExcel(aggregatedData.rows)}
                         className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
@@ -2673,20 +2744,38 @@ export function MonitoringLapangan() {
               </CardHeader>
               <CardContent>
                 {activeAnomaliTab === "dashboard" ? (
-                  <div className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                        <p className="text-sm text-amber-700">Total Anomali Usaha</p>
-                        <p className="mt-2 text-2xl font-semibold text-amber-900">{anomaliUsahaData.length}</p>
-                      </div>
-                      <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-                        <p className="text-sm text-rose-700">Total Anomali Keluarga</p>
-                        <p className="mt-2 text-2xl font-semibold text-rose-900">{anomaliKeluargaData.length}</p>
-                      </div>
-                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                        <p className="text-sm text-emerald-700">Total Potensi Tindak Lanjut</p>
-                        <p className="mt-2 text-2xl font-semibold text-emerald-900">{anomaliUsahaData.length + anomaliKeluargaData.length}</p>
-                      </div>
+                  <div className="space-y-5">
+                    {/* KPI Strip */}
+                    <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+                      {(() => {
+                        const total = anomaliUsahaData.length + anomaliKeluargaData.length;
+                        const pctUsaha = total ? Math.round((anomaliUsahaData.length / total) * 1000) / 10 : 0;
+                        const pctKel = total ? Math.round((anomaliKeluargaData.length / total) * 1000) / 10 : 0;
+                        const linkPct = total ? Math.round((anomalyDashboardSummary.withLink / total) * 1000) / 10 : 0;
+                        const kpis = [
+                          { label: "Total Anomali", value: total, sub: `${anomaliUsahaData.length} usaha + ${anomaliKeluargaData.length} keluarga`, color: "slate" },
+                          { label: "Anomali Usaha", value: anomaliUsahaData.length, sub: `${pctUsaha}% dari total`, color: "amber" },
+                          { label: "Anomali Keluarga", value: anomaliKeluargaData.length, sub: `${pctKel}% dari total`, color: "rose" },
+                          { label: "Kecamatan Terdampak", value: anomalyDashboardSummary.totalKecamatan, sub: `${anomalyDashboardSummary.totalDesa} desa/kel`, color: "blue" },
+                          { label: "Petugas Terdampak", value: anomalyDashboardSummary.totalPPL, sub: `${anomalyDashboardSummary.totalPML} PML`, color: "indigo" },
+                          { label: "Terverifikasi Link", value: anomalyDashboardSummary.withLink, sub: `${linkPct}% memiliki link Fasih`, color: "emerald" },
+                        ];
+                        const palette: Record<string, string> = {
+                          slate: "border-slate-200 bg-slate-50 text-slate-800",
+                          amber: "border-amber-200 bg-amber-50 text-amber-900",
+                          rose: "border-rose-200 bg-rose-50 text-rose-900",
+                          blue: "border-blue-200 bg-blue-50 text-blue-900",
+                          indigo: "border-indigo-200 bg-indigo-50 text-indigo-900",
+                          emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
+                        };
+                        return kpis.map((k) => (
+                          <div key={k.label} className={`rounded-xl border p-3 ${palette[k.color]}`}>
+                            <p className="text-xs font-medium opacity-80">{k.label}</p>
+                            <p className="mt-1 text-2xl font-bold leading-none">{k.value.toLocaleString("id-ID")}</p>
+                            <p className="mt-1 text-[11px] opacity-70">{k.sub}</p>
+                          </div>
+                        ));
+                      })()}
                     </div>
 
                     <div className="grid gap-4 xl:grid-cols-3">
@@ -2779,14 +2868,37 @@ export function MonitoringLapangan() {
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
-                        <h4 className="font-semibold text-slate-800">Insight Ringkas</h4>
-                        <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                          <li>• Nama anomali terbanyak: {anomalyDashboardSummary.topAnomalies[0]?.[0] || "-"} ({anomalyDashboardSummary.topAnomalies[0]?.[1] || 0})</li>
-                          <li>• Daftar anomali lain: {anomalyDashboardSummary.topAnomalies.slice(1, 4).map(([name, count]) => `${name} (${count})`).join(", ") || "-"}</li>
-                          <li>• Kecamatan paling banyak muncul: {anomalyDashboardSummary.topDistricts[0]?.[0] || "-"} ({anomalyDashboardSummary.topDistricts[0]?.[1] || 0})</li>
-                          <li>• Prioritaskan tindak lanjut yang masih belum selesai dan pantau link Fasih untuk verifikasi cepat.</li>
-                        </ul>
+                      <div className="space-y-4">
+                        {[
+                          { title: "Top Jenis Anomali", data: anomalyDashboardSummary.topAnomalies, accent: "bg-amber-500" },
+                          { title: "Top Kecamatan", data: anomalyDashboardSummary.topDistricts, accent: "bg-blue-500" },
+                          { title: "Top PPL Terdampak", data: anomalyDashboardSummary.topPPL, accent: "bg-indigo-500" },
+                          { title: "Top PML Terdampak", data: anomalyDashboardSummary.topPML, accent: "bg-rose-500" },
+                        ].map((section) => {
+                          const max = section.data[0]?.[1] || 1;
+                          return (
+                            <div key={section.title} className="rounded-xl border border-slate-200 bg-white p-4">
+                              <h4 className="text-sm font-semibold text-slate-800">{section.title}</h4>
+                              {section.data.length === 0 ? (
+                                <p className="mt-2 text-xs text-slate-400">Tidak ada data</p>
+                              ) : (
+                                <ul className="mt-2 space-y-2">
+                                  {section.data.map(([name, count]) => (
+                                    <li key={String(name)} className="text-xs">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="truncate text-slate-700" title={String(name)}>{String(name)}</span>
+                                        <span className="font-semibold text-slate-900">{count}</span>
+                                      </div>
+                                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div className={`h-full ${section.accent}`} style={{ width: `${(Number(count) / Number(max)) * 100}%` }} />
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -2820,7 +2932,7 @@ export function MonitoringLapangan() {
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
-                    {isPPK && aggregatedData.rows.length > 0 && (
+                    {isLoggedIn && aggregatedData.rows.length > 0 && (
                       <button
                         onClick={() => exportPMLToExcel(aggregatedData.rows)}
                         className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
@@ -3145,6 +3257,15 @@ export function MonitoringLapangan() {
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
+                    {isLoggedIn && afirmasiPPLData.ratih.length > 0 && (
+                      <button
+                        onClick={() => exportTAToExcel(afirmasiPPLData.ratih, "Ratih Megasari Singkarru, MSc.", "Ratih_Megasari")}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Excel
+                      </button>
+                    )}
                     <div className="relative flex-1 md:max-w-xs">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input
@@ -3340,6 +3461,15 @@ export function MonitoringLapangan() {
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
+                    {isLoggedIn && afirmasiPPLData.ledya.length > 0 && (
+                      <button
+                        onClick={() => exportTAToExcel(afirmasiPPLData.ledya, "Hj. Ledia Hanifa A., S.Si., M.Psi.T.", "Ledia_Hanifa")}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Excel
+                      </button>
+                    )}
                     <div className="relative flex-1 md:max-w-xs">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input
