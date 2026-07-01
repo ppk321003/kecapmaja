@@ -912,6 +912,7 @@ export function MonitoringLapangan() {
   const [afirmasiSearchTerm, setAfirmasiSearchTerm] = useState("");
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
+  const [expandedDistricts, setExpandedDistricts] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "dailyavg">("dailyavg");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -2803,6 +2804,7 @@ export function MonitoringLapangan() {
                             <TableBody>
                               {(() => {
                                 const districtMap = new Map<string, { kecamatan: string; usaha: number; keluarga: number; total: number; desaSet: Set<string>; pplSet: Set<string>; pmlSet: Set<string>; linkCount: number; }>();
+                                const districtPMLCounts = new Map<string, Map<string, number>>();
                                 const addRows = (rows: any[], type: "usaha" | "keluarga") => {
                                   rows.forEach((row) => {
                                     const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
@@ -2818,7 +2820,12 @@ export function MonitoringLapangan() {
                                     const ppl = String(getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl"], "")).trim();
                                     if (ppl) bucket.pplSet.add(ppl);
                                     const pml = String(getColumnValue(row, "pml", ["pml", "nama pml", "nama_pml"], "")).trim();
-                                    if (pml) bucket.pmlSet.add(pml);
+                                    if (pml) {
+                                      bucket.pmlSet.add(pml);
+                                      const pmlMap = districtPMLCounts.get(kecamatan) || new Map<string, number>();
+                                      pmlMap.set(pml, (pmlMap.get(pml) || 0) + 1);
+                                      districtPMLCounts.set(kecamatan, pmlMap);
+                                    }
                                     const link = String(getColumnValue(row, "link_fasih", ["link fasih", "linkfasih", "link_fasih", "url fasih", "link", "url"], "")).trim();
                                     if (link) bucket.linkCount += 1;
                                   });
@@ -2838,18 +2845,67 @@ export function MonitoringLapangan() {
                                 }, { usaha: 0, keluarga: 0, total: 0, desaCount: 0, pplCount: 0, pmlCount: 0, linkCount: 0 });
                                 return (
                                   <>
-                                    {districtRows.map((item) => (
-                                      <TableRow key={item.kecamatan} className="even:bg-slate-50">
-                                        <TableCell className="font-medium text-slate-900">{item.kecamatan}</TableCell>
-                                        <TableCell className="text-right text-slate-700">{item.usaha}</TableCell>
-                                        <TableCell className="text-right text-slate-700">{item.keluarga}</TableCell>
-                                        <TableCell className="text-right font-semibold text-slate-900">{item.total}</TableCell>
-                                        <TableCell className="text-right text-slate-700">{item.desaSet.size}</TableCell>
-                                        <TableCell className="text-right text-slate-700">{item.pplSet.size}</TableCell>
-                                        <TableCell className="text-right text-slate-700">{item.pmlSet.size}</TableCell>
-                                        <TableCell className="text-right text-slate-700">{item.linkCount}</TableCell>
-                                      </TableRow>
-                                    ))}
+                                    {districtRows.map((item) => {
+                                      const isExpanded = expandedDistricts.has(item.kecamatan);
+                                      const pmlCounts = districtPMLCounts.get(item.kecamatan) || new Map<string, number>();
+                                      const pmlDetails = Array.from(pmlCounts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+                                      return (
+                                        <React.Fragment key={item.kecamatan}>
+                                          <TableRow className="even:bg-slate-50">
+                                            <TableCell className="font-medium text-slate-900">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setExpandedDistricts((prev) => {
+                                                    const next = new Set(prev);
+                                                    if (next.has(item.kecamatan)) {
+                                                      next.delete(item.kecamatan);
+                                                    } else {
+                                                      next.add(item.kecamatan);
+                                                    }
+                                                    return next;
+                                                  });
+                                                }}
+                                                className="inline-flex items-center gap-2 text-left text-slate-900 hover:text-blue-600"
+                                              >
+                                                <span className="text-sm font-semibold">{isExpanded ? "▼" : "▶"}</span>
+                                                <span>{item.kecamatan}</span>
+                                              </button>
+                                            </TableCell>
+                                            <TableCell className="text-right text-slate-700">{item.usaha}</TableCell>
+                                            <TableCell className="text-right text-slate-700">{item.keluarga}</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900">{item.total}</TableCell>
+                                            <TableCell className="text-right text-slate-700">{item.desaSet.size}</TableCell>
+                                            <TableCell className="text-right text-slate-700">{item.pplSet.size}</TableCell>
+                                            <TableCell className="text-right text-slate-700">{item.pmlSet.size}</TableCell>
+                                            <TableCell className="text-right text-slate-700">{item.linkCount}</TableCell>
+                                          </TableRow>
+                                          {isExpanded && (
+                                            <TableRow className="bg-slate-50">
+                                              <TableCell colSpan={8} className="px-4 py-3 bg-slate-100">
+                                                <div className="space-y-2">
+                                                  <div className="text-sm font-semibold text-slate-800">
+                                                    Detail PML di {item.kecamatan}
+                                                  </div>
+                                                  {pmlDetails.length > 0 ? (
+                                                    <div className="grid gap-2 sm:grid-cols-2">
+                                                      {pmlDetails.map(([pmlName, count]) => (
+                                                        <div key={pmlName} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                                                          <div className="font-medium text-slate-900">{pmlName}</div>
+                                                          <div className="text-slate-600">{count} anomali</div>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  ) : (
+                                                    <div className="text-sm text-slate-600">Tidak ada data PML yang tercatat untuk kecamatan ini.</div>
+                                                  )}
+                                                </div>
+                                              </TableCell>
+                                            </TableRow>
+                                          )}
+                                        </React.Fragment>
+                                      );
+                                    })}
                                     <TableRow className="bg-slate-100 font-semibold">
                                       <TableCell className="text-slate-900">Jumlah</TableCell>
                                       <TableCell className="text-right text-slate-900">{totals.usaha}</TableCell>
