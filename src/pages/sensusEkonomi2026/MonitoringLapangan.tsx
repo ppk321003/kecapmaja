@@ -1313,11 +1313,11 @@ export function MonitoringLapangan() {
   const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "pemeriksaan">("pemeriksaan");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
-  const [kecamatanPercentageComponents, setKecamatanPercentageComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean}>(
-    { draft: true, submit: true, approve: true, reject: true }
+  const [kecamatanPercentageComponents, setKecamatanPercentageComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean, revoke: boolean}>(
+    { draft: true, submit: true, approve: true, reject: true, revoke: true }
   );
-  const [kecamatanActivityComponents, setKecamatanActivityComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean}>(
-    { draft: true, submit: true, approve: true, reject: true }
+  const [kecamatanActivityComponents, setKecamatanActivityComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean, revoke: boolean}>(
+    { draft: true, submit: true, approve: true, reject: true, revoke: true }
   );
 
   // Process and aggregate data
