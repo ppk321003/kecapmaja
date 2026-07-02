@@ -3006,7 +3006,7 @@ export function MonitoringLapangan() {
                                       ))
                                     ) : (
                                       <TableRow className="bg-amber-50 border-b">
-                                        <TableCell colSpan={12} className="px-4 py-3 text-sm text-amber-700 italic">
+                                         <TableCell colSpan={13} className="px-4 py-3 text-sm text-amber-700 italic">
                                           ⚠️ Tidak ada data dari sheet "Semua Users" untuk: {row.nama_ppl}
                                         </TableCell>
                                       </TableRow>
