@@ -1091,7 +1091,7 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
   }, [totalPages]);
 
   return (
-    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-sm xl:col-span-3">
+    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-sm md:col-span-2 lg:col-span-3 xl:col-span-3">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h4 className="text-lg font-semibold text-rose-900">🚨 PPL dengan Anomali Belum Ditindaklanjuti</h4>

@@ -68,9 +68,17 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
 
         if (rows.length > headerRowIndex + 1) {
           const headers = rows[headerRowIndex];
-          // Use headerRowIndex + 1 so we include the row immediately after the header.
-          // Previously this used +2 which skipped the first data row (off-by-one).
-          const dataRows = rows.slice(headerRowIndex + 1).map((row: any[]) => {
+          // Default: use the row immediately after the detected header as data start.
+          // Some sheets include an extra sub-header/notes row after the header (e.g. Mikro Anomali Usaha/Keluarga),
+          // so allow per-sheet extra-skip here.
+          const EXTRA_SKIP_FOR_SHEETS: Record<string, number> = {
+            "Mikro Anomali Usaha": 1,
+            "Mikro Anomali Keluarga": 1,
+          };
+
+          const extraSkip = EXTRA_SKIP_FOR_SHEETS[sheetName] || 0;
+          const dataStartIndex = headerRowIndex + 1 + extraSkip;
+          const dataRows = rows.slice(dataStartIndex).map((row: any[]) => {
             const obj: any = {};
             const headerCount: Record<string, number> = {};
 

@@ -133,11 +133,11 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
     setCurrentPage(1);
   }, [searchTerm, entries]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / 20));
-  const paginatedEntries = filteredEntries.slice((currentPage - 1) * 20, currentPage * 20);
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / 26));
+  const paginatedEntries = filteredEntries.slice((currentPage - 1) * 26, currentPage * 26);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm h-full">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-900">PPL dengan Anomali Belum Ditindaklanjuti</p>
@@ -158,21 +158,27 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50">
-              <TableHead className="font-semibold text-slate-700">PPL</TableHead>
-              <TableHead className="text-right font-semibold text-slate-700">Baris Anomali</TableHead>
-              <TableHead className="text-right font-semibold text-slate-700">Sudah Tindak Lanjut</TableHead>
-              <TableHead className="text-right font-semibold text-slate-700">Kecamatan</TableHead>
+              <TableHead className="font-semibold text-slate-700">Nama PPL</TableHead>
+              <TableHead className="font-semibold text-slate-700">Kecamatan</TableHead>
+              <TableHead className="text-right font-semibold text-slate-700">Anomali</TableHead>
+              <TableHead className="text-right font-semibold text-slate-700">Tindak Lanjut</TableHead>
+              <TableHead className="text-right font-semibold text-slate-700">%</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedEntries.map((entry) => (
-              <TableRow key={entry.name} className="even:bg-slate-50">
-                <TableCell className="font-medium text-slate-900">{entry.name}</TableCell>
-                <TableCell className="text-right text-slate-700">{entry.pendingCount}</TableCell>
-                <TableCell className="text-right text-slate-700">{entry.completed}</TableCell>
-                <TableCell className="text-right text-slate-700">{Array.from(entry.districts).join(", ")}</TableCell>
-              </TableRow>
-            ))}
+            {paginatedEntries.map((entry) => {
+              const totalAnomalies = entry.pendingCount + entry.completed;
+              const completedPct = totalAnomalies ? Math.round((entry.completed / totalAnomalies) * 1000) / 10 : 0;
+              return (
+                <TableRow key={entry.name} className="even:bg-slate-50">
+                  <TableCell className="font-medium text-slate-900">{entry.name}</TableCell>
+                  <TableCell className="text-slate-700">{Array.from(entry.districts).join(", ")}</TableCell>
+                  <TableCell className="text-right text-slate-700">{entry.pendingCount}</TableCell>
+                  <TableCell className="text-right text-slate-700">{entry.completed}</TableCell>
+                  <TableCell className="text-right text-slate-700">{completedPct.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -661,8 +667,11 @@ export default function MonitoringLapanganAnomaliTab({
       if (isFilled(catatanPetugas)) completedAnomalyCount += 1;
     });
 
+    const sortedAnomalies = [...anomalyCounts.entries()].sort((a, b) => b[1] - a[1]);
+
     return {
-      topAnomalies: [...anomalyCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+      allAnomalies: sortedAnomalies,
+      topAnomalies: sortedAnomalies.slice(0, 5),
       topDistricts: [...districtCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
       topPPL: [...pplCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
       topPML: [...pmlCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
@@ -756,8 +765,8 @@ export default function MonitoringLapanganAnomaliTab({
               })()}
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 xl:col-span-2">
+            <div className="grid gap-4 lg:grid-cols-2 items-stretch">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 h-full">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h4 className="font-semibold text-slate-800">Detail per Kecamatan</h4>
@@ -772,7 +781,7 @@ export default function MonitoringLapanganAnomaliTab({
                         <TableHead className="text-right text-slate-700 font-semibold">Usaha</TableHead>
                         <TableHead className="text-right text-slate-700 font-semibold">Keluarga</TableHead>
                         <TableHead className="text-right text-slate-700 font-semibold">Total</TableHead>
-                        <TableHead className="text-right text-slate-700 font-semibold">Sudah Tindak Lanjut</TableHead>
+                        <TableHead className="text-right text-slate-700 font-semibold">Tindak Lanjut</TableHead>
                         <TableHead className="text-right text-slate-700 font-semibold">%</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -949,45 +958,77 @@ export default function MonitoringLapanganAnomaliTab({
                   </Table>
                 </div>
               </div>
-
-              <div className="space-y-4">
-                {[
-                  { title: "Top Jenis Anomali", data: anomalyDashboardSummary.topAnomalies, accent: "bg-amber-500" },
-                  { title: "Top Kecamatan", data: anomalyDashboardSummary.topDistricts, accent: "bg-blue-500" },
-                  { title: "Top PPL Terdampak", data: anomalyDashboardSummary.topPPL, accent: "bg-indigo-500" },
-                  { title: "Top PML Terdampak", data: anomalyDashboardSummary.topPML, accent: "bg-rose-500" },
-                ].map((section) => {
-                  const max = section.data[0]?.[1] || 1;
-                  return (
-                    <div key={section.title} className="rounded-xl border border-slate-200 bg-white p-4">
-                      <h4 className="text-sm font-semibold text-slate-800">{section.title}</h4>
-                      {section.data.length === 0 ? (
-                        <p className="mt-2 text-xs text-slate-400">Tidak ada data</p>
-                      ) : (
-                        <ul className="mt-2 space-y-2">
-                          {section.data.map(([name, count]) => (
-                            <li key={String(name)} className="text-xs">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="truncate text-slate-700" title={String(name)}>{String(name)}</span>
-                                <span className="font-semibold text-slate-900">{count}</span>
-                              </div>
-                              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                                <div className={`h-full ${section.accent}`} style={{ width: `${(Number(count) / Number(max)) * 100}%` }} />
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
               <PendingPPLCard
                 entries={pendingAnomalyPPL.entries}
                 totalPPL={pendingAnomalyPPL.totalPPL}
                 totalRows={pendingAnomalyPPL.totalRows}
               />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 mt-4">
+              {[
+                { title: "Top PPL Terdampak", data: anomalyDashboardSummary.topPPL, accent: "bg-indigo-500" },
+                { title: "Top PML Terdampak", data: anomalyDashboardSummary.topPML, accent: "bg-rose-500" },
+              ].map((section) => {
+                const max = section.data[0]?.[1] || 1;
+                return (
+                  <div key={section.title} className="rounded-xl border border-slate-200 bg-white p-4 h-full">
+                    <h4 className="text-sm font-semibold text-slate-800">{section.title}</h4>
+                    {section.data.length === 0 ? (
+                      <p className="mt-2 text-xs text-slate-400">Tidak ada data</p>
+                    ) : (
+                      <ul className="mt-2 space-y-2">
+                        {section.data.map(([name, count]) => (
+                          <li key={String(name)} className="text-xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate text-slate-700" title={String(name)}>{String(name)}</span>
+                              <span className="font-semibold text-slate-900">{count}</span>
+                            </div>
+                            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                              <div className={`h-full ${section.accent}`} style={{ width: `${(Number(count) / Number(max)) * 100}%` }} />
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-base font-semibold text-slate-900">Jenis Anomali</h4>
+                  <p className="text-sm text-slate-500">Seluruh jenis anomali dan jumlah kemunculannya.</p>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                  <span>{anomalyDashboardSummary.allAnomalies.length} jenis</span>
+                  <span className="text-slate-400">·</span>
+                  <span>{anomalyDashboardSummary.allAnomalies.reduce((sum, [, count]) => sum + count, 0)} anomali</span>
+                </div>
+              </div>
+
+              {anomalyDashboardSummary.allAnomalies.length === 0 ? (
+                <p className="mt-4 text-xs text-slate-400">Tidak ada data</p>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {anomalyDashboardSummary.allAnomalies.map(([name, count]) => {
+                    const max = anomalyDashboardSummary.allAnomalies[0]?.[1] || 1;
+                    return (
+                      <div key={String(name)} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="truncate text-sm font-medium text-slate-800" title={String(name)}>{String(name)}</span>
+                          <span className="text-sm font-semibold text-slate-900">{count.toLocaleString("id-ID")}</span>
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                          <div className="h-full rounded-full bg-amber-500" style={{ width: `${(count / max) * 100}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         ) : activeAnomaliTab === "usaha" ? (
