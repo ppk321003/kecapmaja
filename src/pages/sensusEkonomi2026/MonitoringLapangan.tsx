@@ -3850,6 +3850,9 @@ export function MonitoringLapangan() {
                               Reject
                             </TableHead>
                             <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Revoke
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
                               Submit
                             </TableHead>
                             <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
@@ -3888,6 +3891,9 @@ export function MonitoringLapangan() {
                                 </TableCell>
                                 <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
                                   {item.jumlah_reject.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-orange-700 px-4 py-3">
+                                  {(item.jumlah_revoke || 0).toLocaleString("id-ID")}
                                 </TableCell>
                                 <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                   {item.jumlah_submit.toLocaleString("id-ID")}
@@ -4054,6 +4060,9 @@ export function MonitoringLapangan() {
                               Reject
                             </TableHead>
                             <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              Revoke
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
                               Submit
                             </TableHead>
                             <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
@@ -4092,6 +4101,9 @@ export function MonitoringLapangan() {
                                 </TableCell>
                                 <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
                                   {item.jumlah_reject.toLocaleString("id-ID")}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-orange-700 px-4 py-3">
+                                  {(item.jumlah_revoke || 0).toLocaleString("id-ID")}
                                 </TableCell>
                                 <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                   {item.jumlah_submit.toLocaleString("id-ID")}
