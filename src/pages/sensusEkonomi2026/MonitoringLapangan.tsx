@@ -865,7 +865,7 @@ const exportPPLToExcel = (data: AggregatedData[]) => {
     ['No', 'Kecamatan', 'Nama PPL', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Revoke', 'Total Assignment', 'Persentase Submit', 'Rata-rata Submit+Draft/Harian'],
     ...data.map((row, idx) => {
       const percentage = row.total_assignments > 0 ? ((row.jumlah_submit / row.total_assignments) * 100).toFixed(2) : '0.00';
-      const dailyAverage = (row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, elapsedDays);
+      const dailyAverage = (row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve + (row.jumlah_revoke || 0)) / Math.max(1, elapsedDays);
       const dailyAverageFormatted = Math.round(dailyAverage * 100) / 100;
       return [
         idx + 1,
@@ -1022,7 +1022,7 @@ const exportTAToExcel = (
     [],
     ['No', 'Nama PPL', 'Email PPL', 'Kecamatan', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Revoke', 'Total Aktivitas', 'Rata-rata Harian (aktivitas/hari)'],
     ...data.map((row, idx) => {
-      const total = row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve;
+      const total = row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve + (row.jumlah_revoke || 0);
       const dailyAverage = Math.round((total / elapsedDays) * 100) / 100;
       return [
         idx + 1,
@@ -1211,7 +1211,7 @@ export function MonitoringLapangan() {
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
   const [expandedDistricts, setExpandedDistricts] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "dailyavg">("dailyavg");
+  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg">("dailyavg");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
   useEffect(() => {
@@ -1318,7 +1318,7 @@ export function MonitoringLapangan() {
       total: allRows.length,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
-  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "pemeriksaan">("pemeriksaan");
+  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "revoke" | "pemeriksaan">("pemeriksaan");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
   const [kecamatanPercentageComponents, setKecamatanPercentageComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean, revoke: boolean}>(
@@ -1402,12 +1402,12 @@ export function MonitoringLapangan() {
       // Calculate statistics with UNIQUE kecamatan count
       const totalKecamatan = kecamatanSet.size; // Unique count, not row count
       // Total Pendataan = Draft + Reject + Approve + Submit
-      const totalActivity = rows.reduce((sum, row) => sum + (row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject), 0);
+      const totalActivity = rows.reduce((sum, row) => sum + (row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)), 0);
       const totalSubmit = rows.reduce((sum, row) => sum + row.jumlah_submit, 0);
       const averageSubmit = rows.length > 0 ? Math.round(totalActivity / rows.length) : 0;
 
       const sortedByActivity = [...rows].sort(
-        (a, b) => (b.draft + b.jumlah_submit + b.jumlah_approve + b.jumlah_reject) - (a.draft + a.jumlah_submit + a.jumlah_approve + a.jumlah_reject)
+        (a, b) => (b.draft + b.jumlah_submit + b.jumlah_approve + b.jumlah_reject + (b.jumlah_revoke || 0)) - (a.draft + a.jumlah_submit + a.jumlah_approve + a.jumlah_reject + (a.jumlah_revoke || 0))
       );
       
       // Hitung Performa Terbaik: Rata-rata (Submit+Reject+Approve)/hari/PPL
@@ -1415,7 +1415,7 @@ export function MonitoringLapangan() {
       const kecamatanPerformaMap = new Map<string, { totalActivity: number; totalRejectApprove: number; countPPL: number; averageActivity: number; averagePerHari: number }>();
       rows.forEach((row) => {
         const current = kecamatanPerformaMap.get(row.kecamatan) || { totalActivity: 0, totalRejectApprove: 0, countPPL: 0, averageActivity: 0, averagePerHari: 0 };
-        current.totalActivity += (row.jumlah_submit + row.jumlah_approve + row.jumlah_reject);
+        current.totalActivity += (row.jumlah_submit + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0));
         current.totalRejectApprove += (row.jumlah_approve + row.jumlah_reject);
         current.countPPL += 1;
         current.averageActivity = Math.round(current.totalActivity / current.countPPL);
@@ -1430,7 +1430,7 @@ export function MonitoringLapangan() {
         .reverse()
         .map((row) => ({
           name: row.kecamatan,
-          value: row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject,
+          value: row.draft + row.jumlah_submit + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0),
         }));
 
       // Get daysElapsed for chart calculations
@@ -1611,25 +1611,28 @@ export function MonitoringLapangan() {
       // Chart data for PML Top 10 by Pemeriksaan % - use same calculation as table
       // Group PPL by PML to match table calculation
       // Use combination of nama_pml + kecamatan as unique key
-      const pmlChartMap = new Map<string, { totalSubmit: number; totalApprove: number; totalReject: number; nama_pml: string }>();
+      const pmlChartMap = new Map<string, { totalDraft: number; totalSubmit: number; totalApprove: number; totalReject: number; totalRevoke: number; nama_pml: string }>();
       rows.forEach(ppl => {
         if (ppl.nama_pml) {
           const key = `${ppl.nama_pml}|${ppl.kecamatan}`;
           if (!pmlChartMap.has(key)) {
-            pmlChartMap.set(key, { totalSubmit: 0, totalApprove: 0, totalReject: 0, nama_pml: ppl.nama_pml });
+            pmlChartMap.set(key, { totalDraft: 0, totalSubmit: 0, totalApprove: 0, totalReject: 0, totalRevoke: 0, nama_pml: ppl.nama_pml });
           }
           const current = pmlChartMap.get(key)!;
+          current.totalDraft += (ppl.draft || 0);
           current.totalSubmit += ppl.jumlah_submit;
           current.totalApprove += ppl.jumlah_approve;
           current.totalReject += ppl.jumlah_reject;
+          current.totalRevoke += (ppl.jumlah_revoke || 0);
         }
       });
 
       const pmlWithPercentage = Array.from(pmlChartMap.entries()).map(([key, data]) => {
-        // Match table calculation: (Approve+Reject) / (Submit+Approve+Reject) * 100
-        const totalStatus = data.totalSubmit + data.totalApprove + data.totalReject;
+        // Use definition: Total Status = Draft + Approve + Reject + Revoke
+        // % Pemeriksaan = (Approve + Reject + Revoke) / Total Status
+        const totalStatus = (data.totalDraft || 0) + data.totalApprove + data.totalReject + (data.totalRevoke || 0);
         const pemeriksaanPercent = totalStatus > 0 
-          ? Math.round(((data.totalApprove + data.totalReject) / totalStatus) * 10000) / 100
+          ? Math.round(((data.totalApprove + data.totalReject + (data.totalRevoke || 0)) / totalStatus) * 10000) / 100
           : 0;
         // Extract kecamatan from key (format: nama_pml|kecamatan)
         const [, kecamatan] = key.split('|');
@@ -1678,7 +1681,7 @@ export function MonitoringLapangan() {
     return () => clearTimeout(handler);
   }, [pmlSearchTerm]);
 
-  const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "dailyavg") => {
+  const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -1701,7 +1704,10 @@ export function MonitoringLapangan() {
     }
 
     if (statusFilter !== "all") {
-      rows = rows.filter((row) => getScheduleStatus(row.jumlah_submit).status === statusFilter);
+      rows = rows.filter((row) => {
+        const totalAktivitas = (row.draft || 0) + (row.jumlah_reject || 0) + (row.jumlah_submit || 0) + (row.jumlah_approve || 0) + (row.jumlah_revoke || 0);
+        return getScheduleStatus(totalAktivitas).status === statusFilter;
+      });
     }
 
     rows.sort((a, b) => {
@@ -1716,8 +1722,8 @@ export function MonitoringLapangan() {
         compareValue = a.jumlah_approve - b.jumlah_approve;
       } else if (sortBy === "dailyavg") {
         const { daysElapsed: elapsedDays } = calculateDayProgress();
-        const avgA = (a.draft + a.jumlah_reject + a.jumlah_submit + a.jumlah_approve) / Math.max(1, elapsedDays);
-        const avgB = (b.draft + b.jumlah_reject + b.jumlah_submit + b.jumlah_approve) / Math.max(1, elapsedDays);
+        const avgA = (a.draft + a.jumlah_reject + a.jumlah_submit + a.jumlah_approve + (a.jumlah_revoke || 0)) / Math.max(1, elapsedDays);
+        const avgB = (b.draft + b.jumlah_reject + b.jumlah_submit + b.jumlah_approve + (b.jumlah_revoke || 0)) / Math.max(1, elapsedDays);
         compareValue = avgA - avgB;
       } else if (sortBy === "kecamatan") {
         compareValue = a.kecamatan.localeCompare(b.kecamatan);
@@ -1762,9 +1768,10 @@ export function MonitoringLapangan() {
     return pmlData.map((pml) => {
       const key = `${pml.nama_pml}|${pml.kecamatan}`;
       const pplUnderPML = pmlGroups.get(key) || [];
-      const actualSubmit = pplUnderPML.reduce((sum, ppl) => sum + ppl.jumlah_submit, 0);
-      const pemeriksaan = actualSubmit > 0 ? ((pml.jumlah_approve + pml.jumlah_reject) / actualSubmit) * 100 : 0;
-      return { ...pml, actualSubmit, pemeriksaan, pplUnderPML };
+      const actualDraft = pplUnderPML.reduce((sum, ppl) => sum + (ppl.draft || 0), 0);
+      const totalStatus = actualDraft + pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0);
+      const pemeriksaan = totalStatus > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalStatus) * 100 : 0;
+      return { ...pml, actualDraft, pemeriksaan, pplUnderPML } as any;
     });
   }, [pmlData, pmlGroups]);
 
@@ -1786,6 +1793,8 @@ export function MonitoringLapangan() {
       sorted.sort((a, b) => a.jumlah_approve - b.jumlah_approve);
     } else if (pmlSortBy === "reject") {
       sorted.sort((a, b) => a.jumlah_reject - b.jumlah_reject);
+    } else if (pmlSortBy === "revoke") {
+      sorted.sort((a, b) => (a.jumlah_revoke || 0) - (b.jumlah_revoke || 0));
     } else if (pmlSortBy === "pemeriksaan") {
       sorted.sort((a, b) => (a.pemeriksaan ?? 0) - (b.pemeriksaan ?? 0));
     }
@@ -2839,8 +2848,20 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              <div className="flex items-center justify-end gap-2">Revoke</div>
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "revoke") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("revoke");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Revoke
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -2883,7 +2904,7 @@ export function MonitoringLapangan() {
                         </TableHeader>
                         <TableBody>
                           {paginatedRows.map((row, index) => {
-                            const totalAktivitas = row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve;
+                            const totalAktivitas = row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve + (row.jumlah_revoke || 0);
                             const scheduleStatus = getScheduleStatus(totalAktivitas);
                             const StatusIcon = scheduleStatus.icon;
                             const isExpanded = expandedPPL.has(row.nama_ppl);
@@ -2939,7 +2960,7 @@ export function MonitoringLapangan() {
                                   </TableCell>
                                   <TableCell className="px-2 py-3" />
                                   <TableCell className="text-right text-slate-700 px-4 py-3">
-                                    {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} aktivitas/hari
+                                    {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve + (row.jumlah_revoke || 0)) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} aktivitas/hari
                                   </TableCell>
                                   <TableCell className="text-center px-4 py-3">
                                     <div className="flex items-center justify-center gap-1.5">
@@ -3056,14 +3077,14 @@ export function MonitoringLapangan() {
                             <TableCell className="text-right font-bold text-red-700 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_reject, 0).toLocaleString("id-ID")}
                             </TableCell>
-                            <TableCell className="text-right font-bold text-orange-700 px-4 py-3">
-                              {paginatedRows.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
-                            </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_submit, 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold text-green-700 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_approve, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-orange-700 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right text-slate-700 px-4 py-3 font-semibold">-</TableCell>
                             <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
@@ -3584,8 +3605,20 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              <div className="flex items-center justify-end gap-2">Revoke</div>
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "revoke") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("revoke");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Revoke
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -3609,7 +3642,7 @@ export function MonitoringLapangan() {
                             const isExpanded = expandedPML.has(`${row.nama_pml}|${row.kecamatan}`);
                             const key = `${row.nama_pml}|${row.kecamatan}`;
                             const pplUnderPML = pmlGroups.get(key) || [];
-                            const calculatedSubmitPPL = pplUnderPML.reduce((sum, ppl) => sum + ppl.jumlah_submit, 0);
+                            const calculatedDraftPPL = pplUnderPML.reduce((sum, ppl) => sum + (ppl.draft || 0), 0);
                             
                             return (
                               <React.Fragment key={`${row.nama_pml}-${row.kecamatan}`}>
@@ -3643,7 +3676,7 @@ export function MonitoringLapangan() {
                                     {row.kecamatan || "-"}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                    {(calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject).toLocaleString("id-ID")}
+                                    {(calculatedDraftPPL + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)).toLocaleString("id-ID")}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
                                     {row.jumlah_approve.toLocaleString("id-ID")}
@@ -3656,8 +3689,8 @@ export function MonitoringLapangan() {
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                     {(() => {
-                                      const totalStatus = calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject;
-                                      return totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject) / totalStatus) * 100).toFixed(2) : "0.00";
+                                      const totalStatus = calculatedDraftPPL + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0);
+                                      return totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
                                     })()} %
                                   </TableCell>
                                 </TableRow>
@@ -3677,7 +3710,7 @@ export function MonitoringLapangan() {
                                         Draft: {ppl.draft}
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
-                                        {(ppl.jumlah_submit + ppl.jumlah_approve + ppl.jumlah_reject).toLocaleString("id-ID")}
+                                        {( (ppl.draft || 0) + ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0) ).toLocaleString("id-ID")}
                                       </TableCell>
                                       <TableCell className="text-sm text-green-700 font-semibold px-4 py-2 text-right">
                                         {ppl.jumlah_approve.toLocaleString("id-ID")}
@@ -3690,8 +3723,8 @@ export function MonitoringLapangan() {
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">
                                         {(() => {
-                                          const totalStatus = ppl.jumlah_submit + ppl.jumlah_approve + ppl.jumlah_reject;
-                                          return totalStatus > 0 ? (((ppl.jumlah_approve + ppl.jumlah_reject) / totalStatus) * 100).toFixed(2) : "0.00";
+                                          const totalStatus = (ppl.draft || 0) + ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0);
+                                          return totalStatus > 0 ? (((ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
                                         })()} %
                                       </TableCell>
                                     </TableRow>
@@ -3709,8 +3742,8 @@ export function MonitoringLapangan() {
                               {paginatedRowsPML.reduce((sum, row) => {
                                 const key = `${row.nama_pml}|${row.kecamatan}`;
                                 const pplUnderPML = pmlGroups.get(key) || [];
-                                const calculatedSubmitPPL = pplUnderPML.reduce((s, ppl) => s + ppl.jumlah_submit, 0);
-                                return sum + calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject;
+                                const calculatedDraftPPL = pplUnderPML.reduce((s, ppl) => s + (ppl.draft || 0), 0);
+                                return sum + calculatedDraftPPL + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0);
                               }, 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold text-green-700 px-4 py-3">
@@ -3724,13 +3757,13 @@ export function MonitoringLapangan() {
                             </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {(() => {
-                                const avgPercentage = paginatedRowsPML.reduce((sum, row) => {
+                                  const avgPercentage = paginatedRowsPML.reduce((sum, row) => {
                                   const key = `${row.nama_pml}|${row.kecamatan}`;
                                   const pplUnderPML = pmlGroups.get(key) || [];
-                                  const calculatedSubmitPPL = pplUnderPML.reduce((s, ppl) => s + ppl.jumlah_submit, 0);
-                                  const totalStatus = calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject;
+                                  const calculatedDraftPPL = pplUnderPML.reduce((s, ppl) => s + (ppl.draft || 0), 0);
+                                  const totalStatus = calculatedDraftPPL + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0);
                                   if (totalStatus > 0) {
-                                    return sum + ((row.jumlah_approve + row.jumlah_reject) / totalStatus * 100);
+                                    return sum + ((row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)) / totalStatus * 100);
                                   }
                                   return sum;
                                 }, 0) / paginatedRowsPML.length;
