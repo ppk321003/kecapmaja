@@ -862,7 +862,7 @@ const exportPPLToExcel = (data: AggregatedData[]) => {
     ['DATA INDIVIDU PPL (PETUGAS PENCACAH LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Kecamatan', 'Nama PPL', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Total Assignment', 'Persentase Submit', 'Rata-rata Submit+Draft/Harian'],
+    ['No', 'Kecamatan', 'Nama PPL', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Revoke', 'Total Assignment', 'Persentase Submit', 'Rata-rata Submit+Draft/Harian'],
     ...data.map((row, idx) => {
       const percentage = row.total_assignments > 0 ? ((row.jumlah_submit / row.total_assignments) * 100).toFixed(2) : '0.00';
       const dailyAverage = (row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve) / Math.max(1, elapsedDays);
@@ -876,6 +876,7 @@ const exportPPLToExcel = (data: AggregatedData[]) => {
         row.jumlah_submit,
         row.jumlah_approve,
         row.jumlah_reject,
+        row.jumlah_revoke || 0,
         row.total_assignments,
         `${percentage}%`,
         dailyAverageFormatted
@@ -897,6 +898,7 @@ const exportPPLToExcel = (data: AggregatedData[]) => {
     { wch: 10 },
     { wch: 10 },
     { wch: 10 },
+    { wch: 10 },
     { wch: 15 },
     { wch: 15 },
     { wch: 22 }
@@ -915,6 +917,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     jumlah_submit_ppl: number; 
     jumlah_approve: number; 
     jumlah_reject: number;
+    jumlah_revoke: number;
     totalDraft: number;
   }>();
 
@@ -927,6 +930,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
         jumlah_submit_ppl: 0,
         jumlah_approve: 0,
         jumlah_reject: 0,
+        jumlah_revoke: 0,
         totalDraft: 0,
       });
     }
@@ -936,6 +940,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     current.jumlah_submit_ppl += row.jumlah_submit;
     current.jumlah_approve += row.jumlah_approve;
     current.jumlah_reject += row.jumlah_reject;
+    current.jumlah_revoke += (row.jumlah_revoke || 0);
   });
 
   // Calculate days elapsed for daily average
@@ -956,7 +961,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     ['DATA PML (PETUGAS PENGAWAS LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Total Status', 'Approve', 'Reject', '% Pemeriksaan', 'Rata-rata Submit+Draft/Harian'],
+    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Total Status', 'Approve', 'Reject', 'Revoke', '% Pemeriksaan', 'Rata-rata Submit+Draft/Harian'],
     ...pmlRows.map((row, idx) => {
       const percentage = row.jumlah_submit_ppl > 0 ? (((row.jumlah_approve + row.jumlah_reject) / row.jumlah_submit_ppl) * 100).toFixed(2) : '0.00';
       const countPPL = aggregatedRows.filter(ppl => ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan).length;
@@ -970,6 +975,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
         row.jumlah_submit_ppl,
         row.jumlah_approve,
         row.jumlah_reject,
+        row.jumlah_revoke,
         `${percentage}%`,
         dailyAverageFormatted
       ];
@@ -987,6 +993,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     { wch: 18 },
     { wch: 8 },
     { wch: 15 },
+    { wch: 10 },
     { wch: 10 },
     { wch: 10 },
     { wch: 15 },
@@ -1013,7 +1020,7 @@ const exportTAToExcel = (
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     ['Total Baris', data.length],
     [],
-    ['No', 'Nama PPL', 'Email PPL', 'Kecamatan', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Total Aktivitas', 'Rata-rata Harian (aktivitas/hari)'],
+    ['No', 'Nama PPL', 'Email PPL', 'Kecamatan', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Revoke', 'Total Aktivitas', 'Rata-rata Harian (aktivitas/hari)'],
     ...data.map((row, idx) => {
       const total = row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve;
       const dailyAverage = Math.round((total / elapsedDays) * 100) / 100;
@@ -1027,6 +1034,7 @@ const exportTAToExcel = (
         row.jumlah_submit,
         row.jumlah_approve,
         row.jumlah_reject,
+        row.jumlah_revoke || 0,
         total,
         dailyAverage,
       ];
@@ -1036,7 +1044,7 @@ const exportTAToExcel = (
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = [
     { wch: 5 }, { wch: 22 }, { wch: 26 }, { wch: 18 }, { wch: 22 },
-    { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 26 },
+    { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 26 },
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'TA');
