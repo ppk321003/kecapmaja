@@ -3713,10 +3713,13 @@ export function MonitoringLapangan() {
                                         {ppl.nama_ppl}
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 px-4 py-2">
-                                        Submit: {ppl.jumlah_submit}
+                                        {ppl.kecamatan || row.kecamatan || '-'}
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
                                         {( (ppl.jumlah_submit || 0) + ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0) ).toLocaleString("id-ID")}
+                                      </TableCell>
+                                      <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
+                                        {ppl.jumlah_submit.toLocaleString("id-ID")}
                                       </TableCell>
                                       <TableCell className="text-sm text-green-700 font-semibold px-4 py-2 text-right">
                                         {ppl.jumlah_approve.toLocaleString("id-ID")}
@@ -3729,7 +3732,7 @@ export function MonitoringLapangan() {
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">
                                         {(() => {
-                                          const totalStatus = (ppl.draft || 0) + ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0);
+                                          const totalStatus = (ppl.jumlah_submit || 0) + ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0);
                                           return totalStatus > 0 ? (((ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
                                         })()} %
                                       </TableCell>
@@ -3745,7 +3748,7 @@ export function MonitoringLapangan() {
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">TOTAL</TableCell>
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">-</TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
-                              {paginatedRowsPML.reduce((sum, row) => {
+                              {sortedPMLData.reduce((sum, row) => {
                                 const key = `${row.nama_pml}|${row.kecamatan}`;
                                 const pplUnderPML = pmlGroups.get(key) || [];
                                 const calculatedSubmitPPL = pplUnderPML.reduce((s, ppl) => s + (ppl.jumlah_submit || 0), 0);
@@ -3753,7 +3756,7 @@ export function MonitoringLapangan() {
                               }, 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
-                              {paginatedRowsPML.reduce((sum, row) => {
+                              {sortedPMLData.reduce((sum, row) => {
                                 const key = `${row.nama_pml}|${row.kecamatan}`;
                                 const pplUnderPML = pmlGroups.get(key) || [];
                                 const calculatedSubmitPPL = pplUnderPML.reduce((s, ppl) => s + (ppl.jumlah_submit || 0), 0);
@@ -3761,17 +3764,17 @@ export function MonitoringLapangan() {
                               }, 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold text-green-700 px-4 py-3">
-                              {paginatedRowsPML.reduce((sum, row) => sum + row.jumlah_approve, 0).toLocaleString("id-ID")}
+                              {sortedPMLData.reduce((sum, row) => sum + row.jumlah_approve, 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold text-red-700 px-4 py-3">
-                              {paginatedRowsPML.reduce((sum, row) => sum + row.jumlah_reject, 0).toLocaleString("id-ID")}
+                              {sortedPMLData.reduce((sum, row) => sum + row.jumlah_reject, 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold text-orange-700 px-4 py-3">
-                              {paginatedRowsPML.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
+                              {sortedPMLData.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {(() => {
-                                  const avgPercentage = paginatedRowsPML.reduce((sum, row) => {
+                                  const avgPercentage = (sortedPMLData.length > 0 ? sortedPMLData.reduce((sum, row) => {
                                   const key = `${row.nama_pml}|${row.kecamatan}`;
                                   const pplUnderPML = pmlGroups.get(key) || [];
                                   const calculatedSubmitPPL = pplUnderPML.reduce((s, ppl) => s + (ppl.jumlah_submit || 0), 0);
@@ -3780,7 +3783,7 @@ export function MonitoringLapangan() {
                                     return sum + ((row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)) / totalStatus * 100);
                                   }
                                   return sum;
-                                }, 0) / paginatedRowsPML.length;
+                                }, 0) / sortedPMLData.length : 0);
                                 return avgPercentage.toFixed(2);
                               })()} %
                             </TableCell>
