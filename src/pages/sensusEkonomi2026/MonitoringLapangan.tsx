@@ -3622,6 +3622,9 @@ export function MonitoringLapangan() {
                                   <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
                                     {row.jumlah_reject.toLocaleString("id-ID")}
                                   </TableCell>
+                                  <TableCell className="text-right font-semibold text-orange-700 px-4 py-3">
+                                    {(row.jumlah_revoke || 0).toLocaleString("id-ID")}
+                                  </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                     {(() => {
                                       const totalStatus = calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject;
@@ -3653,6 +3656,9 @@ export function MonitoringLapangan() {
                                       <TableCell className="text-sm text-red-700 font-semibold px-4 py-2 text-right">
                                         {ppl.jumlah_reject.toLocaleString("id-ID")}
                                       </TableCell>
+                                      <TableCell className="text-sm text-orange-700 font-semibold px-4 py-2 text-right">
+                                        {(ppl.jumlah_revoke || 0).toLocaleString("id-ID")}
+                                      </TableCell>
                                       <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">
                                         {(() => {
                                           const totalStatus = ppl.jumlah_submit + ppl.jumlah_approve + ppl.jumlah_reject;
@@ -3683,6 +3689,9 @@ export function MonitoringLapangan() {
                             </TableCell>
                             <TableCell className="text-right font-bold text-red-700 px-4 py-3">
                               {paginatedRowsPML.reduce((sum, row) => sum + row.jumlah_reject, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-orange-700 px-4 py-3">
+                              {paginatedRowsPML.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {(() => {
