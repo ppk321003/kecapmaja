@@ -1399,6 +1399,37 @@ export function MonitoringLapangan() {
 
       const rows = Array.from(dataMap.values());
 
+      // Enrich PPL rows early with REVOKED counts from "Semua Users" sheet column (JSON)
+      const parseRevokedFromUserEarly = (user: any): number => {
+        for (const v of Object.values(user || {})) {
+          if (typeof v !== "string" || v.length < 5 || !v.includes("REVOKED")) continue;
+          try {
+            const parsed = JSON.parse(v.trim());
+            const val =
+              parsed["REVOKED BY Pengawas"] ??
+              parsed["REVOKED_BY_PENGAWAS"] ??
+              parsed["REVOKED"] ??
+              0;
+            return parseInt(val) || 0;
+          } catch {
+            /* ignore */
+          }
+        }
+        return 0;
+      };
+      const revokedByEmailEarly = new Map<string, number>();
+      (usersData || []).forEach((u: any) => {
+        const email = String(u["email"] || u["Email"] || "").trim().toLowerCase();
+        if (!email) return;
+        revokedByEmailEarly.set(email, (revokedByEmailEarly.get(email) || 0) + parseRevokedFromUserEarly(u));
+      });
+      rows.forEach((r) => {
+        const email = String(r.email_ppl || "").trim().toLowerCase();
+        const rev = email ? revokedByEmailEarly.get(email) || 0 : 0;
+        r.jumlah_revoke = rev;
+        r.status_counts.revoked = rev;
+      });
+
       // Calculate statistics with UNIQUE kecamatan count
       const totalKecamatan = kecamatanSet.size; // Unique count, not row count
       // Total Pendataan = Draft + Reject + Approve + Submit
@@ -3077,16 +3108,17 @@ export function MonitoringLapangan() {
                             <TableCell className="text-right font-bold text-red-700 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_reject, 0).toLocaleString("id-ID")}
                             </TableCell>
+                            <TableCell className="text-right font-bold text-orange-700 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
+                            </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_submit, 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold text-green-700 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_approve, 0).toLocaleString("id-ID")}
                             </TableCell>
-                            <TableCell className="text-right font-bold text-orange-700 px-4 py-3">
-                              {paginatedRows.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
-                            </TableCell>
                             <TableCell className="text-right text-slate-700 px-4 py-3 font-semibold">-</TableCell>
+                            <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
                             <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
                             <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
                           </TableRow>
