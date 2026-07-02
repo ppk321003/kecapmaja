@@ -1363,6 +1363,7 @@ export function MonitoringLapangan() {
             jumlah_submit: 0,
             jumlah_approve: 0,
             jumlah_reject: 0,
+            jumlah_revoke: 0,
             total_assignments: 0,
             status_counts: {
               open: 0,
@@ -1370,6 +1371,7 @@ export function MonitoringLapangan() {
               submitted: 0,
               approved: 0,
               rejected: 0,
+              revoked: 0,
             },
           });
         }
@@ -1543,6 +1545,7 @@ export function MonitoringLapangan() {
             jumlah_submit_ppl: 0,
             jumlah_approve: 0,
             jumlah_reject: 0,
+            jumlah_revoke: 0,
           });
         }
 
@@ -1553,6 +1556,46 @@ export function MonitoringLapangan() {
       });
 
       const pmlRows = Array.from(pmlMap.values());
+
+      // Enrich PPL rows with REVOKED counts from "Semua Users" sheet column P (JSON)
+      const parseRevokedFromUser = (user: any): number => {
+        for (const v of Object.values(user || {})) {
+          if (typeof v !== "string" || v.length < 5 || !v.includes("REVOKED")) continue;
+          try {
+            const parsed = JSON.parse(v.trim());
+            const val =
+              parsed["REVOKED BY Pengawas"] ??
+              parsed["REVOKED_BY_PENGAWAS"] ??
+              parsed["REVOKED"] ??
+              0;
+            return parseInt(val) || 0;
+          } catch {
+            /* ignore */
+          }
+        }
+        return 0;
+      };
+      const revokedByEmail = new Map<string, number>();
+      (usersData || []).forEach((u: any) => {
+        const email = String(u["email"] || u["Email"] || "").trim().toLowerCase();
+        if (!email) return;
+        revokedByEmail.set(email, (revokedByEmail.get(email) || 0) + parseRevokedFromUser(u));
+      });
+      rows.forEach((r) => {
+        const email = String(r.email_ppl || "").trim().toLowerCase();
+        const rev = email ? revokedByEmail.get(email) || 0 : 0;
+        r.jumlah_revoke = rev;
+        r.status_counts.revoked = rev;
+      });
+      // Aggregate revoke per PML from PPL rows
+      const pmlRevokeMap = new Map<string, number>();
+      rows.forEach((r) => {
+        const k = `${r.nama_pml}|${r.kecamatan}`;
+        pmlRevokeMap.set(k, (pmlRevokeMap.get(k) || 0) + (r.jumlah_revoke || 0));
+      });
+      pmlRows.forEach((p) => {
+        p.jumlah_revoke = pmlRevokeMap.get(`${p.nama_pml}|${p.kecamatan}`) || 0;
+      });
 
       // Chart data for PML Top 10 by Pemeriksaan % - use same calculation as table
       // Group PPL by PML to match table calculation
