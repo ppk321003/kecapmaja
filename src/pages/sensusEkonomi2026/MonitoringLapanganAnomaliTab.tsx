@@ -51,6 +51,12 @@ const normalizeColumnKey = (key: string): string =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
+const normalizeString = (value: any): string =>
+  String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+
 const getColumnValue = (obj: any, primaryName: string, fallbackNames: string[] = [], defaultValue: any = "-"): any => {
   if (!obj || typeof obj !== "object") return defaultValue;
 
@@ -241,7 +247,7 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
                 const totalAnomalies = entry.pendingCount + entry.completed;
                 const completedPct = totalAnomalies ? Math.round((entry.completed / totalAnomalies) * 1000) / 10 : 0;
                 return (
-                  <TableRow key={entry.name} className="even:bg-slate-50">
+                  <TableRow key={`${entry.name}::${entry.kecamatan || Array.from(entry.districts).join(", ")}`} className="even:bg-slate-50">
                     <TableCell className="font-medium text-slate-900">{entry.name}</TableCell>
                     <TableCell className="text-left text-slate-700">{Array.from(entry.districts).join(", ")}</TableCell>
                     <TableCell className="text-right text-slate-700">{entry.pendingCount}</TableCell>
@@ -691,11 +697,14 @@ export default function MonitoringLapanganAnomaliTab({
     allRows.forEach(({ row }) => {
       const ppl = String(getAnomalyPPLValue(row, "")).trim();
       if (!ppl) return;
+      const normalizedPPL = normalizeString(ppl);
+      if (!normalizedPPL) return;
 
       const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+      const normalizedKecamatan = normalizeString(kecamatan);
       const perlakuan = getAnomalyPerlakuanValue(row, "");
       const isCompleted = isFilled(perlakuan);
-      const key = `${ppl}::${kecamatan}`;
+      const key = `${normalizedPPL}::${normalizedKecamatan}`;
       if (!grouped.has(key)) {
         grouped.set(key, { name: ppl, pendingCount: 0, totalCount: 0, completed: 0, districts: new Set<string>() });
       }
@@ -707,7 +716,11 @@ export default function MonitoringLapanganAnomaliTab({
         entry.pendingCount += 1;
         totalMissingRows += 1;
       }
-      if (kecamatan) entry.districts.add(kecamatan);
+      if (kecamatan) {
+        if (![...entry.districts].some((existing) => normalizeString(existing) === normalizedKecamatan)) {
+          entry.districts.add(kecamatan);
+        }
+      }
     });
 
     const entries = Array.from(grouped.values())

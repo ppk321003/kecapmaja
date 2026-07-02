@@ -292,6 +292,12 @@ const normalizeColumnKey = (key: string): string => {
     .replace(/[^a-z0-9]/g, "");
 };
 
+const normalizeString = (value: any): string =>
+  String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+
 // Helper function untuk robust column access dengan fallback dan normalisasi kolom
 const getColumnValue = (obj: any, primaryName: string, fallbackNames: string[] = [], defaultValue: any = "-"): any => {
   if (!obj || typeof obj !== "object") return defaultValue;
@@ -1243,15 +1249,18 @@ export function MonitoringLapangan() {
     allRows.forEach(({ row }) => {
       const ppl = String(getAnomalyPPLValue(row, "")).trim();
       if (!ppl) return;
+      const normalizedPPL = normalizeString(ppl);
+      if (!normalizedPPL) return;
 
       const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+      const normalizedKecamatan = normalizeString(kecamatan);
       const perlakuan = getAnomalyPerlakuanValue(row, "");
       const isCompleted = isFilled(perlakuan);
 
-      if (!grouped.has(ppl)) {
-        grouped.set(ppl, { name: ppl, pendingCount: 0, totalCount: 0, completed: 0, districts: new Set<string>() });
+      if (!grouped.has(normalizedPPL)) {
+        grouped.set(normalizedPPL, { name: ppl, pendingCount: 0, totalCount: 0, completed: 0, districts: new Set<string>() });
       }
-      const entry = grouped.get(ppl)!;
+      const entry = grouped.get(normalizedPPL)!;
       entry.totalCount += 1;
       if (isCompleted) {
         entry.completed += 1;
@@ -1259,7 +1268,11 @@ export function MonitoringLapangan() {
         entry.pendingCount += 1;
         totalMissingRows += 1;
       }
-      if (kecamatan) entry.districts.add(kecamatan);
+      if (kecamatan) {
+        if (![...entry.districts].some((existing) => normalizeString(existing) === normalizedKecamatan)) {
+          entry.districts.add(kecamatan);
+        }
+      }
     });
 
     const entries = Array.from(grouped.values())
