@@ -58,22 +58,19 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
         };
 
         // Detect actual header row if sheet contains title / metadata rows above it
+        // Find the first row that looks like a header anywhere in the sheet.
+        // Previously we only searched at or after row index 3 which missed headers on row 2.
         let headerRowIndex = 0;
-        if (rows.length > 1 && !isHeaderRow(rows[0])) {
-          const preferredHeaderRowIndex = rows.length > 3 ? 3 : 0;
-          if (rows[preferredHeaderRowIndex] && isHeaderRow(rows[preferredHeaderRowIndex])) {
-            headerRowIndex = preferredHeaderRowIndex;
-          } else {
-            headerRowIndex = rows.findIndex((row: any[], index: number) => index >= 3 && isHeaderRow(row));
-            if (headerRowIndex === -1) {
-              headerRowIndex = 0;
-            }
-          }
+        if (rows.length > 1) {
+          const found = rows.findIndex((row: any[]) => isHeaderRow(row));
+          headerRowIndex = found === -1 ? 0 : found;
         }
 
-        if (rows.length > headerRowIndex + 2) {
+        if (rows.length > headerRowIndex + 1) {
           const headers = rows[headerRowIndex];
-          const dataRows = rows.slice(headerRowIndex + 2).map((row: any[]) => {
+          // Use headerRowIndex + 1 so we include the row immediately after the header.
+          // Previously this used +2 which skipped the first data row (off-by-one).
+          const dataRows = rows.slice(headerRowIndex + 1).map((row: any[]) => {
             const obj: any = {};
             const headerCount: Record<string, number> = {};
 
