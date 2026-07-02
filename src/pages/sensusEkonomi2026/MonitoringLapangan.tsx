@@ -1655,7 +1655,7 @@ export function MonitoringLapangan() {
         totalProgress,
         pmlData: pmlRows,
       };
-    }, [sheetData, kecamatanPercentageComponents, kecamatanActivityComponents]);
+    }, [sheetData, usersData, kecamatanPercentageComponents, kecamatanActivityComponents]);
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearchTerm(searchTerm), 200);
