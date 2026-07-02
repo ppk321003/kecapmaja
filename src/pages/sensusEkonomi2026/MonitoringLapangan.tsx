@@ -2230,6 +2230,15 @@ export function MonitoringLapangan() {
                       />
                       <span className="text-sm font-medium">Reject</span>
                     </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={kecamatanPercentageComponents.revoke}
+                        onChange={(e) => setKecamatanPercentageComponents({...kecamatanPercentageComponents, revoke: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Revoke</span>
+                    </label>
                   </div>
                 </div>
               </CardHeader>
@@ -2371,6 +2380,15 @@ export function MonitoringLapangan() {
                         className="w-4 h-4 rounded"
                       />
                       <span className="text-sm font-medium">Reject</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={kecamatanActivityComponents.revoke}
+                        onChange={(e) => setKecamatanActivityComponents({...kecamatanActivityComponents, revoke: e.target.checked})}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm font-medium">Revoke</span>
                     </label>
                   </div>
                 </div>
