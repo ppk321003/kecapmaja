@@ -3027,6 +3027,9 @@ export function MonitoringLapangan() {
                             <TableCell className="text-right font-bold text-red-700 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_reject, 0).toLocaleString("id-ID")}
                             </TableCell>
+                            <TableCell className="text-right font-bold text-orange-700 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
+                            </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_submit, 0).toLocaleString("id-ID")}
                             </TableCell>
