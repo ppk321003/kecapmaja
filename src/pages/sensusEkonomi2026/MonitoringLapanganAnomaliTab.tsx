@@ -41,6 +41,9 @@ interface PendingPPLCardProps {
   totalRows: number;
 }
 
+type PendingPPLCardSortField = "name" | "kecamatan" | "pendingCount" | "completed" | "pct";
+type DistrictSortField = "kecamatan" | "usaha" | "keluarga" | "total" | "completed" | "percent";
+
 const normalizeColumnKey = (key: string): string =>
   String(key || "")
     .trim()
@@ -119,6 +122,22 @@ const getAnomalyPerlakuanValue = (row: any, defaultValue: any = "-"): any => {
 const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLCardProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState<PendingPPLCardSortField>("pendingCount");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const getSortIndicator = (field: PendingPPLCardSortField) => {
+    if (sortBy !== field) return "↕";
+    return sortOrder === "asc" ? "↑" : "↓";
+  };
+
+  const handleSort = (field: PendingPPLCardSortField) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortOrder("desc");
+    }
+  };
 
   const filteredEntries = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -133,8 +152,32 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
     setCurrentPage(1);
   }, [searchTerm, entries]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / 26));
-  const paginatedEntries = filteredEntries.slice((currentPage - 1) * 26, currentPage * 26);
+  const sortedEntries = useMemo(() => {
+    const sorted = [...filteredEntries];
+    sorted.sort((a, b) => {
+      let result = 0;
+      if (sortBy === "name") {
+        result = a.name.localeCompare(b.name);
+      } else if (sortBy === "kecamatan") {
+        result = Array.from(a.districts).join(", ").localeCompare(Array.from(b.districts).join(", "));
+      } else if (sortBy === "pendingCount") {
+        result = a.pendingCount - b.pendingCount;
+      } else if (sortBy === "completed") {
+        result = a.completed - b.completed;
+      } else if (sortBy === "pct") {
+        const totalA = a.pendingCount + a.completed;
+        const totalB = b.pendingCount + b.completed;
+        const aPct = totalA ? a.completed / totalA : 0;
+        const bPct = totalB ? b.completed / totalB : 0;
+        result = aPct - bPct;
+      }
+      return sortOrder === "asc" ? result : -result;
+    });
+    return sorted;
+  }, [filteredEntries, sortBy, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedEntries.length / 26));
+  const paginatedEntries = sortedEntries.slice((currentPage - 1) * 26, currentPage * 26);
 
   return (
     <Card className="border-0 shadow-sm h-full">
@@ -160,11 +203,36 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead className="text-left font-semibold text-slate-700">Nama PPL</TableHead>
-                <TableHead className="text-left font-semibold text-slate-700">Kecamatan</TableHead>
-                <TableHead className="text-right font-semibold text-slate-700">Anomali</TableHead>
-                <TableHead className="text-right font-semibold text-slate-700">Tindak Lanjut</TableHead>
-                <TableHead className="text-right font-semibold text-slate-700">%</TableHead>
+                <TableHead
+                  className="text-left font-semibold text-slate-700 cursor-pointer select-none"
+                  onClick={() => handleSort("name")}
+                >
+                  <div className="flex items-center gap-2">Nama PPL <span className="text-xs">{getSortIndicator("name")}</span></div>
+                </TableHead>
+                <TableHead
+                  className="text-left font-semibold text-slate-700 cursor-pointer select-none"
+                  onClick={() => handleSort("kecamatan")}
+                >
+                  <div className="flex items-center gap-2">Kecamatan <span className="text-xs">{getSortIndicator("kecamatan")}</span></div>
+                </TableHead>
+                <TableHead
+                  className="text-right font-semibold text-slate-700 cursor-pointer select-none"
+                  onClick={() => handleSort("pendingCount")}
+                >
+                  <div className="flex items-center justify-end gap-2">Anomali <span className="text-xs">{getSortIndicator("pendingCount")}</span></div>
+                </TableHead>
+                <TableHead
+                  className="text-right font-semibold text-slate-700 cursor-pointer select-none"
+                  onClick={() => handleSort("completed")}
+                >
+                  <div className="flex items-center justify-end gap-2">Tindak Lanjut <span className="text-xs">{getSortIndicator("completed")}</span></div>
+                </TableHead>
+                <TableHead
+                  className="text-right font-semibold text-slate-700 cursor-pointer select-none"
+                  onClick={() => handleSort("pct")}
+                >
+                  <div className="flex items-center justify-end gap-2">% <span className="text-xs">{getSortIndicator("pct")}</span></div>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -593,6 +661,22 @@ export default function MonitoringLapanganAnomaliTab({
   const [activeAnomaliTab, setActiveAnomaliTab] = useState<"dashboard" | "usaha" | "keluarga">("dashboard");
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
   const [expandedDistricts, setExpandedDistricts] = useState<Set<string>>(new Set());
+  const [districtSortBy, setDistrictSortBy] = useState<DistrictSortField>("total");
+  const [districtSortOrder, setDistrictSortOrder] = useState<"asc" | "desc">("desc");
+
+  const getDistrictSortIndicator = (field: DistrictSortField) => {
+    if (districtSortBy !== field) return "↕";
+    return districtSortOrder === "asc" ? "↑" : "↓";
+  };
+
+  const handleDistrictSort = (field: DistrictSortField) => {
+    if (districtSortBy === field) {
+      setDistrictSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setDistrictSortBy(field);
+      setDistrictSortOrder("desc");
+    }
+  };
 
   const pendingAnomalyPPL = useMemo(() => {
     const allRows = [
@@ -779,12 +863,42 @@ export default function MonitoringLapanganAnomaliTab({
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50 hover:bg-slate-50">
-                        <TableHead className="text-left text-slate-700 font-semibold">Kecamatan</TableHead>
-                        <TableHead className="text-right text-slate-700 font-semibold">Usaha</TableHead>
-                        <TableHead className="text-right text-slate-700 font-semibold">Keluarga</TableHead>
-                        <TableHead className="text-right text-slate-700 font-semibold">Total</TableHead>
-                        <TableHead className="text-right text-slate-700 font-semibold">Tindak Lanjut</TableHead>
-                        <TableHead className="text-right text-slate-700 font-semibold">%</TableHead>
+                        <TableHead
+                          className="text-left text-slate-700 font-semibold cursor-pointer select-none"
+                          onClick={() => handleDistrictSort("kecamatan")}
+                        >
+                          <div className="flex items-center gap-2">Kecamatan <span className="text-xs">{getDistrictSortIndicator("kecamatan")}</span></div>
+                        </TableHead>
+                        <TableHead
+                          className="text-right text-slate-700 font-semibold cursor-pointer select-none"
+                          onClick={() => handleDistrictSort("usaha")}
+                        >
+                          <div className="flex items-center justify-end gap-2">Usaha <span className="text-xs">{getDistrictSortIndicator("usaha")}</span></div>
+                        </TableHead>
+                        <TableHead
+                          className="text-right text-slate-700 font-semibold cursor-pointer select-none"
+                          onClick={() => handleDistrictSort("keluarga")}
+                        >
+                          <div className="flex items-center justify-end gap-2">Keluarga <span className="text-xs">{getDistrictSortIndicator("keluarga")}</span></div>
+                        </TableHead>
+                        <TableHead
+                          className="text-right text-slate-700 font-semibold cursor-pointer select-none"
+                          onClick={() => handleDistrictSort("total")}
+                        >
+                          <div className="flex items-center justify-end gap-2">Total <span className="text-xs">{getDistrictSortIndicator("total")}</span></div>
+                        </TableHead>
+                        <TableHead
+                          className="text-right text-slate-700 font-semibold cursor-pointer select-none"
+                          onClick={() => handleDistrictSort("completed")}
+                        >
+                          <div className="flex items-center justify-end gap-2">Tindak Lanjut <span className="text-xs">{getDistrictSortIndicator("completed")}</span></div>
+                        </TableHead>
+                        <TableHead
+                          className="text-right text-slate-700 font-semibold cursor-pointer select-none"
+                          onClick={() => handleDistrictSort("percent")}
+                        >
+                          <div className="flex items-center justify-end gap-2">% <span className="text-xs">{getDistrictSortIndicator("percent")}</span></div>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -830,7 +944,34 @@ export default function MonitoringLapanganAnomaliTab({
                         };
                         addRows(anomaliUsahaData, "usaha");
                         addRows(anomaliKeluargaData, "keluarga");
-                        const districtRows = [...districtMap.values()].sort((a, b) => b.total - a.total || a.kecamatan.localeCompare(b.kecamatan));
+                        const districtRows = [...districtMap.values()];
+                        districtRows.sort((a, b) => {
+                          const getValue = (item: any, field: DistrictSortField) => {
+                            switch (field) {
+                              case "kecamatan":
+                                return item.kecamatan;
+                              case "usaha":
+                                return item.usaha;
+                              case "keluarga":
+                                return item.keluarga;
+                              case "total":
+                                return item.total;
+                              case "completed":
+                                return item.completed;
+                              case "percent":
+                                return item.total ? item.completed / item.total : 0;
+                            }
+                          };
+                          const aValue = getValue(a, districtSortBy);
+                          const bValue = getValue(b, districtSortBy);
+                          let result = 0;
+                          if (typeof aValue === "string") {
+                            result = (aValue as string).localeCompare(bValue as string);
+                          } else {
+                            result = (aValue as number) - (bValue as number);
+                          }
+                          return districtSortOrder === "asc" ? result : -result;
+                        });
                         const totals = districtRows.reduce((acc, item) => {
                           acc.usaha += item.usaha;
                           acc.keluarga += item.keluarga;
