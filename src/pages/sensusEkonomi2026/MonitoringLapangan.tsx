@@ -2971,6 +2971,18 @@ export function MonitoringLapangan() {
                                           <TableCell className="text-sm text-red-700 font-semibold px-4 py-2 text-right">
                                             {getColumnValue(user, "rejected_by_pengawas", ["reje", "REJECTED_BY_PENGAWAS", "rejected", "Rejected", "Reject"], "0")}
                                           </TableCell>
+                                          <TableCell className="text-sm text-orange-700 font-semibold px-4 py-2 text-right">
+                                            {(() => {
+                                              for (const v of Object.values(user || {})) {
+                                                if (typeof v !== "string" || !v.includes("REVOKED")) continue;
+                                                try {
+                                                  const p = JSON.parse(v.trim());
+                                                  return String(p["REVOKED BY Pengawas"] ?? p["REVOKED_BY_PENGAWAS"] ?? p["REVOKED"] ?? 0);
+                                                } catch { /* ignore */ }
+                                              }
+                                              return "0";
+                                            })()}
+                                          </TableCell>
                                           <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
                                             {getColumnValue(user, "submitted_by_pencacah", ["subi", "SUBMITTED_BY_PENCACAH", "submitted", "Submitted", "Submit"], "0")}
                                           </TableCell>
