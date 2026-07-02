@@ -1438,6 +1438,7 @@ export function MonitoringLapangan() {
         if (kecamatanActivityComponents.submit) activityToAdd += row.jumlah_submit;
         if (kecamatanActivityComponents.approve) activityToAdd += row.jumlah_approve;
         if (kecamatanActivityComponents.reject) activityToAdd += row.jumlah_reject;
+        if (kecamatanActivityComponents.revoke) activityToAdd += (row.jumlah_revoke || 0);
         current.totalActivity += activityToAdd;
         current.totalSubmit += row.jumlah_submit;
         current.countPPL += 1;
@@ -1475,6 +1476,7 @@ export function MonitoringLapangan() {
         if (kecamatanPercentageComponents.submit) activityToAdd += row.jumlah_submit;
         if (kecamatanPercentageComponents.approve) activityToAdd += row.jumlah_approve;
         if (kecamatanPercentageComponents.reject) activityToAdd += row.jumlah_reject;
+        if (kecamatanPercentageComponents.revoke) activityToAdd += (row.jumlah_revoke || 0);
         current.totalActivity += activityToAdd;
         current.totalAssignments += row.total_assignments;
         kecamatanPercentageMap.set(row.kecamatan, current);
@@ -1511,6 +1513,7 @@ export function MonitoringLapangan() {
         if (kecamatanActivityComponents.submit) activityToAdd += row.jumlah_submit;
         if (kecamatanActivityComponents.approve) activityToAdd += row.jumlah_approve;
         if (kecamatanActivityComponents.reject) activityToAdd += row.jumlah_reject;
+        if (kecamatanActivityComponents.revoke) activityToAdd += (row.jumlah_revoke || 0);
         current.value += activityToAdd;
         pplMap.set(key, current);
       });
