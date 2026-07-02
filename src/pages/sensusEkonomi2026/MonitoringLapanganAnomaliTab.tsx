@@ -33,6 +33,7 @@ interface PendingPPLEntry {
   totalCount: number;
   completed: number;
   districts: Set<string>;
+  kecamatan?: string;
 }
 
 interface PendingPPLCardProps {
@@ -694,11 +695,11 @@ export default function MonitoringLapanganAnomaliTab({
       const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
       const perlakuan = getAnomalyPerlakuanValue(row, "");
       const isCompleted = isFilled(perlakuan);
-
-      if (!grouped.has(ppl)) {
-        grouped.set(ppl, { name: ppl, pendingCount: 0, totalCount: 0, completed: 0, districts: new Set<string>() });
+      const key = `${ppl}::${kecamatan}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, { name: ppl, pendingCount: 0, totalCount: 0, completed: 0, districts: new Set<string>() });
       }
-      const entry = grouped.get(ppl)!;
+      const entry = grouped.get(key)!;
       entry.totalCount += 1;
       if (isCompleted) {
         entry.completed += 1;
@@ -711,7 +712,8 @@ export default function MonitoringLapanganAnomaliTab({
 
     const entries = Array.from(grouped.values())
       .filter((entry) => entry.pendingCount > 0)
-      .sort((a, b) => b.pendingCount - a.pendingCount || a.name.localeCompare(b.name));
+      .map((e) => ({ ...e, kecamatan: Array.from(e.districts)[0] || "" }))
+      .sort((a, b) => b.pendingCount - a.pendingCount || (a.kecamatan || "").localeCompare(b.kecamatan || "") || a.name.localeCompare(b.name));
 
     return {
       totalPPL: entries.length,
