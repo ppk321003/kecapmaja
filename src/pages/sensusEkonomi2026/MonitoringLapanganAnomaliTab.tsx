@@ -137,74 +137,76 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
   const paginatedEntries = filteredEntries.slice((currentPage - 1) * 26, currentPage * 26);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm h-full">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">PPL dengan Anomali Belum Ditindaklanjuti</p>
-          <p className="text-xs text-slate-500">{totalPPL} PPL · {totalRows} baris anomali</p>
+    <Card className="border-0 shadow-sm h-full">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle className="text-base font-semibold">PPL dengan Anomali Belum Ditindaklanjuti</CardTitle>
+            <CardDescription>{totalPPL} PPL · {totalRows} baris anomali</CardDescription>
+          </div>
+          <div className="relative w-full md:max-w-xs">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Cari nama PPL atau kecamatan"
+              className="border-slate-300 pl-9 text-sm"
+            />
+          </div>
         </div>
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Cari nama PPL atau kecamatan"
-            className="border-slate-300 pl-9 text-sm"
-          />
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50">
+                <TableHead className="text-left font-semibold text-slate-700">Nama PPL</TableHead>
+                <TableHead className="text-left font-semibold text-slate-700">Kecamatan</TableHead>
+                <TableHead className="text-right font-semibold text-slate-700">Anomali</TableHead>
+                <TableHead className="text-right font-semibold text-slate-700">Tindak Lanjut</TableHead>
+                <TableHead className="text-right font-semibold text-slate-700">%</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedEntries.map((entry) => {
+                const totalAnomalies = entry.pendingCount + entry.completed;
+                const completedPct = totalAnomalies ? Math.round((entry.completed / totalAnomalies) * 1000) / 10 : 0;
+                return (
+                  <TableRow key={entry.name} className="even:bg-slate-50">
+                    <TableCell className="font-medium text-slate-900">{entry.name}</TableCell>
+                    <TableCell className="text-left text-slate-700">{Array.from(entry.districts).join(", ")}</TableCell>
+                    <TableCell className="text-right text-slate-700">{entry.pendingCount}</TableCell>
+                    <TableCell className="text-right text-slate-700">{entry.completed}</TableCell>
+                    <TableCell className="text-right text-slate-700">{completedPct.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
-      </div>
-
-      <div className="mt-4 overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50">
-              <TableHead className="font-semibold text-slate-700">Nama PPL</TableHead>
-              <TableHead className="font-semibold text-slate-700">Kecamatan</TableHead>
-              <TableHead className="text-right font-semibold text-slate-700">Anomali</TableHead>
-              <TableHead className="text-right font-semibold text-slate-700">Tindak Lanjut</TableHead>
-              <TableHead className="text-right font-semibold text-slate-700">%</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedEntries.map((entry) => {
-              const totalAnomalies = entry.pendingCount + entry.completed;
-              const completedPct = totalAnomalies ? Math.round((entry.completed / totalAnomalies) * 1000) / 10 : 0;
-              return (
-                <TableRow key={entry.name} className="even:bg-slate-50">
-                  <TableCell className="font-medium text-slate-900">{entry.name}</TableCell>
-                  <TableCell className="text-slate-700">{Array.from(entry.districts).join(", ")}</TableCell>
-                  <TableCell className="text-right text-slate-700">{entry.pendingCount}</TableCell>
-                  <TableCell className="text-right text-slate-700">{entry.completed}</TableCell>
-                  <TableCell className="text-right text-slate-700">{completedPct.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
-        <span>Hal {currentPage} dari {totalPages}</span>
-        <div className="inline-flex items-center gap-1">
-          <button
-            type="button"
-            className="rounded border border-slate-200 px-2 py-1 disabled:opacity-50"
-            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            className="rounded border border-slate-200 px-2 py-1 disabled:opacity-50"
-            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
-          >
-            ›
-          </button>
+        <div className="mt-3 flex items-center justify-between gap-3 px-4 py-3 text-xs text-slate-500">
+          <span>Hal {currentPage} dari {totalPages}</span>
+          <div className="inline-flex items-center gap-1">
+            <button
+              type="button"
+              className="rounded border border-slate-200 px-2 py-1 disabled:opacity-50"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className="rounded border border-slate-200 px-2 py-1 disabled:opacity-50"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              ›
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 });
 
@@ -766,18 +768,18 @@ export default function MonitoringLapanganAnomaliTab({
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2 items-stretch">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 h-full">
-                <div className="flex items-center justify-between gap-3">
+              <Card className="border-0 shadow-sm h-full">
+                <CardHeader className="border-b p-4 pb-2">
                   <div>
-                    <h4 className="font-semibold text-slate-800">Detail per Kecamatan</h4>
-                    <p className="text-sm text-slate-500">Semua kecamatan yang tercatat memiliki anomali</p>
+                    <CardTitle className="text-base font-semibold">Detail per Kecamatan</CardTitle>
+                    <CardDescription>Semua kecamatan yang tercatat memiliki anomali</CardDescription>
                   </div>
-                </div>
-                <div className="mt-3 overflow-x-auto">
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50 hover:bg-slate-50">
-                        <TableHead className="text-slate-700 font-semibold">Kecamatan</TableHead>
+                        <TableHead className="text-left text-slate-700 font-semibold">Kecamatan</TableHead>
                         <TableHead className="text-right text-slate-700 font-semibold">Usaha</TableHead>
                         <TableHead className="text-right text-slate-700 font-semibold">Keluarga</TableHead>
                         <TableHead className="text-right text-slate-700 font-semibold">Total</TableHead>
@@ -956,8 +958,8 @@ export default function MonitoringLapanganAnomaliTab({
                       })()}
                     </TableBody>
                   </Table>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
               <PendingPPLCard
                 entries={pendingAnomalyPPL.entries}
                 totalPPL={pendingAnomalyPPL.totalPPL}
@@ -996,40 +998,43 @@ export default function MonitoringLapanganAnomaliTab({
               })}
             </div>
 
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h4 className="text-base font-semibold text-slate-900">Jenis Anomali</h4>
-                  <p className="text-sm text-slate-500">Seluruh jenis anomali dan jumlah kemunculannya.</p>
+            <Card className="border-0 shadow-sm mt-4">
+              <CardHeader className="border-b p-4 pb-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="text-base font-semibold">Jenis Anomali</CardTitle>
+                    <CardDescription>Seluruh jenis anomali dan jumlah kemunculannya.</CardDescription>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                    <span>{anomalyDashboardSummary.allAnomalies.length} jenis</span>
+                    <span className="text-slate-400">·</span>
+                    <span>{anomalyDashboardSummary.allAnomalies.reduce((sum, [, count]) => sum + count, 0)} anomali</span>
+                  </div>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                  <span>{anomalyDashboardSummary.allAnomalies.length} jenis</span>
-                  <span className="text-slate-400">·</span>
-                  <span>{anomalyDashboardSummary.allAnomalies.reduce((sum, [, count]) => sum + count, 0)} anomali</span>
-                </div>
-              </div>
-
-              {anomalyDashboardSummary.allAnomalies.length === 0 ? (
-                <p className="mt-4 text-xs text-slate-400">Tidak ada data</p>
-              ) : (
-                <div className="mt-4 space-y-3">
-                  {anomalyDashboardSummary.allAnomalies.map(([name, count]) => {
-                    const max = anomalyDashboardSummary.allAnomalies[0]?.[1] || 1;
-                    return (
-                      <div key={String(name)} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="truncate text-sm font-medium text-slate-800" title={String(name)}>{String(name)}</span>
-                          <span className="text-sm font-semibold text-slate-900">{count.toLocaleString("id-ID")}</span>
+              </CardHeader>
+              <CardContent className="p-0">
+                {anomalyDashboardSummary.allAnomalies.length === 0 ? (
+                  <p className="p-4 text-xs text-slate-400">Tidak ada data</p>
+                ) : (
+                  <div className="space-y-3 p-4">
+                    {anomalyDashboardSummary.allAnomalies.map(([name, count]) => {
+                      const max = anomalyDashboardSummary.allAnomalies[0]?.[1] || 1;
+                      return (
+                        <div key={String(name)} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="truncate text-sm font-medium text-slate-800" title={String(name)}>{String(name)}</span>
+                            <span className="text-sm font-semibold text-slate-900">{count.toLocaleString("id-ID")}</span>
+                          </div>
+                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                            <div className="h-full rounded-full bg-amber-500" style={{ width: `${(count / max) * 100}%` }} />
+                          </div>
                         </div>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-                          <div className="h-full rounded-full bg-amber-500" style={{ width: `${(count / max) * 100}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         ) : activeAnomaliTab === "usaha" ? (
           <AnomaliTable

@@ -1644,15 +1644,14 @@ export function MonitoringLapangan() {
       // Chart data for PML Top 10 by Pemeriksaan % - use same calculation as table
       // Group PPL by PML to match table calculation
       // Use combination of nama_pml + kecamatan as unique key
-      const pmlChartMap = new Map<string, { totalDraft: number; totalSubmit: number; totalApprove: number; totalReject: number; totalRevoke: number; nama_pml: string }>();
+      const pmlChartMap = new Map<string, { totalSubmit: number; totalApprove: number; totalReject: number; totalRevoke: number; nama_pml: string }>();
       rows.forEach(ppl => {
         if (ppl.nama_pml) {
           const key = `${ppl.nama_pml}|${ppl.kecamatan}`;
           if (!pmlChartMap.has(key)) {
-            pmlChartMap.set(key, { totalDraft: 0, totalSubmit: 0, totalApprove: 0, totalReject: 0, totalRevoke: 0, nama_pml: ppl.nama_pml });
+            pmlChartMap.set(key, { totalSubmit: 0, totalApprove: 0, totalReject: 0, totalRevoke: 0, nama_pml: ppl.nama_pml });
           }
           const current = pmlChartMap.get(key)!;
-          current.totalDraft += (ppl.draft || 0);
           current.totalSubmit += ppl.jumlah_submit;
           current.totalApprove += ppl.jumlah_approve;
           current.totalReject += ppl.jumlah_reject;
@@ -1661,9 +1660,9 @@ export function MonitoringLapangan() {
       });
 
       const pmlWithPercentage = Array.from(pmlChartMap.entries()).map(([key, data]) => {
-        // Use definition: Total Status = Draft + Approve + Reject + Revoke
+        // Use definition: Total Status = Submit + Approve + Reject + Revoke
         // % Pemeriksaan = (Approve + Reject + Revoke) / Total Status
-        const totalStatus = (data.totalDraft || 0) + data.totalApprove + data.totalReject + (data.totalRevoke || 0);
+        const totalStatus = (data.totalSubmit || 0) + data.totalApprove + data.totalReject + (data.totalRevoke || 0);
         const pemeriksaanPercent = totalStatus > 0 
           ? Math.round(((data.totalApprove + data.totalReject + (data.totalRevoke || 0)) / totalStatus) * 10000) / 100
           : 0;
@@ -1983,13 +1982,6 @@ export function MonitoringLapangan() {
             >
               <BarChart3 className="h-5 w-5" />
               <span className="font-medium">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="kecamatan"
-              className="flex items-center gap-3 justify-center flex-1 py-3 px-4 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
-            >
-              <BarChart3 className="h-5 w-5" />
-              <span className="font-medium">Kecamatan</span>
             </TabsTrigger>
             <TabsTrigger
               value="ppl"
@@ -2666,110 +2658,6 @@ export function MonitoringLapangan() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-
-          {/* Kecamatan Tab */}
-          <TabsContent value="kecamatan" className="space-y-6 mt-6">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
-                <div>
-                  <CardTitle>Data Kecamatan</CardTitle>
-                  <CardDescription>
-                    Detail monitoring kecamatan dengan perhitungan rata-rata submit per hari
-                  </CardDescription>
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-0">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                    <span className="ml-2 text-slate-600">Memuat data...</span>
-                  </div>
-                ) : chartDataKecamatanAll.length === 0 ? (
-                  <div className="flex items-center justify-center py-12 text-slate-500">
-                    <AlertCircle className="h-5 w-5 mr-2" />
-                    Tidak ada data ditemukan
-                  </div>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-slate-50 hover:bg-slate-50">
-                            <TableHead className="w-12 text-center text-slate-700 font-semibold">
-                              No
-                            </TableHead>
-                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
-                              Kecamatan
-                            </TableHead>
-                            <TableHead className="text-center text-slate-700 font-semibold px-4 py-3">
-                              Jumlah PPL
-                            </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              Jumlah Submit
-                            </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              Rata-rata/hari
-                            </TableHead>
-                            <TableHead className="text-center text-slate-700 font-semibold px-4 py-3">
-                              Status
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {chartDataKecamatanAll.map((row, index) => {
-                            const statusIcon = row.value >= MAX_DAILY_TARGET 
-                              ? { label: "Diatas target", color: "#10b981", icon: CheckCircle2 }
-                              : row.value >= MIN_DAILY_TARGET
-                              ? { label: "Sesuai target", color: "#3b82f6", icon: CheckCircle2 }
-                              : { label: "Belum target", color: "#f59e0b", icon: AlertTriangle };
-                            
-                            const StatusIcon = statusIcon.icon;
-
-                            return (
-                              <TableRow
-                                key={row.name}
-                                className="hover:bg-slate-50 border-b transition-colors\"
-                              >
-                                <TableCell className="text-center text-slate-600 font-medium w-12\">
-                                  {index + 1}
-                                </TableCell>
-                                <TableCell className="font-medium text-slate-900 px-4 py-3\">
-                                  {row.name}
-                                </TableCell>
-                                <TableCell className="text-center text-slate-700 px-4 py-3\">
-                                  {row.countPPL} orang
-                                </TableCell>
-                                <TableCell className="text-right font-semibold text-slate-900 px-4 py-3\">
-                                  {row.totalSubmit.toLocaleString("id-ID")} submit
-                                </TableCell>
-                                <TableCell className="text-right text-slate-700 px-4 py-3\">
-                                  {row.value.toLocaleString("id-ID")} submit/PPL
-                                </TableCell>
-                                <TableCell className="text-center px-4 py-3\">
-                                  <div className="flex items-center justify-center gap-1.5\">
-                                    <StatusIcon
-                                      className="h-4 w-4\"
-                                      style={{
-                                        color: statusIcon.color,
-                                      }}
-                                    />
-                                    <span className="text-xs font-semibold text-slate-700\">
-                                      {statusIcon.label}
-                                    </span>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* PPL Tab */}
