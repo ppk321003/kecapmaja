@@ -50,14 +50,14 @@ import {
 const MonitoringLapanganAnomaliTab = React.lazy(() => import("./MonitoringLapanganAnomaliTab"));
 
 // Schedule: 15 Juni - 17 Agustus 2026 (63 hari)
-// Target: flexible 7-12 submit per hari (average 9-10), 100% reached on day 63
+// Target: flexible 10-15 submit per hari (average 12.5), 100% reached on day 63
 const SCHEDULE_START = new Date(2026, 5, 15); // 15 June 2026
 const SCHEDULE_END = new Date(2026, 7, 17); // 17 August 2026
 const TOTAL_DAYS = 63; // 15 Juni - 17 Agustus = 63 hari
-const MIN_DAILY_TARGET = 7;
-const MAX_DAILY_TARGET = 12;
-const AVG_DAILY_TARGET = 9.5; // (7 + 12) / 2
-const TOTAL_TARGET = TOTAL_DAYS * AVG_DAILY_TARGET; // ~599 submit
+const MIN_DAILY_TARGET = 10;
+const MAX_DAILY_TARGET = 15;
+const AVG_DAILY_TARGET = 12.5; // (10 + 15) / 2
+const TOTAL_TARGET = TOTAL_DAYS * AVG_DAILY_TARGET; // ~788 submit
 
 const getTargetMinimalPercentage = (daysElapsed: number): number => {
   // Linear progress: Day 16 = 27.20%, daily rate = 1.7% per day
@@ -253,13 +253,13 @@ const getScheduleStatus = (jumlahAktivitas: number): {
   };
 };
 
-// Function to get color gradient based on TARGET (7-12), not min-max
+// Function to get color gradient based on the updated daily target rule
 const getColorGradient = (value: number): string => {
-  // Berbasis target: 7-12 submit/hari
-  // Sesuai deskripsi: Hijau ≥7/hari | Kuning 4-6/hari | Merah <4/hari
-  if (value >= 7) return "#22c55e"; // Hijau (>= 7)
-  if (value >= 4) return "#eab308"; // Kuning (4-6)
-  return "#dc2626"; // Merah (< 4)
+  // Berbasis target: 10-15 submit/hari
+  // Hijau ≥10/hari | Kuning 7-9/hari | Merah <7/hari
+  if (value >= MIN_DAILY_TARGET) return "#22c55e"; // Hijau (>= 10)
+  if (value >= MIN_DAILY_TARGET - 3) return "#eab308"; // Kuning (7-9)
+  return "#dc2626"; // Merah (< 7)
 };
 
 // Function untuk mendapatkan warna persentase berdasarkan hari ke-x dan target fleksibel
@@ -809,7 +809,7 @@ const KecamatanTooltip = ({ active, payload }: any) => {
     // Hitung rata-rata/hari per PPL: (Total Submit / Hari yang berlalu) / Jumlah PPL
     const rataRataPerHari = daysElapsed > 0 ? Math.round((totalSubmit / daysElapsed) / Math.max(1, countPPL) * 100) / 100 : 0;
     
-    // Tentukan status berdasarkan perbandingan dengan range target (7-12)
+    // Tentukan status berdasarkan perbandingan dengan range target (10-15)
     let status: string;
     if (rataRataPerHari >= MAX_DAILY_TARGET) {
       status = `✅ Diatas target hari ke-${daysElapsed}`;
@@ -2399,7 +2399,7 @@ export function MonitoringLapangan() {
                       📊 Rata-rata Aktifitas PPL per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
                     </CardTitle>
                     <CardDescription>
-                      Rata-rata aktivitas komponen terpilih per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥7/hari | Kuning 4-6/hari | Merah &lt;4/hari. Garis biru: target minimal 7/hari | Garis ungu: rata-rata keseluruhan
+                      Rata-rata aktivitas komponen terpilih per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥10/hari | Kuning 7-9/hari | Merah &lt;7/hari. Garis biru: target minimal 10/hari | Garis ungu: rata-rata keseluruhan
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-4 pt-2 border-t">
