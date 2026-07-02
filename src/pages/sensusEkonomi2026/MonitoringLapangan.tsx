@@ -82,6 +82,7 @@ interface AggregatedData {
   jumlah_submit: number;
   jumlah_approve: number;
   jumlah_reject: number;
+  jumlah_revoke: number;
   total_assignments: number;
   status_counts: {
     open: number;
@@ -89,6 +90,7 @@ interface AggregatedData {
     submitted: number;
     approved: number;
     rejected: number;
+    revoked: number;
   };
 }
 
@@ -139,6 +141,7 @@ interface PMLData {
   jumlah_submit_ppl: number;
   jumlah_approve: number;
   jumlah_reject: number;
+  jumlah_revoke: number;
 }
 
 const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
