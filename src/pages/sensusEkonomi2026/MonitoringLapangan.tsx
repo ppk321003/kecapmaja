@@ -2899,6 +2899,9 @@ export function MonitoringLapangan() {
                                   <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
                                     {row.jumlah_reject.toLocaleString("id-ID")}
                                   </TableCell>
+                                  <TableCell className="text-right font-semibold text-orange-700 px-4 py-3">
+                                    {(row.jumlah_revoke || 0).toLocaleString("id-ID")}
+                                  </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                     {row.jumlah_submit.toLocaleString("id-ID")}
                                   </TableCell>
