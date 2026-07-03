@@ -144,6 +144,8 @@ interface PMLData {
   jumlah_approve: number;
   jumlah_reject: number;
   jumlah_revoke: number;
+  totalAssignments?: number;
+  targetPercent?: number;
 }
 
 const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
@@ -969,10 +971,15 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     ['DATA PML (PETUGAS PENGAWAS LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Total Status', 'Approve', 'Reject', 'Revoke', '% Pemeriksaan', 'Rata-rata Submit+Draft/Harian'],
+    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Total Status', 'Approve', 'Reject', 'Revoke', '% Pemeriksaan', '% Target', 'Rata-rata Submit+Draft/Harian'],
     ...pmlRows.map((row, idx) => {
-      const percentage = row.jumlah_submit_ppl > 0 ? (((row.jumlah_approve + row.jumlah_reject) / row.jumlah_submit_ppl) * 100).toFixed(2) : '0.00';
+      const totalStatus = row.jumlah_submit_ppl + row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke;
+      const percentage = totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject) / totalStatus) * 100).toFixed(2) : '0.00';
       const countPPL = aggregatedRows.filter(ppl => ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan).length;
+      const totalAssignments = aggregatedRows
+        .filter(ppl => ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan)
+        .reduce((sum, ppl) => sum + (ppl.total_assignments || 0), 0);
+      const targetPercent = totalAssignments > 0 ? (((row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke) / totalAssignments) * 100).toFixed(2) : '0.00';
       const dailyAverage = countPPL > 0 ? (row.totalDraft + row.jumlah_reject + row.jumlah_submit_ppl + row.jumlah_approve) / (elapsedDays * countPPL) : 0;
       const dailyAverageFormatted = Math.round(dailyAverage * 100) / 100;
       return [
@@ -985,6 +992,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
         row.jumlah_reject,
         row.jumlah_revoke,
         `${percentage}%`,
+        `${targetPercent}%`,
         dailyAverageFormatted
       ];
     })
@@ -1004,6 +1012,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     { wch: 10 },
     { wch: 10 },
     { wch: 10 },
+    { wch: 15 },
     { wch: 15 },
     { wch: 22 }
   ];
@@ -1333,7 +1342,7 @@ export function MonitoringLapangan() {
       total: allRows.length,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
-  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "revoke" | "pemeriksaan">("pemeriksaan");
+  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "revoke" | "pemeriksaan" | "targetPercent">("pemeriksaan");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
   const [kecamatanPercentageComponents, setKecamatanPercentageComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean, revoke: boolean}>(
@@ -1814,15 +1823,17 @@ export function MonitoringLapangan() {
       const key = `${pml.nama_pml}|${pml.kecamatan}`;
       const pplUnderPML = pmlGroups.get(key) || [];
       const actualSubmit = pplUnderPML.reduce((sum, ppl) => sum + (ppl.jumlah_submit || 0), 0);
+      const totalAssignments = pplUnderPML.reduce((sum, ppl) => sum + (ppl.total_assignments || 0), 0);
       const totalStatus = actualSubmit + pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0);
       const pemeriksaan = totalStatus > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalStatus) * 100 : 0;
-      return { ...pml, actualSubmit, pemeriksaan, pplUnderPML } as any;
+      const targetPercent = totalAssignments > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalAssignments) * 100 : 0;
+      return { ...pml, actualSubmit, pemeriksaan, totalAssignments, targetPercent, pplUnderPML } as any;
     });
   }, [pmlData, pmlGroups]);
 
   // PML Data sorting and pagination
   const sortedPMLData = useMemo(() => {
-    let sorted: (PMLData & { actualSubmit?: number; pemeriksaan?: number; pplUnderPML?: AggregatedData[] })[] = [...pmlDataWithActualSubmit];
+    let sorted: (PMLData & { actualSubmit?: number; pemeriksaan?: number; totalAssignments?: number; targetPercent?: number; pplUnderPML?: AggregatedData[] })[] = [...pmlDataWithActualSubmit];
     
     if (debouncedPMLSearchTerm) {
       const normalizedSearch = debouncedPMLSearchTerm.trim().toLowerCase();
@@ -1842,6 +1853,8 @@ export function MonitoringLapangan() {
       sorted.sort((a, b) => (a.jumlah_revoke || 0) - (b.jumlah_revoke || 0));
     } else if (pmlSortBy === "pemeriksaan") {
       sorted.sort((a, b) => (a.pemeriksaan ?? 0) - (b.pemeriksaan ?? 0));
+    } else if (pmlSortBy === "targetPercent") {
+      sorted.sort((a, b) => (a.targetPercent ?? 0) - (b.targetPercent ?? 0));
     }
     if (pmlSortOrder === "desc") {
       sorted.reverse();
@@ -3251,6 +3264,21 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "targetPercent") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("targetPercent");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                % Target
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -3312,6 +3340,9 @@ export function MonitoringLapangan() {
                                       return totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
                                     })()} %
                                   </TableCell>
+                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                    {row.targetPercent !== undefined ? row.targetPercent.toFixed(2) : "0.00"} %
+                                  </TableCell>
                                 </TableRow>
 
                                 {/* Expanded PPL Details */}
@@ -3349,6 +3380,7 @@ export function MonitoringLapangan() {
                                           return totalStatus > 0 ? (((ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
                                         })()} %
                                       </TableCell>
+                                      <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">-</TableCell>
                                     </TableRow>
                                   ))
                                 )}
@@ -3398,6 +3430,12 @@ export function MonitoringLapangan() {
                                   return sum;
                                 }, 0) / sortedPMLData.length : 0);
                                 return avgPercentage.toFixed(2);
+                              })()} %
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
+                              {(() => {
+                                const avgTarget = sortedPMLData.length > 0 ? sortedPMLData.reduce((sum, row) => sum + (row.targetPercent || 0), 0) / sortedPMLData.length : 0;
+                                return avgTarget.toFixed(2);
                               })()} %
                             </TableCell>
                           </TableRow>
