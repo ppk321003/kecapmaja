@@ -53,6 +53,25 @@ function parseDates(str: string): number[] {
     .sort((a, b) => a - b);
 }
 
+function pjBadgeClass(pj: string) {
+  switch ((pj || "").toLowerCase()) {
+    case "ipds":
+      return "bg-blue-100 text-blue-800";
+    case "sosial":
+      return "bg-green-100 text-green-800";
+    case "neraca":
+      return "bg-yellow-100 text-yellow-800";
+    case "produksi":
+      return "bg-purple-100 text-purple-800";
+    case "distribusi":
+      return "bg-indigo-100 text-indigo-800";
+    case "tata usaha":
+      return "bg-slate-100 text-slate-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+}
+
 export default function LaporSupervisi() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -443,7 +462,9 @@ export default function LaporSupervisi() {
                     </TableCell>
                     <TableCell>{row.kegiatan}</TableCell>
                     <TableCell className="whitespace-nowrap">{row.tanggal}</TableCell>
-                    <TableCell><Badge variant="secondary">{row.penanggungJawab}</Badge></TableCell>
+                    <TableCell>
+                      <Badge className={`${pjBadgeClass(row.penanggungJawab)} px-2 py-0.5`}>{row.penanggungJawab}</Badge>
+                    </TableCell>
                     <TableCell className="text-center">{row.jumlah}</TableCell>
                     <TableCell className="text-center">
                       {row.locked ? (
