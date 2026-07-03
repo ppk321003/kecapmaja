@@ -1,0 +1,454 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Plus, Edit, Trash2, Lock, Unlock, MapPin, Loader2, Save, Search } from "lucide-react";
+import { id as localeId } from "date-fns/locale";
+
+const SPREADSHEET_ID = "1CEWp_jOPMQXE1lw7eVvlfyCwO147O2XpmLrNuVsdpU4";
+const SHEET_NAME = "Sheet1";
+const RANGE = `${SHEET_NAME}!A:J`; // A-I data + J = LOCK flag
+
+const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const TAHUN_OPTIONS = [2024, 2025, 2026, 2027];
+const PENANGGUNG_JAWAB_OPTIONS = ["IPDS", "Sosial", "Neraca", "Produksi", "Distribusi", "Tata Usaha"];
+
+interface Row {
+  rowIndex: number; // sheet row (1-based, including header)
+  no: string;
+  tahun: string;
+  bulan: string;
+  nama: string;
+  jabatan: string;
+  kegiatan: string;
+  tanggal: string; // "5, 6, 7"
+  penanggungJawab: string;
+  jumlah: string;
+  locked: boolean;
+}
+
+function parseDates(str: string): number[] {
+  if (!str) return [];
+  return str
+    .split(/[,;\s]+/)
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => !isNaN(n) && n >= 1 && n <= 31)
+    .sort((a, b) => a - b);
+}
+
+export default function LaporSupervisi() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+
+  const now = new Date();
+  const [tahun, setTahun] = useState<string>(String(now.getFullYear()));
+  const [bulan, setBulan] = useState<string>(BULAN[now.getMonth()]);
+  const [search, setSearch] = useState("");
+
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [formKegiatan, setFormKegiatan] = useState("");
+  const [formPJ, setFormPJ] = useState("");
+  const [formDates, setFormDates] = useState<Date[]>([]);
+
+  const monthIndex = BULAN.indexOf(bulan);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: { spreadsheetId: SPREADSHEET_ID, operation: "read", range: RANGE },
+      });
+      if (error) throw error;
+      const values: string[][] = data?.values || [];
+      const parsed: Row[] = values.slice(1).map((r, idx) => ({
+        rowIndex: idx + 2,
+        no: r[0] || "",
+        tahun: r[1] || "",
+        bulan: r[2] || "",
+        nama: r[3] || "",
+        jabatan: r[4] || "",
+        kegiatan: r[5] || "",
+        tanggal: r[6] || "",
+        penanggungJawab: r[7] || "",
+        jumlah: r[8] || "",
+        locked: String(r[9] || "").toUpperCase() === "TRUE" || String(r[9] || "").toUpperCase() === "LOCKED",
+      })).filter((r) => r.nama || r.kegiatan);
+      setRows(parsed);
+    } catch (e: any) {
+      toast({ title: "Gagal memuat data", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); /* eslint-disable-next-line */ }, []);
+
+  const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (r.tahun && r.tahun !== tahun) return false;
+      if (r.bulan && r.bulan !== bulan) return false;
+      if (!s) return true;
+      return (
+        r.nama.toLowerCase().includes(s) ||
+        r.kegiatan.toLowerCase().includes(s) ||
+        r.penanggungJawab.toLowerCase().includes(s)
+      );
+    });
+  }, [rows, tahun, bulan, search]);
+
+  const canModify = (row: Row) => {
+    if (isPPK) return true;
+    if (row.locked) return false;
+    return row.nama === user?.username;
+  };
+
+  const openAdd = () => {
+    setEditing(null);
+    setFormKegiatan("");
+    setFormPJ("");
+    setFormDates([]);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (row: Row) => {
+    setEditing(row);
+    setFormKegiatan(row.kegiatan);
+    setFormPJ(row.penanggungJawab);
+    setFormDates(parseDates(row.tanggal).map((d) => new Date(parseInt(row.tahun, 10), BULAN.indexOf(row.bulan), d)));
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    if (!formKegiatan.trim()) {
+      toast({ title: "Kegiatan wajib diisi", variant: "destructive" });
+      return;
+    }
+    if (!formPJ) {
+      toast({ title: "Penanggung Jawab wajib dipilih", variant: "destructive" });
+      return;
+    }
+    const dates = formDates
+      .filter((d) => d.getFullYear() === parseInt(tahun, 10) && d.getMonth() === monthIndex)
+      .map((d) => d.getDate())
+      .sort((a, b) => a - b);
+    if (dates.length === 0) {
+      toast({ title: "Pilih minimal satu tanggal", variant: "destructive" });
+      return;
+    }
+
+    // Duplicate check: same user, same tahun+bulan, overlapping dates
+    const takenByUser = new Set<number>();
+    rows.forEach((r) => {
+      if (r.nama !== user.username) return;
+      if (r.tahun !== tahun || r.bulan !== bulan) return;
+      if (editing && r.rowIndex === editing.rowIndex) return;
+      parseDates(r.tanggal).forEach((d) => takenByUser.add(d));
+    });
+    const clash = dates.filter((d) => takenByUser.has(d));
+    if (clash.length > 0) {
+      toast({
+        title: "Tanggal bentrok",
+        description: `Anda sudah punya jadwal supervisi di tanggal: ${clash.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const tanggalStr = dates.join(", ");
+      const jumlah = String(dates.length);
+      if (editing) {
+        const values = [[
+          editing.no,
+          tahun,
+          bulan,
+          editing.nama,
+          editing.jabatan,
+          formKegiatan,
+          tanggalStr,
+          formPJ,
+          jumlah,
+          editing.locked ? "TRUE" : "FALSE",
+        ]];
+        const { error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "update",
+            range: `${SHEET_NAME}!A${editing.rowIndex}:J${editing.rowIndex}`,
+            values,
+          },
+        });
+        if (error) throw error;
+        toast({ title: "Data diperbarui" });
+      } else {
+        const maxNo = rows.reduce((m, r) => {
+          const n = parseInt(r.no, 10);
+          return isNaN(n) ? m : Math.max(m, n);
+        }, 0);
+        const values = [[
+          String(maxNo + 1),
+          tahun,
+          bulan,
+          user.username,
+          user.role || "",
+          formKegiatan,
+          tanggalStr,
+          formPJ,
+          jumlah,
+          "FALSE",
+        ]];
+        const { error } = await supabase.functions.invoke("google-sheets", {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "append",
+            range: RANGE,
+            values,
+          },
+        });
+        if (error) throw error;
+        toast({ title: "Data tersimpan" });
+      }
+      setDialogOpen(false);
+      await loadData();
+    } catch (e: any) {
+      toast({ title: "Gagal menyimpan", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (row: Row) => {
+    if (!canModify(row)) {
+      toast({ title: "Tidak diizinkan", description: row.locked ? "Data sedang dikunci PPK" : "Bukan milik Anda", variant: "destructive" });
+      return;
+    }
+    if (!confirm(`Hapus data supervisi "${row.kegiatan}" (${row.tanggal})?`)) return;
+    setSaving(true);
+    try {
+      // Clear row content (A:J)
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "update",
+          range: `${SHEET_NAME}!A${row.rowIndex}:J${row.rowIndex}`,
+          values: [["", "", "", "", "", "", "", "", "", ""]],
+        },
+      });
+      if (error) throw error;
+      toast({ title: "Data dihapus" });
+      await loadData();
+    } catch (e: any) {
+      toast({ title: "Gagal menghapus", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleLock = async (row: Row) => {
+    if (!isPPK) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "update",
+          range: `${SHEET_NAME}!J${row.rowIndex}`,
+          values: [[row.locked ? "FALSE" : "TRUE"]],
+        },
+      });
+      if (error) throw error;
+      toast({ title: row.locked ? "Data di-unlock" : "Data dikunci" });
+      await loadData();
+    } catch (e: any) {
+      toast({ title: "Gagal", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <MapPin className="h-7 w-7 text-primary" /> Lapor Supervisi
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Pelaporan perjalanan supervisi organik. Satu tanggal hanya untuk satu perjalanan supervisi.
+          </p>
+        </div>
+        <Button onClick={openAdd} className="gap-2">
+          <Plus className="h-4 w-4" /> Tambah Supervisi
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Filter</CardTitle>
+          <CardDescription>Pilih periode tahun & bulan pelaporan.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3 items-end">
+          <div className="w-32">
+            <label className="text-xs font-medium">Tahun</label>
+            <Select value={tahun} onValueChange={setTahun}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {TAHUN_OPTIONS.map((t) => <SelectItem key={t} value={String(t)}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-44">
+            <label className="text-xs font-medium">Bulan</label>
+            <Select value={bulan} onValueChange={setBulan}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {BULAN.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1 min-w-[220px]">
+            <label className="text-xs font-medium">Cari</label>
+            <div className="relative">
+              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nama / kegiatan / PJ" className="pl-9" />
+            </div>
+          </div>
+          <Button variant="outline" onClick={loadData} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Muat Ulang"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Daftar Supervisi — {bulan} {tahun}</CardTitle>
+          <CardDescription>{filtered.length} entri</CardDescription>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">No</TableHead>
+                <TableHead>Nama Pelaksana</TableHead>
+                <TableHead>Jabatan</TableHead>
+                <TableHead>Kegiatan Supervisi</TableHead>
+                <TableHead>Tanggal</TableHead>
+                <TableHead>Penanggung Jawab</TableHead>
+                <TableHead className="text-center">Jumlah</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={9} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
+              ) : filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Belum ada data.</TableCell></TableRow>
+              ) : filtered.map((row, i) => {
+                const mine = row.nama === user?.username;
+                const editable = canModify(row);
+                return (
+                  <TableRow key={row.rowIndex} className={mine ? "bg-primary/5" : undefined}>
+                    <TableCell>{i + 1}</TableCell>
+                    <TableCell className="font-medium">{row.nama}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{row.jabatan}</TableCell>
+                    <TableCell>{row.kegiatan}</TableCell>
+                    <TableCell className="whitespace-nowrap">{row.tanggal}</TableCell>
+                    <TableCell><Badge variant="secondary">{row.penanggungJawab}</Badge></TableCell>
+                    <TableCell className="text-center">{row.jumlah}</TableCell>
+                    <TableCell>
+                      {row.locked ? (
+                        <Badge variant="destructive" className="gap-1"><Lock className="h-3 w-3" /> Terkunci</Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1"><Unlock className="h-3 w-3" /> Terbuka</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      {isPPK && (
+                        <Button size="sm" variant="ghost" onClick={() => toggleLock(row)} disabled={saving} title={row.locked ? "Unlock" : "Lock"}>
+                          {row.locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(row)} disabled={!editable || saving}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDelete(row)} disabled={!editable || saving}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit Supervisi" : "Tambah Supervisi"}</DialogTitle>
+            <DialogDescription>
+              Periode: <b>{bulan} {tahun}</b> — Pelaksana: <b>{editing ? editing.nama : user?.username}</b>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Kegiatan Supervisi</label>
+              <Input value={formKegiatan} onChange={(e) => setFormKegiatan(e.target.value)} placeholder="Deskripsi kegiatan supervisi" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Penanggung Jawab Kegiatan</label>
+              <Select value={formPJ} onValueChange={setFormPJ}>
+                <SelectTrigger><SelectValue placeholder="Pilih penanggung jawab" /></SelectTrigger>
+                <SelectContent>
+                  {PENANGGUNG_JAWAB_OPTIONS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Tanggal Supervisi</label>
+              <div className="border rounded-md mt-1">
+                <CalendarComponent
+                  mode="multiple"
+                  selected={formDates}
+                  onSelect={(d) => setFormDates(d || [])}
+                  month={new Date(parseInt(tahun, 10), monthIndex)}
+                  locale={localeId}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Terpilih: {formDates.filter((d) => d.getMonth() === monthIndex && d.getFullYear() === parseInt(tahun, 10)).map((d) => d.getDate()).sort((a, b) => a - b).join(", ") || "-"}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Batal</Button>
+            <Button onClick={handleSave} disabled={saving} className="gap-2">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Simpan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
