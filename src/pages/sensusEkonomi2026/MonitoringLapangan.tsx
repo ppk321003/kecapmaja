@@ -3441,28 +3441,91 @@ export function MonitoringLapangan() {
                                     {row.kecamatan || "-"}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                    {(calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)).toLocaleString("id-ID")}
+                                    <UITooltipProvider delayDuration={200}>
+                                      <UITooltip>
+                                        <UITooltipTrigger asChild>
+                                          <div>{(calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)).toLocaleString("id-ID")}</div>
+                                        </UITooltipTrigger>
+                                        <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                          <div className="text-sm text-slate-700">Total Status = Jumlah Submit + Approve + Reject + Revoke</div>
+                                        </UITooltipContent>
+                                      </UITooltip>
+                                    </UITooltipProvider>
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                    {calculatedSubmitPPL.toLocaleString("id-ID")}
+                                    <UITooltipProvider delayDuration={200}>
+                                      <UITooltip>
+                                        <UITooltipTrigger asChild>
+                                          <div>{calculatedSubmitPPL.toLocaleString("id-ID")}</div>
+                                        </UITooltipTrigger>
+                                        <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                          <div className="text-sm text-slate-700">Submit = Jumlah data yang telah dikirim oleh PPL dan menunggu pemeriksaan PML</div>
+                                        </UITooltipContent>
+                                      </UITooltip>
+                                    </UITooltipProvider>
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
-                                    {row.jumlah_approve.toLocaleString("id-ID")}
+                                    <UITooltipProvider delayDuration={200}>
+                                      <UITooltip>
+                                        <UITooltipTrigger asChild>
+                                          <div>{row.jumlah_approve.toLocaleString("id-ID")}</div>
+                                        </UITooltipTrigger>
+                                        <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                          <div className="text-sm text-slate-700">Approve = Jumlah data yang telah disetujui oleh PML</div>
+                                        </UITooltipContent>
+                                      </UITooltip>
+                                    </UITooltipProvider>
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-red-700 px-4 py-3">
-                                    {row.jumlah_reject.toLocaleString("id-ID")}
+                                    <UITooltipProvider delayDuration={200}>
+                                      <UITooltip>
+                                        <UITooltipTrigger asChild>
+                                          <div>{row.jumlah_reject.toLocaleString("id-ID")}</div>
+                                        </UITooltipTrigger>
+                                        <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                          <div className="text-sm text-slate-700">Reject = Jumlah data yang telah ditolak/dikembalikan oleh PML</div>
+                                        </UITooltipContent>
+                                      </UITooltip>
+                                    </UITooltipProvider>
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-orange-700 px-4 py-3">
-                                    {(row.jumlah_revoke || 0).toLocaleString("id-ID")}
+                                    <UITooltipProvider delayDuration={200}>
+                                      <UITooltip>
+                                        <UITooltipTrigger asChild>
+                                          <div>{(row.jumlah_revoke || 0).toLocaleString("id-ID")}</div>
+                                        </UITooltipTrigger>
+                                        <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                          <div className="text-sm text-slate-700">Revoke = Jumlah data persetujuannya telah dibatalkan (unapprove)</div>
+                                        </UITooltipContent>
+                                      </UITooltip>
+                                    </UITooltipProvider>
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
-                                    {(() => {
-                                      const totalStatus = calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0);
-                                      return totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
-                                    })()} %
+                                    <UITooltipProvider delayDuration={200}>
+                                      <UITooltip>
+                                        <UITooltipTrigger asChild>
+                                          <div>{(() => {
+                                            const totalStatus = calculatedSubmitPPL + row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0);
+                                            return totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
+                                          })()} %</div>
+                                        </UITooltipTrigger>
+                                        <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                          <div className="text-sm text-slate-700">% Periksa = Persentase data yang telah diperiksa terhadap data yang dikirim</div>
+                                        </UITooltipContent>
+                                      </UITooltip>
+                                    </UITooltipProvider>
                                   </TableCell>
                                   <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(row.targetPercent ?? 0) }}>
-                                    {row.targetPercent !== undefined ? row.targetPercent.toFixed(2) : "0.00"} %
+                                    <UITooltipProvider delayDuration={200}>
+                                      <UITooltip>
+                                        <UITooltipTrigger asChild>
+                                          <div>{row.targetPercent !== undefined ? row.targetPercent.toFixed(2) : "0.00"} %</div>
+                                        </UITooltipTrigger>
+                                        <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                          <div className="text-sm text-slate-700">% Periksa/Prelist = Persentase data yang telah diperiksa terhadap jumlah muatan prelist</div>
+                                        </UITooltipContent>
+                                      </UITooltip>
+                                    </UITooltipProvider>
                                   </TableCell>
                                 </TableRow>
 
@@ -3496,12 +3559,42 @@ export function MonitoringLapangan() {
                                         {(ppl.jumlah_revoke || 0).toLocaleString("id-ID")}
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">
-                                        {(() => {
-                                          const totalStatus = (ppl.jumlah_submit || 0) + ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0);
-                                          return totalStatus > 0 ? (((ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
-                                        })()} %
+                                        <UITooltipProvider delayDuration={200}>
+                                          <UITooltip>
+                                            <UITooltipTrigger asChild>
+                                              <div>{(() => {
+                                                const totalStatus = (ppl.jumlah_submit || 0) + ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0);
+                                                return totalStatus > 0 ? (((ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
+                                              })()} %</div>
+                                            </UITooltipTrigger>
+                                            <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                              <div className="text-sm text-slate-700">% Periksa = Persentase data yang telah diperiksa terhadap data yang dikirim</div>
+                                            </UITooltipContent>
+                                          </UITooltip>
+                                        </UITooltipProvider>
                                       </TableCell>
-                                      <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">-</TableCell>
+                                      <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">
+                                        {(() => {
+                                          const totalAssignmentsPPL = ppl.total_assignments || 0;
+                                          const numerator = (ppl.jumlah_approve || 0) + (ppl.jumlah_reject || 0) + (ppl.jumlah_revoke || 0);
+                                          if (totalAssignmentsPPL > 0) {
+                                            const percent = (numerator / totalAssignmentsPPL) * 100;
+                                            return (
+                                              <UITooltipProvider delayDuration={200}>
+                                                <UITooltip>
+                                                  <UITooltipTrigger asChild>
+                                                    <div style={{ color: getColorForPercentage(percent) }}>{percent.toFixed(2)} %</div>
+                                                  </UITooltipTrigger>
+                                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                                    <div className="text-sm text-slate-700">% Periksa/Prelist = Persentase data yang telah diperiksa terhadap jumlah muatan prelist</div>
+                                                  </UITooltipContent>
+                                                </UITooltip>
+                                              </UITooltipProvider>
+                                            );
+                                          }
+                                          return "-";
+                                        })()}
+                                      </TableCell>
                                     </TableRow>
                                   ))
                                 )}
