@@ -3147,9 +3147,18 @@ export function MonitoringLapangan() {
                     const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
                     return (
                       <div className="hidden md:flex items-center">
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 shadow-sm ml-4">
-                          <div className="text-xs text-slate-500 uppercase tracking-[0.12em] font-semibold">Hari ke-{daysElapsed}</div>
-                          <div className="mt-0.5 text-sm font-bold text-slate-900">Target minimal: {minPercentageTarget.toFixed(2)}%</div>
+                        <div className="rounded-2xl px-4 py-2 shadow-lg ml-4 bg-emerald-800 text-white flex flex-col justify-center items-start">
+                          <div className="text-xs uppercase tracking-[0.12em] font-semibold">Hari ke-{daysElapsed}</div>
+                          <div className="mt-0.5 text-sm font-bold">Target minimal: {minPercentageTarget.toFixed(2)}%</div>
+                          <div className="mt-2 w-36">
+                            <div className="w-full h-2 bg-white/20 rounded-full">
+                              <div
+                                className="h-2 bg-white rounded-full"
+                                style={{ width: `${Math.min(100, minPercentageTarget)}%` }}
+                                aria-label={`Progress ${minPercentageTarget.toFixed(2)} percent`}
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
