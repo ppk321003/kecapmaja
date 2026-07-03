@@ -18,10 +18,17 @@ import { id as localeId } from "date-fns/locale";
 const SPREADSHEET_ID = "1CEWp_jOPMQXE1lw7eVvlfyCwO147O2XpmLrNuVsdpU4";
 const SHEET_NAME = "Sheet1";
 const RANGE = `${SHEET_NAME}!A:J`; // A-I data + J = LOCK flag
+const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const TAHUN_OPTIONS = [2024, 2025, 2026, 2027];
 const PENANGGUNG_JAWAB_OPTIONS = ["IPDS", "Sosial", "Neraca", "Produksi", "Distribusi", "Tata Usaha"];
+
+interface Organik {
+  nama: string;
+  nip: string;
+  jabatan: string;
+}
 
 interface Row {
   rowIndex: number; // sheet row (1-based, including header)
@@ -62,11 +69,30 @@ export default function LaporSupervisi() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
+  const [formNama, setFormNama] = useState("");
   const [formKegiatan, setFormKegiatan] = useState("");
   const [formPJ, setFormPJ] = useState("");
   const [formDates, setFormDates] = useState<Date[]>([]);
+  const [organikList, setOrganikList] = useState<Organik[]>([]);
 
   const monthIndex = BULAN.indexOf(bulan);
+
+  const loadOrganik = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: { spreadsheetId: MASTER_SPREADSHEET_ID, operation: "read", range: "MASTER.ORGANIK" },
+      });
+      if (error) throw error;
+      const rows = (data?.values || []).slice(1);
+      const list: Organik[] = rows
+        .map((r: any[]) => ({ nama: r[3] || "", nip: r[2] || "", jabatan: r[4] || "" }))
+        .filter((o: Organik) => o.nama);
+      list.sort((a, b) => a.nama.localeCompare(b.nama));
+      setOrganikList(list);
+    } catch (e: any) {
+      toast({ title: "Gagal memuat organik", description: e.message, variant: "destructive" });
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -97,7 +123,7 @@ export default function LaporSupervisi() {
     }
   };
 
-  useEffect(() => { loadData(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { loadData(); loadOrganik(); /* eslint-disable-next-line */ }, []);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -116,11 +142,12 @@ export default function LaporSupervisi() {
   const canModify = (row: Row) => {
     if (isPPK) return true;
     if (row.locked) return false;
-    return row.nama === user?.username;
+    return true;
   };
 
   const openAdd = () => {
     setEditing(null);
+    setFormNama("");
     setFormKegiatan("");
     setFormPJ("");
     setFormDates([]);
@@ -129,6 +156,7 @@ export default function LaporSupervisi() {
 
   const openEdit = (row: Row) => {
     setEditing(row);
+    setFormNama(row.nama);
     setFormKegiatan(row.kegiatan);
     setFormPJ(row.penanggungJawab);
     setFormDates(parseDates(row.tanggal).map((d) => new Date(parseInt(row.tahun, 10), BULAN.indexOf(row.bulan), d)));
@@ -137,6 +165,10 @@ export default function LaporSupervisi() {
 
   const handleSave = async () => {
     if (!user) return;
+    if (!formNama) {
+      toast({ title: "Nama pelaksana wajib dipilih", variant: "destructive" });
+      return;
+    }
     if (!formKegiatan.trim()) {
       toast({ title: "Kegiatan wajib diisi", variant: "destructive" });
       return;
@@ -154,10 +186,10 @@ export default function LaporSupervisi() {
       return;
     }
 
-    // Duplicate check: same user, same tahun+bulan, overlapping dates
+    // Duplicate check: same pelaksana, same tahun+bulan, overlapping dates
     const takenByUser = new Set<number>();
     rows.forEach((r) => {
-      if (r.nama !== user.username) return;
+      if (r.nama !== formNama) return;
       if (r.tahun !== tahun || r.bulan !== bulan) return;
       if (editing && r.rowIndex === editing.rowIndex) return;
       parseDates(r.tanggal).forEach((d) => takenByUser.add(d));
@@ -166,7 +198,7 @@ export default function LaporSupervisi() {
     if (clash.length > 0) {
       toast({
         title: "Tanggal bentrok",
-        description: `Anda sudah punya jadwal supervisi di tanggal: ${clash.join(", ")}`,
+        description: `${formNama} sudah punya jadwal supervisi di tanggal: ${clash.join(", ")}`,
         variant: "destructive",
       });
       return;
@@ -176,13 +208,15 @@ export default function LaporSupervisi() {
     try {
       const tanggalStr = dates.join(", ");
       const jumlah = String(dates.length);
+      const selectedOrganik = organikList.find((o) => o.nama === formNama);
+      const jabatanValue = selectedOrganik?.jabatan || editing?.jabatan || "";
       if (editing) {
         const values = [[
           editing.no,
           tahun,
           bulan,
-          editing.nama,
-          editing.jabatan,
+          formNama,
+          jabatanValue,
           formKegiatan,
           tanggalStr,
           formPJ,
@@ -208,8 +242,8 @@ export default function LaporSupervisi() {
           String(maxNo + 1),
           tahun,
           bulan,
-          user.username,
-          user.role || "",
+          formNama,
+          jabatanValue,
           formKegiatan,
           tanggalStr,
           formPJ,
@@ -364,10 +398,9 @@ export default function LaporSupervisi() {
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Belum ada data.</TableCell></TableRow>
               ) : filtered.map((row, i) => {
-                const mine = row.nama === user?.username;
                 const editable = canModify(row);
                 return (
-                  <TableRow key={row.rowIndex} className={mine ? "bg-primary/5" : undefined}>
+                  <TableRow key={row.rowIndex}>
                     <TableCell>{i + 1}</TableCell>
                     <TableCell className="font-medium">{row.nama}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{row.jabatan}</TableCell>
@@ -408,10 +441,23 @@ export default function LaporSupervisi() {
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Supervisi" : "Tambah Supervisi"}</DialogTitle>
             <DialogDescription>
-              Periode: <b>{bulan} {tahun}</b> — Pelaksana: <b>{editing ? editing.nama : user?.username}</b>
+              Periode: <b>{bulan} {tahun}</b>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nama Pelaksana (Organik)</label>
+              <Select value={formNama} onValueChange={setFormNama}>
+                <SelectTrigger><SelectValue placeholder={organikList.length ? "Pilih nama organik" : "Memuat data organik..."} /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {organikList.map((o) => (
+                    <SelectItem key={o.nip || o.nama} value={o.nama}>
+                      {o.nama}{o.jabatan ? ` — ${o.jabatan}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label className="text-sm font-medium">Kegiatan Supervisi</label>
               <Input value={formKegiatan} onChange={(e) => setFormKegiatan(e.target.value)} placeholder="Deskripsi kegiatan supervisi" />
