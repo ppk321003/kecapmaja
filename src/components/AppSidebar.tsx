@@ -23,6 +23,7 @@ import {
   BarChart3,
   Smartphone,
   TrendingUp,
+  MapPin,
 } from "lucide-react";
 
 import {
