@@ -398,10 +398,9 @@ export default function LaporSupervisi() {
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Belum ada data.</TableCell></TableRow>
               ) : filtered.map((row, i) => {
-                const mine = row.nama === user?.username;
                 const editable = canModify(row);
                 return (
-                  <TableRow key={row.rowIndex} className={mine ? "bg-primary/5" : undefined}>
+                  <TableRow key={row.rowIndex}>
                     <TableCell>{i + 1}</TableCell>
                     <TableCell className="font-medium">{row.nama}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{row.jabatan}</TableCell>
@@ -442,10 +441,23 @@ export default function LaporSupervisi() {
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Supervisi" : "Tambah Supervisi"}</DialogTitle>
             <DialogDescription>
-              Periode: <b>{bulan} {tahun}</b> — Pelaksana: <b>{editing ? editing.nama : user?.username}</b>
+              Periode: <b>{bulan} {tahun}</b>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nama Pelaksana (Organik)</label>
+              <Select value={formNama} onValueChange={setFormNama}>
+                <SelectTrigger><SelectValue placeholder={organikList.length ? "Pilih nama organik" : "Memuat data organik..."} /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {organikList.map((o) => (
+                    <SelectItem key={o.nip || o.nama} value={o.nama}>
+                      {o.nama}{o.jabatan ? ` — ${o.jabatan}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label className="text-sm font-medium">Kegiatan Supervisi</label>
               <Input value={formKegiatan} onChange={(e) => setFormKegiatan(e.target.value)} placeholder="Deskripsi kegiatan supervisi" />
