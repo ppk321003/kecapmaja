@@ -32,6 +32,7 @@ import {
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { MonitoringLastUpdated } from "@/components/MonitoringLastUpdated";
+import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider, TooltipTrigger as UITooltipTrigger } from "@/components/ui/tooltip";
 import {
   BarChart,
   Bar,
@@ -3241,10 +3242,19 @@ export function MonitoringLapangan() {
                                 }
                               }}
                             >
-                              <div className="flex items-center justify-end gap-2">
-                                Total Status
-                                <ArrowUpDown className="h-4 w-4" />
-                              </div>
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">
+                                      Total Status
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Total Status = Jumlah Submit + Approve + Reject + Revoke</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -3256,10 +3266,19 @@ export function MonitoringLapangan() {
                                 }
                               }}
                             >
-                              <div className="flex items-center justify-end gap-2">
-                                Submit
-                                <ArrowUpDown className="h-4 w-4" />
-                              </div>
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">
+                                      Submit
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Submit = Jumlah data yang telah dikirim oleh PPL dan menunggu pemeriksaan PML</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -3271,10 +3290,19 @@ export function MonitoringLapangan() {
                                 }
                               }}
                             >
-                              <div className="flex items-center justify-end gap-2">
-                                Approve
-                                <ArrowUpDown className="h-4 w-4" />
-                              </div>
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">
+                                      Approve
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Approve = Jumlah data yang telah disetujui oleh PML</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -3286,10 +3314,19 @@ export function MonitoringLapangan() {
                                 }
                               }}
                             >
-                              <div className="flex items-center justify-end gap-2">
-                                Reject
-                                <ArrowUpDown className="h-4 w-4" />
-                              </div>
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">
+                                      Reject
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Reject = Jumlah data yang telah ditolak oleh PML</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -3301,10 +3338,19 @@ export function MonitoringLapangan() {
                                 }
                               }}
                             >
-                              <div className="flex items-center justify-end gap-2">
-                                Revoke
-                                <ArrowUpDown className="h-4 w-4" />
-                              </div>
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">
+                                      Revoke
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Revoke = Jumlah data yang persetujuannya telah dibatalkan (unapprove)</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -3316,10 +3362,19 @@ export function MonitoringLapangan() {
                                 }
                               }}
                             >
-                              <div className="flex items-center justify-end gap-2">
-                                % Periksa
-                                <ArrowUpDown className="h-4 w-4" />
-                              </div>
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">
+                                      % Periksa
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">% Periksa = Persentase data yang telah diperiksa terhadap data yang dikirim</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -3331,10 +3386,19 @@ export function MonitoringLapangan() {
                                 }
                               }}
                             >
-                              <div className="flex items-center justify-end gap-2">
-                                % Periksa/Prelist
-                                <ArrowUpDown className="h-4 w-4" />
-                              </div>
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">
+                                      % Periksa/Prelist
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">% Periksa/Prelist = Persentase data yang telah diperiksa terhadap jumlah muatan prelist</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
                             </TableHead>
                           </TableRow>
                         </TableHeader>
