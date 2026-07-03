@@ -971,7 +971,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     ['DATA PML (PETUGAS PENGAWAS LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Total Status', 'Approve', 'Reject', 'Revoke', '% Periksa', '% Periksa/Target', 'Rata-rata Submit+Draft/Harian'],
+    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Total Status', 'Approve', 'Reject', 'Revoke', '% Periksa', '% Periksa/Prelist', 'Rata-rata Submit+Draft/Harian'],
     ...pmlRows.map((row, idx) => {
       const totalStatus = row.jumlah_submit_ppl + row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke;
       const percentage = totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject) / totalStatus) * 100).toFixed(2) : '0.00';
@@ -3275,7 +3275,7 @@ export function MonitoringLapangan() {
                               }}
                             >
                               <div className="flex items-center justify-end gap-2">
-                                % Periksa/Target
+                                % Periksa/Prelist
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
