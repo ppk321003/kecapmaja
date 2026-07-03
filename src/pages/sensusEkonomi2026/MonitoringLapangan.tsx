@@ -1342,7 +1342,7 @@ export function MonitoringLapangan() {
       total: allRows.length,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
-  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "approve" | "reject" | "revoke" | "pemeriksaan" | "targetPercent">("pemeriksaan");
+  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "kecamatan" | "totalStatus" | "submit" | "approve" | "reject" | "revoke" | "pemeriksaan" | "targetPercent">("pemeriksaan");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
   const [kecamatanPercentageComponents, setKecamatanPercentageComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean, revoke: boolean}>(
@@ -1845,6 +1845,14 @@ export function MonitoringLapangan() {
     
     if (pmlSortBy === "nama_pml") {
       sorted.sort((a, b) => a.nama_pml.localeCompare(b.nama_pml));
+    } else if (pmlSortBy === "submit") {
+      sorted.sort((a, b) => (a.actualSubmit ?? 0) - (b.actualSubmit ?? 0));
+    } else if (pmlSortBy === "totalStatus") {
+      sorted.sort((a, b) => {
+        const totalA = (a.actualSubmit ?? 0) + a.jumlah_approve + a.jumlah_reject + (a.jumlah_revoke || 0);
+        const totalB = (b.actualSubmit ?? 0) + b.jumlah_approve + b.jumlah_reject + (b.jumlah_revoke || 0);
+        return totalA - totalB;
+      });
     } else if (pmlSortBy === "approve") {
       sorted.sort((a, b) => a.jumlah_approve - b.jumlah_approve);
     } else if (pmlSortBy === "reject") {
@@ -3195,14 +3203,50 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
-                              Kecamatan
+                            <TableHead
+                              className="text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "kecamatan") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("kecamatan");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-2">
+                                Kecamatan
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              Total Status
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "totalStatus") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("totalStatus");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Total Status
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
-                              Submit
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "submit") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("submit");
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-end gap-2">
+                                Submit
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
