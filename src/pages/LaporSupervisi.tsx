@@ -289,6 +289,12 @@ export default function LaporSupervisi() {
       toast({ title: "Penanggung Jawab wajib dipilih", variant: "destructive" });
       return;
     }
+    const invalidDates = formDates.filter((d) => d.getFullYear() !== parseInt(tahun, 10) || d.getMonth() !== monthIndex);
+    if (invalidDates.length > 0) {
+      toast({ title: "Tanggal tidak valid", description: "Pilih tanggal sesuai bulan dan tahun laporan.", variant: "destructive" });
+      return;
+    }
+
     const dates = formDates
       .filter((d) => d.getFullYear() === parseInt(tahun, 10) && d.getMonth() === monthIndex)
       .map((d) => d.getDate())
@@ -507,6 +513,17 @@ export default function LaporSupervisi() {
           <CardDescription>{filtered.length} entri</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          <div className="flex flex-wrap gap-2 mb-4 text-sm">
+            <span className="inline-flex items-center gap-2 rounded-full bg-red-500 px-3 py-1 text-white">
+              <span className="h-2.5 w-2.5 rounded-full bg-white" /> Sabtu/Minggu
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-red-700 px-3 py-1 text-white">
+              <span className="h-2.5 w-2.5 rounded-full bg-white" /> Libur Nasional
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-slate-900">
+              <span className="h-2.5 w-2.5 rounded-full bg-slate-900" /> Hari Kerja
+            </span>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
