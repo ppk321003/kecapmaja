@@ -56,12 +56,17 @@ function parseDates(str: string): number[] {
 export default function LaporSupervisi() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+  // Allow both PPK and PPSPM roles to perform lock/unlock
+  const isPPK = user?.role === "Pejabat Pembuat Komitmen" || user?.role === "Pejabat Penandatangan Surat Perintah Membayar";
 
   const now = new Date();
   const [tahun, setTahun] = useState<string>(String(now.getFullYear()));
   const [bulan, setBulan] = useState<string>(BULAN[now.getMonth()]);
   const [search, setSearch] = useState("");
+
+  // Sorting state: default sort by `nama` ascending
+  const [sortBy, setSortBy] = useState<"nama" | "kegiatan" | "tanggal" | "penanggungJawab" | "jumlah" | "locked">("nama");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
@@ -138,6 +143,25 @@ export default function LaporSupervisi() {
       );
     });
   }, [rows, tahun, bulan, search]);
+
+  const sorted = useMemo(() => {
+    const cmp = (a: any, b: any) => {
+      let v = 0;
+      if (sortBy === "nama") v = a.nama.localeCompare(b.nama);
+      else if (sortBy === "kegiatan") v = a.kegiatan.localeCompare(b.kegiatan);
+      else if (sortBy === "penanggungJawab") v = a.penanggungJawab.localeCompare(b.penanggungJawab);
+      else if (sortBy === "tanggal") {
+        const da = parseDates(a.tanggal)[0] || 0;
+        const db = parseDates(b.tanggal)[0] || 0;
+        v = da - db;
+      }
+      else if (sortBy === "jumlah") v = (Number(a.jumlah) || 0) - (Number(b.jumlah) || 0);
+      else if (sortBy === "locked") v = (a.locked === b.locked) ? 0 : a.locked ? 1 : -1;
+      else v = 0;
+      return sortDir === "asc" ? v : -v;
+    };
+    return [...filtered].sort(cmp);
+  }, [filtered, sortBy, sortDir]);
 
   const canModify = (row: Row) => {
     if (isPPK) return true;
@@ -382,37 +406,50 @@ export default function LaporSupervisi() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">No</TableHead>
-                <TableHead>Nama Pelaksana</TableHead>
-                <TableHead>Jabatan</TableHead>
-                <TableHead>Kegiatan Supervisi</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Penanggung Jawab</TableHead>
-                <TableHead className="text-center">Jumlah</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => {
+                  if (sortBy === 'nama') setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); else { setSortBy('nama'); setSortDir('asc'); }
+                }}>Nama Pelaksana</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => {
+                  if (sortBy === 'kegiatan') setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); else { setSortBy('kegiatan'); setSortDir('asc'); }
+                }}>Kegiatan Supervisi</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => {
+                  if (sortBy === 'tanggal') setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); else { setSortBy('tanggal' as any); setSortDir('asc'); }
+                }}>Tanggal</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => {
+                  if (sortBy === 'penanggungJawab') setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); else { setSortBy('penanggungJawab'); setSortDir('asc'); }
+                }}>Penanggung Jawab</TableHead>
+                <TableHead className="text-center cursor-pointer" onClick={() => {
+                  if (sortBy === 'jumlah') setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); else { setSortBy('jumlah'); setSortDir('asc'); }
+                }}>Jumlah</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => {
+                  if (sortBy === 'locked') setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); else { setSortBy('locked'); setSortDir('asc'); }
+                }}>Status</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
-              ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Belum ada data.</TableCell></TableRow>
-              ) : filtered.map((row, i) => {
+                <TableRow><TableCell colSpan={8} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
+              ) : sorted.length === 0 ? (
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Belum ada data.</TableCell></TableRow>
+              ) : sorted.map((row, i) => {
                 const editable = canModify(row);
                 return (
                   <TableRow key={row.rowIndex}>
                     <TableCell>{i + 1}</TableCell>
-                    <TableCell className="font-medium">{row.nama}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{row.jabatan}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{row.nama}</div>
+                      <div className="text-xs text-muted-foreground">{row.jabatan}</div>
+                    </TableCell>
                     <TableCell>{row.kegiatan}</TableCell>
                     <TableCell className="whitespace-nowrap">{row.tanggal}</TableCell>
                     <TableCell><Badge variant="secondary">{row.penanggungJawab}</Badge></TableCell>
                     <TableCell className="text-center">{row.jumlah}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       {row.locked ? (
-                        <Badge variant="destructive" className="gap-1"><Lock className="h-3 w-3" /> Terkunci</Badge>
+                        <Lock className="h-4 w-4 text-destructive mx-auto" />
                       ) : (
-                        <Badge variant="outline" className="gap-1"><Unlock className="h-3 w-3" /> Terbuka</Badge>
+                        <Unlock className="h-4 w-4 text-green-600 mx-auto" />
                       )}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
@@ -452,7 +489,10 @@ export default function LaporSupervisi() {
                 <SelectContent className="max-h-72">
                   {organikList.map((o) => (
                     <SelectItem key={o.nip || o.nama} value={o.nama}>
-                      {o.nama}{o.jabatan ? ` — ${o.jabatan}` : ""}
+                      <div className="flex flex-col">
+                        <span className="truncate">{o.nama}</span>
+                        {o.jabatan ? <span className="text-xs text-muted-foreground">{o.jabatan}</span> : null}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
