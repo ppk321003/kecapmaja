@@ -3323,7 +3323,7 @@ export function MonitoringLapangan() {
                                     </div>
                                   </UITooltipTrigger>
                                   <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
-                                    <div className="text-sm text-slate-700">Reject = Jumlah data yang telah ditolak oleh PML</div>
+                                    <div className="text-sm text-slate-700">Reject = Jumlah data yang telah ditolak/dikembalikan oleh PML</div>
                                   </UITooltipContent>
                                 </UITooltip>
                               </UITooltipProvider>
