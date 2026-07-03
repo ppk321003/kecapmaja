@@ -314,14 +314,29 @@ export default function LaporSupervisi() {
   };
 
   const handleDelete = async (row: Row) => {
+    // Deprecated: use confirmation dialog via promptDelete / performDelete
+    console.warn("handleDelete should not be called directly; use promptDelete to show confirmation dialog.");
+  };
+
+  // Confirmation dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deletingRow, setDeletingRow] = useState<Row | null>(null);
+
+  const promptDelete = (row: Row) => {
+    setDeletingRow(row);
+    setConfirmOpen(true);
+  };
+
+  const performDelete = async (row: Row | null) => {
+    if (!row) return;
     if (!canModify(row)) {
       toast({ title: "Tidak diizinkan", description: row.locked ? "Data sedang dikunci PPK" : "Bukan milik Anda", variant: "destructive" });
+      setConfirmOpen(false);
+      setDeletingRow(null);
       return;
     }
-    if (!confirm(`Hapus data supervisi "${row.kegiatan}" (${row.tanggal})?`)) return;
     setSaving(true);
     try {
-      // Clear row content (A:J)
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
           spreadsheetId: SPREADSHEET_ID,
@@ -332,6 +347,8 @@ export default function LaporSupervisi() {
       });
       if (error) throw error;
       toast({ title: "Data dihapus" });
+      setConfirmOpen(false);
+      setDeletingRow(null);
       await loadData();
     } catch (e: any) {
       toast({ title: "Gagal menghapus", description: e.message, variant: "destructive" });
@@ -482,7 +499,7 @@ export default function LaporSupervisi() {
                       <Button size="sm" variant="ghost" onClick={() => openEdit(row)} disabled={!editable || saving}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDelete(row)} disabled={!editable || saving}>
+                      <Button size="sm" variant="ghost" onClick={() => promptDelete(row)} disabled={!editable || saving}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
@@ -554,6 +571,24 @@ export default function LaporSupervisi() {
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Simpan
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Hapus</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus data supervisi berikut?
+              <div className="mt-2">
+                <div className="font-medium">{deletingRow?.kegiatan}</div>
+                <div className="text-sm text-muted-foreground">{deletingRow?.nama} — {deletingRow?.tanggal}</div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => { setConfirmOpen(false); setDeletingRow(null); }} disabled={saving}>Batal</Button>
+            <Button onClick={() => performDelete(deletingRow)} disabled={saving} className="bg-destructive text-white">Hapus</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
