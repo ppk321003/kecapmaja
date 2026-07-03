@@ -23,6 +23,7 @@ import {
   BarChart3,
   Smartphone,
   TrendingUp,
+  MapPin,
 } from "lucide-react";
 
 import {
@@ -56,6 +57,7 @@ const keuanganItems = [
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3, conditional: "showBahanRevisiAnggaran" },
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
+  { title: "Lapor Supervisi", url: "/lapor-supervisi", icon: MapPin },
   { title: "Block Tanggal Perjalanan", url: "/BlockTanggal", icon: Users },
 ];
 
