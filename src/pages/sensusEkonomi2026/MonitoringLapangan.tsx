@@ -274,12 +274,12 @@ const getColorForPercentage = (percentage: number): string => {
 
   // Hijau: mencapai atau melebihi target minimal
   if (percentage >= minPercentageTarget) {
-    return "#22c55e";
+    return "#15803d"; // lebih gelap dari hijau terang
   }
 
   // Kuning: deviasi sampai 5 persentase poin dari target minimal
   if (deviation > 0 && deviation <= 5) {
-    return "#eab308";
+    return "#f97316"; // orange
   }
 
   // Merah: deviasi lebih dari 5 persentase poin dari target minimal
@@ -3141,6 +3141,19 @@ export function MonitoringLapangan() {
                     </CardDescription>
                   </div>
 
+                  {(() => {
+                    const { daysElapsed } = calculateDayProgress();
+                    const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
+                    return (
+                      <div className="hidden md:flex items-center">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 shadow-sm ml-4">
+                          <div className="text-xs text-slate-500 uppercase tracking-[0.12em] font-semibold">Hari ke-{daysElapsed}</div>
+                          <div className="mt-0.5 text-sm font-bold text-slate-900">Target minimal: {minPercentageTarget.toFixed(2)}%</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
                     {isLoggedIn && aggregatedData.rows.length > 0 && (
                       <button
@@ -3384,7 +3397,7 @@ export function MonitoringLapangan() {
                                       return totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject + (row.jumlah_revoke || 0)) / totalStatus) * 100).toFixed(2) : "0.00";
                                     })()} %
                                   </TableCell>
-                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                  <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(row.targetPercent ?? 0) }}>
                                     {row.targetPercent !== undefined ? row.targetPercent.toFixed(2) : "0.00"} %
                                   </TableCell>
                                 </TableRow>
