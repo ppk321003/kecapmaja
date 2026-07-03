@@ -16,6 +16,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import AkiToBendahara from "./pages/AkiToBendahara";
 import BlockTanggal from "./pages/BlockTanggal";
+import LaporSupervisi from "./pages/LaporSupervisi";
 import Pengadaan from "./pages/Pengadaan";
 import SPKBast from "./pages/SPKBast";
 import BuatEDokumen from "./pages/e-dokumen/BuatEDokumen";
@@ -83,6 +84,7 @@ const App = () => (
             <Route path="/usulan-pencairan" element={<ProtectedRoute><Layout><UsulanPencairan /></Layout></ProtectedRoute>} />
             <Route path="/aki-to-bendahara" element={<ProtectedRoute><Layout><AkiToBendahara /></Layout></ProtectedRoute>} />
             <Route path="/BlockTanggal" element={<ProtectedRoute><Layout><BlockTanggal /></Layout></ProtectedRoute>} />
+            <Route path="/lapor-supervisi" element={<ProtectedRoute><Layout><LaporSupervisi /></Layout></ProtectedRoute>} />
             <Route path="/KarierKu" element={<ProtectedRoute><Layout><KarierKu /></Layout></ProtectedRoute>} />             
             <Route path="/Pengadaan" element={<ProtectedRoute><Layout><Pengadaan /></Layout></ProtectedRoute>} />
             <Route path="/spk-bast" element={<ProtectedRoute><Layout><SPKBast /></Layout></ProtectedRoute>} />
