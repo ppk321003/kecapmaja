@@ -72,6 +72,75 @@ function pjBadgeClass(pj: string) {
   }
 }
 
+const INDONESIAN_HOLIDAYS = new Set([
+  "2024-01-01",
+  "2024-03-11",
+  "2024-05-01",
+  "2024-05-09",
+  "2024-05-10",
+  "2024-05-11",
+  "2024-06-01",
+  "2024-06-17",
+  "2024-08-17",
+  "2024-10-12",
+  "2024-12-25",
+  "2025-01-01",
+  "2025-02-09",
+  "2025-03-01",
+  "2025-04-10",
+  "2025-04-21",
+  "2025-05-01",
+  "2025-05-29",
+  "2025-06-01",
+  "2025-08-17",
+  "2025-10-01",
+  "2025-12-25",
+  "2026-01-01",
+  "2026-02-17",
+  "2026-03-01",
+  "2026-03-31",
+  "2026-04-10",
+  "2026-05-01",
+  "2026-05-13",
+  "2026-05-26",
+  "2026-06-01",
+  "2026-08-17",
+  "2026-10-20",
+  "2026-12-25",
+  "2027-01-01",
+  "2027-02-16",
+  "2027-03-23",
+  "2027-04-22",
+  "2027-05-01",
+  "2027-05-19",
+  "2027-06-01",
+  "2027-08-17",
+  "2027-11-24",
+  "2027-12-25",
+]);
+
+function formatLocalDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isIndonesianHoliday(date: Date) {
+  return INDONESIAN_HOLIDAYS.has(formatLocalDateKey(date));
+}
+
+function tanggalBadgeClass(date: Date) {
+  if (isIndonesianHoliday(date)) {
+    return "!bg-red-700 !text-white border-red-800";
+  }
+  const day = date.getDay();
+  if (day === 0 || day === 6) {
+    return "!bg-red-500 !text-white border-red-600";
+  }
+  return "bg-gray-100 text-gray-900";
+}
+
 export default function LaporSupervisi() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -478,7 +547,22 @@ export default function LaporSupervisi() {
                       <div className="text-xs text-muted-foreground">{row.jabatan}</div>
                     </TableCell>
                     <TableCell>{row.kegiatan}</TableCell>
-                    <TableCell className="whitespace-nowrap">{row.tanggal}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {parseDates(row.tanggal).map((day) => {
+                          const date = new Date(parseInt(row.tahun, 10), BULAN.indexOf(row.bulan), day);
+                          return (
+                            <Badge
+                              key={`${row.rowIndex}-${day}`}
+                              className={`${tanggalBadgeClass(date)} rounded-full px-2 py-1 text-xs font-semibold border border-slate-200`} 
+                              title={`${date.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`}
+                            >
+                              {day}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge className={`${pjBadgeClass(row.penanggungJawab)} px-2 py-0.5`}>{row.penanggungJawab}</Badge>
                     </TableCell>
