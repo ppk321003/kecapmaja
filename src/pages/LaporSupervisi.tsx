@@ -123,7 +123,7 @@ export default function LaporSupervisi() {
     }
   };
 
-  useEffect(() => { loadData(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { loadData(); loadOrganik(); /* eslint-disable-next-line */ }, []);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -142,11 +142,12 @@ export default function LaporSupervisi() {
   const canModify = (row: Row) => {
     if (isPPK) return true;
     if (row.locked) return false;
-    return row.nama === user?.username;
+    return true;
   };
 
   const openAdd = () => {
     setEditing(null);
+    setFormNama("");
     setFormKegiatan("");
     setFormPJ("");
     setFormDates([]);
@@ -155,6 +156,7 @@ export default function LaporSupervisi() {
 
   const openEdit = (row: Row) => {
     setEditing(row);
+    setFormNama(row.nama);
     setFormKegiatan(row.kegiatan);
     setFormPJ(row.penanggungJawab);
     setFormDates(parseDates(row.tanggal).map((d) => new Date(parseInt(row.tahun, 10), BULAN.indexOf(row.bulan), d)));
@@ -163,6 +165,10 @@ export default function LaporSupervisi() {
 
   const handleSave = async () => {
     if (!user) return;
+    if (!formNama) {
+      toast({ title: "Nama pelaksana wajib dipilih", variant: "destructive" });
+      return;
+    }
     if (!formKegiatan.trim()) {
       toast({ title: "Kegiatan wajib diisi", variant: "destructive" });
       return;
@@ -180,10 +186,10 @@ export default function LaporSupervisi() {
       return;
     }
 
-    // Duplicate check: same user, same tahun+bulan, overlapping dates
+    // Duplicate check: same pelaksana, same tahun+bulan, overlapping dates
     const takenByUser = new Set<number>();
     rows.forEach((r) => {
-      if (r.nama !== user.username) return;
+      if (r.nama !== formNama) return;
       if (r.tahun !== tahun || r.bulan !== bulan) return;
       if (editing && r.rowIndex === editing.rowIndex) return;
       parseDates(r.tanggal).forEach((d) => takenByUser.add(d));
@@ -192,7 +198,7 @@ export default function LaporSupervisi() {
     if (clash.length > 0) {
       toast({
         title: "Tanggal bentrok",
-        description: `Anda sudah punya jadwal supervisi di tanggal: ${clash.join(", ")}`,
+        description: `${formNama} sudah punya jadwal supervisi di tanggal: ${clash.join(", ")}`,
         variant: "destructive",
       });
       return;
@@ -202,13 +208,15 @@ export default function LaporSupervisi() {
     try {
       const tanggalStr = dates.join(", ");
       const jumlah = String(dates.length);
+      const selectedOrganik = organikList.find((o) => o.nama === formNama);
+      const jabatanValue = selectedOrganik?.jabatan || editing?.jabatan || "";
       if (editing) {
         const values = [[
           editing.no,
           tahun,
           bulan,
-          editing.nama,
-          editing.jabatan,
+          formNama,
+          jabatanValue,
           formKegiatan,
           tanggalStr,
           formPJ,
@@ -234,8 +242,8 @@ export default function LaporSupervisi() {
           String(maxNo + 1),
           tahun,
           bulan,
-          user.username,
-          user.role || "",
+          formNama,
+          jabatanValue,
           formKegiatan,
           tanggalStr,
           formPJ,
