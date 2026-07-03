@@ -18,10 +18,17 @@ import { id as localeId } from "date-fns/locale";
 const SPREADSHEET_ID = "1CEWp_jOPMQXE1lw7eVvlfyCwO147O2XpmLrNuVsdpU4";
 const SHEET_NAME = "Sheet1";
 const RANGE = `${SHEET_NAME}!A:J`; // A-I data + J = LOCK flag
+const MASTER_SPREADSHEET_ID = "1Sj1r_LrYmiUi9ABtjABHGC2bp5GqhVXcjBD9mGCvvtM";
 
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const TAHUN_OPTIONS = [2024, 2025, 2026, 2027];
 const PENANGGUNG_JAWAB_OPTIONS = ["IPDS", "Sosial", "Neraca", "Produksi", "Distribusi", "Tata Usaha"];
+
+interface Organik {
+  nama: string;
+  nip: string;
+  jabatan: string;
+}
 
 interface Row {
   rowIndex: number; // sheet row (1-based, including header)
@@ -62,11 +69,30 @@ export default function LaporSupervisi() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
+  const [formNama, setFormNama] = useState("");
   const [formKegiatan, setFormKegiatan] = useState("");
   const [formPJ, setFormPJ] = useState("");
   const [formDates, setFormDates] = useState<Date[]>([]);
+  const [organikList, setOrganikList] = useState<Organik[]>([]);
 
   const monthIndex = BULAN.indexOf(bulan);
+
+  const loadOrganik = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: { spreadsheetId: MASTER_SPREADSHEET_ID, operation: "read", range: "MASTER.ORGANIK" },
+      });
+      if (error) throw error;
+      const rows = (data?.values || []).slice(1);
+      const list: Organik[] = rows
+        .map((r: any[]) => ({ nama: r[3] || "", nip: r[2] || "", jabatan: r[4] || "" }))
+        .filter((o: Organik) => o.nama);
+      list.sort((a, b) => a.nama.localeCompare(b.nama));
+      setOrganikList(list);
+    } catch (e: any) {
+      toast({ title: "Gagal memuat organik", description: e.message, variant: "destructive" });
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
