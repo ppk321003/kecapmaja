@@ -46,6 +46,7 @@ import {
   ReferenceLine,
   Line,
   ComposedChart,
+  LabelList,
 } from "recharts";
 
 const MonitoringLapanganAnomaliTab = React.lazy(() => import("./MonitoringLapanganAnomaliTab"));
@@ -285,6 +286,14 @@ const getColorForPercentage = (percentage: number): string => {
 
   // Merah: deviasi lebih dari 5 persentase poin dari target minimal
   return "#dc2626";
+};
+
+// Static color mapping for pemeriksaan chart (explicit thresholds)
+const getColorForPemeriksaanStatic = (percentage: number): string => {
+  if (percentage >= 100) return "#15803d"; // green
+  if (percentage >= 75) return "#3b82f6"; // blue
+  if (percentage >= 50) return "#f97316"; // orange
+  return "#dc2626"; // red
 };
 
 // Helper untuk normalisasi nama kolom agar cocok dengan header sheet yang bervariasi
@@ -963,8 +972,10 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
 
   // Sort by % Pemeriksaan (descending) - same as UI default
   const pmlRows = Array.from(pmlMap.values()).sort((a, b) => {
-    const percA = a.jumlah_submit_ppl > 0 ? ((a.jumlah_approve + a.jumlah_reject) / a.jumlah_submit_ppl) * 100 : 0;
-    const percB = b.jumlah_submit_ppl > 0 ? ((b.jumlah_approve + b.jumlah_reject) / b.jumlah_submit_ppl) * 100 : 0;
+    const totalA = (a.jumlah_submit_ppl || 0) + (a.jumlah_approve || 0) + (a.jumlah_reject || 0) + (a.jumlah_revoke || 0);
+    const totalB = (b.jumlah_submit_ppl || 0) + (b.jumlah_approve || 0) + (b.jumlah_reject || 0) + (b.jumlah_revoke || 0);
+    const percA = totalA > 0 ? ((a.jumlah_approve + a.jumlah_reject + (a.jumlah_revoke || 0)) / totalA) * 100 : 0;
+    const percB = totalB > 0 ? ((b.jumlah_approve + b.jumlah_reject + (b.jumlah_revoke || 0)) / totalB) * 100 : 0;
     return percB - percA;
   });
 
@@ -975,7 +986,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Total Status', 'Approve', 'Reject', 'Revoke', '% Periksa', '% Periksa/Prelist', 'Rata-rata Submit+Draft/Harian'],
     ...pmlRows.map((row, idx) => {
       const totalStatus = row.jumlah_submit_ppl + row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke;
-      const percentage = totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject) / totalStatus) * 100).toFixed(2) : '0.00';
+      const percentage = totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke) / totalStatus) * 100).toFixed(2) : '0.00';
       const countPPL = aggregatedRows.filter(ppl => ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan).length;
       const totalAssignments = aggregatedRows
         .filter(ppl => ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan)
@@ -1570,15 +1581,11 @@ export function MonitoringLapangan() {
       // Chart data for PPL Top 10 - dynamic based on selected components
       // Use email as key to differentiate PPL with same name, but display nama_ppl
       const pplMap = new Map<string, { value: number; nama_ppl: string; kecamatan: string }>();
+      // Aggregate per PPL using the same total shown in the table: draft + submit + approve + reject + revoke
       rows.forEach((row) => {
         const key = `${(row.email_ppl || row.nama_ppl).trim().toLowerCase()}|${row.kecamatan}`;
         const current = pplMap.get(key) || { value: 0, nama_ppl: row.nama_ppl, kecamatan: row.kecamatan };
-        let activityToAdd = 0;
-        if (kecamatanActivityComponents.draft) activityToAdd += row.draft;
-        if (kecamatanActivityComponents.submit) activityToAdd += row.jumlah_submit;
-        if (kecamatanActivityComponents.approve) activityToAdd += row.jumlah_approve;
-        if (kecamatanActivityComponents.reject) activityToAdd += row.jumlah_reject;
-        if (kecamatanActivityComponents.revoke) activityToAdd += (row.jumlah_revoke || 0);
+        const activityToAdd = (row.draft || 0) + (row.jumlah_submit || 0) + (row.jumlah_approve || 0) + (row.jumlah_reject || 0) + (row.jumlah_revoke || 0);
         current.value += activityToAdd;
         pplMap.set(key, current);
       });
@@ -1588,7 +1595,10 @@ export function MonitoringLapangan() {
         .map((data) => ({ name: `${data.nama_ppl}\n${data.kecamatan}`, value: data.value }));
 
       const chartDataPPLTop: ChartData[] = pplSorted.slice(0, 10);
-      const chartDataPPLLowest: ChartData[] = pplSorted.slice(-10);
+      // Take the last 10 (lowest performers) and sort ascending so lowest is first (left-to-right)
+      const chartDataPPLLowest: ChartData[] = pplSorted
+        .slice(-10)
+        .sort((a, b) => a.value - b.value);
 
       // Calculate total progress (based on totalActivity)
       const totalProgress = {
@@ -1704,23 +1714,47 @@ export function MonitoringLapangan() {
         name: `${item.nama_pml}\n${item.kecamatan}`,
         value: item.pemeriksaanPercent,
       }));
-      const chartDataPMLLowest: ChartData[] = pmlSortedByPemeriksaan.slice(-10).reverse().map(item => ({
-        name: `${item.nama_pml}\n${item.kecamatan}`,
-        value: item.pemeriksaanPercent,
-      }));
+      // Ensure lowest list is sorted ascending (left-to-right: lowest -> higher)
+      const chartDataPMLLowest: ChartData[] = pmlSortedByPemeriksaan
+        .slice(-10)
+        .sort((a, b) => a.pemeriksaanPercent - b.pemeriksaanPercent)
+        .map(item => ({
+          name: `${item.nama_pml}\n${item.kecamatan}`,
+          value: item.pemeriksaanPercent,
+        }));
 
       // Chart data: Rata-rata % Periksa per Kecamatan (dari data PML)
+      // Hitung per-PML berdasarkan agregasi dari PPL (`rows`) sehingga menggunakan sumber data yang sama dengan tabel
+      const pmlFromRowsMap = new Map<string, {
+        nama_pml: string;
+        kecamatan: string;
+        sumSubmit: number;
+        sumApprove: number;
+        sumReject: number;
+        sumRevoke: number;
+        sumAssignments: number;
+      }>();
+      rows.forEach((r: any) => {
+        const key = `${r.nama_pml}|${r.kecamatan}`;
+        const cur = pmlFromRowsMap.get(key) || { nama_pml: r.nama_pml, kecamatan: r.kecamatan, sumSubmit: 0, sumApprove: 0, sumReject: 0, sumRevoke: 0, sumAssignments: 0 };
+        cur.sumSubmit += (r.jumlah_submit || 0);
+        cur.sumApprove += (r.jumlah_approve || 0);
+        cur.sumReject += (r.jumlah_reject || 0);
+        cur.sumRevoke += (r.jumlah_revoke || 0);
+        cur.sumAssignments += (r.total_assignments || 0);
+        pmlFromRowsMap.set(key, cur);
+      });
+
       const kecamatanPemeriksaanAvgMap = new Map<string, { totalPercent: number; count: number }>();
-      pmlRows.forEach((pml) => {
-        const totalStatus = (pml.jumlah_submit_ppl || 0) + (pml.jumlah_approve || 0) + (pml.jumlah_reject || 0) + (pml.jumlah_revoke || 0);
-        const periksaPercent = totalStatus > 0
-          ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalStatus) * 100
-          : 0;
+      Array.from(pmlFromRowsMap.values()).forEach((pml) => {
+        const totalStatus = (pml.sumSubmit || 0) + (pml.sumApprove || 0) + (pml.sumReject || 0) + (pml.sumRevoke || 0);
+        const periksaPercent = totalStatus > 0 ? ((pml.sumApprove + pml.sumReject + (pml.sumRevoke || 0)) / totalStatus) * 100 : 0;
         const cur = kecamatanPemeriksaanAvgMap.get(pml.kecamatan) || { totalPercent: 0, count: 0 };
         cur.totalPercent += periksaPercent;
         cur.count += 1;
         kecamatanPemeriksaanAvgMap.set(pml.kecamatan, cur);
       });
+
       const chartDataKecamatanPemeriksaanAvg: ChartData[] = Array.from(kecamatanPemeriksaanAvgMap.entries())
         .map(([name, d]) => ({
           name,
@@ -2005,22 +2039,37 @@ export function MonitoringLapangan() {
   // Chart data: Persentase Pemeriksaan per Kecamatan (agregasi dari data PML)
   // % Pemeriksaan = (Approve + Reject + Revoke) / Total Assignments per Kecamatan
   const chartDataKecamatanPemeriksaan = useMemo(() => {
-    const map = new Map<string, { periksa: number; assignments: number }>();
+    // Build PML aggregates from PPL rows to match table logic (per-PML targetPercent average)
+    const pmlFromRowsMap = new Map<string, { nama_pml: string; kecamatan: string; sumApprove: number; sumReject: number; sumRevoke: number; sumAssignments: number }>();
     aggregatedData.rows.forEach((r: any) => {
-      const kec = r.kecamatan || "-";
-      const cur = map.get(kec) || { periksa: 0, assignments: 0 };
-      cur.periksa += (r.jumlah_approve || 0) + (r.jumlah_reject || 0) + (r.jumlah_revoke || 0);
-      cur.assignments += r.total_assignments || 0;
-      map.set(kec, cur);
+      const key = `${r.nama_pml}|${r.kecamatan}`;
+      const cur = pmlFromRowsMap.get(key) || { nama_pml: r.nama_pml, kecamatan: r.kecamatan, sumApprove: 0, sumReject: 0, sumRevoke: 0, sumAssignments: 0 };
+      cur.sumApprove += (r.jumlah_approve || 0);
+      cur.sumReject += (r.jumlah_reject || 0);
+      cur.sumRevoke += (r.jumlah_revoke || 0);
+      cur.sumAssignments += (r.total_assignments || 0);
+      pmlFromRowsMap.set(key, cur);
     });
-    return Array.from(map.entries())
-      .map(([name, d]) => ({
-        name,
-        value: d.assignments > 0 ? Math.round((d.periksa / d.assignments) * 10000) / 100 : 0,
-        totalPeriksa: d.periksa,
-        totalAssignments: d.assignments,
-      }))
-      .sort((a, b) => b.value - a.value);
+
+    const kecMap = new Map<string, { totalPercent: number; count: number; totalPeriksa: number; totalAssignments: number }>();
+    Array.from(pmlFromRowsMap.values()).forEach((pml) => {
+      const numerator = (pml.sumApprove || 0) + (pml.sumReject || 0) + (pml.sumRevoke || 0);
+      const denom = pml.sumAssignments || 0;
+      const targetPercent = denom > 0 ? (numerator / denom) * 100 : 0;
+      const cur = kecMap.get(pml.kecamatan) || { totalPercent: 0, count: 0, totalPeriksa: 0, totalAssignments: 0 };
+      cur.totalPercent += targetPercent;
+      cur.count += 1;
+      cur.totalPeriksa += numerator;
+      cur.totalAssignments += denom;
+      kecMap.set(pml.kecamatan, cur);
+    });
+
+    return Array.from(kecMap.entries()).map(([name, d]) => ({
+      name,
+      value: d.count > 0 ? Math.round((d.totalPercent / d.count) * 100) / 100 : 0,
+      totalPeriksa: d.totalPeriksa,
+      totalAssignments: d.totalAssignments,
+    })).sort((a, b) => b.value - a.value);
   }, [aggregatedData.rows]);
 
   const averageKecamatanPemeriksaan = chartDataKecamatanPemeriksaan.length > 0
@@ -2711,7 +2760,7 @@ export function MonitoringLapangan() {
                             height={100}
                             tick={{ fontSize: 11 }}
                           />
-                          <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
+                          <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} tickFormatter={(val: any) => `${val}%`} />
                           <Tooltip
                             contentStyle={{
                               backgroundColor: "#fff",
@@ -2727,7 +2776,12 @@ export function MonitoringLapangan() {
                             strokeDasharray="5 5"
                             label={{ value: `Rata-rata: ${avgOverall.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
                           />
-                          <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
+                          <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                            {chartDataKecamatanPemeriksaanAvg.map((entry, idx) => (
+                              <Cell key={`cell-pem-${idx}`} fill={getColorForPemeriksaanStatic(entry.value)} />
+                            ))}
+                            <LabelList dataKey="value" position="top" formatter={(val: any) => `${Number(val).toFixed(2)}%`} />
+                          </Bar>
                         </ComposedChart>
                       );
                     })()}
@@ -2762,7 +2816,7 @@ export function MonitoringLapangan() {
                           tick={<MultiLineLabel />}
                           interval={0}
                         />
-                        <YAxis tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} domain={[0, 500]} />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: "#fff",
@@ -2802,7 +2856,7 @@ export function MonitoringLapangan() {
                           tick={<MultiLineLabel />}
                           interval={0}
                         />
-                        <YAxis tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} domain={[0, 500]} />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: "#fff",
