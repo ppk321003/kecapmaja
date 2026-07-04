@@ -1525,11 +1525,11 @@ export function MonitoringLapangan() {
 
       // Calculate top and lowest kecamatan AFTER chartDataKecamatanAll is defined
       const topKecamatan = chartDataKecamatanAll.length > 0
-        ? chartDataKecamatanAll.sort((a, b) => b.value - a.value)[0]
+        ? [...chartDataKecamatanAll].sort((a, b) => b.value - a.value)[0]
         : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
 
       const lowestKecamatan = chartDataKecamatanAll.length > 0
-        ? chartDataKecamatanAll.sort((a, b) => a.value - b.value)[0]
+        ? [...chartDataKecamatanAll].sort((a, b) => a.value - b.value)[0]
         : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
 
       // Chart data: Persentase per Kecamatan - dynamic based on selected components
