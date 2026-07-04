@@ -1708,6 +1708,25 @@ export function MonitoringLapangan() {
         value: item.pemeriksaanPercent,
       }));
 
+      // Chart data: Rata-rata % Periksa per Kecamatan (dari data PML)
+      const kecamatanPemeriksaanAvgMap = new Map<string, { totalPercent: number; count: number }>();
+      pmlRows.forEach((pml) => {
+        const totalStatus = (pml.jumlah_submit_ppl || 0) + (pml.jumlah_approve || 0) + (pml.jumlah_reject || 0) + (pml.jumlah_revoke || 0);
+        const periksaPercent = totalStatus > 0
+          ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalStatus) * 100
+          : 0;
+        const cur = kecamatanPemeriksaanAvgMap.get(pml.kecamatan) || { totalPercent: 0, count: 0 };
+        cur.totalPercent += periksaPercent;
+        cur.count += 1;
+        kecamatanPemeriksaanAvgMap.set(pml.kecamatan, cur);
+      });
+      const chartDataKecamatanPemeriksaanAvg: ChartData[] = Array.from(kecamatanPemeriksaanAvgMap.entries())
+        .map(([name, d]) => ({
+          name,
+          value: d.count > 0 ? Math.round((d.totalPercent / d.count) * 100) / 100 : 0,
+        }))
+        .sort((a, b) => b.value - a.value);
+
       return {
         aggregatedData: {
           rows,
@@ -1721,6 +1740,7 @@ export function MonitoringLapangan() {
         chartDataPPLLowest,
         chartDataPMLTop,
         chartDataPMLLowest,
+        chartDataKecamatanPemeriksaanAvg,
         totalProgress,
         pmlData: pmlRows,
       };
