@@ -2447,7 +2447,7 @@ export function MonitoringLapangan() {
                     return (
                       <>
                         <CardTitle className="text-lg">
-                          📊 Persentase Pemeriksaan per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Pemeriksaan Kabupaten Majalengka {averageKecamatanPemeriksaan.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                          📊 Persentase Pemeriksaan kecamatan terhadap Prelist - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Pemeriksaan Kabupaten Majalengka {averageKecamatanPemeriksaan.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                         </CardTitle>
                         <CardDescription>
                           Agregasi % Periksa/Prelist per kecamatan dari data PML — (Approve + Reject + Revoke) / Total Assignments (diurutkan dari terbesar ke terkecil) - Hijau ≥target | Kuning deviasi ≤5% dari target minimal | Merah deviasi &gt;5% dari target minimal. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
