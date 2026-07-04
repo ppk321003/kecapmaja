@@ -2543,7 +2543,7 @@ export function MonitoringLapangan() {
                       📊 Rata-rata Aktifitas PPL per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
                     </CardTitle>
                     <CardDescription>
-                      Rata-rata aktivitas komponen terpilih per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥10/hari | Kuning 7-9/hari | Merah &lt;7/hari. Garis biru: target minimal 10/hari | Garis ungu: rata-rata keseluruhan
+                      Rata-rata aktivitas komponen terpilih per PPL per kecamatan (26 kecamatan, diurutkan terbesar ke terkecil) - Hijau ≥10/hari | Kuning 7-9/hari | Merah &lt;7/hari. Garis biru: target minimal 10/hari | Garis ungu: rata-rata keseluruhan
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-4 pt-2 border-t">
