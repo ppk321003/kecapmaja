@@ -1354,7 +1354,7 @@ export function MonitoringLapangan() {
   );
 
   // Process and aggregate data
-  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, chartDataPMLTop, chartDataPMLLowest, totalProgress, pmlData } =
+  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, chartDataPMLTop, chartDataPMLLowest, chartDataKecamatanPemeriksaanAvg, totalProgress, pmlData } =
     useMemo(() => {
       if (!sheetData || sheetData.length === 0)
         return {
@@ -1367,6 +1367,7 @@ export function MonitoringLapangan() {
           chartDataPPLLowest: [],
           chartDataPMLTop: [],
           chartDataPMLLowest: [],
+          chartDataKecamatanPemeriksaanAvg: [],
           totalProgress: { current: 0, target: TOTAL_TARGET, percentage: 0 },
           pmlData: [],
         };
@@ -1520,15 +1521,15 @@ export function MonitoringLapangan() {
             totalSubmit: data.totalSubmit,
           };
         })
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => b.value - a.value);
 
       // Calculate top and lowest kecamatan AFTER chartDataKecamatanAll is defined
       const topKecamatan = chartDataKecamatanAll.length > 0
-        ? chartDataKecamatanAll.sort((a, b) => b.value - a.value)[0]
+        ? [...chartDataKecamatanAll].sort((a, b) => b.value - a.value)[0]
         : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
 
       const lowestKecamatan = chartDataKecamatanAll.length > 0
-        ? chartDataKecamatanAll.sort((a, b) => a.value - b.value)[0]
+        ? [...chartDataKecamatanAll].sort((a, b) => a.value - b.value)[0]
         : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
 
       // Chart data: Persentase per Kecamatan - dynamic based on selected components
@@ -1587,7 +1588,7 @@ export function MonitoringLapangan() {
         .map((data) => ({ name: `${data.nama_ppl}\n${data.kecamatan}`, value: data.value }));
 
       const chartDataPPLTop: ChartData[] = pplSorted.slice(0, 10);
-      const chartDataPPLLowest: ChartData[] = pplSorted.slice(-10).reverse();
+      const chartDataPPLLowest: ChartData[] = pplSorted.slice(-10);
 
       // Calculate total progress (based on totalActivity)
       const totalProgress = {
@@ -1708,6 +1709,25 @@ export function MonitoringLapangan() {
         value: item.pemeriksaanPercent,
       }));
 
+      // Chart data: Rata-rata % Periksa per Kecamatan (dari data PML)
+      const kecamatanPemeriksaanAvgMap = new Map<string, { totalPercent: number; count: number }>();
+      pmlRows.forEach((pml) => {
+        const totalStatus = (pml.jumlah_submit_ppl || 0) + (pml.jumlah_approve || 0) + (pml.jumlah_reject || 0) + (pml.jumlah_revoke || 0);
+        const periksaPercent = totalStatus > 0
+          ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalStatus) * 100
+          : 0;
+        const cur = kecamatanPemeriksaanAvgMap.get(pml.kecamatan) || { totalPercent: 0, count: 0 };
+        cur.totalPercent += periksaPercent;
+        cur.count += 1;
+        kecamatanPemeriksaanAvgMap.set(pml.kecamatan, cur);
+      });
+      const chartDataKecamatanPemeriksaanAvg: ChartData[] = Array.from(kecamatanPemeriksaanAvgMap.entries())
+        .map(([name, d]) => ({
+          name,
+          value: d.count > 0 ? Math.round((d.totalPercent / d.count) * 100) / 100 : 0,
+        }))
+        .sort((a, b) => b.value - a.value);
+
       return {
         aggregatedData: {
           rows,
@@ -1721,6 +1741,7 @@ export function MonitoringLapangan() {
         chartDataPPLLowest,
         chartDataPMLTop,
         chartDataPMLLowest,
+        chartDataKecamatanPemeriksaanAvg,
         totalProgress,
         pmlData: pmlRows,
       };
@@ -1968,7 +1989,7 @@ export function MonitoringLapangan() {
       }
     });
 
-  const selectedPercentageTotal = aggregatedData.rows.reduce((sum, row) => {
+  const selectedPercentageTotal = (aggregatedData.rows as any[]).reduce((sum: number, row: any) => {
     let activity = 0;
     if (kecamatanPercentageComponents.draft) activity += row.draft;
     if (kecamatanPercentageComponents.submit) activity += row.jumlah_submit;
@@ -2004,6 +2025,10 @@ export function MonitoringLapangan() {
 
   const averageKecamatanPemeriksaan = chartDataKecamatanPemeriksaan.length > 0
     ? chartDataKecamatanPemeriksaan.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPemeriksaan.length
+    : 0;
+
+  const averageKecamatanPemeriksaanAvg = chartDataKecamatanPemeriksaanAvg.length > 0
+    ? chartDataKecamatanPemeriksaanAvg.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPemeriksaanAvg.length
     : 0;
 
   return (
@@ -2289,7 +2314,7 @@ export function MonitoringLapangan() {
                       return (
                         <>
                           <CardTitle className="text-lg">
-                            📊 Persentase Pendataan per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Pendataan Kabupaten Majalengka {averageKecamatanPercentage.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                            📊 Persentase Pendataan Kecamatan terhadap Prelist - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Pendataan Kabupaten Majalengka {averageKecamatanPercentage.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                           </CardTitle>
                           <CardDescription>
                             Persentase komponen terpilih terhadap total assignments per kecamatan (diurutkan dari terbesar ke terkecil) - Hijau ≥target | Kuning deviasi ≤5% dari target minimal | Merah deviasi &gt;5% dari target minimal. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
@@ -2447,7 +2472,7 @@ export function MonitoringLapangan() {
                     return (
                       <>
                         <CardTitle className="text-lg">
-                          📊 Persentase Pemeriksaan per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Pemeriksaan Kabupaten Majalengka {averageKecamatanPemeriksaan.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                          📊 Persentase Pemeriksaan kecamatan terhadap Prelist - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Pemeriksaan Kabupaten Majalengka {averageKecamatanPemeriksaan.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                         </CardTitle>
                         <CardDescription>
                           Agregasi % Periksa/Prelist per kecamatan dari data PML — (Approve + Reject + Revoke) / Total Assignments (diurutkan dari terbesar ke terkecil) - Hijau ≥target | Kuning deviasi ≤5% dari target minimal | Merah deviasi &gt;5% dari target minimal. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
@@ -2543,7 +2568,7 @@ export function MonitoringLapangan() {
                       📊 Rata-rata Aktifitas PPL per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
                     </CardTitle>
                     <CardDescription>
-                      Rata-rata aktivitas komponen terpilih per PPL per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥10/hari | Kuning 7-9/hari | Merah &lt;7/hari. Garis biru: target minimal 10/hari | Garis ungu: rata-rata keseluruhan
+                      Rata-rata aktivitas komponen terpilih per PPL per kecamatan (26 kecamatan, diurutkan terbesar ke terkecil) - Hijau ≥10/hari | Kuning 7-9/hari | Merah &lt;7/hari. Garis biru: target minimal 10/hari | Garis ungu: rata-rata keseluruhan
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-4 pt-2 border-t">
@@ -2652,6 +2677,69 @@ export function MonitoringLapangan() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Chart: Rata-rata Aktifitas Pemeriksaan per Kecamatan (dari data PML % Periksa) */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <div>
+                  <CardTitle className="text-lg">
+                    📊 Rata-rata Aktifitas Pemeriksaan per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
+                  </CardTitle>
+                  <CardDescription>
+                    Rata-rata % Periksa dari data PML per kecamatan (diurutkan terbesar ke terkecil)
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                  </div>
+                ) : chartDataKecamatanPemeriksaanAvg.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={400}>
+                    {(() => {
+                      const avgOverall = chartDataKecamatanPemeriksaanAvg.length > 0
+                        ? chartDataKecamatanPemeriksaanAvg.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPemeriksaanAvg.length
+                        : 0;
+                      return (
+                        <ComposedChart data={chartDataKecamatanPemeriksaanAvg}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis
+                            dataKey="name"
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "#fff",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "8px",
+                            }}
+                            formatter={(value: any) => [`${Number(value).toFixed(2)}%`, "% Periksa"]}
+                          />
+                          <ReferenceLine
+                            y={avgOverall}
+                            stroke="#8b5cf6"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            label={{ value: `Rata-rata: ${avgOverall.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
+                          />
+                          <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
+                        </ComposedChart>
+                      );
+                    })()}
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    Tidak ada data
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top 10 PPL Chart */}
               <Card className="border-0 shadow-sm">
