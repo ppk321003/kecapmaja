@@ -1354,7 +1354,7 @@ export function MonitoringLapangan() {
   );
 
   // Process and aggregate data
-  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, chartDataPMLTop, chartDataPMLLowest, totalProgress, pmlData } =
+  const { aggregatedData, dashboardStats, chartDataKecamatan, chartDataKecamatanAll, chartDataKecamatanPercentage, chartDataPPLTop, chartDataPPLLowest, chartDataPMLTop, chartDataPMLLowest, chartDataKecamatanPemeriksaanAvg, totalProgress, pmlData } =
     useMemo(() => {
       if (!sheetData || sheetData.length === 0)
         return {
