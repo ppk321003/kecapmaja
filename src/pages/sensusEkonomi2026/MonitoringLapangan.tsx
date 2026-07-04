@@ -1367,6 +1367,7 @@ export function MonitoringLapangan() {
           chartDataPPLLowest: [],
           chartDataPMLTop: [],
           chartDataPMLLowest: [],
+          chartDataKecamatanPemeriksaanAvg: [],
           totalProgress: { current: 0, target: TOTAL_TARGET, percentage: 0 },
           pmlData: [],
         };
