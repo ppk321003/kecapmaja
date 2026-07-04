@@ -2709,7 +2709,7 @@ export function MonitoringLapangan() {
                             strokeDasharray="5 5"
                             label={{ value: `Rata-rata: ${avgOverall.toFixed(2)}/hari`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
                           />
-                          <Bar dataKey="value" radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }}>
+                          <Bar dataKey="value" radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 11, fontWeight: 600, fill: '#000000' }}>
                             {chartDataKecamatanAll.map((entry, index) => {
                               const color = getColorGradient(entry.value);
                               return <Cell key={`cell-${index}`} fill={color} />;
@@ -2814,24 +2814,30 @@ export function MonitoringLapangan() {
                     </div>
                   ) : chartDataPPLTop.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={chartDataPPLTop}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis
-                          dataKey="name"
-                          height={150}
-                          tick={<MultiLineLabel />}
-                          interval={0}
-                        />
-                        <YAxis tick={{ fontSize: 12 }} domain={[0, 500]} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#fff",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                          }}
-                        />
-                        <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
-                      </BarChart>
+                      {(() => {
+                        const maxPPL = chartDataPPLTop.reduce((m, item) => Math.max(m, item.value || 0), 0);
+                        const yMax = Math.ceil(maxPPL + 50);
+                        return (
+                          <BarChart data={chartDataPPLTop}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis
+                              dataKey="name"
+                              height={150}
+                              tick={<MultiLineLabel />}
+                              interval={0}
+                            />
+                            <YAxis tick={{ fontSize: 12 }} domain={[0, yMax]} />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "#fff",
+                                border: "1px solid #e2e8f0",
+                                borderRadius: "8px",
+                              }}
+                            />
+                            <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
+                          </BarChart>
+                        );
+                      })()}
                     </ResponsiveContainer>
                   ) : (
                     <div className="text-center py-8 text-slate-500">
@@ -2870,7 +2876,7 @@ export function MonitoringLapangan() {
                             borderRadius: "8px",
                           }}
                         />
-                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
+                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -2911,7 +2917,18 @@ export function MonitoringLapangan() {
                           }}
                           formatter={(value) => `${Number(value).toFixed(2)}%`}
                         />
-                        <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 13, fontWeight: 400, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
+                        <Bar
+                          dataKey="value"
+                          fill={COLORS.optimal}
+                          radius={[8, 8, 0, 0]}
+                          label={{
+                            position: 'insideTop',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            fill: '#000000',
+                            formatter: (value: any) => `${Number(value).toFixed(2)}%`,
+                          }}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -2952,7 +2969,7 @@ export function MonitoringLapangan() {
                           }}
                           formatter={(value) => `${Number(value).toFixed(2)}%`}
                         />
-                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
+                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 11, fontWeight: 600, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
