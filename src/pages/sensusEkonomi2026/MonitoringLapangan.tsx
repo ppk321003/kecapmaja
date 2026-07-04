@@ -2709,7 +2709,7 @@ export function MonitoringLapangan() {
                             strokeDasharray="5 5"
                             label={{ value: `Rata-rata: ${avgOverall.toFixed(2)}/hari`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
                           />
-                          <Bar dataKey="value" radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 11, fontWeight: 600, fill: '#000000' }}>
+                          <Bar dataKey="value" radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }}>
                             {chartDataKecamatanAll.map((entry, index) => {
                               const color = getColorGradient(entry.value);
                               return <Cell key={`cell-${index}`} fill={color} />;
@@ -2834,7 +2834,7 @@ export function MonitoringLapangan() {
                                 borderRadius: "8px",
                               }}
                             />
-                            <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
+                            <Bar dataKey="value" fill={COLORS.optimal} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
                           </BarChart>
                         );
                       })()}
@@ -2876,7 +2876,7 @@ export function MonitoringLapangan() {
                             borderRadius: "8px",
                           }}
                         />
-                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
+                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -2969,7 +2969,7 @@ export function MonitoringLapangan() {
                           }}
                           formatter={(value) => `${Number(value).toFixed(2)}%`}
                         />
-                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'insideTop', fontSize: 11, fontWeight: 600, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
+                        <Bar dataKey="value" fill={COLORS.warning} radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000', formatter: (value) => `${value.toFixed(2)}%` }} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
