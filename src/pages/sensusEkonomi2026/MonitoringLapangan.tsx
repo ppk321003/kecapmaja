@@ -2027,6 +2027,10 @@ export function MonitoringLapangan() {
     ? chartDataKecamatanPemeriksaan.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPemeriksaan.length
     : 0;
 
+  const averageKecamatanPemeriksaanAvg = chartDataKecamatanPemeriksaanAvg.length > 0
+    ? chartDataKecamatanPemeriksaanAvg.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPemeriksaanAvg.length
+    : 0;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
       <div className="max-w-full mx-auto">
