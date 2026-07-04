@@ -2780,7 +2780,13 @@ export function MonitoringLapangan() {
                             {chartDataKecamatanPemeriksaanAvg.map((entry, idx) => (
                               <Cell key={`cell-pem-${idx}`} fill={getColorForPemeriksaanStatic(entry.value)} />
                             ))}
-                            <LabelList dataKey="value" position="top" formatter={(val: any) => `${Number(val).toFixed(2)}%`} />
+                            <LabelList
+                              dataKey="value"
+                              position="top"
+                              formatter={(val: any) => `${Number(val).toFixed(2)}%`}
+                              style={{ fontSize: 11, fill: '#475569', fontWeight: 600 }}
+                              offset={6}
+                            />
                           </Bar>
                         </ComposedChart>
                       );
