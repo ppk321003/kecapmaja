@@ -1555,7 +1555,7 @@ export function MonitoringLapangan() {
           totalActivity: data.totalActivity,
           totalAssignments: data.totalAssignments,
         }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => b.value - a.value);
 
       // Top & Lowest Kecamatan by Percentage
       const topKecamatanByPercentage = chartDataKecamatanPercentage.length > 0
@@ -1981,6 +1981,31 @@ export function MonitoringLapangan() {
     ? chartDataKecamatanPercentage.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPercentage.length
     : 0;
 
+  // Chart data: Persentase Pemeriksaan per Kecamatan (agregasi dari data PML)
+  // % Pemeriksaan = (Approve + Reject + Revoke) / Total Assignments per Kecamatan
+  const chartDataKecamatanPemeriksaan = useMemo(() => {
+    const map = new Map<string, { periksa: number; assignments: number }>();
+    aggregatedData.rows.forEach((r: any) => {
+      const kec = r.kecamatan || "-";
+      const cur = map.get(kec) || { periksa: 0, assignments: 0 };
+      cur.periksa += (r.jumlah_approve || 0) + (r.jumlah_reject || 0) + (r.jumlah_revoke || 0);
+      cur.assignments += r.total_assignments || 0;
+      map.set(kec, cur);
+    });
+    return Array.from(map.entries())
+      .map(([name, d]) => ({
+        name,
+        value: d.assignments > 0 ? Math.round((d.periksa / d.assignments) * 10000) / 100 : 0,
+        totalPeriksa: d.periksa,
+        totalAssignments: d.assignments,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [aggregatedData.rows]);
+
+  const averageKecamatanPemeriksaan = chartDataKecamatanPemeriksaan.length > 0
+    ? chartDataKecamatanPemeriksaan.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPemeriksaan.length
+    : 0;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
       <div className="max-w-full mx-auto">
@@ -2264,10 +2289,10 @@ export function MonitoringLapangan() {
                       return (
                         <>
                           <CardTitle className="text-lg">
-                            📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Kabupaten Majalengka {averageKecamatanPercentage.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                            📊 Persentase Pendataan per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Pendataan Kabupaten Majalengka {averageKecamatanPercentage.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                           </CardTitle>
                           <CardDescription>
-                            Persentase komponen terpilih terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥target | Kuning deviasi ≤5% dari target minimal | Merah deviasi &gt;5% dari target minimal. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
+                            Persentase komponen terpilih terhadap total assignments per kecamatan (diurutkan dari terbesar ke terkecil) - Hijau ≥target | Kuning deviasi ≤5% dari target minimal | Merah deviasi &gt;5% dari target minimal. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
                           </CardDescription>
                         </>
                       );
@@ -2399,6 +2424,103 @@ export function MonitoringLapangan() {
                               const color = getColorForPercentage(entry.value);
                               return <Cell key={`cell-${index}`} fill={color} />;
                             })}
+                          </Bar>
+                        </BarChart>
+                      );
+                    })()}
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    Tidak ada data
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Chart: Persentase Pemeriksaan per Kecamatan (dari data PML) */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <div>
+                  {(() => {
+                    const { daysElapsed } = calculateDayProgress();
+                    const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
+                    return (
+                      <>
+                        <CardTitle className="text-lg">
+                          📊 Persentase Pemeriksaan per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Pemeriksaan Kabupaten Majalengka {averageKecamatanPemeriksaan.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                        </CardTitle>
+                        <CardDescription>
+                          Agregasi % Periksa/Prelist per kecamatan dari data PML — (Approve + Reject + Revoke) / Total Assignments (diurutkan dari terbesar ke terkecil) - Hijau ≥target | Kuning deviasi ≤5% dari target minimal | Merah deviasi &gt;5% dari target minimal. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
+                        </CardDescription>
+                      </>
+                    );
+                  })()}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                  </div>
+                ) : chartDataKecamatanPemeriksaan.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={400}>
+                    {(() => {
+                      const { daysElapsed } = calculateDayProgress();
+                      const minTarget = getTargetMinimalPercentage(daysElapsed);
+                      const yAxisMax = daysElapsed <= 30 ? 50 : 100;
+                      return (
+                        <BarChart data={chartDataKecamatanPemeriksaan}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis
+                            dataKey="name"
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 12 }}
+                            domain={[0, yAxisMax]}
+                            label={{ value: 'Persentase (%)', angle: -90, position: 'insideLeft' }}
+                          />
+                          <Tooltip
+                            formatter={(value: number, _n, entry: any) => {
+                              const p = entry?.payload || {};
+                              return [
+                                `${Number(value).toFixed(2)}% (Periksa ${(p.totalPeriksa ?? 0).toLocaleString("id-ID")} / Assignments ${(p.totalAssignments ?? 0).toLocaleString("id-ID")})`,
+                                "% Pemeriksaan",
+                              ];
+                            }}
+                            contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px" }}
+                          />
+                          <ReferenceLine
+                            y={averageKecamatanPemeriksaan}
+                            stroke="#8b5cf6"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            label={{ value: `Rata-rata: ${averageKecamatanPemeriksaan.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
+                          />
+                          <ReferenceLine
+                            y={minTarget}
+                            stroke="#3b82f6"
+                            strokeWidth={2}
+                            label={{ value: `Target minimal hari ke-${daysElapsed}: ${minTarget.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: 11 }}
+                          />
+                          <Bar
+                            dataKey="value"
+                            radius={[8, 8, 0, 0]}
+                            fill="#3b82f6"
+                            label={{
+                              position: 'top',
+                              fill: '#1f2937',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              formatter: (value: number) => `${value.toFixed(2)}%`
+                            }}
+                          >
+                            {chartDataKecamatanPemeriksaan.map((entry, index) => (
+                              <Cell key={`cell-periksa-${index}`} fill={getColorForPercentage(entry.value)} />
+                            ))}
                           </Bar>
                         </BarChart>
                       );
