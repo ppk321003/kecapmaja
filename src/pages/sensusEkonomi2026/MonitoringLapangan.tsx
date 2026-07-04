@@ -1555,7 +1555,7 @@ export function MonitoringLapangan() {
           totalActivity: data.totalActivity,
           totalAssignments: data.totalAssignments,
         }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => b.value - a.value);
 
       // Top & Lowest Kecamatan by Percentage
       const topKecamatanByPercentage = chartDataKecamatanPercentage.length > 0
