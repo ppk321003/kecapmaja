@@ -2289,10 +2289,10 @@ export function MonitoringLapangan() {
                       return (
                         <>
                           <CardTitle className="text-lg">
-                            📊 Persentase per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Kabupaten Majalengka {averageKecamatanPercentage.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                            📊 Persentase Pendataan per Kecamatan - Hari ke-{daysElapsed} target minimal seharusnya {minPercentageTarget.toFixed(2)}% - Rata-rata Pendataan Kabupaten Majalengka {averageKecamatanPercentage.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                           </CardTitle>
                           <CardDescription>
-                            Persentase komponen terpilih terhadap total assignments per kecamatan (26 kecamatan, diurutkan abjad) - Hijau ≥target | Kuning deviasi ≤5% dari target minimal | Merah deviasi &gt;5% dari target minimal. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
+                            Persentase komponen terpilih terhadap total assignments per kecamatan (diurutkan dari terbesar ke terkecil) - Hijau ≥target | Kuning deviasi ≤5% dari target minimal | Merah deviasi &gt;5% dari target minimal. Garis biru: target minimal | Garis ungu: rata-rata keseluruhan
                           </CardDescription>
                         </>
                       );
