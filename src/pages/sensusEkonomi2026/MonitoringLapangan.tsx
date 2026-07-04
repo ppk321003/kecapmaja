@@ -1981,6 +1981,31 @@ export function MonitoringLapangan() {
     ? chartDataKecamatanPercentage.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPercentage.length
     : 0;
 
+  // Chart data: Persentase Pemeriksaan per Kecamatan (agregasi dari data PML)
+  // % Pemeriksaan = (Approve + Reject + Revoke) / Total Assignments per Kecamatan
+  const chartDataKecamatanPemeriksaan = useMemo(() => {
+    const map = new Map<string, { periksa: number; assignments: number }>();
+    aggregatedData.rows.forEach((r: any) => {
+      const kec = r.kecamatan || "-";
+      const cur = map.get(kec) || { periksa: 0, assignments: 0 };
+      cur.periksa += (r.jumlah_approve || 0) + (r.jumlah_reject || 0) + (r.jumlah_revoke || 0);
+      cur.assignments += r.total_assignments || 0;
+      map.set(kec, cur);
+    });
+    return Array.from(map.entries())
+      .map(([name, d]) => ({
+        name,
+        value: d.assignments > 0 ? Math.round((d.periksa / d.assignments) * 10000) / 100 : 0,
+        totalPeriksa: d.periksa,
+        totalAssignments: d.assignments,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [aggregatedData.rows]);
+
+  const averageKecamatanPemeriksaan = chartDataKecamatanPemeriksaan.length > 0
+    ? chartDataKecamatanPemeriksaan.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPemeriksaan.length
+    : 0;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
       <div className="max-w-full mx-auto">
