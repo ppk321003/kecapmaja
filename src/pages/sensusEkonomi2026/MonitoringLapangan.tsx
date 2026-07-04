@@ -2677,6 +2677,69 @@ export function MonitoringLapangan() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Chart: Rata-rata Aktifitas Pemeriksaan per Kecamatan (dari data PML % Periksa) */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <div>
+                  <CardTitle className="text-lg">
+                    📊 Rata-rata Aktifitas Pemeriksaan per Kecamatan - Hari ke-{calculateDayProgress().daysElapsed}
+                  </CardTitle>
+                  <CardDescription>
+                    Rata-rata % Periksa dari data PML per kecamatan (diurutkan terbesar ke terkecil)
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                  </div>
+                ) : chartDataKecamatanPemeriksaanAvg.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={400}>
+                    {(() => {
+                      const avgOverall = chartDataKecamatanPemeriksaanAvg.length > 0
+                        ? chartDataKecamatanPemeriksaanAvg.reduce((sum, item) => sum + item.value, 0) / chartDataKecamatanPemeriksaanAvg.length
+                        : 0;
+                      return (
+                        <ComposedChart data={chartDataKecamatanPemeriksaanAvg}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis
+                            dataKey="name"
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "#fff",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "8px",
+                            }}
+                            formatter={(value: any) => [`${Number(value).toFixed(2)}%`, "% Periksa"]}
+                          />
+                          <ReferenceLine
+                            y={avgOverall}
+                            stroke="#8b5cf6"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            label={{ value: `Rata-rata: ${avgOverall.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
+                          />
+                          <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: '#000000' }} />
+                        </ComposedChart>
+                      );
+                    })()}
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    Tidak ada data
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top 10 PPL Chart */}
               <Card className="border-0 shadow-sm">
