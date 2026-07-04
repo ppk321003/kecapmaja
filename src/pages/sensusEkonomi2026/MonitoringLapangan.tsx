@@ -1587,7 +1587,7 @@ export function MonitoringLapangan() {
         .map((data) => ({ name: `${data.nama_ppl}\n${data.kecamatan}`, value: data.value }));
 
       const chartDataPPLTop: ChartData[] = pplSorted.slice(0, 10);
-      const chartDataPPLLowest: ChartData[] = pplSorted.slice(-10).reverse();
+      const chartDataPPLLowest: ChartData[] = pplSorted.slice(-10);
 
       // Calculate total progress (based on totalActivity)
       const totalProgress = {
