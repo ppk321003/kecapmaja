@@ -1520,7 +1520,7 @@ export function MonitoringLapangan() {
             totalSubmit: data.totalSubmit,
           };
         })
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => b.value - a.value);
 
       // Calculate top and lowest kecamatan AFTER chartDataKecamatanAll is defined
       const topKecamatan = chartDataKecamatanAll.length > 0
