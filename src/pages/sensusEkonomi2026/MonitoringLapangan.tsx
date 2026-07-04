@@ -1988,7 +1988,7 @@ export function MonitoringLapangan() {
       }
     });
 
-  const selectedPercentageTotal = aggregatedData.rows.reduce((sum, row) => {
+  const selectedPercentageTotal = aggregatedData.rows.reduce((sum: number, row: any) => {
     let activity = 0;
     if (kecamatanPercentageComponents.draft) activity += row.draft;
     if (kecamatanPercentageComponents.submit) activity += row.jumlah_submit;
