@@ -10,7 +10,14 @@ import {
   AlertCircle,
   Link,
   Eye,
+  Flag,
+  FlagOff,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+const ANOMALI_SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
 
 interface MonitoringLapanganAnomaliTabProps {
   anomaliUsahaData: any[];
@@ -25,6 +32,7 @@ interface AnomaliTableProps {
   data?: any[];
   loading: boolean;
   title: string;
+  sheetName?: string;
 }
 
 interface PendingPPLEntry {
@@ -285,9 +293,75 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
   );
 });
 
-const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
+const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) => {
   const rows = data ?? [];
   const isUsaha = title.toLowerCase().includes("usaha");
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const isLoggedIn = !!user?.username;
+  const targetSheetName = sheetName || title;
+
+  // Local overrides for flag state keyed by sheet row number.
+  // Value is the string stored in column AA (empty string = un-flagged).
+  const [flagOverrides, setFlagOverrides] = useState<Record<number, string>>({});
+  const [flagLoading, setFlagLoading] = useState<Record<number, boolean>>({});
+
+  const getFlagValue = (row: any): string => {
+    const rowNumber = row?.__rowNumber as number | undefined;
+    if (rowNumber !== undefined && flagOverrides[rowNumber] !== undefined) {
+      return flagOverrides[rowNumber];
+    }
+    // AA is 0-based column 26. Empty header cells are keyed as __col_26.
+    const raw =
+      getColumnValue(row, "eksekusi", ["eksekusi", "flag_eksekusi", "flag", "aa", "__col_26"], "") ||
+      (row?.__rawRow && row.__rawRow[26]) ||
+      "";
+    return String(raw ?? "");
+  };
+
+  const handleToggleFlag = async (row: any) => {
+    const rowNumber = row?.__rowNumber as number | undefined;
+    if (!rowNumber) {
+      toast({ title: "Gagal", description: "Nomor baris tidak diketahui.", variant: "destructive" });
+      return;
+    }
+    const current = getFlagValue(row);
+    const isCurrentlyFlagged = current.trim() !== "";
+    const newValue = isCurrentlyFlagged
+      ? ""
+      : `${new Date().toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })} | ${user?.username || "unknown"}`;
+
+    setFlagLoading((prev) => ({ ...prev, [rowNumber]: true }));
+    // Optimistic
+    setFlagOverrides((prev) => ({ ...prev, [rowNumber]: newValue }));
+    try {
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: ANOMALI_SPREADSHEET_ID,
+          operation: "update",
+          range: `${targetSheetName}!AA${rowNumber}`,
+          values: [[newValue]],
+        },
+      });
+      if (error) throw error;
+      toast({
+        title: isCurrentlyFlagged ? "Flag dibatalkan" : "Ditandai sudah dieksekusi",
+        description: isCurrentlyFlagged
+          ? `Baris ${rowNumber} pada ${targetSheetName}`
+          : newValue,
+      });
+    } catch (err: any) {
+      // Revert on error
+      setFlagOverrides((prev) => ({ ...prev, [rowNumber]: current }));
+      toast({
+        title: "Gagal menyimpan",
+        description: err?.message || "Terjadi kesalahan saat menulis ke Google Sheets.",
+        variant: "destructive",
+      });
+    } finally {
+      setFlagLoading((prev) => ({ ...prev, [rowNumber]: false }));
+    }
+  };
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
@@ -555,6 +629,39 @@ const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
                           >
                             <Eye className="h-4 w-4" />
                           </button>
+                          {isLoggedIn && (() => {
+                            const flagVal = getFlagValue(row);
+                            const flagged = flagVal.trim() !== "";
+                            const rn = row?.__rowNumber as number | undefined;
+                            const busy = rn ? flagLoading[rn] : false;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => !busy && handleToggleFlag(row)}
+                                disabled={busy}
+                                className={
+                                  "inline-flex items-center justify-center rounded-md p-2 transition-colors " +
+                                  (flagged
+                                    ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm ring-1 ring-emerald-600"
+                                    : "bg-slate-100 text-slate-500 hover:bg-slate-200") +
+                                  (busy ? " opacity-60 cursor-not-allowed" : "")
+                                }
+                                title={
+                                  flagged
+                                    ? `Sudah dieksekusi (${flagVal}). Klik untuk batalkan.`
+                                    : "Tandai sudah dieksekusi di web Fasih"
+                                }
+                              >
+                                {busy ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : flagged ? (
+                                  <Flag className="h-4 w-4" />
+                                ) : (
+                                  <FlagOff className="h-4 w-4" />
+                                )}
+                              </button>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1197,12 +1304,14 @@ export default function MonitoringLapanganAnomaliTab({
             data={anomaliUsahaData}
             loading={anomaliUsahaLoading}
             title="Mikro Anomali Usaha"
+            sheetName="Mikro Anomali Usaha"
           />
         ) : (
           <AnomaliTable
             data={anomaliKeluargaData}
             loading={anomaliKeluargaLoading}
             title="Mikro Anomali Keluarga"
+            sheetName="Mikro Anomali Keluarga"
           />
         )}
       </CardContent>

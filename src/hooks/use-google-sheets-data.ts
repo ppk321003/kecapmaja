@@ -78,7 +78,7 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
 
           const extraSkip = EXTRA_SKIP_FOR_SHEETS[sheetName] || 0;
           const dataStartIndex = headerRowIndex + 1 + extraSkip;
-          const dataRows = rows.slice(dataStartIndex).map((row: any[]) => {
+          const dataRows = rows.slice(dataStartIndex).map((row: any[], rowIdx: number) => {
             const obj: any = {};
             const headerCount: Record<string, number> = {};
 
@@ -94,6 +94,9 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
               const key = count === 1 ? headerKeyBase : `${headerKeyBase}_${count}`;
               obj[key] = row[index] ?? '';
             });
+            // Attach the 1-based sheet row number so callers can update specific rows.
+            obj.__rowNumber = dataStartIndex + rowIdx + 1;
+            obj.__rawRow = row;
             return obj;
           });
           setData(dataRows);
