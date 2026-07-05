@@ -1304,12 +1304,14 @@ export default function MonitoringLapanganAnomaliTab({
             data={anomaliUsahaData}
             loading={anomaliUsahaLoading}
             title="Mikro Anomali Usaha"
+            sheetName="Mikro Anomali Usaha"
           />
         ) : (
           <AnomaliTable
             data={anomaliKeluargaData}
             loading={anomaliKeluargaLoading}
             title="Mikro Anomali Keluarga"
+            sheetName="Mikro Anomali Keluarga"
           />
         )}
       </CardContent>
