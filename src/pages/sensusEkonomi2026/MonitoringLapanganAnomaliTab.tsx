@@ -817,7 +817,7 @@ export default function MonitoringLapanganAnomaliTab({
       const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
       const normalizedKecamatan = normalizeString(kecamatan);
       const perlakuan = getAnomalyPerlakuanValue(row, "");
-      const isCompleted = isFilled(perlakuan);
+      const isCompleted = isTindakLanjut(perlakuan);
       const key = `${normalizedPPL}::${normalizedKecamatan}`;
       if (!grouped.has(key)) {
         grouped.set(key, { name: ppl, pendingCount: 0, totalCount: 0, completed: 0, districts: new Set<string>() });
