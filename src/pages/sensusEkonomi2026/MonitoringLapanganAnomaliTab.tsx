@@ -26,6 +26,8 @@ interface MonitoringLapanganAnomaliTabProps {
   anomaliKeluargaLoading: boolean;
   anomaliUsahaInfo: string;
   anomaliKeluargaInfo: string;
+  isLoggedIn?: boolean;
+  user?: { username: string; role: string; satker: string } | null;
 }
 
 interface AnomaliTableProps {
