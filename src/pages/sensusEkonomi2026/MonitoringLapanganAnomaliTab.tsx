@@ -629,6 +629,39 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
                           >
                             <Eye className="h-4 w-4" />
                           </button>
+                          {isLoggedIn && (() => {
+                            const flagVal = getFlagValue(row);
+                            const flagged = flagVal.trim() !== "";
+                            const rn = row?.__rowNumber as number | undefined;
+                            const busy = rn ? flagLoading[rn] : false;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => !busy && handleToggleFlag(row)}
+                                disabled={busy}
+                                className={
+                                  "inline-flex items-center justify-center rounded-md p-2 transition-colors " +
+                                  (flagged
+                                    ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm ring-1 ring-emerald-600"
+                                    : "bg-slate-100 text-slate-500 hover:bg-slate-200") +
+                                  (busy ? " opacity-60 cursor-not-allowed" : "")
+                                }
+                                title={
+                                  flagged
+                                    ? `Sudah dieksekusi (${flagVal}). Klik untuk batalkan.`
+                                    : "Tandai sudah dieksekusi di web Fasih"
+                                }
+                              >
+                                {busy ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : flagged ? (
+                                  <Flag className="h-4 w-4" />
+                                ) : (
+                                  <FlagOff className="h-4 w-4" />
+                                )}
+                              </button>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                     </TableRow>
