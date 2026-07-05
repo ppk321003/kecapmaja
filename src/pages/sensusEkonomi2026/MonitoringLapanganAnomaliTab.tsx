@@ -317,11 +317,12 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
     if (rowNumber !== undefined && flagOverrides[rowNumber] !== undefined) {
       return flagOverrides[rowNumber];
     }
-    // AA is 0-based column 26. Empty header cells are keyed as __col_26.
-    const raw =
-      getColumnValue(row, "eksekusi", ["eksekusi", "flag_eksekusi", "flag", "aa", "__col_26"], "") ||
-      (row?.__rawRow && row.__rawRow[26]) ||
-      "";
+    // AA is 0-based column index 26. Read STRICTLY from the raw row / __col_26
+    // placeholder to avoid the fuzzy fallback in getColumnValue returning a
+    // value from an unrelated column (which caused every row to appear flagged).
+    const rawFromArray = row?.__rawRow && row.__rawRow[26];
+    const rawFromPlaceholder = row?.__col_26;
+    const raw = rawFromArray ?? rawFromPlaceholder ?? "";
     return String(raw ?? "");
   };
 
