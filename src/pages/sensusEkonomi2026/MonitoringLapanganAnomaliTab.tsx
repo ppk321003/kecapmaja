@@ -878,8 +878,9 @@ export default function MonitoringLapanganAnomaliTab({
       const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
       if (desa) desaSet.add(`${districtName}|${desa}`);
 
-      const catatanPetugas = String(getAnomalyCatatanPetugasValue(row, "") ?? "").trim();
-      if (isFilled(catatanPetugas)) completedAnomalyCount += 1;
+      // Tindak lanjut = kolom X (perlakuan) berisi "Sudah Diperbaiki" atau "Tidak diperbaiki".
+      const perlakuan = getAnomalyPerlakuanValue(row, "");
+      if (isTindakLanjut(perlakuan)) completedAnomalyCount += 1;
     });
 
     const sortedAnomalies = [...anomalyCounts.entries()].sort((a, b) => b[1] - a[1]);
