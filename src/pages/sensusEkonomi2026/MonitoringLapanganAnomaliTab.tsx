@@ -495,7 +495,7 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [rows, itemsPerPage, searchTerm, anomalyFilter, perlakuanFilter, sortBy, sortOrder]);
+  }, [rows, itemsPerPage, debouncedSearch, anomalyFilter, perlakuanFilter, sortBy, sortOrder]);
 
   return (
     <div>
