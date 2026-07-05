@@ -10,7 +10,14 @@ import {
   AlertCircle,
   Link,
   Eye,
+  Flag,
+  FlagOff,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+const ANOMALI_SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
 
 interface MonitoringLapanganAnomaliTabProps {
   anomaliUsahaData: any[];
