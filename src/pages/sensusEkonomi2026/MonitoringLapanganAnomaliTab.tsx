@@ -109,6 +109,12 @@ const isFilled = (v: any) => {
   return !(s === "" || s === "-" || s === "na" || s === "n/a" || s === "null" || s === "none");
 };
 
+// Tindak lanjut: column X ("perlakuan") equals one of these specific values.
+const TINDAK_LANJUT_VALUES = new Set(["sudah diperbaiki", "tidak diperbaiki"]);
+const isTindakLanjut = (v: any) => {
+  return TINDAK_LANJUT_VALUES.has(String(v ?? "").trim().toLowerCase());
+};
+
 const getAnomalyPPLValue = (row: any, defaultValue: any = "-"): any =>
   getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl", "nama_ppl", "y"], defaultValue);
 
@@ -311,11 +317,12 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
     if (rowNumber !== undefined && flagOverrides[rowNumber] !== undefined) {
       return flagOverrides[rowNumber];
     }
-    // AA is 0-based column 26. Empty header cells are keyed as __col_26.
-    const raw =
-      getColumnValue(row, "eksekusi", ["eksekusi", "flag_eksekusi", "flag", "aa", "__col_26"], "") ||
-      (row?.__rawRow && row.__rawRow[26]) ||
-      "";
+    // AA is 0-based column index 26. Read STRICTLY from the raw row / __col_26
+    // placeholder to avoid the fuzzy fallback in getColumnValue returning a
+    // value from an unrelated column (which caused every row to appear flagged).
+    const rawFromArray = row?.__rawRow && row.__rawRow[26];
+    const rawFromPlaceholder = row?.__col_26;
+    const raw = rawFromArray ?? rawFromPlaceholder ?? "";
     return String(raw ?? "");
   };
 
@@ -365,6 +372,11 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(searchTerm), 250);
+    return () => window.clearTimeout(id);
+  }, [searchTerm]);
   const [sortBy, setSortBy] = useState<"kecamatan" | "desa" | "nama_usaha" | "catatan_petugas" | "perlakuan" | "nama_anomali" | "ppl" | "pml">("kecamatan");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [anomalyFilter, setAnomalyFilter] = useState("all");
@@ -408,60 +420,82 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
     }
   };
 
-  const anomalyOptions = useMemo(() => {
-    const values = rows
-      .map((row) => String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim())
-      .filter(Boolean);
-    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
-  }, [rows]);
-
-  const filteredRows = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-
-    const filtered = rows.filter((row) => {
-      const anomalyName = String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim().toLowerCase();
-      if (anomalyFilter !== "all" && anomalyName !== anomalyFilter.toLowerCase()) {
-        return false;
-      }
-
-      if (perlakuanFilter !== "all") {
-        const perlakuanVal = getAnomalyPerlakuanValue(row, "");
-        const hasPerlakuan = isFilled(perlakuanVal);
-        if (perlakuanFilter === "filled" && !hasPerlakuan) return false;
-        if (perlakuanFilter === "empty" && hasPerlakuan) return false;
-      }
-
-      if (!normalizedSearch) return true;
-
+  // Precompute lowercase projections once per row set. getColumnValue is
+  // expensive (builds two maps per call), so calling it on every keystroke
+  // over thousands of rows was making search unusable on Anomali Keluarga.
+  const projectedRows = useMemo(() => {
+    return rows.map((row) => {
       const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).toLowerCase();
       const desaKel = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).toLowerCase();
       const namaUsaha = String(getColumnValue(row, "nama_usaha", ["nama usaha", "nama usaha / kk", "nama usaha kk", "nama usaha"], "")).toLowerCase();
-      const catatanPetugas = String(getAnomalyCatatanPetugasValue(row, "")).toLowerCase();
-      const perlakuan = String(getAnomalyPerlakuanValue(row, "")).toLowerCase();
-      const ppl = String(getAnomalyPPLValue(row, "")).toLowerCase();
-      const pml = String(getAnomalyPMLValue(row, "")).toLowerCase();
-      const anomalyText = anomalyName;
+      const catatanPetugas = String(getAnomalyCatatanPetugasValue(row, "") ?? "").toLowerCase();
+      const perlakuan = String(getAnomalyPerlakuanValue(row, "") ?? "").toLowerCase();
+      const ppl = String(getAnomalyPPLValue(row, "") ?? "").toLowerCase();
+      const pml = String(getAnomalyPMLValue(row, "") ?? "").toLowerCase();
+      const anomalyName = String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim().toLowerCase();
+      const hasPerlakuan = isFilled(perlakuan);
+      const searchBlob = `${kecamatan}\n${desaKel}\n${namaUsaha}\n${catatanPetugas}\n${perlakuan}\n${ppl}\n${pml}\n${anomalyName}`;
+      return { row, kecamatan, desaKel, namaUsaha, catatanPetugas, perlakuan, ppl, pml, anomalyName, hasPerlakuan, searchBlob };
+    });
+  }, [rows]);
 
-      return [kecamatan, desaKel, namaUsaha, catatanPetugas, perlakuan, ppl, pml, anomalyText].some((value) => value.includes(normalizedSearch));
+  const anomalyOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const values: string[] = [];
+    for (const p of projectedRows) {
+      const raw = p.anomalyName;
+      if (!raw) continue;
+      if (!seen.has(raw)) {
+        seen.add(raw);
+        values.push(raw);
+      }
+    }
+    return values.sort((a, b) => a.localeCompare(b));
+  }, [projectedRows]);
+
+  const filteredRows = useMemo(() => {
+    const normalizedSearch = debouncedSearch.trim().toLowerCase();
+    const anomalyLower = anomalyFilter.toLowerCase();
+
+    const filtered = projectedRows.filter((p) => {
+      if (anomalyFilter !== "all" && p.anomalyName !== anomalyLower) return false;
+      if (perlakuanFilter === "filled" && !p.hasPerlakuan) return false;
+      if (perlakuanFilter === "empty" && p.hasPerlakuan) return false;
+      if (!normalizedSearch) return true;
+      return p.searchBlob.includes(normalizedSearch);
     });
 
+    const pickKey = (p: typeof filtered[number]) => {
+      switch (sortBy) {
+        case "desa": return p.desaKel;
+        case "nama_usaha": return p.namaUsaha;
+        case "catatan_petugas": return p.catatanPetugas;
+        case "perlakuan": return p.perlakuan;
+        case "nama_anomali": return p.anomalyName;
+        case "ppl": return p.ppl;
+        case "pml": return p.pml;
+        case "kecamatan":
+        default: return p.kecamatan;
+      }
+    };
+
     const sorted = [...filtered].sort((a, b) => {
-      const valueA = getSortValue(a, sortBy);
-      const valueB = getSortValue(b, sortBy);
-      if (valueA < valueB) return sortOrder === "asc" ? -1 : 1;
-      if (valueA > valueB) return sortOrder === "asc" ? 1 : -1;
+      const va = pickKey(a);
+      const vb = pickKey(b);
+      if (va < vb) return sortOrder === "asc" ? -1 : 1;
+      if (va > vb) return sortOrder === "asc" ? 1 : -1;
       return 0;
     });
 
-    return sorted;
-  }, [rows, searchTerm, anomalyFilter, perlakuanFilter, sortBy, sortOrder]);
+    return sorted.map((p) => p.row);
+  }, [projectedRows, debouncedSearch, anomalyFilter, perlakuanFilter, sortBy, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
   const paginatedRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [rows, itemsPerPage, searchTerm, anomalyFilter, perlakuanFilter, sortBy, sortOrder]);
+  }, [rows, itemsPerPage, debouncedSearch, anomalyFilter, perlakuanFilter, sortBy, sortOrder]);
 
   return (
     <div>
@@ -810,7 +844,7 @@ export default function MonitoringLapanganAnomaliTab({
       const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
       const normalizedKecamatan = normalizeString(kecamatan);
       const perlakuan = getAnomalyPerlakuanValue(row, "");
-      const isCompleted = isFilled(perlakuan);
+      const isCompleted = isTindakLanjut(perlakuan);
       const key = `${normalizedPPL}::${normalizedKecamatan}`;
       if (!grouped.has(key)) {
         grouped.set(key, { name: ppl, pendingCount: 0, totalCount: 0, completed: 0, districts: new Set<string>() });
@@ -871,8 +905,9 @@ export default function MonitoringLapanganAnomaliTab({
       const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
       if (desa) desaSet.add(`${districtName}|${desa}`);
 
-      const catatanPetugas = String(getAnomalyCatatanPetugasValue(row, "") ?? "").trim();
-      if (isFilled(catatanPetugas)) completedAnomalyCount += 1;
+      // Tindak lanjut = kolom X (perlakuan) berisi "Sudah Diperbaiki" atau "Tidak diperbaiki".
+      const perlakuan = getAnomalyPerlakuanValue(row, "");
+      if (isTindakLanjut(perlakuan)) completedAnomalyCount += 1;
     });
 
     const sortedAnomalies = [...anomalyCounts.entries()].sort((a, b) => b[1] - a[1]);
@@ -1038,7 +1073,7 @@ export default function MonitoringLapanganAnomaliTab({
                             if (type === "keluarga") bucket.keluarga += 1; else bucket.usaha += 1;
                             bucket.total += 1;
                             const perlakuan = getAnomalyPerlakuanValue(row, "");
-                            const hasCompleted = isFilled(perlakuan);
+                            const hasCompleted = isTindakLanjut(perlakuan);
                             if (hasCompleted) bucket.completed += 1;
                             const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
                             if (desa) bucket.desaSet.add(desa);
