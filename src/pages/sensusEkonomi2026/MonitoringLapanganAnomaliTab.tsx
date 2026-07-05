@@ -109,6 +109,12 @@ const isFilled = (v: any) => {
   return !(s === "" || s === "-" || s === "na" || s === "n/a" || s === "null" || s === "none");
 };
 
+// Tindak lanjut: column X ("perlakuan") equals one of these specific values.
+const TINDAK_LANJUT_VALUES = new Set(["sudah diperbaiki", "tidak diperbaiki"]);
+const isTindakLanjut = (v: any) => {
+  return TINDAK_LANJUT_VALUES.has(String(v ?? "").trim().toLowerCase());
+};
+
 const getAnomalyPPLValue = (row: any, defaultValue: any = "-"): any =>
   getColumnValue(row, "ppl", ["ppl", "nama ppl", "nama_ppl", "nama_ppl", "y"], defaultValue);
 
