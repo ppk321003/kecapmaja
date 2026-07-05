@@ -293,9 +293,75 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
   );
 });
 
-const AnomaliTable = ({ data, loading, title }: AnomaliTableProps) => {
+const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) => {
   const rows = data ?? [];
   const isUsaha = title.toLowerCase().includes("usaha");
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const isLoggedIn = !!user?.username;
+  const targetSheetName = sheetName || title;
+
+  // Local overrides for flag state keyed by sheet row number.
+  // Value is the string stored in column AA (empty string = un-flagged).
+  const [flagOverrides, setFlagOverrides] = useState<Record<number, string>>({});
+  const [flagLoading, setFlagLoading] = useState<Record<number, boolean>>({});
+
+  const getFlagValue = (row: any): string => {
+    const rowNumber = row?.__rowNumber as number | undefined;
+    if (rowNumber !== undefined && flagOverrides[rowNumber] !== undefined) {
+      return flagOverrides[rowNumber];
+    }
+    // AA is 0-based column 26. Empty header cells are keyed as __col_26.
+    const raw =
+      getColumnValue(row, "eksekusi", ["eksekusi", "flag_eksekusi", "flag", "aa", "__col_26"], "") ||
+      (row?.__rawRow && row.__rawRow[26]) ||
+      "";
+    return String(raw ?? "");
+  };
+
+  const handleToggleFlag = async (row: any) => {
+    const rowNumber = row?.__rowNumber as number | undefined;
+    if (!rowNumber) {
+      toast({ title: "Gagal", description: "Nomor baris tidak diketahui.", variant: "destructive" });
+      return;
+    }
+    const current = getFlagValue(row);
+    const isCurrentlyFlagged = current.trim() !== "";
+    const newValue = isCurrentlyFlagged
+      ? ""
+      : `${new Date().toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })} | ${user?.username || "unknown"}`;
+
+    setFlagLoading((prev) => ({ ...prev, [rowNumber]: true }));
+    // Optimistic
+    setFlagOverrides((prev) => ({ ...prev, [rowNumber]: newValue }));
+    try {
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: ANOMALI_SPREADSHEET_ID,
+          operation: "update",
+          range: `${targetSheetName}!AA${rowNumber}`,
+          values: [[newValue]],
+        },
+      });
+      if (error) throw error;
+      toast({
+        title: isCurrentlyFlagged ? "Flag dibatalkan" : "Ditandai sudah dieksekusi",
+        description: isCurrentlyFlagged
+          ? `Baris ${rowNumber} pada ${targetSheetName}`
+          : newValue,
+      });
+    } catch (err: any) {
+      // Revert on error
+      setFlagOverrides((prev) => ({ ...prev, [rowNumber]: current }));
+      toast({
+        title: "Gagal menyimpan",
+        description: err?.message || "Terjadi kesalahan saat menulis ke Google Sheets.",
+        variant: "destructive",
+      });
+    } finally {
+      setFlagLoading((prev) => ({ ...prev, [rowNumber]: false }));
+    }
+  };
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
