@@ -1046,7 +1046,7 @@ export default function MonitoringLapanganAnomaliTab({
                             if (type === "keluarga") bucket.keluarga += 1; else bucket.usaha += 1;
                             bucket.total += 1;
                             const perlakuan = getAnomalyPerlakuanValue(row, "");
-                            const hasCompleted = isFilled(perlakuan);
+                            const hasCompleted = isTindakLanjut(perlakuan);
                             if (hasCompleted) bucket.completed += 1;
                             const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
                             if (desa) bucket.desaSet.add(desa);
