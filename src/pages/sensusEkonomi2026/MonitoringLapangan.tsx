@@ -1337,7 +1337,7 @@ export function MonitoringLapangan() {
       const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
       if (desa) desaSet.add(`${districtName}|${desa}`);
 
-      const catatanPetugas = String(getAnomalyCatatanPetugasValue(row, "") ?? "").trim();
+      const catatanPetugas = getAnomalyCatatanPetugasValue(row, "").trim();
       if (isFilled(catatanPetugas)) completedAnomalyCount += 1;
     });
 
@@ -3413,6 +3413,8 @@ export function MonitoringLapangan() {
                 anomaliKeluargaLoading={anomaliKeluargaLoading}
                 anomaliUsahaInfo={anomaliUsahaInfo}
                 anomaliKeluargaInfo={anomaliKeluargaInfo}
+                isLoggedIn={isLoggedIn}
+                user={user}
               />
             </React.Suspense>
           </TabsContent>

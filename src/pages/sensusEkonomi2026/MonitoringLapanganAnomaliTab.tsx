@@ -428,14 +428,15 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
       const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).toLowerCase();
       const desaKel = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).toLowerCase();
       const namaUsaha = String(getColumnValue(row, "nama_usaha", ["nama usaha", "nama usaha / kk", "nama usaha kk", "nama usaha"], "")).toLowerCase();
+      const namaKRT = String(getColumnValue(row, "nama_krt", ["nama krt", "nama_krt", "krt", "nama kepala rumah tangga", "nama kepala keluarga"], "")).toLowerCase();
       const catatanPetugas = String(getAnomalyCatatanPetugasValue(row, "") ?? "").toLowerCase();
       const perlakuan = String(getAnomalyPerlakuanValue(row, "") ?? "").toLowerCase();
       const ppl = String(getAnomalyPPLValue(row, "") ?? "").toLowerCase();
       const pml = String(getAnomalyPMLValue(row, "") ?? "").toLowerCase();
       const anomalyName = String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim().toLowerCase();
       const hasPerlakuan = isFilled(perlakuan);
-      const searchBlob = `${kecamatan}\n${desaKel}\n${namaUsaha}\n${catatanPetugas}\n${perlakuan}\n${ppl}\n${pml}\n${anomalyName}`;
-      return { row, kecamatan, desaKel, namaUsaha, catatanPetugas, perlakuan, ppl, pml, anomalyName, hasPerlakuan, searchBlob };
+      const searchBlob = `${kecamatan}\n${desaKel}\n${namaUsaha}\n${namaKRT}\n${catatanPetugas}\n${perlakuan}\n${ppl}\n${pml}\n${anomalyName}`;
+      return { row, kecamatan, desaKel, namaUsaha, namaKRT, catatanPetugas, perlakuan, ppl, pml, anomalyName, hasPerlakuan, searchBlob };
     });
   }, [rows]);
 
@@ -529,7 +530,7 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={isUsaha ? "Cari Kecamatan / Desa / Usaha / PPL / PML" : "Cari Kecamatan / Desa / PPL / PML"}
+                placeholder={isUsaha ? "Cari Kecamatan / Desa / Usaha / PPL / PML" : "Cari Kecamatan / Desa / Nama KRT / PPL / PML"}
                 className="border-0 p-0 shadow-none focus-visible:ring-0"
               />
             </div>
