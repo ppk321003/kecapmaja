@@ -32,6 +32,7 @@ interface AnomaliTableProps {
   data?: any[];
   loading: boolean;
   title: string;
+  sheetName?: string;
 }
 
 interface PendingPPLEntry {
