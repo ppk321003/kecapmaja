@@ -1808,7 +1808,19 @@ export function MonitoringLapangan() {
         totalProgress,
         pmlData: pmlRows,
       };
-    }, [sheetData, usersData, kecamatanPercentageComponents, kecamatanActivityComponents]);
+    }, [sheetData, usersData, prelistData, kecamatanPercentageComponents, kecamatanActivityComponents]);
+
+  // Map SLS id -> Prelist Awal (Total Assignment Fasih) for use in expanded rows
+  const prelistBySlsMap = useMemo(() => {
+    const m = new Map<string, number>();
+    (prelistData || []).forEach((p: any) => {
+      const sls = String(p["idsubsls_25_2"] || p["__col_3"] || "").trim();
+      if (!sls) return;
+      const val = parseInt(String(p["total assignment fasih"] ?? p["__col_29"] ?? "0").replace(/[^\d.-]/g, "")) || 0;
+      m.set(sls, val);
+    });
+    return m;
+  }, [prelistData]);
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearchTerm(searchTerm), 200);
