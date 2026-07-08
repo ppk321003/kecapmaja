@@ -3852,6 +3852,9 @@ export function MonitoringLapangan() {
                                   <TableCell className="text-slate-700 px-4 py-3">
                                     {row.kecamatan || "-"}
                                   </TableCell>
+                                  <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">
+                                    {(((row as any).prelist_awal) || 0).toLocaleString("id-ID")}
+                                  </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                     <UITooltipProvider delayDuration={200}>
                                       <UITooltip>
@@ -3911,6 +3914,14 @@ export function MonitoringLapangan() {
                                         </UITooltipContent>
                                       </UITooltip>
                                     </UITooltipProvider>
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold px-4 py-3">
+                                    {(() => {
+                                      const prel = ((row as any).prelist_awal) || 0;
+                                      const num = (row.jumlah_reject || 0) + (row.jumlah_revoke || 0) + (row.jumlah_approve || 0);
+                                      const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                      return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                                    })()}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                     <UITooltipProvider delayDuration={200}>
