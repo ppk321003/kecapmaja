@@ -88,6 +88,7 @@ interface AggregatedData {
   jumlah_reject: number;
   jumlah_revoke: number;
   total_assignments: number;
+  prelist_awal?: number;
   status_counts: {
     open: number;
     draft: number;
@@ -148,6 +149,8 @@ interface PMLData {
   jumlah_revoke: number;
   totalAssignments?: number;
   targetPercent?: number;
+  prelist_awal?: number;
+  capaianPercent?: number;
 }
 
 const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
@@ -156,6 +159,7 @@ const SHEET_USERS = "Semua Users";
 const SHEET_AFIRMASI = "AFIRMASI";
 const SHEET_ANOMALI_USAHA = "Mikro Anomali Usaha";
 const SHEET_ANOMALI_KELUARGA = "Mikro Anomali Keluarga";
+const SHEET_PRELIST = "Prelist_Awal";
 
 const COLORS = {
   optimal: "#10b981",
