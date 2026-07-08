@@ -3394,6 +3394,9 @@ export function MonitoringLapangan() {
                             <TableCell className="text-center text-slate-700 font-semibold w-12">-</TableCell>
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">TOTAL</TableCell>
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">-</TableCell>
+                            <TableCell className="text-right font-bold text-blue-900 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + (row.prelist_awal || 0), 0).toLocaleString("id-ID")}
+                            </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.draft, 0).toLocaleString("id-ID")}
                             </TableCell>
@@ -3409,8 +3412,15 @@ export function MonitoringLapangan() {
                             <TableCell className="text-right font-bold text-green-700 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_approve, 0).toLocaleString("id-ID")}
                             </TableCell>
+                            <TableCell className="text-right font-bold px-4 py-3">
+                              {(() => {
+                                const prel = paginatedRows.reduce((s, r) => s + (r.prelist_awal || 0), 0);
+                                const num = paginatedRows.reduce((s, r) => s + r.jumlah_reject + (r.jumlah_revoke || 0) + r.jumlah_submit + r.jumlah_approve, 0);
+                                const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                              })()}
+                            </TableCell>
                             <TableCell className="text-right text-slate-700 px-4 py-3 font-semibold">-</TableCell>
-                            <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
                             <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
                             <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
                           </TableRow>
