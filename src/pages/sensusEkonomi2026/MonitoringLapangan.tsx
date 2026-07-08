@@ -1475,6 +1475,27 @@ export function MonitoringLapangan() {
         r.status_counts.revoked = rev;
       });
 
+      // Enrich PPL rows with Prelist Awal (sum of Total Assignment Fasih for each SLS assigned to the PPL)
+      const prelistBySls = new Map<string, number>();
+      (prelistData || []).forEach((p: any) => {
+        const sls = String(p["idsubsls_25_2"] || p["__col_3"] || "").trim();
+        if (!sls) return;
+        const val = parseInt(String(p["total assignment fasih"] ?? p["__col_29"] ?? "0").replace(/[^\d.-]/g, "")) || 0;
+        prelistBySls.set(sls, (prelistBySls.get(sls) || 0) + val);
+      });
+      const prelistByEmail = new Map<string, number>();
+      (usersData || []).forEach((u: any) => {
+        const email = String(u["email"] || u["Email"] || "").trim().toLowerCase();
+        const region = String(u["regioncode"] || u["regionCode"] || "").trim();
+        if (!email || !region) return;
+        const p = prelistBySls.get(region) || 0;
+        if (p > 0) prelistByEmail.set(email, (prelistByEmail.get(email) || 0) + p);
+      });
+      rows.forEach((r) => {
+        const email = String(r.email_ppl || "").trim().toLowerCase();
+        r.prelist_awal = email ? (prelistByEmail.get(email) || 0) : 0;
+      });
+
       // Calculate statistics with UNIQUE kecamatan count
       const totalKecamatan = kecamatanSet.size; // Unique count, not row count
       // Total Pendataan = Draft + Reject + Approve + Submit
