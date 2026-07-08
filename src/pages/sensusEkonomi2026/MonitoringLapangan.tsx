@@ -4040,6 +4040,9 @@ export function MonitoringLapangan() {
                             <TableCell className="text-center text-slate-700 font-semibold w-12">-</TableCell>
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">TOTAL</TableCell>
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">-</TableCell>
+                            <TableCell className="text-right font-bold text-blue-900 px-4 py-3">
+                              {sortedPMLData.reduce((sum, row) => sum + (((row as any).prelist_awal) || 0), 0).toLocaleString("id-ID")}
+                            </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {sortedPMLData.reduce((sum, row) => {
                                 const key = `${row.nama_pml}|${row.kecamatan}`;
@@ -4064,6 +4067,14 @@ export function MonitoringLapangan() {
                             </TableCell>
                             <TableCell className="text-right font-bold text-orange-700 px-4 py-3">
                               {sortedPMLData.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold px-4 py-3">
+                              {(() => {
+                                const prel = sortedPMLData.reduce((s, r) => s + (((r as any).prelist_awal) || 0), 0);
+                                const num = sortedPMLData.reduce((s, r) => s + (r.jumlah_reject || 0) + (r.jumlah_revoke || 0) + (r.jumlah_approve || 0), 0);
+                                const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                              })()}
                             </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {(() => {
