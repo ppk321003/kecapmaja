@@ -88,6 +88,7 @@ interface AggregatedData {
   jumlah_reject: number;
   jumlah_revoke: number;
   total_assignments: number;
+  prelist_awal?: number;
   status_counts: {
     open: number;
     draft: number;
@@ -148,6 +149,8 @@ interface PMLData {
   jumlah_revoke: number;
   totalAssignments?: number;
   targetPercent?: number;
+  prelist_awal?: number;
+  capaianPercent?: number;
 }
 
 const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
@@ -156,6 +159,7 @@ const SHEET_USERS = "Semua Users";
 const SHEET_AFIRMASI = "AFIRMASI";
 const SHEET_ANOMALI_USAHA = "Mikro Anomali Usaha";
 const SHEET_ANOMALI_KELUARGA = "Mikro Anomali Keluarga";
+const SHEET_PRELIST = "Prelist_Awal";
 
 const COLORS = {
   optimal: "#10b981",
@@ -1232,6 +1236,10 @@ export function MonitoringLapangan() {
     range: `${SHEET_ANOMALI_KELUARGA}!A2`,
     mode: "single-cell",
   });
+  const { data: prelistData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: SHEET_PRELIST,
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
@@ -1465,6 +1473,27 @@ export function MonitoringLapangan() {
         const rev = email ? revokedByEmailEarly.get(email) || 0 : 0;
         r.jumlah_revoke = rev;
         r.status_counts.revoked = rev;
+      });
+
+      // Enrich PPL rows with Prelist Awal (sum of Total Assignment Fasih for each SLS assigned to the PPL)
+      const prelistBySls = new Map<string, number>();
+      (prelistData || []).forEach((p: any) => {
+        const sls = String(p["idsubsls_25_2"] || p["__col_3"] || "").trim();
+        if (!sls) return;
+        const val = parseInt(String(p["total assignment fasih"] ?? p["__col_29"] ?? "0").replace(/[^\d.-]/g, "")) || 0;
+        prelistBySls.set(sls, (prelistBySls.get(sls) || 0) + val);
+      });
+      const prelistByEmail = new Map<string, number>();
+      (usersData || []).forEach((u: any) => {
+        const email = String(u["email"] || u["Email"] || "").trim().toLowerCase();
+        const region = String(u["regioncode"] || u["regionCode"] || "").trim();
+        if (!email || !region) return;
+        const p = prelistBySls.get(region) || 0;
+        if (p > 0) prelistByEmail.set(email, (prelistByEmail.get(email) || 0) + p);
+      });
+      rows.forEach((r) => {
+        const email = String(r.email_ppl || "").trim().toLowerCase();
+        r.prelist_awal = email ? (prelistByEmail.get(email) || 0) : 0;
       });
 
       // Calculate statistics with UNIQUE kecamatan count
@@ -1779,7 +1808,19 @@ export function MonitoringLapangan() {
         totalProgress,
         pmlData: pmlRows,
       };
-    }, [sheetData, usersData, kecamatanPercentageComponents, kecamatanActivityComponents]);
+    }, [sheetData, usersData, prelistData, kecamatanPercentageComponents, kecamatanActivityComponents]);
+
+  // Map SLS id -> Prelist Awal (Total Assignment Fasih) for use in expanded rows
+  const prelistBySlsMap = useMemo(() => {
+    const m = new Map<string, number>();
+    (prelistData || []).forEach((p: any) => {
+      const sls = String(p["idsubsls_25_2"] || p["__col_3"] || "").trim();
+      if (!sls) return;
+      const val = parseInt(String(p["total assignment fasih"] ?? p["__col_29"] ?? "0").replace(/[^\d.-]/g, "")) || 0;
+      m.set(sls, val);
+    });
+    return m;
+  }, [prelistData]);
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearchTerm(searchTerm), 200);
@@ -1880,10 +1921,12 @@ export function MonitoringLapangan() {
       const pplUnderPML = pmlGroups.get(key) || [];
       const actualSubmit = pplUnderPML.reduce((sum, ppl) => sum + (ppl.jumlah_submit || 0), 0);
       const totalAssignments = pplUnderPML.reduce((sum, ppl) => sum + (ppl.total_assignments || 0), 0);
+      const prelist_awal = pplUnderPML.reduce((sum, ppl) => sum + (ppl.prelist_awal || 0), 0);
       const totalStatus = actualSubmit + pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0);
       const pemeriksaan = totalStatus > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalStatus) * 100 : 0;
       const targetPercent = totalAssignments > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalAssignments) * 100 : 0;
-      return { ...pml, actualSubmit, pemeriksaan, totalAssignments, targetPercent, pplUnderPML } as any;
+      const capaianPercent = prelist_awal > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / prelist_awal) * 100 : 0;
+      return { ...pml, actualSubmit, pemeriksaan, totalAssignments, targetPercent, prelist_awal, capaianPercent, pplUnderPML } as any;
     });
   }, [pmlData, pmlGroups]);
 
@@ -3073,6 +3116,18 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">Prelist Awal</div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Prelist Awal = Total Assignment Fasih dari sheet Prelist_Awal per SLS yang menjadi assignment PPL</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
+                            </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => toggleSort("draft")}
@@ -3124,7 +3179,18 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="w-10 px-2 py-3" />
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">% Capaian</div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">% Capaian = (Reject + Revoke + Submit + Approve) / Prelist Awal</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
+                            </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => toggleSort("dailyavg")}
@@ -3136,9 +3202,6 @@ export function MonitoringLapangan() {
                             </TableHead>
                             <TableHead className="text-center text-slate-700 font-semibold px-4 py-3">
                               Status
-                            </TableHead>
-                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
-                              Keterangan Target
                             </TableHead>
                             <TableHead className="text-slate-700 font-semibold px-4 py-3">
                               Notifikasi
@@ -3186,6 +3249,9 @@ export function MonitoringLapangan() {
                                   <TableCell className="text-slate-900 px-4 py-3">
                                     {row.kecamatan}
                                   </TableCell>
+                                  <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">
+                                    {(row.prelist_awal || 0).toLocaleString("id-ID")}
+                                  </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                     {row.draft.toLocaleString("id-ID")}
                                   </TableCell>
@@ -3201,7 +3267,14 @@ export function MonitoringLapangan() {
                                   <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
                                     {row.jumlah_approve.toLocaleString("id-ID")}
                                   </TableCell>
-                                  <TableCell className="px-2 py-3" />
+                                  <TableCell className="text-right font-semibold px-4 py-3">
+                                    {(() => {
+                                      const prel = row.prelist_awal || 0;
+                                      const num = row.jumlah_reject + (row.jumlah_revoke || 0) + row.jumlah_submit + row.jumlah_approve;
+                                      const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                      return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                                    })()}
+                                  </TableCell>
                                   <TableCell className="text-right text-slate-700 px-4 py-3">
                                     {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve + (row.jumlah_revoke || 0)) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} aktivitas/hari
                                   </TableCell>
@@ -3217,25 +3290,6 @@ export function MonitoringLapangan() {
                                         {scheduleStatus.label}
                                       </span>
                                     </div>
-                                  </TableCell>
-                                  <TableCell className="text-center px-4 py-3">
-                                    {scheduleStatus.targetLabel === "Diatas target harian" ? (
-                                      <div className="flex items-center justify-center gap-1.5 text-green-700" title="Diatas Target">
-                                        <TrendingUp className="h-5 w-5" />
-                                      </div>
-                                    ) : scheduleStatus.targetLabel === "Sesuai target harian" ? (
-                                      <div className="flex items-center justify-center gap-1.5 text-blue-700" title="Sesuai Target">
-                                        <CheckCircle2 className="h-5 w-5" />
-                                      </div>
-                                    ) : scheduleStatus.targetLabel === "-" ? (
-                                      <div className="flex items-center justify-center gap-1.5 text-slate-400" title="Belum Dimulai">
-                                        <Calendar className="h-5 w-5" />
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center justify-center gap-1.5 text-amber-700" title="Dibawah Target">
-                                        <AlertTriangle className="h-5 w-5" />
-                                      </div>
-                                    )}
                                   </TableCell>
                                   <TableCell className="text-xs text-slate-600 px-4 py-3 max-w-xs">
                                     <div className="bg-blue-50 rounded px-2 py-1">
@@ -3257,6 +3311,13 @@ export function MonitoringLapangan() {
                                           <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8" />
                                           <TableCell className="text-sm text-slate-600 px-4 py-2">
                                             {getColumnValue(user, "regioncode", ["regionCode", "region", "Region Code", "kecamatan", "Kecamatan"], "-")}
+                                          </TableCell>
+                                          <TableCell className="text-sm text-blue-900 font-semibold px-4 py-2 text-right">
+                                            {(() => {
+                                              const rc = String(getColumnValue(user, "regioncode", ["regionCode", "region", "Region Code"], "") || "").trim();
+                                              const v = rc ? (prelistBySlsMap.get(rc) || 0) : 0;
+                                              return v.toLocaleString("id-ID");
+                                            })()}
                                           </TableCell>
                                           <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
                                             {getColumnValue(user, "draft", ["DRAFT", "Draft", "DRAFT"], "0")}
@@ -3282,16 +3343,35 @@ export function MonitoringLapangan() {
                                           <TableCell className="text-sm text-green-700 font-semibold px-4 py-2 text-right">
                                             {getColumnValue(user, "approved_by_pengawas", ["appr", "APPROVED_BY_PENGAWAS", "approved", "Approved", "Approve"], "0")}
                                           </TableCell>
-                                          <TableCell className="px-2 py-2 text-center">
+                                          <TableCell className="text-sm font-semibold px-4 py-2 text-right">
                                             {(() => {
                                               const toNum = (v: any) => {
                                                 const n = parseFloat(String(v ?? "0").replace(/[^\d.-]/g, ""));
                                                 return isNaN(n) ? 0 : n;
                                               };
+                                              const rc = String(getColumnValue(user, "regioncode", ["regionCode", "region", "Region Code"], "") || "").trim();
+                                              const prel = rc ? (prelistBySlsMap.get(rc) || 0) : 0;
+                                              const num = toNum(getColumnValue(user, "draft", ["DRAFT"], "0")) === 0 ? 0 : 0; // unused
+                                              const submitted = toNum(getColumnValue(user, "submitted_by_pencacah", ["SUBMITTED_BY_PENCACAH"], "0"));
+                                              const approved = toNum(getColumnValue(user, "approved_by_pengawas", ["APPROVED_BY_PENGAWAS"], "0"));
+                                              const rejected = toNum(getColumnValue(user, "rejected_by_pengawas", ["REJECTED_BY_PENGAWAS"], "0"));
+                                              let revoked = 0;
+                                              for (const v of Object.values(user || {})) {
+                                                if (typeof v !== "string" || !v.includes("REVOKED")) continue;
+                                                try {
+                                                  const p = JSON.parse(v.trim());
+                                                  revoked = parseInt(p["REVOKED BY Pengawas"] ?? p["REVOKED_BY_PENGAWAS"] ?? p["REVOKED"] ?? 0) || 0;
+                                                } catch { /* ignore */ }
+                                              }
+                                              const total = submitted + approved + rejected + revoked;
+                                              const pct = prel > 0 ? (total / prel) * 100 : 0;
                                               const openVal = toNum(getColumnValue(user, "open", ["OPEN", "Open", "open"], "0"));
-                                              return openVal === 0 ? (
-                                                <CheckCircle2 className="h-5 w-5 text-green-600 inline" />
-                                              ) : null;
+                                              return (
+                                                <span className="inline-flex items-center gap-1 justify-end">
+                                                  <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>
+                                                  {openVal === 0 && <CheckCircle2 className="h-4 w-4 text-green-600 inline" />}
+                                                </span>
+                                              );
                                             })()}
                                           </TableCell>
                                           <TableCell colSpan={3} className="text-sm text-slate-600 px-4 py-2 italic" />
@@ -3314,6 +3394,9 @@ export function MonitoringLapangan() {
                             <TableCell className="text-center text-slate-700 font-semibold w-12">-</TableCell>
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">TOTAL</TableCell>
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">-</TableCell>
+                            <TableCell className="text-right font-bold text-blue-900 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + (row.prelist_awal || 0), 0).toLocaleString("id-ID")}
+                            </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.draft, 0).toLocaleString("id-ID")}
                             </TableCell>
@@ -3329,8 +3412,15 @@ export function MonitoringLapangan() {
                             <TableCell className="text-right font-bold text-green-700 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_approve, 0).toLocaleString("id-ID")}
                             </TableCell>
+                            <TableCell className="text-right font-bold px-4 py-3">
+                              {(() => {
+                                const prel = paginatedRows.reduce((s, r) => s + (r.prelist_awal || 0), 0);
+                                const num = paginatedRows.reduce((s, r) => s + r.jumlah_reject + (r.jumlah_revoke || 0) + r.jumlah_submit + r.jumlah_approve, 0);
+                                const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                              })()}
+                            </TableCell>
                             <TableCell className="text-right text-slate-700 px-4 py-3 font-semibold">-</TableCell>
-                            <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
                             <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
                             <TableCell className="text-center px-4 py-3 font-semibold">-</TableCell>
                           </TableRow>
@@ -3530,6 +3620,18 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">Prelist Awal</div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Prelist Awal = Total Assignment Fasih dari sheet Prelist_Awal per SLS yang menjadi assignment PPL di bawah PML</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
+                            </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => {
@@ -3650,6 +3752,18 @@ export function MonitoringLapangan() {
                                 </UITooltip>
                               </UITooltipProvider>
                             </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">% Capaian</div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">% Capaian = (Reject + Revoke + Approve) / Prelist Awal</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
+                            </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => {
@@ -3738,6 +3852,9 @@ export function MonitoringLapangan() {
                                   <TableCell className="text-slate-700 px-4 py-3">
                                     {row.kecamatan || "-"}
                                   </TableCell>
+                                  <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">
+                                    {(((row as any).prelist_awal) || 0).toLocaleString("id-ID")}
+                                  </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                     <UITooltipProvider delayDuration={200}>
                                       <UITooltip>
@@ -3798,6 +3915,14 @@ export function MonitoringLapangan() {
                                       </UITooltip>
                                     </UITooltipProvider>
                                   </TableCell>
+                                  <TableCell className="text-right font-semibold px-4 py-3">
+                                    {(() => {
+                                      const prel = ((row as any).prelist_awal) || 0;
+                                      const num = (row.jumlah_reject || 0) + (row.jumlah_revoke || 0) + (row.jumlah_approve || 0);
+                                      const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                      return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                                    })()}
+                                  </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                     <UITooltipProvider delayDuration={200}>
                                       <UITooltip>
@@ -3841,6 +3966,9 @@ export function MonitoringLapangan() {
                                       <TableCell className="text-sm text-slate-600 px-4 py-2">
                                         {ppl.kecamatan || row.kecamatan || '-'}
                                       </TableCell>
+                                      <TableCell className="text-sm text-blue-900 font-semibold px-4 py-2 text-right">
+                                        {(ppl.prelist_awal || 0).toLocaleString("id-ID")}
+                                      </TableCell>
                                       <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
                                         {( (ppl.jumlah_submit || 0) + ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0) ).toLocaleString("id-ID")}
                                       </TableCell>
@@ -3855,6 +3983,14 @@ export function MonitoringLapangan() {
                                       </TableCell>
                                       <TableCell className="text-sm text-orange-700 font-semibold px-4 py-2 text-right">
                                         {(ppl.jumlah_revoke || 0).toLocaleString("id-ID")}
+                                      </TableCell>
+                                      <TableCell className="text-sm font-semibold px-4 py-2 text-right">
+                                        {(() => {
+                                          const prel = ppl.prelist_awal || 0;
+                                          const num = (ppl.jumlah_reject || 0) + (ppl.jumlah_revoke || 0) + (ppl.jumlah_approve || 0);
+                                          const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                          return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                                        })()}
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">
                                         <UITooltipProvider delayDuration={200}>
@@ -3904,6 +4040,9 @@ export function MonitoringLapangan() {
                             <TableCell className="text-center text-slate-700 font-semibold w-12">-</TableCell>
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">TOTAL</TableCell>
                             <TableCell className="text-slate-700 px-4 py-3 font-semibold">-</TableCell>
+                            <TableCell className="text-right font-bold text-blue-900 px-4 py-3">
+                              {sortedPMLData.reduce((sum, row) => sum + (((row as any).prelist_awal) || 0), 0).toLocaleString("id-ID")}
+                            </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {sortedPMLData.reduce((sum, row) => {
                                 const key = `${row.nama_pml}|${row.kecamatan}`;
@@ -3928,6 +4067,14 @@ export function MonitoringLapangan() {
                             </TableCell>
                             <TableCell className="text-right font-bold text-orange-700 px-4 py-3">
                               {sortedPMLData.reduce((sum, row) => sum + (row.jumlah_revoke || 0), 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold px-4 py-3">
+                              {(() => {
+                                const prel = sortedPMLData.reduce((s, r) => s + (((r as any).prelist_awal) || 0), 0);
+                                const num = sortedPMLData.reduce((s, r) => s + (r.jumlah_reject || 0) + (r.jumlah_revoke || 0) + (r.jumlah_approve || 0), 0);
+                                const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                              })()}
                             </TableCell>
                             <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
                               {(() => {
