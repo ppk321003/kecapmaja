@@ -3116,6 +3116,18 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">Prelist Awal</div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Prelist Awal = Total Assignment Fasih dari sheet Prelist_Awal per SLS yang menjadi assignment PPL</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
+                            </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => toggleSort("draft")}
@@ -3167,7 +3179,18 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="w-10 px-2 py-3" />
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">% Capaian</div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">% Capaian = (Reject + Revoke + Submit + Approve) / Prelist Awal</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
+                            </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => toggleSort("dailyavg")}
@@ -3179,9 +3202,6 @@ export function MonitoringLapangan() {
                             </TableHead>
                             <TableHead className="text-center text-slate-700 font-semibold px-4 py-3">
                               Status
-                            </TableHead>
-                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
-                              Keterangan Target
                             </TableHead>
                             <TableHead className="text-slate-700 font-semibold px-4 py-3">
                               Notifikasi
