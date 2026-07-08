@@ -3312,6 +3312,13 @@ export function MonitoringLapangan() {
                                           <TableCell className="text-sm text-slate-600 px-4 py-2">
                                             {getColumnValue(user, "regioncode", ["regionCode", "region", "Region Code", "kecamatan", "Kecamatan"], "-")}
                                           </TableCell>
+                                          <TableCell className="text-sm text-blue-900 font-semibold px-4 py-2 text-right">
+                                            {(() => {
+                                              const rc = String(getColumnValue(user, "regioncode", ["regionCode", "region", "Region Code"], "") || "").trim();
+                                              const v = rc ? (prelistBySlsMap.get(rc) || 0) : 0;
+                                              return v.toLocaleString("id-ID");
+                                            })()}
+                                          </TableCell>
                                           <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
                                             {getColumnValue(user, "draft", ["DRAFT", "Draft", "DRAFT"], "0")}
                                           </TableCell>
@@ -3336,16 +3343,35 @@ export function MonitoringLapangan() {
                                           <TableCell className="text-sm text-green-700 font-semibold px-4 py-2 text-right">
                                             {getColumnValue(user, "approved_by_pengawas", ["appr", "APPROVED_BY_PENGAWAS", "approved", "Approved", "Approve"], "0")}
                                           </TableCell>
-                                          <TableCell className="px-2 py-2 text-center">
+                                          <TableCell className="text-sm font-semibold px-4 py-2 text-right">
                                             {(() => {
                                               const toNum = (v: any) => {
                                                 const n = parseFloat(String(v ?? "0").replace(/[^\d.-]/g, ""));
                                                 return isNaN(n) ? 0 : n;
                                               };
+                                              const rc = String(getColumnValue(user, "regioncode", ["regionCode", "region", "Region Code"], "") || "").trim();
+                                              const prel = rc ? (prelistBySlsMap.get(rc) || 0) : 0;
+                                              const num = toNum(getColumnValue(user, "draft", ["DRAFT"], "0")) === 0 ? 0 : 0; // unused
+                                              const submitted = toNum(getColumnValue(user, "submitted_by_pencacah", ["SUBMITTED_BY_PENCACAH"], "0"));
+                                              const approved = toNum(getColumnValue(user, "approved_by_pengawas", ["APPROVED_BY_PENGAWAS"], "0"));
+                                              const rejected = toNum(getColumnValue(user, "rejected_by_pengawas", ["REJECTED_BY_PENGAWAS"], "0"));
+                                              let revoked = 0;
+                                              for (const v of Object.values(user || {})) {
+                                                if (typeof v !== "string" || !v.includes("REVOKED")) continue;
+                                                try {
+                                                  const p = JSON.parse(v.trim());
+                                                  revoked = parseInt(p["REVOKED BY Pengawas"] ?? p["REVOKED_BY_PENGAWAS"] ?? p["REVOKED"] ?? 0) || 0;
+                                                } catch { /* ignore */ }
+                                              }
+                                              const total = submitted + approved + rejected + revoked;
+                                              const pct = prel > 0 ? (total / prel) * 100 : 0;
                                               const openVal = toNum(getColumnValue(user, "open", ["OPEN", "Open", "open"], "0"));
-                                              return openVal === 0 ? (
-                                                <CheckCircle2 className="h-5 w-5 text-green-600 inline" />
-                                              ) : null;
+                                              return (
+                                                <span className="inline-flex items-center gap-1 justify-end">
+                                                  <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>
+                                                  {openVal === 0 && <CheckCircle2 className="h-4 w-4 text-green-600 inline" />}
+                                                </span>
+                                              );
                                             })()}
                                           </TableCell>
                                           <TableCell colSpan={3} className="text-sm text-slate-600 px-4 py-2 italic" />
