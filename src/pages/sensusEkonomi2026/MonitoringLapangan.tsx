@@ -1921,10 +1921,12 @@ export function MonitoringLapangan() {
       const pplUnderPML = pmlGroups.get(key) || [];
       const actualSubmit = pplUnderPML.reduce((sum, ppl) => sum + (ppl.jumlah_submit || 0), 0);
       const totalAssignments = pplUnderPML.reduce((sum, ppl) => sum + (ppl.total_assignments || 0), 0);
+      const prelist_awal = pplUnderPML.reduce((sum, ppl) => sum + (ppl.prelist_awal || 0), 0);
       const totalStatus = actualSubmit + pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0);
       const pemeriksaan = totalStatus > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalStatus) * 100 : 0;
       const targetPercent = totalAssignments > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalAssignments) * 100 : 0;
-      return { ...pml, actualSubmit, pemeriksaan, totalAssignments, targetPercent, pplUnderPML } as any;
+      const capaianPercent = prelist_awal > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / prelist_awal) * 100 : 0;
+      return { ...pml, actualSubmit, pemeriksaan, totalAssignments, targetPercent, prelist_awal, capaianPercent, pplUnderPML } as any;
     });
   }, [pmlData, pmlGroups]);
 
