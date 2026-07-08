@@ -3620,6 +3620,18 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">Prelist Awal</div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Prelist Awal = Total Assignment Fasih dari sheet Prelist_Awal per SLS yang menjadi assignment PPL di bawah PML</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
+                            </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
                               onClick={() => {
@@ -3736,6 +3748,18 @@ export function MonitoringLapangan() {
                                   </UITooltipTrigger>
                                   <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
                                     <div className="text-sm text-slate-700">Revoke = Jumlah data yang persetujuannya telah dibatalkan (unapprove)</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
+                            </TableHead>
+                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">% Capaian</div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">% Capaian = (Reject + Revoke + Approve) / Prelist Awal</div>
                                   </UITooltipContent>
                                 </UITooltip>
                               </UITooltipProvider>
