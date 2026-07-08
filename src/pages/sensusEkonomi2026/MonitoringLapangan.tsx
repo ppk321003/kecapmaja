@@ -3966,6 +3966,9 @@ export function MonitoringLapangan() {
                                       <TableCell className="text-sm text-slate-600 px-4 py-2">
                                         {ppl.kecamatan || row.kecamatan || '-'}
                                       </TableCell>
+                                      <TableCell className="text-sm text-blue-900 font-semibold px-4 py-2 text-right">
+                                        {(ppl.prelist_awal || 0).toLocaleString("id-ID")}
+                                      </TableCell>
                                       <TableCell className="text-sm text-slate-600 px-4 py-2 text-right">
                                         {( (ppl.jumlah_submit || 0) + ppl.jumlah_approve + ppl.jumlah_reject + (ppl.jumlah_revoke || 0) ).toLocaleString("id-ID")}
                                       </TableCell>
@@ -3980,6 +3983,14 @@ export function MonitoringLapangan() {
                                       </TableCell>
                                       <TableCell className="text-sm text-orange-700 font-semibold px-4 py-2 text-right">
                                         {(ppl.jumlah_revoke || 0).toLocaleString("id-ID")}
+                                      </TableCell>
+                                      <TableCell className="text-sm font-semibold px-4 py-2 text-right">
+                                        {(() => {
+                                          const prel = ppl.prelist_awal || 0;
+                                          const num = (ppl.jumlah_reject || 0) + (ppl.jumlah_revoke || 0) + (ppl.jumlah_approve || 0);
+                                          const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                          return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                                        })()}
                                       </TableCell>
                                       <TableCell className="text-sm text-slate-600 font-semibold px-4 py-2 text-right">
                                         <UITooltipProvider delayDuration={200}>
