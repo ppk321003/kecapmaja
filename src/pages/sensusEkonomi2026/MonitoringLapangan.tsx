@@ -3249,6 +3249,9 @@ export function MonitoringLapangan() {
                                   <TableCell className="text-slate-900 px-4 py-3">
                                     {row.kecamatan}
                                   </TableCell>
+                                  <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">
+                                    {(row.prelist_awal || 0).toLocaleString("id-ID")}
+                                  </TableCell>
                                   <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                     {row.draft.toLocaleString("id-ID")}
                                   </TableCell>
@@ -3264,7 +3267,14 @@ export function MonitoringLapangan() {
                                   <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
                                     {row.jumlah_approve.toLocaleString("id-ID")}
                                   </TableCell>
-                                  <TableCell className="px-2 py-3" />
+                                  <TableCell className="text-right font-semibold px-4 py-3">
+                                    {(() => {
+                                      const prel = row.prelist_awal || 0;
+                                      const num = row.jumlah_reject + (row.jumlah_revoke || 0) + row.jumlah_submit + row.jumlah_approve;
+                                      const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                      return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
+                                    })()}
+                                  </TableCell>
                                   <TableCell className="text-right text-slate-700 px-4 py-3">
                                     {(Math.floor((row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve + (row.jumlah_revoke || 0)) / Math.max(1, daysElapsed) * 100) / 100).toFixed(2).replace(/\.?0+$/, '')} aktivitas/hari
                                   </TableCell>
@@ -3280,25 +3290,6 @@ export function MonitoringLapangan() {
                                         {scheduleStatus.label}
                                       </span>
                                     </div>
-                                  </TableCell>
-                                  <TableCell className="text-center px-4 py-3">
-                                    {scheduleStatus.targetLabel === "Diatas target harian" ? (
-                                      <div className="flex items-center justify-center gap-1.5 text-green-700" title="Diatas Target">
-                                        <TrendingUp className="h-5 w-5" />
-                                      </div>
-                                    ) : scheduleStatus.targetLabel === "Sesuai target harian" ? (
-                                      <div className="flex items-center justify-center gap-1.5 text-blue-700" title="Sesuai Target">
-                                        <CheckCircle2 className="h-5 w-5" />
-                                      </div>
-                                    ) : scheduleStatus.targetLabel === "-" ? (
-                                      <div className="flex items-center justify-center gap-1.5 text-slate-400" title="Belum Dimulai">
-                                        <Calendar className="h-5 w-5" />
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center justify-center gap-1.5 text-amber-700" title="Dibawah Target">
-                                        <AlertTriangle className="h-5 w-5" />
-                                      </div>
-                                    )}
                                   </TableCell>
                                   <TableCell className="text-xs text-slate-600 px-4 py-3 max-w-xs">
                                     <div className="bg-blue-50 rounded px-2 py-1">
