@@ -1236,6 +1236,10 @@ export function MonitoringLapangan() {
     range: `${SHEET_ANOMALI_KELUARGA}!A2`,
     mode: "single-cell",
   });
+  const { data: prelistData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: SHEET_PRELIST,
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
