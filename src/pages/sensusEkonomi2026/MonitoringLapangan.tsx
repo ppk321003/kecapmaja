@@ -1248,7 +1248,7 @@ export function MonitoringLapangan() {
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
   const [expandedDistricts, setExpandedDistricts] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg">("dailyavg");
+  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg" | "prelist_awal" | "capaian">("dailyavg");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
   useEffect(() => {
@@ -1362,7 +1362,7 @@ export function MonitoringLapangan() {
       total: allRows.length,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
-  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "kecamatan" | "totalStatus" | "submit" | "approve" | "reject" | "revoke" | "pemeriksaan" | "targetPercent">("pemeriksaan");
+  const [pmlSortBy, setPMLSortBy] = useState<"nama_pml" | "kecamatan" | "totalStatus" | "submit" | "approve" | "reject" | "revoke" | "pemeriksaan" | "targetPercent" | "prelist_awal" | "capaianPercent">("pemeriksaan");
   const [pmlSortOrder, setPMLSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "optimal" | "warning" | "critical">("all");
   const [kecamatanPercentageComponents, setKecamatanPercentageComponents] = useState<{draft: boolean, submit: boolean, approve: boolean, reject: boolean, revoke: boolean}>(
@@ -1832,7 +1832,7 @@ export function MonitoringLapangan() {
     return () => clearTimeout(handler);
   }, [pmlSearchTerm]);
 
-  const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg") => {
+  const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg" | "prelist_awal" | "capaian") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -1876,6 +1876,15 @@ export function MonitoringLapangan() {
         const avgA = (a.draft + a.jumlah_reject + a.jumlah_submit + a.jumlah_approve + (a.jumlah_revoke || 0)) / Math.max(1, elapsedDays);
         const avgB = (b.draft + b.jumlah_reject + b.jumlah_submit + b.jumlah_approve + (b.jumlah_revoke || 0)) / Math.max(1, elapsedDays);
         compareValue = avgA - avgB;
+      } else if (sortBy === "prelist_awal") {
+        compareValue = (a.prelist_awal || 0) - (b.prelist_awal || 0);
+      } else if (sortBy === "capaian") {
+        const getCapaianPct = (row: AggregatedData) => {
+          const prelist = row.prelist_awal || 0;
+          const total = row.jumlah_reject + (row.jumlah_revoke || 0) + row.jumlah_submit + row.jumlah_approve;
+          return prelist > 0 ? (total / prelist) * 100 : 0;
+        };
+        compareValue = getCapaianPct(a) - getCapaianPct(b);
       } else if (sortBy === "kecamatan") {
         compareValue = a.kecamatan.localeCompare(b.kecamatan);
       } else if (sortBy === "ppl") {
@@ -1958,6 +1967,10 @@ export function MonitoringLapangan() {
       sorted.sort((a, b) => a.jumlah_reject - b.jumlah_reject);
     } else if (pmlSortBy === "revoke") {
       sorted.sort((a, b) => (a.jumlah_revoke || 0) - (b.jumlah_revoke || 0));
+    } else if (pmlSortBy === "prelist_awal") {
+      sorted.sort((a, b) => (a.prelist_awal ?? 0) - (b.prelist_awal ?? 0));
+    } else if (pmlSortBy === "capaianPercent") {
+      sorted.sort((a, b) => (a.capaianPercent ?? 0) - (b.capaianPercent ?? 0));
     } else if (pmlSortBy === "pemeriksaan") {
       sorted.sort((a, b) => (a.pemeriksaan ?? 0) - (b.pemeriksaan ?? 0));
     } else if (pmlSortBy === "targetPercent") {
@@ -3116,11 +3129,17 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => toggleSort("prelist_awal")}
+                            >
                               <UITooltipProvider delayDuration={200}>
                                 <UITooltip>
                                   <UITooltipTrigger asChild>
-                                    <div className="flex items-center justify-end gap-2">Prelist Awal</div>
+                                    <div className="flex items-center justify-end gap-2">
+                                      Prelist Awal
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
                                   </UITooltipTrigger>
                                   <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
                                     <div className="text-sm text-slate-700">Prelist Awal = Total Assignment Fasih dari sheet Prelist_Awal per SLS yang menjadi assignment PPL</div>
@@ -3179,11 +3198,17 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => toggleSort("capaian")}
+                            >
                               <UITooltipProvider delayDuration={200}>
                                 <UITooltip>
                                   <UITooltipTrigger asChild>
-                                    <div className="flex items-center justify-end gap-2">% Capaian</div>
+                                    <div className="flex items-center justify-end gap-2">
+                                      % Capaian
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
                                   </UITooltipTrigger>
                                   <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
                                     <div className="text-sm text-slate-700">% Capaian = (Reject + Revoke + Submit + Approve) / Prelist Awal</div>
@@ -3620,11 +3645,24 @@ export function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "prelist_awal") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("prelist_awal");
+                                  setPMLSortOrder("desc");
+                                }
+                              }}
+                            >
                               <UITooltipProvider delayDuration={200}>
                                 <UITooltip>
                                   <UITooltipTrigger asChild>
-                                    <div className="flex items-center justify-end gap-2">Prelist Awal</div>
+                                    <div className="flex items-center justify-end gap-2">
+                                      Prelist Awal
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
                                   </UITooltipTrigger>
                                   <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
                                     <div className="text-sm text-slate-700">Prelist Awal = Total Assignment Fasih dari sheet Prelist_Awal per SLS yang menjadi assignment PPL di bawah PML</div>
@@ -3752,11 +3790,24 @@ export function MonitoringLapangan() {
                                 </UITooltip>
                               </UITooltipProvider>
                             </TableHead>
-                            <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => {
+                                if (pmlSortBy === "capaianPercent") {
+                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                } else {
+                                  setPMLSortBy("capaianPercent");
+                                  setPMLSortOrder("desc");
+                                }
+                              }}
+                            >
                               <UITooltipProvider delayDuration={200}>
                                 <UITooltip>
                                   <UITooltipTrigger asChild>
-                                    <div className="flex items-center justify-end gap-2">% Capaian</div>
+                                    <div className="flex items-center justify-end gap-2">
+                                      % Capaian
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
                                   </UITooltipTrigger>
                                   <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
                                     <div className="text-sm text-slate-700">% Capaian = (Reject + Revoke + Approve) / Prelist Awal</div>
