@@ -1306,7 +1306,6 @@ export function MonitoringLapangan() {
   const [itemsPerPagePPL, setItemsPerPagePPL] = useState(20);
   const [itemsPerPagePML, setItemsPerPagePML] = useState(20);
   const [terminISearchTerm, setTerminISearchTerm] = useState("");
-  const [terminIStatusFilter, setTerminIStatusFilter] = useState<"all" | "tercapai" | "hampir" | "belum">("all");
   const [terminISortBy, setTerminISortBy] = useState<string>('pct_ppl');
   const [terminISortOrder, setTerminISortOrder] = useState<'asc'|'desc'>('desc');
 
@@ -3818,17 +3817,6 @@ export function MonitoringLapangan() {
                         className="pl-10 h-9"
                       />
                     </div>
-
-                    <select
-                      value={terminIStatusFilter}
-                      onChange={(e) => setTerminIStatusFilter(e.target.value as any)}
-                      className="h-9 px-2 rounded border border-slate-300 text-slate-700 text-sm bg-white"
-                    >
-                      <option value="all">Semua Status</option>
-                      <option value="tercapai">Tercapai (100%)</option>
-                      <option value="hampir">Hampir (30-99%)</option>
-                      <option value="belum">Belum (&lt;30%)</option>
-                    </select>
                   </div>
                 </div>
               </CardHeader>
@@ -3961,18 +3949,6 @@ export function MonitoringLapangan() {
                           .filter((r) => {
                             const term = terminISearchTerm.trim().toLowerCase();
                             if (term && !r.kecamatan.toLowerCase().includes(term)) return false;
-                            const pctMet = r.pctMet || 0;
-                            const pctPPLMet = r.pctPPLMet || 0;
-                            if (terminIStatusFilter === 'all') return true;
-                            if (terminIStatusFilter === 'tercapai') {
-                              return pctMet >= 40 && pctPPLMet >= 40;
-                            }
-                            if (terminIStatusFilter === 'hampir') {
-                              return pctMet >= 30 && pctPPLMet >= 30 && (pctMet < 40 || pctPPLMet < 40);
-                            }
-                            if (terminIStatusFilter === 'belum') {
-                              return pctMet < 30 || pctPPLMet < 30;
-                            }
                             return true;
                           })
                           .sort((a,b) => {
