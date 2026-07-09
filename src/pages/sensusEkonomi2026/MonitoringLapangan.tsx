@@ -20,6 +20,7 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ChevronDown,
   Filter,
   Download,
@@ -290,6 +291,19 @@ const getColorForPercentage = (percentage: number): string => {
 
   // Merah: deviasi lebih dari 5 persentase poin dari target minimal
   return "#dc2626";
+};
+
+// Color based on fixed 40% threshold: >=40 green, 30-39.99 orange, <30 red
+const getColorFor40Threshold = (percentage: number): string => {
+  if (percentage >= 40) return "#15803d"; // green
+  if (percentage >= 30) return "#f97316"; // orange
+  return "#dc2626"; // red
+};
+
+const getTextColorClassFor40Threshold = (percentage: number): string => {
+  if (percentage >= 40) return "text-emerald-600";
+  if (percentage >= 35) return "text-orange-600";
+  return "text-rose-600";
 };
 
 // Static color mapping for pemeriksaan chart (explicit thresholds)
@@ -886,9 +900,11 @@ const exportPPLToExcel = (data: AggregatedData[]) => {
     ['DATA INDIVIDU PPL (PETUGAS PENCACAH LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Kecamatan', 'Nama PPL', 'Nama PML', 'Draft', 'Submit', 'Approve', 'Reject', 'Revoke', 'Total Assignment', 'Persentase Submit', 'Rata-rata Submit+Draft/Harian'],
+    ['No', 'Kecamatan', 'Nama PPL', 'Nama PML', 'Prelist Awal', 'Draft', 'Reject', 'Revoke', 'Submit', 'Approve', '% Capaian', 'Rata-rata Harian'],
     ...data.map((row, idx) => {
-      const percentage = row.total_assignments > 0 ? ((row.jumlah_submit / row.total_assignments) * 100).toFixed(2) : '0.00';
+      const prelist = row.prelist_awal || 0;
+      const totalProcessed = row.jumlah_reject + (row.jumlah_revoke || 0) + row.jumlah_submit + row.jumlah_approve;
+      const percentage = prelist > 0 ? ((totalProcessed / prelist) * 100).toFixed(2) : '0.00';
       const dailyAverage = (row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve + (row.jumlah_revoke || 0)) / Math.max(1, elapsedDays);
       const dailyAverageFormatted = Math.round(dailyAverage * 100) / 100;
       return [
@@ -896,12 +912,12 @@ const exportPPLToExcel = (data: AggregatedData[]) => {
         row.kecamatan,
         row.nama_ppl,
         row.nama_pml,
+        prelist,
         row.draft,
-        row.jumlah_submit,
-        row.jumlah_approve,
         row.jumlah_reject,
         row.jumlah_revoke || 0,
-        row.total_assignments,
+        row.jumlah_submit,
+        row.jumlah_approve,
         `${percentage}%`,
         dailyAverageFormatted
       ];
@@ -943,6 +959,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     jumlah_reject: number;
     jumlah_revoke: number;
     totalDraft: number;
+    prelist_awal: number;
   }>();
 
   aggregatedRows.forEach(row => {
@@ -956,6 +973,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
         jumlah_reject: 0,
         jumlah_revoke: 0,
         totalDraft: 0,
+        prelist_awal: 0,
       });
     }
     const current = pmlMap.get(key)!;
@@ -965,6 +983,7 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     current.jumlah_approve += row.jumlah_approve;
     current.jumlah_reject += row.jumlah_reject;
     current.jumlah_revoke += (row.jumlah_revoke || 0);
+    current.prelist_awal += row.prelist_awal || 0;
   });
 
   // Calculate days elapsed for daily average
@@ -987,29 +1006,27 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     ['DATA PML (PETUGAS PENGAWAS LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Nama PML', 'Kecamatan', 'Draft', 'Total Status', 'Approve', 'Reject', 'Revoke', '% Periksa', '% Periksa/Prelist', 'Rata-rata Submit+Draft/Harian'],
+    ['No', 'Nama PML', 'Kecamatan', 'Prelist Awal', 'Total Status', 'Submit', 'Approve', 'Reject', 'Revoke', '% Capaian', '% Periksa', '% Periksa/Prelist'],
     ...pmlRows.map((row, idx) => {
       const totalStatus = row.jumlah_submit_ppl + row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke;
+      const prelistAwal = row.prelist_awal || 0;
+      const totalProcessed = row.jumlah_submit_ppl + row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke;
+      const capaian = prelistAwal > 0 ? ((totalProcessed / prelistAwal) * 100).toFixed(2) : '0.00';
       const percentage = totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke) / totalStatus) * 100).toFixed(2) : '0.00';
-      const countPPL = aggregatedRows.filter(ppl => ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan).length;
-      const totalAssignments = aggregatedRows
-        .filter(ppl => ppl.nama_pml === row.nama_pml && ppl.kecamatan === row.kecamatan)
-        .reduce((sum, ppl) => sum + (ppl.total_assignments || 0), 0);
-      const targetPercent = totalAssignments > 0 ? (((row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke) / totalAssignments) * 100).toFixed(2) : '0.00';
-      const dailyAverage = countPPL > 0 ? (row.totalDraft + row.jumlah_reject + row.jumlah_submit_ppl + row.jumlah_approve) / (elapsedDays * countPPL) : 0;
-      const dailyAverageFormatted = Math.round(dailyAverage * 100) / 100;
+      const periksaPrelist = prelistAwal > 0 ? (((row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke) / prelistAwal) * 100).toFixed(2) : '0.00';
       return [
         idx + 1,
         row.nama_pml,
         row.kecamatan,
-        row.totalDraft,
+        prelistAwal,
+        totalStatus,
         row.jumlah_submit_ppl,
         row.jumlah_approve,
         row.jumlah_reject,
         row.jumlah_revoke,
+        `${capaian}%`,
         `${percentage}%`,
-        `${targetPercent}%`,
-        dailyAverageFormatted
+        `${periksaPrelist}%`
       ];
     })
   ];
@@ -1082,6 +1099,34 @@ const exportTAToExcel = (
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'TA');
   XLSX.writeFile(wb, `Data_TA_${fileSuffix}_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+// Export Termin I aggregates to Excel
+const exportTerminIToExcel = (rows: any[]) => {
+  const aoa: (string | number)[][] = [
+    ['TERMIN I - AGGREGATE PER KECAMATAN'],
+    ['Tanggal Export', new Date().toLocaleString('id-ID')],
+    [],
+    ['No', 'Kecamatan', 'Total PML', 'Jumlah PML >=40% (%Capaian)', '% PML Tercapai', 'Rata-rata %Capaian', 'Sum Prelist Awal']
+  ];
+
+  rows.forEach((r, idx) => {
+    aoa.push([
+      idx + 1,
+      r.kecamatan,
+      r.totalPML,
+      r.countMet,
+      `${(r.pctMet || 0).toFixed(2)}%`,
+      `${(r.avgCapaian || 0).toFixed(2)}%`,
+      r.sumPrelistAwal || 0,
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 12 }, { wch: 18 }, { wch: 12 }, { wch: 16 }, { wch: 14 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Termin I');
+  XLSX.writeFile(wb, `TerminI_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
 
 interface PendingPPLEntry {
@@ -1260,6 +1305,21 @@ export function MonitoringLapangan() {
   const [currentPagePML, setCurrentPagePML] = useState(1);
   const [itemsPerPagePPL, setItemsPerPagePPL] = useState(20);
   const [itemsPerPagePML, setItemsPerPagePML] = useState(20);
+  const [terminISearchTerm, setTerminISearchTerm] = useState("");
+  const [terminIStatusFilter, setTerminIStatusFilter] = useState<"all" | "tercapai" | "hampir" | "belum">("all");
+  const [terminISortBy, setTerminISortBy] = useState<string>('pct_ppl');
+  const [terminISortOrder, setTerminISortOrder] = useState<'asc'|'desc'>('desc');
+
+  const getTerminISortIcon = (column: string) => {
+    if (terminISortBy !== column) {
+      return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
+    }
+    return terminISortOrder === 'asc' ? (
+      <ChevronUp className="h-3.5 w-3.5 text-slate-600" />
+    ) : (
+      <ChevronDown className="h-3.5 w-3.5 text-slate-600" />
+    );
+  };
   const [currentPageAfirmasi, setCurrentPageAfirmasi] = useState(1);
   const [itemsPerPageAfirmasi, setItemsPerPageAfirmasi] = useState(20);
   const [activeAnomaliTab, setActiveAnomaliTab] = useState<"dashboard" | "usaha" | "keluarga">("dashboard");
@@ -1986,6 +2046,188 @@ export function MonitoringLapangan() {
   const startIndexPML = (currentPagePML - 1) * itemsPerPagePML;
   const paginatedRowsPML = sortedPMLData.slice(startIndexPML, startIndexPML + itemsPerPagePML);
 
+  // Aggregation for Termin I (per-kecamatan) based on PML capaianPercent
+  const terminIAggregates = useMemo(() => {
+    const map = new Map<string, {
+      kecamatan: string;
+      totalPML: number;
+      countMet: number;
+      avgCapaian: number;
+      sumPrelistAwal: number;
+      pmlList: (typeof pmlDataWithActualSubmit[0])[];
+      totalPPL: number;
+      periksaPML: number;
+    }>();
+
+    (pmlDataWithActualSubmit || []).forEach((pml: any) => {
+      const kec = (pml.kecamatan || "").trim();
+      if (!kec) return;
+      const existing = map.get(kec) || { kecamatan: kec, totalPML: 0, countMet: 0, avgCapaian: 0, sumPrelistAwal: 0, pmlList: [], totalPPL: 0, periksaPML: 0 };
+      existing.totalPML += 1;
+      const capa = Number(pml.capaianPercent || pml.capaian || 0) || 0;
+      if (capa >= 40) existing.countMet += 1;
+      existing.sumPrelistAwal += Number(pml.prelist_awal || 0) || 0;
+      existing.periksaPML += (Number(pml.jumlah_approve || 0) + Number(pml.jumlah_reject || 0) + Number(pml.jumlah_revoke || 0)) || 0;
+      existing.pmlList.push(pml);
+      map.set(kec, existing);
+    });
+
+    const results: any[] = [];
+    map.forEach((v, k) => {
+      const avg = v.pmlList.length > 0 ? (v.pmlList.reduce((s: number, x: any) => s + (Number(x.capaianPercent || x.capaian || 0) || 0), 0) / v.pmlList.length) : 0;
+      const pctMet = v.totalPML > 0 ? (v.countMet / v.totalPML) * 100 : 0;
+      // compute total PPL in this kecamatan from aggregatedData.rows and PPL met count
+      const totalPPLRows = (aggregatedData.rows || []).filter((r: any) => ((r.kecamatan || "").trim()) === k);
+      const totalPPL = totalPPLRows.length;
+      const countPPLMet = totalPPLRows.reduce((s: number, pp: any) => {
+        const prel = Number(pp.prelist_awal || 0) || 0;
+        const num = (Number(pp.jumlah_approve || 0) + Number(pp.jumlah_reject || 0) + Number(pp.jumlah_revoke || 0)) || 0;
+        if (prel > 0 && (num / prel) * 100 >= 40) return s + 1;
+        return s;
+      }, 0);
+      const pctPPLMet = totalPPL > 0 ? (countPPLMet / totalPPL) * 100 : 0;
+      // determine status
+      let statusText = 'No data';
+      let statusLevel: 'green'|'orange'|'red' = 'red';
+      const missingPML = v.totalPML - v.countMet;
+      const missingPPL = totalPPL - countPPLMet;
+      if (v.totalPML === 0 && totalPPL === 0) {
+        statusText = 'No data'; statusLevel = 'red';
+      } else if (v.totalPML > 0 && totalPPL > 0 && v.countMet === v.totalPML && countPPLMet === totalPPL) {
+        // Require both PML 100% and PPL 100% to allow Termin I
+        statusText = 'Bisa Ajukan Termin I'; statusLevel = 'green';
+      } else if (pctMet >= 30) {
+        statusText = `Hampir — PML kurang ${missingPML}`;
+        if (missingPPL > 0) statusText += ` / PPL kurang ${missingPPL}`;
+        statusLevel = 'orange';
+      } else {
+        statusText = `Belum — PML kurang ${missingPML}`;
+        if (missingPPL > 0) statusText += ` / PPL kurang ${missingPPL}`;
+        statusLevel = 'red';
+      }
+      results.push({
+        kecamatan: v.kecamatan,
+        totalPML: v.totalPML,
+        countMet: v.countMet,
+        pctMet,
+        avgCapaian: avg,
+        sumPrelistAwal: v.sumPrelistAwal,
+        periksaPML: v.periksaPML,
+        pmlList: v.pmlList,
+        totalPPL,
+        countPPLMet,
+        pctPPLMet,
+        statusText,
+        statusLevel,
+      });
+    });
+
+    // Sort by pctMet desc then kecamatan
+    results.sort((a, b) => b.pctMet - a.pctMet || a.kecamatan.localeCompare(b.kecamatan));
+    return results;
+  }, [pmlDataWithActualSubmit, aggregatedData.rows]);
+
+  // Helper to render PML rows (and nested PPL rows) for an expanded kecamatan
+  const renderPmlRows = (row: any) => {
+    return (row.pmlList || []).map((p: any, j: number) => {
+      const key = `${p.nama_pml}|${p.kecamatan}`;
+      const pplUnder = pmlGroups.get(key) || [];
+      const jumlahPPL = pplUnder.length;
+      const countPPLMet = pplUnder.reduce((s:number, pp:any) => {
+        const prel = Number(pp.prelist_awal || 0) || 0;
+        const num = (Number(pp.jumlah_approve||0) + Number(pp.jumlah_reject||0) + Number(pp.jumlah_revoke||0)) || 0;
+        if (prel > 0 && (num / prel) * 100 >= 40) return s + 1;
+        return s;
+      }, 0);
+      const pctPPLMet = jumlahPPL > 0 ? (countPPLMet / jumlahPPL) * 100 : 0;
+      const pmlMet = (Number(p.capaianPercent || p.capaian || 0) || 0) >= 40 ? 1 : 0;
+      const pmlPct = (Number(p.capaianPercent || p.capaian || 0) || 0);
+
+      const rows: any[] = [];
+      const missingPPLForPML = jumlahPPL - countPPLMet;
+      let pmlStatusText = '-';
+      let pmlStatusLevel: 'green'|'orange'|'red' = 'red';
+      if (jumlahPPL === 0 && pmlPct === 0) {
+        pmlStatusText = '-'; pmlStatusLevel = 'red';
+      } else if (jumlahPPL > 0 && countPPLMet === jumlahPPL && pmlPct >= 40) {
+        pmlStatusText = 'Sudah bisa termin I'; pmlStatusLevel = 'green';
+      } else if (countPPLMet < jumlahPPL && pmlPct >= 40) {
+        pmlStatusText = `PPL kurang ${missingPPLForPML}`; pmlStatusLevel = 'orange';
+      } else {
+        pmlStatusText = `Belum — PML ${pmlPct ? pmlPct.toFixed(2) + '%' : ''}`; pmlStatusLevel = 'red';
+      }
+
+      const pmlPeriksa = (Number(p.jumlah_approve || 0) + Number(p.jumlah_reject || 0) + Number(p.jumlah_revoke || 0)) || 0;
+      const pmlPeriksaRate = (Number(p.prelist_awal || 0) || 0) > 0 ? (pmlPeriksa / Number(p.prelist_awal || 0)) * 100 : 0;
+      rows.push(
+        <TableRow key={`pml-${key}`} className="bg-slate-50 border-b">
+          <TableCell />
+          <TableCell className="font-medium flex items-center gap-2">
+            <button
+              onClick={() => {
+                setExpandedPML(prev => {
+                  const s = new Set(prev);
+                  if (s.has(key)) s.delete(key); else s.add(key);
+                  return s;
+                });
+              }}
+              className="p-1 rounded hover:bg-slate-100"
+            >
+              {expandedPML.has(key) ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4 -rotate-90" />
+              )}
+            </button>
+            <span>{p.nama_pml}</span>
+          </TableCell>
+          <TableCell className={`text-right ${getTextColorClassFor40Threshold(pctPPLMet)}`}>{jumlahPPL}</TableCell>
+          <TableCell className="text-right">
+            <div className={getTextColorClassFor40Threshold(pctPPLMet)}>{countPPLMet}</div>
+            <div className="text-slate-500 text-xs">{jumlahPPL>0 ? `${pctPPLMet.toFixed(2)}%` : '-'}</div>
+          </TableCell>
+          <TableCell className={`text-right ${getTextColorClassFor40Threshold(pmlPct)}`}>1</TableCell>
+          <TableCell className="text-right">
+            <div className={getTextColorClassFor40Threshold(pmlPct)}>{pmlMet}</div>
+            <div className="text-slate-500 text-xs">{pmlPct ? `${pmlPct.toFixed(2)}%` : '-'}</div>
+          </TableCell>
+          <TableCell className="text-right">{(Number(p.prelist_awal||0)).toLocaleString('id-ID')}</TableCell>
+          <TableCell className="text-right">{pmlPeriksa.toLocaleString('id-ID')}</TableCell>
+          <TableCell className="text-right"><span className={getTextColorClassFor40Threshold(pmlPct)}>{pmlPct ? `${pmlPct.toFixed(2)}%` : '-'}</span></TableCell>
+          <TableCell className="text-center">
+            <span className={
+              `inline-block px-2 py-1 rounded-full text-sm font-semibold ${pmlStatusLevel === 'green' ? 'bg-emerald-100 text-emerald-800' : pmlStatusLevel === 'orange' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'}`
+            }>{pmlStatusText}</span>
+          </TableCell>
+        </TableRow>
+      );
+
+      if (expandedPML.has(key)) {
+        pplUnder.forEach((pp:any, kIdx:number) => {
+          const prel = Number(pp.prelist_awal||0) || 0;
+          const num = (Number(pp.jumlah_approve||0) + Number(pp.jumlah_reject||0) + Number(pp.jumlah_revoke||0)) || 0;
+          const capaPPL = prel>0 ? (num / prel) * 100 : 0;
+          rows.push(
+            <TableRow key={`${key}-ppl-${kIdx}`} className="bg-white">
+              <TableCell />
+              <TableCell className="pl-6">{pp.nama_ppl}</TableCell>
+              <TableCell className="text-right">-</TableCell>
+              <TableCell className="text-right">-</TableCell>
+              <TableCell className="text-right">-</TableCell>
+              <TableCell className="text-right">-</TableCell>
+              <TableCell className="text-right">{(prel).toLocaleString('id-ID')}</TableCell>
+              <TableCell className="text-right">{num.toLocaleString('id-ID')}</TableCell>
+              <TableCell className="text-right"><span className={getTextColorClassFor40Threshold(capaPPL)}>{`${capaPPL.toFixed(2)}%`}</span></TableCell>
+              <TableCell className="text-center">-</TableCell>
+            </TableRow>
+          );
+        });
+      }
+
+      return rows;
+    });
+  };
+
   // Process AFIRMASI data - Extract emails for matching
   const afirmasiEmails = useMemo(() => {
     if (!afirmasiData || afirmasiData.length === 0) {
@@ -2205,6 +2447,13 @@ export function MonitoringLapangan() {
                 </TabsTrigger>
               </>
             )}
+            <TabsTrigger
+              value="termin-i"
+              className="flex items-center gap-3 justify-center flex-1 py-3 px-4 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
+            >
+              <Calendar className="h-5 w-5" />
+              <span className="font-medium">Termin I</span>
+            </TabsTrigger>
             <TabsTrigger
               value="anomali"
               className="flex items-center gap-3 justify-center flex-1 py-3 px-4 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
@@ -3536,6 +3785,266 @@ export function MonitoringLapangan() {
                     )}
                   </>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Termin I Tab */}
+          <TabsContent value="termin-i" className="space-y-6 mt-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <CardTitle>Termin I — Verifikasi Pembayaran Honor</CardTitle>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {isLoggedIn && terminIAggregates.length > 0 && (
+                      <button
+                        onClick={() => exportTerminIToExcel(terminIAggregates)}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download XLSX
+                      </button>
+                    )}
+
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
+                        placeholder="Cari Kecamatan..."
+                        value={terminISearchTerm}
+                        onChange={(e) => setTerminISearchTerm(e.target.value)}
+                        className="pl-10 h-9"
+                      />
+                    </div>
+
+                    <select
+                      value={terminIStatusFilter}
+                      onChange={(e) => setTerminIStatusFilter(e.target.value as any)}
+                      className="h-9 px-2 rounded border border-slate-300 text-slate-700 text-sm bg-white"
+                    >
+                      <option value="all">Semua Status</option>
+                      <option value="tercapai">Tercapai (100%)</option>
+                      <option value="hampir">Hampir (30-99%)</option>
+                      <option value="belum">Belum (&lt;30%)</option>
+                    </select>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-0">
+                <div className="p-4">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                              <TableHead
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'kecamatan') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('kecamatan');
+                                }}
+                              >No</TableHead>
+                              <TableHead
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'kecamatan') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('kecamatan');
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Kecamatan
+                                  {getTerminISortIcon('kecamatan')}
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'jumlah_ppl') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('jumlah_ppl');
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Jumlah PPL
+                                  {getTerminISortIcon('jumlah_ppl')}
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'pct_ppl') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('pct_ppl');
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  {'PPL >=40%'}
+                                  {getTerminISortIcon('pct_ppl')}
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'jumlah_pml') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('jumlah_pml');
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Jumlah PML
+                                  {getTerminISortIcon('jumlah_pml')}
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'pct_met') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('pct_met');
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  {'PML >=40%'}
+                                  {getTerminISortIcon('pct_met')}
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'prelist') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('prelist');
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Prelist Awal
+                                  {getTerminISortIcon('prelist')}
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'periksa') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('periksa');
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Periksa PML
+                                  {getTerminISortIcon('periksa')}
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'avg_capaian') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('avg_capaian');
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  %Capaian
+                                  {getTerminISortIcon('avg_capaian')}
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-center cursor-pointer"
+                                onClick={() => {
+                                  if (terminISortBy === 'status') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('status');
+                                }}
+                              >
+                                <div className="flex items-center justify-center gap-2">
+                                  Status
+                                  {getTerminISortIcon('status')}
+                                </div>
+                              </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(terminIAggregates || [])
+                          .filter((r) => {
+                            const term = terminISearchTerm.trim().toLowerCase();
+                            if (term && !r.kecamatan.toLowerCase().includes(term)) return false;
+                            const pctMet = r.pctMet || 0;
+                            const pctPPLMet = r.pctPPLMet || 0;
+                            if (terminIStatusFilter === 'all') return true;
+                            if (terminIStatusFilter === 'tercapai') {
+                              return pctMet >= 40 && pctPPLMet >= 40;
+                            }
+                            if (terminIStatusFilter === 'hampir') {
+                              return pctMet >= 30 && pctPPLMet >= 30 && (pctMet < 40 || pctPPLMet < 40);
+                            }
+                            if (terminIStatusFilter === 'belum') {
+                              return pctMet < 30 || pctPPLMet < 30;
+                            }
+                            return true;
+                          })
+                          .sort((a,b) => {
+                            const key = terminISortBy;
+                            const order = terminISortOrder === 'asc' ? 1 : -1;
+                            if (key === 'kecamatan') return a.kecamatan.localeCompare(b.kecamatan) * order;
+                            if (key === 'jumlah_ppl') return ((a.totalPPL||0) - (b.totalPPL||0)) * order;
+                            if (key === 'pct_ppl') return ((a.pctPPLMet||0) - (b.pctPPLMet||0)) * order;
+                            if (key === 'jumlah_pml') return ((a.totalPML||0) - (b.totalPML||0)) * order;
+                            if (key === 'pct_met') return ((a.pctMet||0) - (b.pctMet||0)) * order;
+                            if (key === 'prelist') return ((a.sumPrelistAwal||0) - (b.sumPrelistAwal||0)) * order;
+                            if (key === 'periksa') return ((a.periksaPML||0) - (b.periksaPML||0)) * order;
+                            if (key === 'avg_capaian') return ((a.avgCapaian||0) - (b.avgCapaian||0)) * order;
+                            if (key === 'status') {
+                              const rank = (value: string) => (value === 'green' ? 3 : value === 'orange' ? 2 : 1);
+                              return (rank(a.statusLevel) - rank(b.statusLevel)) * order;
+                            }
+                            return ((a.pctMet||0) - (b.pctMet||0)) * order;
+                          })
+                          .map((row, idx) => (
+                            <React.Fragment key={row.kecamatan}>
+                              <TableRow className="hover:bg-slate-50 border-b cursor-pointer">
+                                <TableCell>{idx + 1}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => {
+                                        const key = row.kecamatan;
+                                        setExpandedDistricts(prev => {
+                                          const s = new Set(prev);
+                                          if (s.has(key)) s.delete(key); else s.add(key);
+                                          return s;
+                                        });
+                                      }}
+                                      className="p-1 rounded hover:bg-slate-100"
+                                    >
+                                      {expandedDistricts.has(row.kecamatan) ? (
+                                        <ChevronDown className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4 -rotate-90" />
+                                      )}
+                                    </button>
+                                    <span className="font-medium">{row.kecamatan}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right font-semibold">{row.totalPPL || 0}</TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  <div>{row.countPPLMet || 0}</div>
+                                  <div className="text-slate-500 text-xs">{(row.pctPPLMet || 0).toFixed(2)}%</div>
+                                </TableCell>
+                                <TableCell className="text-right font-semibold">{row.totalPML}</TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  <div>{row.countMet || 0}</div>
+                                  <div className="text-slate-500 text-xs">{(row.pctMet || 0).toFixed(2)}%</div>
+                                </TableCell>
+                                <TableCell className="text-right font-semibold">{(row.sumPrelistAwal || 0).toLocaleString('id-ID')}</TableCell>
+                                <TableCell className="text-right font-semibold">{(row.periksaPML || 0).toLocaleString('id-ID')}</TableCell>
+                                <TableCell className="text-right"><span className={`font-semibold ${getTextColorClassFor40Threshold(row.avgCapaian || 0)}`}>{(row.avgCapaian || 0).toFixed(2)}%</span></TableCell>
+                                <TableCell className="text-center">
+                                  <span className={
+                                    `inline-block px-2 py-1 rounded-full text-sm font-semibold ${row.statusLevel === 'green' ? 'bg-emerald-100 text-emerald-800' : row.statusLevel === 'orange' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'}`
+                                  }>{row.statusText}</span>
+                                </TableCell>
+                              </TableRow>
+
+                              {expandedDistricts.has(row.kecamatan) ? renderPmlRows(row) : null}
+                              </React.Fragment>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
