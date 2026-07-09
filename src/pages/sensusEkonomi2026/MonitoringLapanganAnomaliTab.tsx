@@ -46,6 +46,15 @@ interface PendingPPLEntry {
   kecamatan?: string;
 }
 
+interface PJAnomaliProgressEntry {
+  name: string;
+  total: number;
+  completed: number;
+  pending: number;
+  districts: Set<string>;
+  sampleActions: string[];
+}
+
 interface PendingPPLCardProps {
   entries: PendingPPLEntry[];
   totalPPL: number;
@@ -106,6 +115,79 @@ const getColumnValue = (obj: any, primaryName: string, fallbackNames: string[] =
   return defaultValue;
 };
 
+// Mapping kecamatan (normalized) -> PJ Anomali name (as shown in provided image)
+const PJ_NAME_BY_KECAMATAN: Record<string, string> = {
+  // keys are normalized via `normalizeColumnKey` on the kecamatan value
+  lemahsugih: "Hafizh Meyzar",
+  lemahsuigh: "Hafizh Meyzar",
+  bantarujeg: "Andries Kurniawan",
+  malausma: "Sukadi",
+  cikijing: "Krisna Delastiar",
+  cingambul: "Krisna Delastiar",
+  talaga: "Devane Setyo Wicaksono",
+  banjaran: "Imam Abdurohman",
+  argapura: "Imam Abdurohman",
+  maja: "Adang Suhendar",
+  majalengka: "Yesi Desiwati Sirman",
+  cigasong: "Fanny Marina",
+  sukahaji: "Tati Susanti",
+  sindang: "Ade Yono Cahyono",
+  rajagaluh: "Fenty Jimka",
+  sindangwangi: "Tati Susanti",
+  leuwimunding: "Rizas Wulangana",
+  palasah: "Bili Kenedi",
+  jatiwangi: "Bili Kenedi",
+  dawuan: "Wendi Gusniawan",
+  kasokandel: "Wendi Gusniawan",
+  panyingkiran: "Elliana Silalahi",
+  panyingkran: "Elliana Silalahi",
+  kadipaten: "Elliana Silalahi",
+  kertajati: "Irwan Najmudin Badarayawan",
+  jatitujuh: "Deni Sarantika",
+  ligung: "Adang Suhendar",
+  sumberjaya: "Rizas Wulangana",
+};
+
+const stripTitles = (s: string) => {
+  if (!s) return s;
+  let t = String(s || "").trim();
+  // remove anything after comma (often degrees)
+  if (t.includes(",")) t = t.split(",")[0];
+  // remove common degree abbreviations and dots
+  t = t.replace(/\b(m\.sc|msc|m\.ap|map|s\.st|sst|s\.m|smt|s\.si|sisi|s\.ip|sip|a\.md|amd)\b/gi, "");
+  t = t.replace(/[\.]/g, "");
+  return t.trim();
+};
+
+const toTitleCase = (s: string) =>
+  String(s || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0]?.toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+
+const canonicalizePJName = (raw: string) => {
+  if (!raw) return raw;
+  const stripped = stripTitles(raw);
+  return toTitleCase(stripped);
+};
+
+const getMappedPJName = (kecamatanRaw: string) => {
+  if (!kecamatanRaw) return undefined;
+  const tryVariants = [
+    kecamatanRaw,
+    String(kecamatanRaw).replace(/^\d+\s*[-.)]?\s*/, ""),
+    String(kecamatanRaw).replace(/[^a-z0-9 ]/gi, " "),
+    String(kecamatanRaw).replace(/[^a-z0-9 ]/gi, " ").replace(/^\d+\s*/, ""),
+  ];
+  for (const v of tryVariants) {
+    const key = normalizeColumnKey(String(v || ""));
+    if (!key) continue;
+    if (PJ_NAME_BY_KECAMATAN[key]) return PJ_NAME_BY_KECAMATAN[key];
+  }
+  return undefined;
+};
+
 const isFilled = (v: any) => {
   const s = String(v ?? "").trim().toLowerCase();
   return !(s === "" || s === "-" || s === "na" || s === "n/a" || s === "null" || s === "none");
@@ -115,6 +197,27 @@ const isFilled = (v: any) => {
 const TINDAK_LANJUT_VALUES = new Set(["sudah diperbaiki", "tidak diperbaiki"]);
 const isTindakLanjut = (v: any) => {
   return TINDAK_LANJUT_VALUES.has(String(v ?? "").trim().toLowerCase());
+};
+
+// Read Action (kolom AA) strictly from raw row placeholder or __col_26, fallback to fuzzy column lookup.
+const getAnomalyActionValue = (row: any, defaultValue: any = "-"): any => {
+  if (!row || typeof row !== "object") return defaultValue;
+  const rawFromArray = row?.__rawRow && row.__rawRow[26];
+  const rawFromPlaceholder = row?.__col_26;
+  const rawValue = rawFromArray ?? rawFromPlaceholder;
+  if (rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== "") {
+    return String(rawValue);
+  }
+  return getColumnValue(row, "action", ["action", "act", "aa"], defaultValue);
+};
+
+// Treat as tindak lanjut for the PJ Anomali card only when the Action cell contains a date.
+const isTindakLanjutDate = (v: any) => {
+  if (v === undefined || v === null) return false;
+  const s = String(v).trim();
+  // Match formats like 06/07/26 or 06/07/2026 (day/month/year)
+  const dateRegex = /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/;
+  return dateRegex.test(s);
 };
 
 const getAnomalyPPLValue = (row: any, defaultValue: any = "-"): any =>
@@ -171,6 +274,8 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
     });
   }, [entries, searchTerm]);
 
+
+  
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, entries]);
@@ -379,6 +484,7 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
     const id = window.setTimeout(() => setDebouncedSearch(searchTerm), 250);
     return () => window.clearTimeout(id);
   }, [searchTerm]);
+
   const [sortBy, setSortBy] = useState<"kecamatan" | "desa" | "nama_usaha" | "catatan_petugas" | "perlakuan" | "nama_anomali" | "ppl" | "pml">("kecamatan");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [anomalyFilter, setAnomalyFilter] = useState("all");
@@ -399,28 +505,7 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
       setSortOrder("asc");
     }
   };
-
-  const getSortValue = (row: any, field: "kecamatan" | "desa" | "nama_usaha" | "catatan_petugas" | "perlakuan" | "nama_anomali" | "ppl" | "pml") => {
-    switch (field) {
-      case "desa":
-        return String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).toLowerCase();
-      case "nama_usaha":
-        return String(getColumnValue(row, "nama_usaha", ["nama usaha", "nama usaha / kk", "nama usaha kk", "nama usaha"], "")).toLowerCase();
-      case "catatan_petugas":
-        return String(getAnomalyCatatanPetugasValue(row, "")).toLowerCase();
-      case "perlakuan":
-        return String(getAnomalyPerlakuanValue(row, "")).toLowerCase();
-      case "nama_anomali":
-        return String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).toLowerCase();
-      case "ppl":
-        return String(getAnomalyPPLValue(row, "")).toLowerCase();
-      case "pml":
-        return String(getAnomalyPMLValue(row, "")).toLowerCase();
-      case "kecamatan":
-      default:
-        return String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).toLowerCase();
-    }
-  };
+  
 
   // Precompute lowercase projections once per row set. getColumnValue is
   // expensive (builds two maps per call), so calling it on every keystroke
@@ -536,6 +621,8 @@ const AnomaliTable = ({ data, loading, title, sheetName }: AnomaliTableProps) =>
                 className="border-0 p-0 shadow-none focus-visible:ring-0"
               />
             </div>
+
+            
             <select
               value={anomalyFilter}
               onChange={(e) => setAnomalyFilter(e.target.value)}
@@ -878,6 +965,50 @@ export default function MonitoringLapanganAnomaliTab({
       entries,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
+
+  // PJ Anomali compact grid: aggregate per PJ (grouped by kecamatan) using Action (AA)
+  const pjAnomaliGridData = useMemo(() => {
+    const allRows = [...anomaliUsahaData, ...anomaliKeluargaData];
+    const map = new Map<string, PJAnomaliProgressEntry>();
+
+    allRows.forEach((row) => {
+      const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+      const mapped = getMappedPJName(kecamatan);
+      const pjNameRaw = mapped || kecamatan || "Unknown";
+      const pjName = canonicalizePJName(pjNameRaw) || "Unknown";
+      const key = normalizeString(pjName) || "unknown";
+      if (!map.has(key)) {
+        map.set(key, {
+          name: pjName,
+          total: 0,
+          completed: 0,
+          pending: 0,
+          districts: new Set<string>(),
+          sampleActions: [],
+        });
+      }
+      const entry = map.get(key)!;
+      const action = getAnomalyActionValue(row, "");
+      const completed = isTindakLanjutDate(action) ? 1 : 0;
+      entry.total += 1;
+      entry.completed += completed;
+      entry.pending += completed ? 0 : 1;
+      if (kecamatan) entry.districts.add(kecamatan);
+      if (action && !entry.sampleActions.includes(action)) {
+        entry.sampleActions.push(action);
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      const aPct = a.total ? a.completed / a.total : 0;
+      const bPct = b.total ? b.completed / b.total : 0;
+      if (bPct !== aPct) return bPct - aPct;
+      if (b.total !== a.total) return b.total - a.total;
+      return a.name.localeCompare(b.name);
+    });
+  }, [anomaliUsahaData, anomaliKeluargaData]);
+
+  const pjAnomaliEntries = useMemo(() => pjAnomaliGridData, [pjAnomaliGridData]);
 
   const anomalyDashboardSummary = useMemo(() => {
     const allRows = [...anomaliUsahaData, ...anomaliKeluargaData];
@@ -1267,6 +1398,42 @@ export default function MonitoringLapanganAnomaliTab({
                 totalRows={pendingAnomalyPPL.totalRows}
               />
             </div>
+
+            <Card className="border-0 shadow-sm mt-4">
+              <CardHeader className="border-b p-4 pb-3">
+                <div>
+                  <CardTitle className="text-base font-semibold">Tindak Lanjut Perbaikan Anomali Oleh Penanggungjawab</CardTitle>
+                  <CardDescription>Semua PJ berdasarkan persentase tindak lanjut dari kolom Action (AA).</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-slate-200">
+                  {pjAnomaliEntries.map((item, index) => {
+                    const pct = item.total ? Math.round((item.completed / item.total) * 1000) / 10 : 0;
+                    return (
+                      <div key={item.name} className="grid grid-cols-[2rem_minmax(0,1fr)_120px] items-center gap-3 px-4 py-2 text-sm text-slate-700">
+                        <div className="text-xs font-semibold text-slate-500">#{String(index + 1).padStart(2, "0")}</div>
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-slate-900">
+                            {item.name}
+                            <span className="ml-2 text-xs font-normal text-slate-500">
+                              ({Array.from(item.districts).sort().join(" - ")})
+                            </span>
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500">
+                            <span>{item.completed}/{item.total} selesai</span>
+                            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                              <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right text-xs font-semibold text-slate-900">{pct}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
             <div className="grid gap-4 sm:grid-cols-2 mt-4">
               {[
