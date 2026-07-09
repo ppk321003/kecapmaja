@@ -3051,6 +3051,28 @@ export function MonitoringLapangan() {
                     </CardDescription>
                   </div>
 
+                  {(() => {
+                    const { daysElapsed } = calculateDayProgress();
+                    const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
+                    return (
+                      <div className="hidden md:flex items-center">
+                        <div className="rounded-2xl px-4 py-2 shadow-lg ml-4 bg-emerald-800 text-white flex flex-col justify-center items-start">
+                          <div className="text-xs uppercase tracking-[0.12em] font-semibold">Hari ke-{daysElapsed}</div>
+                          <div className="mt-0.5 text-sm font-bold">Target minimal: {minPercentageTarget.toFixed(2)}%</div>
+                          <div className="mt-2 w-36">
+                            <div className="w-full h-2 bg-white/20 rounded-full">
+                              <div
+                                className="h-2 bg-white rounded-full"
+                                style={{ width: `${Math.min(100, minPercentageTarget)}%` }}
+                                aria-label={`Progress ${minPercentageTarget.toFixed(2)} percent`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
                     {isLoggedIn && aggregatedData.rows.length > 0 && (
                       <button
@@ -4231,6 +4253,28 @@ export function MonitoringLapangan() {
                     </CardDescription>
                   </div>
 
+                  {(() => {
+                    const { daysElapsed } = calculateDayProgress();
+                    const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
+                    return (
+                      <div className="hidden md:flex items-center">
+                        <div className="rounded-2xl px-4 py-2 shadow-lg ml-4 bg-emerald-800 text-white flex flex-col justify-center items-start">
+                          <div className="text-xs uppercase tracking-[0.12em] font-semibold">Hari ke-{daysElapsed}</div>
+                          <div className="mt-0.5 text-sm font-bold">Target minimal: {minPercentageTarget.toFixed(2)}%</div>
+                          <div className="mt-2 w-36">
+                            <div className="w-full h-2 bg-white/20 rounded-full">
+                              <div
+                                className="h-2 bg-white rounded-full"
+                                style={{ width: `${Math.min(100, minPercentageTarget)}%` }}
+                                aria-label={`Progress ${minPercentageTarget.toFixed(2)} percent`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
                     {isLoggedIn && afirmasiPPLData.ratih.length > 0 && (
                       <button
@@ -4440,6 +4484,28 @@ export function MonitoringLapangan() {
                       Total: {afirmasiPPLData.ledya.length} data
                     </CardDescription>
                   </div>
+
+                  {(() => {
+                    const { daysElapsed } = calculateDayProgress();
+                    const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
+                    return (
+                      <div className="hidden md:flex items-center">
+                        <div className="rounded-2xl px-4 py-2 shadow-lg ml-4 bg-emerald-800 text-white flex flex-col justify-center items-start">
+                          <div className="text-xs uppercase tracking-[0.12em] font-semibold">Hari ke-{daysElapsed}</div>
+                          <div className="mt-0.5 text-sm font-bold">Target minimal: {minPercentageTarget.toFixed(2)}%</div>
+                          <div className="mt-2 w-36">
+                            <div className="w-full h-2 bg-white/20 rounded-full">
+                              <div
+                                className="h-2 bg-white rounded-full"
+                                style={{ width: `${Math.min(100, minPercentageTarget)}%` }}
+                                aria-label={`Progress ${minPercentageTarget.toFixed(2)} percent`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
                     {isLoggedIn && afirmasiPPLData.ledya.length > 0 && (
