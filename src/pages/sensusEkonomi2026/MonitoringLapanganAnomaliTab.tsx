@@ -1403,7 +1403,6 @@ export default function MonitoringLapanganAnomaliTab({
               <CardHeader className="border-b p-4 pb-3">
                 <div>
                   <CardTitle className="text-base font-semibold">Tindak Lanjut Perbaikan Anomali Oleh Penanggungjawab</CardTitle>
-                  <CardDescription>Semua PJ berdasarkan persentase tindak lanjut dari kolom Action (AA).</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
