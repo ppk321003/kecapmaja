@@ -3296,7 +3296,7 @@ export function MonitoringLapangan() {
                                     {(() => {
                                       const prel = row.prelist_awal || 0;
                                       const num = row.jumlah_reject + (row.jumlah_revoke || 0) + row.jumlah_submit + row.jumlah_approve;
-                                      const pct = prel > 0 ? (num / prel) * 100 : 0;
+                                      const pct = prel > 0 ? (num / prel) * 100 : num > 0 ? 100 : 0;
                                       return <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>;
                                     })()}
                                   </TableCell>
@@ -3389,8 +3389,8 @@ export function MonitoringLapangan() {
                                                 } catch { /* ignore */ }
                                               }
                                               const total = submitted + approved + rejected + revoked;
-                                              const pct = prel > 0 ? (total / prel) * 100 : 0;
                                               const openVal = toNum(getColumnValue(user, "open", ["OPEN", "Open", "open"], "0"));
+                                              const pct = prel > 0 ? (total / prel) * 100 : total > 0 ? 100 : 0;
                                               return (
                                                 <span className="inline-flex items-center gap-1 justify-end">
                                                   <span style={{ color: getColorForPercentage(pct) }}>{pct.toFixed(2)} %</span>
