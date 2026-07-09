@@ -29,6 +29,7 @@ import {
   Database,
   Link,
   Eye,
+  Star,
 } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { useAuth } from "@/contexts/AuthContext";
@@ -2096,12 +2097,12 @@ export function MonitoringLapangan() {
         // Require both PML 100% and PPL 100% to allow Termin I
         statusText = 'Bisa Ajukan Termin I'; statusLevel = 'green';
       } else if (pctMet >= 30) {
-        statusText = `Hampir — PML kurang ${missingPML}`;
-        if (missingPPL > 0) statusText += ` / PPL kurang ${missingPPL}`;
+        statusText = `PML -${missingPML}`;
+        if (missingPPL > 0) statusText += ` / PPL -${missingPPL}`;
         statusLevel = 'orange';
       } else {
-        statusText = `Belum — PML kurang ${missingPML}`;
-        if (missingPPL > 0) statusText += ` / PPL kurang ${missingPPL}`;
+        statusText = `PML -${missingPML}`;
+        if (missingPPL > 0) statusText += ` / PPL -${missingPPL}`;
         statusLevel = 'red';
       }
       results.push({
@@ -2151,7 +2152,7 @@ export function MonitoringLapangan() {
       } else if (jumlahPPL > 0 && countPPLMet === jumlahPPL && pmlPct >= 40) {
         pmlStatusText = 'Sudah bisa termin I'; pmlStatusLevel = 'green';
       } else if (countPPLMet < jumlahPPL && pmlPct >= 40) {
-        pmlStatusText = `PPL kurang ${missingPPLForPML}`; pmlStatusLevel = 'orange';
+        pmlStatusText = `PPL -${missingPPLForPML}`; pmlStatusLevel = 'orange';
       } else {
         pmlStatusText = `Belum — PML ${pmlPct ? pmlPct.toFixed(2) + '%' : ''}`; pmlStatusLevel = 'red';
       }
@@ -2217,7 +2218,13 @@ export function MonitoringLapangan() {
               <TableCell className="text-right">{(prel).toLocaleString('id-ID')}</TableCell>
               <TableCell className="text-right">{num.toLocaleString('id-ID')}</TableCell>
               <TableCell className="text-right"><span className={getTextColorClassFor40Threshold(capaPPL)}>{`${capaPPL.toFixed(2)}%`}</span></TableCell>
-              <TableCell className="text-center">-</TableCell>
+              <TableCell className="text-center">
+                {capaPPL >= 40 ? (
+                  <span title="PPL >= 40%">
+                    <Star className="inline-block h-4 w-4 text-amber-400" aria-hidden="true" />
+                  </span>
+                ) : '-'}
+              </TableCell>
             </TableRow>
           );
         });
