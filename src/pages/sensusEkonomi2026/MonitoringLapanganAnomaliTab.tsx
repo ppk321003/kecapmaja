@@ -1011,15 +1011,16 @@ export default function MonitoringLapanganAnomaliTab({
   const pjAnomaliEntries = useMemo(() => pjAnomaliGridData, [pjAnomaliGridData]);
 
   const anomalyDashboardSummary = useMemo(() => {
-    const allRows = [...anomaliUsahaData, ...anomaliKeluargaData];
     const anomalyCounts = new Map<string, number>();
     const districtCounts = new Map<string, number>();
     const pplCounts = new Map<string, number>();
     const pmlCounts = new Map<string, number>();
     const desaSet = new Set<string>();
     let completedAnomalyCount = 0;
+    const completedUsahaCount = anomaliUsahaData.filter((row) => isTindakLanjut(getAnomalyPerlakuanValue(row, ""))).length;
+    const completedKeluargaCount = anomaliKeluargaData.filter((row) => isTindakLanjut(getAnomalyPerlakuanValue(row, ""))).length;
 
-    allRows.forEach((row) => {
+    [...anomaliUsahaData, ...anomaliKeluargaData].forEach((row) => {
       const anomalyName = String(getColumnValue(row, "nama_anomali", ["nama anomali", "anomali", "jenis anomali", "jumlah anomali"], "")).trim();
       if (anomalyName) {
         anomalyCounts.set(anomalyName, (anomalyCounts.get(anomalyName) || 0) + 1);
@@ -1039,7 +1040,6 @@ export default function MonitoringLapanganAnomaliTab({
       const desa = String(getColumnValue(row, "nama_desa_kel", ["desa_kel", "nama desa/kel", "nama desa kel", "desa kel", "nama desa", "desa", "kel"], "")).trim();
       if (desa) desaSet.add(`${districtName}|${desa}`);
 
-      // Tindak lanjut = kolom X (perlakuan) berisi "Sudah Diperbaiki" atau "Tidak diperbaiki".
       const perlakuan = getAnomalyPerlakuanValue(row, "");
       if (isTindakLanjut(perlakuan)) completedAnomalyCount += 1;
     });
@@ -1060,10 +1060,12 @@ export default function MonitoringLapanganAnomaliTab({
       totalPPL: pplCounts.size,
       totalPML: pmlCounts.size,
       completedAnomalyCount,
+      completedUsahaCount,
+      completedKeluargaCount,
       totalPerbaikanAnomalyCount,
       perbaikanUsahaCount,
       perbaikanKeluargaCount,
-      total: allRows.length,
+      total: anomaliUsahaData.length + anomaliKeluargaData.length,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
 
@@ -1127,7 +1129,7 @@ export default function MonitoringLapanganAnomaliTab({
                   { label: "Total Anomali", value: total, sub: `${anomaliUsahaData.length} usaha + ${anomaliKeluargaData.length} keluarga`, color: "slate" },
                   { label: "Kecamatan Terdampak", value: anomalyDashboardSummary.totalKecamatan, sub: `${anomalyDashboardSummary.totalDesa} desa/kel`, color: "blue" },
                   { label: "Petugas Terdampak", value: anomalyDashboardSummary.totalPPL, sub: `${anomalyDashboardSummary.totalPML} PML`, color: "indigo" },
-                  { label: "Tindak Lanjut Anomali", value: anomalyDashboardSummary.completedAnomalyCount, sub: `${linkPct}% dari total anomali`, color: "emerald" },
+                  { label: "Tindak Lanjut Anomali", value: anomalyDashboardSummary.completedAnomalyCount, sub: `${anomalyDashboardSummary.completedUsahaCount} usaha + ${anomalyDashboardSummary.completedKeluargaCount} keluarga (${linkPct}% dari total anomali)`, color: "emerald" },
                   { label: "Perbaikan Anomali (Admin FASIH)", value: anomalyDashboardSummary.totalPerbaikanAnomalyCount, sub: `${anomalyDashboardSummary.perbaikanUsahaCount} usaha + ${anomalyDashboardSummary.perbaikanKeluargaCount} keluarga (${perbaikanPct}% dari total anomali)`, color: "purple" },
                 ];
                 const palette: Record<string, string> = {
