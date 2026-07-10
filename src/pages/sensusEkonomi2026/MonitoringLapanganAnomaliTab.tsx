@@ -1044,6 +1044,9 @@ export default function MonitoringLapanganAnomaliTab({
       if (isTindakLanjut(perlakuan)) completedAnomalyCount += 1;
     });
 
+    const perbaikanUsahaCount = anomaliUsahaData.filter((row) => isTindakLanjutDate(getAnomalyActionValue(row, ""))).length;
+    const perbaikanKeluargaCount = anomaliKeluargaData.filter((row) => isTindakLanjutDate(getAnomalyActionValue(row, ""))).length;
+    const totalPerbaikanAnomalyCount = perbaikanUsahaCount + perbaikanKeluargaCount;
     const sortedAnomalies = [...anomalyCounts.entries()].sort((a, b) => b[1] - a[1]);
 
     return {
@@ -1057,6 +1060,9 @@ export default function MonitoringLapanganAnomaliTab({
       totalPPL: pplCounts.size,
       totalPML: pmlCounts.size,
       completedAnomalyCount,
+      totalPerbaikanAnomalyCount,
+      perbaikanUsahaCount,
+      perbaikanKeluargaCount,
       total: allRows.length,
     };
   }, [anomaliUsahaData, anomaliKeluargaData]);
@@ -1110,19 +1116,19 @@ export default function MonitoringLapanganAnomaliTab({
       <CardContent>
         {activeAnomaliTab === "dashboard" ? (
           <div className="space-y-5">
-            <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+            <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-5">
               {(() => {
                 const total = anomaliUsahaData.length + anomaliKeluargaData.length;
                 const pctUsaha = total ? Math.round((anomaliUsahaData.length / total) * 1000) / 10 : 0;
                 const pctKel = total ? Math.round((anomaliKeluargaData.length / total) * 1000) / 10 : 0;
                 const linkPct = total ? Math.round((anomalyDashboardSummary.completedAnomalyCount / total) * 1000) / 10 : 0;
+                const perbaikanPct = total ? Math.round((anomalyDashboardSummary.totalPerbaikanAnomalyCount / total) * 1000) / 10 : 0;
                 const kpis = [
                   { label: "Total Anomali", value: total, sub: `${anomaliUsahaData.length} usaha + ${anomaliKeluargaData.length} keluarga`, color: "slate" },
-                  { label: "Anomali Usaha", value: anomaliUsahaData.length, sub: `${pctUsaha}% dari total`, color: "amber" },
-                  { label: "Anomali Keluarga", value: anomaliKeluargaData.length, sub: `${pctKel}% dari total`, color: "rose" },
                   { label: "Kecamatan Terdampak", value: anomalyDashboardSummary.totalKecamatan, sub: `${anomalyDashboardSummary.totalDesa} desa/kel`, color: "blue" },
                   { label: "Petugas Terdampak", value: anomalyDashboardSummary.totalPPL, sub: `${anomalyDashboardSummary.totalPML} PML`, color: "indigo" },
                   { label: "Tindak Lanjut Anomali", value: anomalyDashboardSummary.completedAnomalyCount, sub: `${linkPct}% dari total anomali`, color: "emerald" },
+                  { label: "Perbaikan Anomali (Admin FASIH)", value: anomalyDashboardSummary.totalPerbaikanAnomalyCount, sub: `${perbaikanPct}% dari total anomali`, color: "purple" },
                 ];
                 const palette: Record<string, string> = {
                   slate: "border-slate-200 bg-slate-50 text-slate-800",
@@ -1131,6 +1137,7 @@ export default function MonitoringLapanganAnomaliTab({
                   blue: "border-blue-200 bg-blue-50 text-blue-900",
                   indigo: "border-indigo-200 bg-indigo-50 text-indigo-900",
                   emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
+                  purple: "border-violet-200 bg-violet-50 text-violet-900",
                 };
                 return kpis.map((k) => (
                   <div key={k.label} className={`rounded-xl border p-3 ${palette[k.color]}`}>
