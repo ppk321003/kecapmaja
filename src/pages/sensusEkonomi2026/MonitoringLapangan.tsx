@@ -159,8 +159,8 @@ const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
 const SHEET_NAME = "REKAP_SCRP";
 const SHEET_USERS = "Semua Users";
 const SHEET_AFIRMASI = "AFIRMASI";
-const SHEET_ANOMALI_USAHA = "Mikro Anomali Usaha";
-const SHEET_ANOMALI_KELUARGA = "Mikro Anomali Keluarga";
+const SHEET_ANOMALI_USAHA = "REAL Mikro Anomali Usaha";
+const SHEET_ANOMALI_KELUARGA = "REAL Mikro Anomali Keluarga";
 const SHEET_PRELIST = "Prelist_Awal";
 
 const COLORS = {

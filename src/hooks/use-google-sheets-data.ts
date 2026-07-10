@@ -72,6 +72,8 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
           // Some sheets include an extra sub-header/notes row after the header (e.g. Mikro Anomali Usaha/Keluarga),
           // so allow per-sheet extra-skip here.
           const EXTRA_SKIP_FOR_SHEETS: Record<string, number> = {
+            "REAL Mikro Anomali Usaha": 1,
+            "REAL Mikro Anomali Keluarga": 1,
             "Mikro Anomali Usaha": 1,
             "Mikro Anomali Keluarga": 1,
           };
