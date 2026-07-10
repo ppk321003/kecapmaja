@@ -1128,7 +1128,7 @@ export default function MonitoringLapanganAnomaliTab({
                   { label: "Kecamatan Terdampak", value: anomalyDashboardSummary.totalKecamatan, sub: `${anomalyDashboardSummary.totalDesa} desa/kel`, color: "blue" },
                   { label: "Petugas Terdampak", value: anomalyDashboardSummary.totalPPL, sub: `${anomalyDashboardSummary.totalPML} PML`, color: "indigo" },
                   { label: "Tindak Lanjut Anomali", value: anomalyDashboardSummary.completedAnomalyCount, sub: `${linkPct}% dari total anomali`, color: "emerald" },
-                  { label: "Perbaikan Anomali (Admin FASIH)", value: anomalyDashboardSummary.totalPerbaikanAnomalyCount, sub: `${perbaikanPct}% dari total anomali`, color: "purple" },
+                  { label: "Perbaikan Anomali (Admin FASIH)", value: anomalyDashboardSummary.totalPerbaikanAnomalyCount, sub: `${anomalyDashboardSummary.perbaikanUsahaCount} usaha + ${anomalyDashboardSummary.perbaikanKeluargaCount} keluarga (${perbaikanPct}% dari total anomali)`, color: "purple" },
                 ];
                 const palette: Record<string, string> = {
                   slate: "border-slate-200 bg-slate-50 text-slate-800",
