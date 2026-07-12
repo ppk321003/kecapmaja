@@ -67,16 +67,31 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
         }
 
         if (rows.length > headerRowIndex + 1) {
-          const headers = rows[headerRowIndex];
+          let headers = rows[headerRowIndex];
           // Default: use the row immediately after the detected header as data start.
           // Some sheets include an extra sub-header/notes row after the header (e.g. Mikro Anomali Usaha/Keluarga),
           // so allow per-sheet extra-skip here.
           const EXTRA_SKIP_FOR_SHEETS: Record<string, number> = {
             "Mikro Anomali Usaha": 1,
             "Mikro Anomali Keluarga": 1,
+            "Prelist_Awal": 1,
           };
 
           const extraSkip = EXTRA_SKIP_FOR_SHEETS[sheetName] || 0;
+
+          if (sheetName === "Prelist_Awal" && rows.length > headerRowIndex + 1) {
+            const secondHeaderRow = rows[headerRowIndex + 1] || [];
+            headers = headers.map((header: string, index: number) => {
+              const primary = String(header || '').trim();
+              const secondary = String(secondHeaderRow[index] || '').trim();
+              const isGroupHeader = /assignment|total assignment|bku & bangunan/i.test(primary);
+              if (secondary && (!primary || isGroupHeader || secondary.length < primary.length)) {
+                return secondary;
+              }
+              return primary || secondary;
+            });
+          }
+
           const dataStartIndex = headerRowIndex + 1 + extraSkip;
           const dataRows = rows.slice(dataStartIndex).map((row: any[], rowIdx: number) => {
             const obj: any = {};

@@ -52,6 +52,7 @@ import {
 } from "recharts";
 
 const MonitoringLapanganAnomaliTab = React.lazy(() => import("./MonitoringLapanganAnomaliTab"));
+const MonitoringLapanganKualitasTab = React.lazy(() => import("./MonitoringLapanganKualitasTab"));
 
 // Schedule: 15 Juni - 17 Agustus 2026 (63 hari)
 // Target: flexible 10-15 submit per hari (average 12.5), 100% reached on day 63
@@ -2467,6 +2468,13 @@ export function MonitoringLapangan() {
               <AlertTriangle className="h-5 w-5" />
               <span className="font-medium">Anomali</span>
             </TabsTrigger>
+            <TabsTrigger
+              value="kualitas"
+              className="flex items-center gap-3 justify-center flex-1 py-3 px-4 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none"
+            >
+              <Users className="h-5 w-5" />
+              <span className="font-medium">Kualitas</span>
+            </TabsTrigger>
           </TabsList>
 
           <div className="w-full">
@@ -4030,6 +4038,14 @@ export function MonitoringLapangan() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Anomali Tab */}
+          {/* Kualitas Tab */}
+          <TabsContent value="kualitas" className="space-y-6 mt-6">
+            <React.Suspense fallback={<div className="py-12 text-center text-slate-500">Memuat Kualitas...</div>}>
+              <MonitoringLapanganKualitasTab spreadsheetId={"1SddZLzyRYZaA7aP-Re7Q8WHqQCdfXIw01SepP-v8Kx4"} />
+            </React.Suspense>
           </TabsContent>
 
           {/* Anomali Tab */}
