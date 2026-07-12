@@ -1109,23 +1109,26 @@ const exportTerminIToExcel = (rows: any[]) => {
     ['TERMIN I - AGGREGATE PER KECAMATAN'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Kecamatan', 'Total PML', 'Jumlah PML >=40% (%Capaian)', '% PML Tercapai', 'Rata-rata %Capaian', 'Sum Prelist Awal']
+    ['No', 'Kecamatan', 'Jumlah PPL', 'PPL >=40% (count)', 'Jumlah PML', 'PML >=40% (count)', 'Prelist Awal', 'Total Status', 'Periksa PML', '%Capaian', 'Status']
   ];
 
   rows.forEach((r, idx) => {
     aoa.push([
       idx + 1,
       r.kecamatan,
-      r.totalPML,
-      r.countMet,
-      `${(r.pctMet || 0).toFixed(2)}%`,
-      `${(r.avgCapaian || 0).toFixed(2)}%`,
+      r.totalPPL || 0,
+      r.countPPLMet || 0,
+      r.totalPML || 0,
+      r.countMet || 0,
       r.sumPrelistAwal || 0,
+      r.totalStatus || 0,
+      r.periksaPML || 0,
+      `${(r.avgCapaian || 0).toFixed(2)}%`,
+      r.statusText || '',
     ]);
   });
-
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 12 }, { wch: 18 }, { wch: 12 }, { wch: 16 }, { wch: 14 }];
+  ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 18 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Termin I');
   XLSX.writeFile(wb, `TerminI_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -2058,16 +2061,19 @@ export function MonitoringLapangan() {
       pmlList: (typeof pmlDataWithActualSubmit[0])[];
       totalPPL: number;
       periksaPML: number;
+      totalStatus: number;
     }>();
 
     (pmlDataWithActualSubmit || []).forEach((pml: any) => {
       const kec = (pml.kecamatan || "").trim();
       if (!kec) return;
-      const existing = map.get(kec) || { kecamatan: kec, totalPML: 0, countMet: 0, avgCapaian: 0, sumPrelistAwal: 0, pmlList: [], totalPPL: 0, periksaPML: 0 };
+      const existing = map.get(kec) || { kecamatan: kec, totalPML: 0, countMet: 0, avgCapaian: 0, sumPrelistAwal: 0, pmlList: [], totalPPL: 0, periksaPML: 0, totalStatus: 0 };
       existing.totalPML += 1;
       const capa = Number(pml.capaianPercent || pml.capaian || 0) || 0;
       if (capa >= 40) existing.countMet += 1;
       existing.sumPrelistAwal += Number(pml.prelist_awal || 0) || 0;
+      const totalStatus = (Number(pml.actualSubmit || 0) + Number(pml.jumlah_approve || 0) + Number(pml.jumlah_reject || 0) + Number(pml.jumlah_revoke || 0)) || 0;
+      existing.totalStatus += totalStatus;
       existing.periksaPML += (Number(pml.jumlah_approve || 0) + Number(pml.jumlah_reject || 0) + Number(pml.jumlah_revoke || 0)) || 0;
       existing.pmlList.push(pml);
       map.set(kec, existing);
@@ -2082,22 +2088,20 @@ export function MonitoringLapangan() {
       const totalPPL = totalPPLRows.length;
       const countPPLMet = totalPPLRows.reduce((s: number, pp: any) => {
         const prel = Number(pp.prelist_awal || 0) || 0;
-        const num = (Number(pp.jumlah_approve || 0) + Number(pp.jumlah_reject || 0) + Number(pp.jumlah_revoke || 0)) || 0;
+        const num = (Number(pp.jumlah_submit || 0) + Number(pp.jumlah_approve || 0) + Number(pp.jumlah_reject || 0) + Number(pp.jumlah_revoke || 0)) || 0;
         if (prel > 0 && (num / prel) * 100 >= 40) return s + 1;
         return s;
       }, 0);
       const pctPPLMet = totalPPL > 0 ? (countPPLMet / totalPPL) * 100 : 0;
-      // determine status
-      let statusText = 'No data';
-      let statusLevel: 'green'|'orange'|'red' = 'red';
       const missingPML = v.totalPML - v.countMet;
       const missingPPL = totalPPL - countPPLMet;
+      let statusText = 'No data';
+      let statusLevel: 'green'|'orange'|'red' = 'red';
       if (v.totalPML === 0 && totalPPL === 0) {
         statusText = 'No data'; statusLevel = 'red';
       } else if (v.totalPML > 0 && totalPPL > 0 && v.countMet === v.totalPML && countPPLMet === totalPPL) {
-        // Require both PML 100% and PPL 100% to allow Termin I
         statusText = 'Bisa Ajukan Termin I'; statusLevel = 'green';
-      } else if (pctMet >= 30) {
+      } else if (v.countMet >= Math.ceil(v.totalPML * 0.4) && countPPLMet >= Math.ceil(totalPPL * 0.4)) {
         statusText = `PML -${missingPML}`;
         if (missingPPL > 0) statusText += ` / PPL -${missingPPL}`;
         statusLevel = 'orange';
@@ -2114,6 +2118,7 @@ export function MonitoringLapangan() {
         avgCapaian: avg,
         sumPrelistAwal: v.sumPrelistAwal,
         periksaPML: v.periksaPML,
+        totalStatus: v.totalStatus,
         pmlList: v.pmlList,
         totalPPL,
         countPPLMet,
@@ -2136,7 +2141,7 @@ export function MonitoringLapangan() {
       const jumlahPPL = pplUnder.length;
       const countPPLMet = pplUnder.reduce((s:number, pp:any) => {
         const prel = Number(pp.prelist_awal || 0) || 0;
-        const num = (Number(pp.jumlah_approve||0) + Number(pp.jumlah_reject||0) + Number(pp.jumlah_revoke||0)) || 0;
+        const num = (Number(pp.jumlah_submit || 0) + Number(pp.jumlah_approve||0) + Number(pp.jumlah_reject||0) + Number(pp.jumlah_revoke||0)) || 0;
         if (prel > 0 && (num / prel) * 100 >= 40) return s + 1;
         return s;
       }, 0);
@@ -2152,13 +2157,14 @@ export function MonitoringLapangan() {
         pmlStatusText = '-'; pmlStatusLevel = 'red';
       } else if (jumlahPPL > 0 && countPPLMet === jumlahPPL && pmlPct >= 40) {
         pmlStatusText = 'Sudah bisa termin I'; pmlStatusLevel = 'green';
-      } else if (countPPLMet < jumlahPPL && pmlPct >= 40) {
+      } else if (countPPLMet >= Math.ceil(jumlahPPL * 0.4) && pmlPct >= 40) {
         pmlStatusText = `PPL -${missingPPLForPML}`; pmlStatusLevel = 'orange';
       } else {
         pmlStatusText = `Belum — PML ${pmlPct ? pmlPct.toFixed(2) + '%' : ''}`; pmlStatusLevel = 'red';
       }
 
       const pmlPeriksa = (Number(p.jumlah_approve || 0) + Number(p.jumlah_reject || 0) + Number(p.jumlah_revoke || 0)) || 0;
+      const totalStatusForPml = (Number(p.actualSubmit || 0) + pmlPeriksa) || 0;
       const pmlPeriksaRate = (Number(p.prelist_awal || 0) || 0) > 0 ? (pmlPeriksa / Number(p.prelist_awal || 0)) * 100 : 0;
       rows.push(
         <TableRow key={`pml-${key}`} className="bg-slate-50 border-b">
@@ -2193,6 +2199,7 @@ export function MonitoringLapangan() {
             <div className="text-slate-500 text-xs">{pmlPct ? `${pmlPct.toFixed(2)}%` : '-'}</div>
           </TableCell>
           <TableCell className="text-right">{(Number(p.prelist_awal||0)).toLocaleString('id-ID')}</TableCell>
+          <TableCell className="text-right">{totalStatusForPml.toLocaleString('id-ID')}</TableCell>
           <TableCell className="text-right">{pmlPeriksa.toLocaleString('id-ID')}</TableCell>
           <TableCell className="text-right"><span className={getTextColorClassFor40Threshold(pmlPct)}>{pmlPct ? `${pmlPct.toFixed(2)}%` : '-'}</span></TableCell>
           <TableCell className="text-center">
@@ -2206,8 +2213,10 @@ export function MonitoringLapangan() {
       if (expandedPML.has(key)) {
         pplUnder.forEach((pp:any, kIdx:number) => {
           const prel = Number(pp.prelist_awal||0) || 0;
-          const num = (Number(pp.jumlah_approve||0) + Number(pp.jumlah_reject||0) + Number(pp.jumlah_revoke||0)) || 0;
-          const capaPPL = prel>0 ? (num / prel) * 100 : 0;
+          const approvedOrRejected = (Number(pp.jumlah_approve||0) + Number(pp.jumlah_reject||0) + Number(pp.jumlah_revoke||0)) || 0;
+          const ppSubmit = Number(pp.jumlah_submit || 0) || 0;
+          const ppTotalStatus = approvedOrRejected + ppSubmit;
+          const capaPPL = prel>0 ? (ppTotalStatus / prel) * 100 : 0;
           rows.push(
             <TableRow key={`${key}-ppl-${kIdx}`} className="bg-white">
               <TableCell />
@@ -2217,7 +2226,8 @@ export function MonitoringLapangan() {
               <TableCell className="text-right">-</TableCell>
               <TableCell className="text-right">-</TableCell>
               <TableCell className="text-right">{(prel).toLocaleString('id-ID')}</TableCell>
-              <TableCell className="text-right">{num.toLocaleString('id-ID')}</TableCell>
+              <TableCell className="text-right">{ppTotalStatus.toLocaleString('id-ID')}</TableCell>
+              <TableCell className="text-right">{approvedOrRejected.toLocaleString('id-ID')}</TableCell>
               <TableCell className="text-right"><span className={getTextColorClassFor40Threshold(capaPPL)}>{`${capaPPL.toFixed(2)}%`}</span></TableCell>
               <TableCell className="text-center">
                 {capaPPL >= 40 ? (
@@ -3924,6 +3934,18 @@ export function MonitoringLapangan() {
                               <TableHead
                                 className="text-right cursor-pointer"
                                 onClick={() => {
+                                  if (terminISortBy === 'total_status') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
+                                  setTerminISortBy('total_status');
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Total Status
+                                  {getTerminISortIcon('total_status')}
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right cursor-pointer"
+                                onClick={() => {
                                   if (terminISortBy === 'periksa') setTerminISortOrder(terminISortOrder === 'asc' ? 'desc' : 'asc');
                                   setTerminISortBy('periksa');
                                 }}
@@ -3976,6 +3998,7 @@ export function MonitoringLapangan() {
                             if (key === 'pct_met') return ((a.pctMet||0) - (b.pctMet||0)) * order;
                             if (key === 'prelist') return ((a.sumPrelistAwal||0) - (b.sumPrelistAwal||0)) * order;
                             if (key === 'periksa') return ((a.periksaPML||0) - (b.periksaPML||0)) * order;
+                            if (key === 'total_status') return ((a.totalStatus||0) - (b.totalStatus||0)) * order;
                             if (key === 'avg_capaian') return ((a.avgCapaian||0) - (b.avgCapaian||0)) * order;
                             if (key === 'status') {
                               const rank = (value: string) => (value === 'green' ? 3 : value === 'orange' ? 2 : 1);
@@ -4020,6 +4043,7 @@ export function MonitoringLapangan() {
                                   <div className="text-slate-500 text-xs">{(row.pctMet || 0).toFixed(2)}%</div>
                                 </TableCell>
                                 <TableCell className="text-right font-semibold">{(row.sumPrelistAwal || 0).toLocaleString('id-ID')}</TableCell>
+                                <TableCell className="text-right font-semibold">{(row.totalStatus || 0).toLocaleString('id-ID')}</TableCell>
                                 <TableCell className="text-right font-semibold">{(row.periksaPML || 0).toLocaleString('id-ID')}</TableCell>
                                 <TableCell className="text-right"><span className={`font-semibold ${getTextColorClassFor40Threshold(row.avgCapaian || 0)}`}>{(row.avgCapaian || 0).toFixed(2)}%</span></TableCell>
                                 <TableCell className="text-center">

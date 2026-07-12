@@ -257,8 +257,6 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
   // filter states (moved up to avoid TDZ when useMemo reads them)
   const [kecamatanFilter, setKecamatanFilter] = useState("");
   const [desaFilter, setDesaFilter] = useState("");
-  const [pplFilter, setPplFilter] = useState("");
-  const [pmlFilter, setPmlFilter] = useState("");
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"usaha"|"keluarga"|"anggota">("usaha");
 
@@ -324,23 +322,6 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
     return exact || getDescForPrefix(code, 4) || "";
   };
 
-  const pplOptions = useMemo(() => {
-    const s = new Set<string>();
-    allRows.forEach((r) => {
-      const p = String(getColumnValue(r, "nama_ppl", ["nama ppl", "ppl"], "")).trim();
-      if (p) s.add(p);
-    });
-    return Array.from(s).sort();
-  }, [allRows]);
-
-  const pmlOptions = useMemo(() => {
-    const s = new Set<string>();
-    allRows.forEach((r) => {
-      const p = String(getColumnValue(r, "nama_pml", ["nama pml", "pml"], "")).trim();
-      if (p) s.add(p);
-    });
-    return Array.from(s).sort();
-  }, [allRows]);
 
 
   // sorting per tab
@@ -391,14 +372,6 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
       const rowKecDesc = kodeToDesc[kode] || getRowDescription(row, kode);
       if (!rowKecDesc || isUnknownDesc(rowKecDesc)) return false;
     }
-    if (pplFilter) {
-      const p = String(getColumnValue(row, "nama_ppl", ["ppl", "nama ppl"], "")).trim();
-      if (!p.includes(pplFilter)) return false;
-    }
-    if (pmlFilter) {
-      const p = String(getColumnValue(row, "nama_pml", ["pml", "nama pml"], "")).trim();
-      if (!p.includes(pmlFilter)) return false;
-    }
     if (search) {
       const hay = Object.values(row).join(" ").toLowerCase();
       if (!hay.includes(search.toLowerCase())) return false;
@@ -409,11 +382,11 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
   const usahaRows = useMemo(() => {
     // Use only Progres_Usaha_BKU as primary rows (join with Usaha_Dlm_Rumah by code)
     return (usahaBku || []).filter(filterRow);
-  }, [usahaBku, usahaRumah, kecamatanFilter, desaFilter, pplFilter, pmlFilter, search]);
+  }, [usahaBku, usahaRumah, kecamatanFilter, desaFilter, search]);
 
-  const kkRows = useMemo(() => kkData.filter(filterRow), [kkData, kecamatanFilter, desaFilter, pplFilter, pmlFilter, search]);
+  const kkRows = useMemo(() => kkData.filter(filterRow), [kkData, kecamatanFilter, desaFilter, search]);
 
-  const anggotaRows = useMemo(() => anggotaData.filter(filterRow), [anggotaData, kecamatanFilter, desaFilter, pplFilter, pmlFilter, search]);
+  const anggotaRows = useMemo(() => anggotaData.filter(filterRow), [anggotaData, kecamatanFilter, desaFilter, search]);
 
   // build map from Usaha_Dlm_Rumah by code -> usaha dalam keluarga didata (col D)
   const usahaRumahMap = useMemo(() => {
@@ -699,14 +672,6 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
         <select disabled={!kecamatanFilter} className="border rounded px-3 py-2" value={desaFilter} onChange={(e) => setDesaFilter(e.target.value)}>
           <option value="">-- Semua Desa --</option>
           {desaOptions.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <select className="border rounded px-3 py-2" value={pplFilter} onChange={(e) => setPplFilter(e.target.value)}>
-          <option value="">-- Semua PPL --</option>
-          {pplOptions.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
-        <select className="border rounded px-3 py-2" value={pmlFilter} onChange={(e) => setPmlFilter(e.target.value)}>
-          <option value="">-- Semua PML --</option>
-          {pmlOptions.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>
 
