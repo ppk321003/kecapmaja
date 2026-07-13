@@ -452,6 +452,15 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
         const kode = String(getColumnValue(row, "kode", ["kode", "__col_0"], "")).trim();
         return getPrelistAwalForCode(prelistAwalMap, kode) ?? getColumnValue(row, "jumlah_prelist_usaha", ["prelist_usaha", "prelist"], "");
       }
+      // For percentage-based sorting, return percent vs prelist when applicable
+      const percentageFields = new Set(["ditemukan", "tutup", "ganda", "tidak_ditemukan", "baru", "total", "jumlah_usaha_dlm_keluarga", "total_usaha"]);
+      if (percentageFields.has(field)) {
+        const kode = String(getColumnValue(row, "kode", ["kode", "__col_0"], "")).trim();
+        const prelist = getPrelistAwalForCode(prelistAwalMap, kode) ?? getColumnValue(row, "jumlah_prelist_usaha", ["prelist_usaha", "prelist"], "0");
+        const rawVal = field === "jumlah_usaha_dlm_keluarga" ? (kode && usahaRumahMap[kode] !== undefined ? usahaRumahMap[kode] : getColumnValue(row, "usaha_dlm_keluarga", ["usaha dalam keluarga didata", "usaha_dlm_keluarga"], "0")) : getColumnValue(row, field, [], "0");
+        const pct = getPercent(rawVal, prelist);
+        return Number.isFinite(pct) ? pct : (parseNumber(rawVal) || "");
+      }
       if (field === "total_usaha") {
         const kode = String(getColumnValue(row, "kode", ["kode", "__col_0"], "")).trim();
         const ditemukan = parseNumber(getColumnValue(row, "ditemukan", ["ditemukan"], "0"));
@@ -478,9 +487,21 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
   const sortedKkRows = useMemo(() => {
     const arr = [...kkRows];
     if (!sortByKk) return arr;
+    const percentageFieldsKk = new Set(["ditemukan","keluarga_baru","meninggal","tidak_eligible","tidak_dapat_ditemui","tidak_ditemukan","keluarga_khusus","total_hasil_pendataan"]);
+    const getKkSortValue = (row: any, field: string) => {
+      if (field === "prelist_awal" || field === "prelist") return parseNumber(getColumnValue(row, "prelist_awal", ["prelist_awal", "prelist"], "0"));
+      if (percentageFieldsKk.has(field)) {
+        const prelist = parseNumber(getColumnValue(row, "prelist_awal", ["prelist_awal", "prelist"], "0"));
+        const raw = getColumnValue(row, field, [], "0");
+        const pct = getPercent(raw, prelist);
+        return Number.isFinite(pct) ? pct : parseNumber(raw);
+      }
+      return getColumnValue(row, field, [], "");
+    };
+
     arr.sort((a: any, b: any) => {
-      const va = getColumnValue(a, sortByKk, [], "");
-      const vb = getColumnValue(b, sortByKk, [], "");
+      const va = getKkSortValue(a, sortByKk);
+      const vb = getKkSortValue(b, sortByKk);
       const na = parseNumber(va);
       const nb = parseNumber(vb);
       if (Number.isFinite(na) && Number.isFinite(nb)) return sortOrderKk === "asc" ? na - nb : nb - na;
@@ -887,31 +908,84 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedKkRows.map((r: any, idx: number) => (
-                  <TableRow key={idx} className="even:bg-white">
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{getDisplayDesc(String(getColumnValue(r, "kode", ["kode", "__col_0"], "")).trim()) || "-"}</span>
-                        <span className="text-sm text-slate-500">{formatDisplayCode(String(getColumnValue(r, "kode", ["kode", "__col_0"], "")).trim())}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "prelist_awal", ["prelist_awal", "prelist"], "-"))}</TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "ditemukan", ["ditemukan"], "-"))}</TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "keluarga_baru", ["keluarga baru", "keluarga_baru"], "-"))}</TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "meninggal", ["meninggal"], "-"))}</TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "tidak_eligible", ["tidak eligible"], "-"))}</TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "tidak_dapat_ditemui", ["tdk dapat ditemui", "tidak dapat ditemui"], "-"))}</TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "tidak_ditemukan", ["tidak ditemukan"], "-"))}</TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "keluarga_khusus", ["keluarga khusus"], "-"))}</TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "total_hasil_pendataan", ["total hasil pendataan"], "-"))}</TableCell>
-                    {showPplPmlColumns ? (
-                      <>
-                        <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_ppl", ["nama_ppl", "nama ppl", "ppl"], "-"))}</TableCell>
-                        <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_pml", ["nama_pml", "nama pml", "pml"], "-"))}</TableCell>
-                      </>
-                    ) : null}
-                  </TableRow>
-                ))}
+                {sortedKkRows.map((r: any, idx: number) => {
+                  const kode = String(getColumnValue(r, "kode", ["kode", "__col_0"], "")).trim();
+                  const prelistValue = parseNumber(getColumnValue(r, "prelist_awal", ["prelist_awal", "prelist"], "0"));
+                  const ditemukanValue = getColumnValue(r, "ditemukan", ["ditemukan"], "0");
+                  const keluargaBaruValue = getColumnValue(r, "keluarga_baru", ["keluarga baru", "keluarga_baru"], "0");
+                  const meninggalValue = getColumnValue(r, "meninggal", ["meninggal"], "0");
+                  const tidakEligibleValue = getColumnValue(r, "tidak_eligible", ["tidak eligible"], "0");
+                  const tidakDapatDitemuiValue = getColumnValue(r, "tidak_dapat_ditemui", ["tdk dapat ditemui", "tidak dapat ditemui"], "0");
+                  const tidakDitemukanValue = getColumnValue(r, "tidak_ditemukan", ["tidak ditemukan"], "0");
+                  const keluargaKhususValue = getColumnValue(r, "keluarga_khusus", ["keluarga khusus"], "0");
+                  const totalHasilPendataanValue = getColumnValue(r, "total_hasil_pendataan", ["total hasil pendataan"], "0");
+
+                  return (
+                    <TableRow key={idx} className="even:bg-white">
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{getDisplayDesc(kode) || "-"}</span>
+                          <span className="text-sm text-slate-500">{formatDisplayCode(kode)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "prelist_awal", ["prelist_awal", "prelist"], "-"))}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{formatNumberValue(ditemukanValue)}</span>
+                          {(() => { const p = getPercent(ditemukanValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{formatNumberValue(keluargaBaruValue)}</span>
+                          {(() => { const p = getPercent(keluargaBaruValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{formatNumberValue(meninggalValue)}</span>
+                          {(() => { const p = getPercent(meninggalValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{formatNumberValue(tidakEligibleValue)}</span>
+                          {(() => { const p = getPercent(tidakEligibleValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{formatNumberValue(tidakDapatDitemuiValue)}</span>
+                          {(() => { const p = getPercent(tidakDapatDitemuiValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{formatNumberValue(tidakDitemukanValue)}</span>
+                          {(() => { const p = getPercent(tidakDitemukanValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{formatNumberValue(keluargaKhususValue)}</span>
+                          {(() => { const p = getPercent(keluargaKhususValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{formatNumberValue(totalHasilPendataanValue)}</span>
+                          {(() => { const p = getPercent(totalHasilPendataanValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                        </div>
+                      </TableCell>
+                      {showPplPmlColumns ? (
+                        <>
+                          <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_ppl", ["nama_ppl", "nama ppl", "ppl"], "-"))}</TableCell>
+                          <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_pml", ["nama_pml", "nama pml", "pml"], "-"))}</TableCell>
+                        </>
+                      ) : null}
+                    </TableRow>
+                  );
+                })}
                 <TableRow className="bg-slate-100 font-semibold">
                   <TableCell>Total</TableCell>
                   <TableCell className="text-center">{formatNumberValue(kkTotals.prelist)}</TableCell>
