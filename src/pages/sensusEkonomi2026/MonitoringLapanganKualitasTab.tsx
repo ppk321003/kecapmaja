@@ -785,7 +785,14 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-2">
                           <span>{formatNumberValue(tidakDitemukanValue)}</span>
-                          {(() => { const p = getPercent(tidakDitemukanValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                          {(() => {
+                            const p = getPercent(tidakDitemukanValue, prelistValue);
+                            if (!Number.isFinite(p)) return null;
+                            if (p >= 10) {
+                              return <span className="px-2 py-0.5 rounded text-xs font-medium bg-rose-600 text-white">{formatPercentValue(p)}</span>;
+                            }
+                            return <PercentBadge value={p} />;
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
@@ -845,7 +852,12 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-2">
                         <span>{formatNumberValue(usahaTotals.tidakDitemukan)}</span>
-                        {(() => { const p = getPercent(usahaTotals.tidakDitemukan, usahaTotals.prelist); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                        {(() => {
+                          const p = getPercent(usahaTotals.tidakDitemukan, usahaTotals.prelist);
+                          if (!Number.isFinite(p)) return null;
+                          if (p >= 10) return <span className="px-2 py-0.5 rounded text-xs font-medium bg-rose-600 text-white">{formatPercentValue(p)}</span>;
+                          return <PercentBadge value={p} />;
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
@@ -962,7 +974,14 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-2">
                           <span>{formatNumberValue(tidakDitemukanValue)}</span>
-                          {(() => { const p = getPercent(tidakDitemukanValue, prelistValue); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
+                          {(() => {
+                            const p = getPercent(tidakDitemukanValue, prelistValue);
+                            if (!Number.isFinite(p)) return null;
+                            if (p >= 10) {
+                              return <span className="px-2 py-0.5 rounded text-xs font-medium bg-rose-600 text-white">{formatPercentValue(p)}</span>;
+                            }
+                            return <PercentBadge value={p} />;
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
@@ -1019,12 +1038,19 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
                       {(() => { const p = getPercent(kkTotals.tidakDapatDitemui, kkTotals.prelist); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
                     </div>
                   </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <span>{formatNumberValue(kkTotals.tidakDitemukan)}</span>
-                      {(() => { const p = getPercent(kkTotals.tidakDitemukan, kkTotals.prelist); return Number.isFinite(p) ? <PercentBadge value={p} /> : null; })()}
-                    </div>
-                  </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <span>{formatNumberValue(kkTotals.tidakDitemukan)}</span>
+                        {(() => {
+                          const p = getPercent(kkTotals.tidakDitemukan, kkTotals.prelist);
+                          if (!Number.isFinite(p)) return null;
+                          if (p >= 10) {
+                            return <span className="px-2 py-0.5 rounded text-xs font-medium bg-rose-600 text-white">{formatPercentValue(p)}</span>;
+                          }
+                          return <PercentBadge value={p} />;
+                        })()}
+                      </div>
+                    </TableCell>
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-2">
                       <span>{formatNumberValue(kkTotals.keluargaKhusus)}</span>
