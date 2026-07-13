@@ -32,6 +32,7 @@ import {
   Star,
 } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from "@/contexts/AuthContext";
 import { MonitoringLastUpdated } from "@/components/MonitoringLastUpdated";
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider, TooltipTrigger as UITooltipTrigger } from "@/components/ui/tooltip";
@@ -157,6 +158,7 @@ interface PMLData {
 }
 
 const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
+const QUALITY_SPREADSHEET_ID = "1SddZLzyRYZaA7aP-Re7Q8WHqQCdfXIw01SepP-v8X4";
 const SHEET_NAME = "REKAP_SCRP";
 const SHEET_USERS = "Semua Users";
 const SHEET_AFIRMASI = "AFIRMASI";
@@ -1134,6 +1136,347 @@ const exportTerminIToExcel = (rows: any[]) => {
   XLSX.writeFile(wb, `TerminI_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
 
+// Export selected kecamatan/teams into one XLSX with sheet per petugas (PPL / PML)
+const exportSelectedToExcel = (
+  selectedKecs: string[],
+  selectedTeams: string[],
+  // pass needed data from the component to avoid referencing variables out of scope
+  ctx?: {
+    mitraData?: any[];
+    prelistData?: any[];
+    usersData?: any[];
+    aggregatedData?: any;
+    pmlDataWithActualSubmit?: any[];
+    qualityUsahaData?: any[];
+    qualityUsahaRumahData?: any[];
+    qualityKeluargaData?: any[];
+  }
+) => {
+  const mitraData = ctx?.mitraData || [];
+  const prelistData = ctx?.prelistData || [];
+  const usersData = ctx?.usersData || [];
+  const aggregatedData = ctx?.aggregatedData || { rows: [] };
+  const pmlDataWithActualSubmit = ctx?.pmlDataWithActualSubmit || [];
+  const qualityUsahaData = ctx?.qualityUsahaData || [];
+  const qualityUsahaRumahData = ctx?.qualityUsahaRumahData || [];
+  const qualityKeluargaData = ctx?.qualityKeluargaData || [];
+
+  console.log('[exportSelectedToExcel] called', {
+    selectedKecs,
+    selectedTeams,
+    mitraDataCount: mitraData.length,
+    prelistDataCount: prelistData.length,
+    usersDataCount: usersData.length,
+    qualityKeluargaDataCount: qualityKeluargaData.length,
+    qualityUsahaDataCount: qualityUsahaData.length,
+    qualityUsahaRumahDataCount: qualityUsahaRumahData.length,
+    aggregatedDataRows: aggregatedData.rows.length,
+    pmlDataWithActualSubmitCount: pmlDataWithActualSubmit.length,
+  });
+
+  const wb = XLSX.utils.book_new();
+
+  // helper to sanitize sheet name
+  const safeName = (s: string) => s.replace(/[\\/*?:\[\]]/g, '').slice(0, 31);
+
+  const parseCodeSegments = (code: string) => {
+    const c = String(code || '').replace(/[^0-9]/g, '').padEnd(16, '0');
+    return {
+      kec: c.substring(4, 7), // digits 5-7 (0-based)
+      desa: c.substring(7, 10), // 8-10
+      sls: c.substring(10, 16), // 11-16
+      full: c,
+    };
+  };
+
+  const normalizeNameForLookup = (name: string) => normalizeString(name).replace(/\s+/g, '');
+  const findSobatByName = (name: string) => {
+    const normalized = normalizeString(name);
+    if (!normalized) return '';
+    return mitraByName.get(normalized)
+      || mitraByNameAlt.get(normalized)
+      || mitraByNameAlt.get(normalized.replace(/\s+/g, ''))
+      || mitraByNameAlt.get(normalized.split(/\s+/).slice(0, 2).join(' '))
+      || '';
+  };
+
+  const mitraByEmail = new Map<string,string>();
+  const mitraByName = new Map<string,string>();
+  const mitraByNameAlt = new Map<string,string>();
+  (mitraData || []).forEach((m: any) => {
+    const email = normalizeString(getColumnValue(m, 'email', ['email', 'ai', 'email_pml', 'email_ppl'], '')).toLowerCase();
+    const name = normalizeString(getColumnValue(m, 'nama', ['nama', 'name', 'nama lengkap', 'full_name', 'nama_lengkap', 'nama_mitra', 'nama mitra'], '')).toLowerCase();
+    const sobat = String(getColumnValue(m, 'sobat id', ['sobat id', 'af', 'sobatid', 'sobat_id'], '')).trim();
+    if (email) mitraByEmail.set(email, sobat);
+    if (name) {
+      mitraByName.set(name, sobat);
+      const compactName = normalizeNameForLookup(name);
+      if (compactName) mitraByNameAlt.set(compactName, sobat);
+      const firstTwoWords = name.split(/\s+/).slice(0, 2).join(' ');
+      if (firstTwoWords) mitraByNameAlt.set(firstTwoWords, sobat);
+    }
+  });
+
+  const formatPercent = (value: number) => {
+    return Number(value).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const pmlDataByKey = new Map<string, any>();
+  (pmlDataWithActualSubmit || []).forEach((p: any) => {
+    const key = `${String(p.nama_pml || '').trim()}|${String(p.kecamatan || '').trim()}`;
+    pmlDataByKey.set(key, p);
+  });
+
+  const parseNumber = (value: any) => {
+    const n = Number(String(value ?? '').replace(/[^0-9.-]/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const normalizeCode = (value: any) => String(value ?? '').replace(/[^0-9]/g, '').trim();
+
+  const getRowCode = (row: any) => normalizeCode(getColumnValue(row, 'idsubsls_25_2', ['idsubsls_25_2', 'idsubsls', 'idsubsls252', 'kdsubsls', 'kdsls', 'kode', 'code', '__col_0', '__col_3'], ''));
+
+  function findBySlsKey<T>(map: Map<string, T>, sls: string): T | undefined {
+    const code = normalizeCode(sls);
+    if (!code) return undefined;
+    if (map.has(code)) return map.get(code);
+    const prefixes = [code];
+    if (code.length >= 10) prefixes.push(code.slice(0, 10));
+    if (code.length >= 7) prefixes.push(code.slice(0, 7));
+    if (code.length >= 4) prefixes.push(code.slice(0, 4));
+
+    for (const [key, value] of map.entries()) {
+      const normalizedKey = normalizeCode(key);
+      if (!normalizedKey) continue;
+      if (normalizedKey === code) return value;
+      if (prefixes.some((prefix) => normalizedKey.startsWith(prefix) || prefix.startsWith(normalizedKey))) {
+        return value;
+      }
+    }
+    return undefined;
+  }
+
+  // map Prelist Awal target from Prelist_Awal sheet by SLS
+  const prelistBySls = new Map<string, number>();
+  (prelistData || []).forEach((p: any) => {
+    const sls = normalizeCode(p['idsubsls_25_2'] || p['__col_3'] || p['__col_0'] || '');
+    if (!sls) return;
+    const totalVal = parseNumber(getColumnValue(p, 'total assignment fasih', ['total assignment fasih', 'total_assignment_fasih', 'total assignment', '__col_29'], '0'));
+    prelistBySls.set(sls, (prelistBySls.get(sls) || 0) + totalVal);
+  });
+
+  const qualityKeluargaBySls = new Map<string, { prelistAwal: number; totalHasilPendataan: number }>();
+  (qualityKeluargaData || []).forEach((row: any) => {
+    const code = getRowCode(row);
+    if (!code) return;
+    const prelistAwal = parseNumber(getColumnValue(row, 'prelist_awal', ['prelist_awal', 'prelist awal', 'prelist'], '0'));
+    const totalHasilPendataan = parseNumber(getColumnValue(row, 'total_hasil_pendataan', ['total_hasil_pendataan', 'total hasil pendataan', 'totalhasilpendataan'], '0'));
+    const current = qualityKeluargaBySls.get(code) || { prelistAwal: 0, totalHasilPendataan: 0 };
+    current.prelistAwal += prelistAwal;
+    current.totalHasilPendataan += totalHasilPendataan;
+    qualityKeluargaBySls.set(code, current);
+  });
+
+  const qualityUsahaBySls = new Map<string, { prelistAwal: number; totalUsaha: number }>();
+  (qualityUsahaData || []).forEach((row: any) => {
+    const code = getRowCode(row);
+    if (!code) return;
+    const prelistAwal = parseNumber(getColumnValue(row, 'jumlah_prelist_usaha', ['jumlah_prelist_usaha', 'jumlah prelist usaha', 'prelist_usaha', 'prelist'], '0'));
+    const totalUsaha = parseNumber(getColumnValue(row, 'total_usaha', ['total_usaha', 'jumlah usaha total', 'jumlah_usaha_total', 'total usaha', 'jumlah usaha'], '0'));
+    const current = qualityUsahaBySls.get(code) || { prelistAwal: 0, totalUsaha: 0 };
+    current.prelistAwal += prelistAwal;
+    current.totalUsaha += totalUsaha;
+    qualityUsahaBySls.set(code, current);
+  });
+
+  const exportDebug: any = {
+    counts: {
+      mitra: (mitraData || []).length,
+      prelist: (prelistData || []).length,
+      users: (usersData || []).length,
+      qualityKeluarga: (qualityKeluargaData || []).length,
+      qualityUsaha: (qualityUsahaData || []).length,
+      qualityUsahaRumah: (qualityUsahaRumahData || []).length,
+      prelistBySls: prelistBySls.size,
+      qualityKeluargaBySls: qualityKeluargaBySls.size,
+      qualityUsahaBySls: qualityUsahaBySls.size,
+    },
+    qualityKeluargaSample: Array.from(qualityKeluargaBySls.entries()).slice(0, 10),
+    qualityUsahaSample: Array.from(qualityUsahaBySls.entries()).slice(0, 10),
+    prelistBySlsSample: Array.from(prelistBySls.entries()).slice(0, 10),
+    userSlsByEmailSample: [],
+    usersWithEmailCount: 0,
+  };
+
+  console.log('[exportSelectedToExcel] exportDebug', exportDebug);
+
+  // map SLS assignments from usersData (sheet Semua Users) column H or __col_7
+  const usersSlsByEmail = new Map<string, string[]>();
+  const usersRowsByEmail = new Map<string, any[]>();
+  (usersData || []).forEach((u: any) => {
+    const email = String(getColumnValue(u, 'email', ['email', 'Email', 'ai'], '')).trim().toLowerCase();
+    if (!email) return;
+    exportDebug.usersWithEmailCount += 1;
+    const existingRows = usersRowsByEmail.get(email) || [];
+    existingRows.push(u);
+    usersRowsByEmail.set(email, existingRows);
+
+    // column H often maps to __col_7
+    const slsRaw = String(getColumnValue(u, 'sls', ['__col_7', 'H', 'h', 'sls', 'regioncode'], '')).trim();
+    if (slsRaw) {
+      console.debug('[exportSelectedToExcel] user sls row', { email, slsRaw, row: u });
+    }
+    if (!slsRaw) return;
+    // allow multiple entries separated by comma/space
+    const parts = slsRaw.split(/[,;\s]+/).map((s) => normalizeCode(s)).filter(Boolean);
+    if (parts.length === 0) return;
+    const existing = usersSlsByEmail.get(email) || [];
+    usersSlsByEmail.set(email, Array.from(new Set([...existing, ...parts])));
+  });
+
+  exportDebug.userSlsByEmailSample = Array.from(usersSlsByEmail.entries()).slice(0, 10);
+  console.log('[exportSelectedToExcel] usersSlsByEmail sample', exportDebug.userSlsByEmailSample);
+
+  // collect PPL rows and PML rows based on selections
+  const pplRows: any[] = [];
+  const pmlRows: any[] = [];
+
+  if ((selectedKecs || []).length > 0) {
+    // include all PPL/PML under selected kecamatan
+    (aggregatedData.rows || []).forEach((r: any) => {
+      if (selectedKecs.includes((r.kecamatan || '').trim())) pplRows.push(r);
+    });
+    (pmlDataWithActualSubmit || []).forEach((p: any) => {
+      if (selectedKecs.includes((p.kecamatan || '').trim())) pmlRows.push(p);
+    });
+  }
+
+  if ((selectedTeams || []).length > 0) {
+    selectedTeams.forEach((tk) => {
+      if (tk.startsWith('PPL: ')) {
+        const name = tk.replace('PPL: ', '').split('|')[0].trim();
+        const kc = (tk.split('|')[1] || '').trim();
+        const found = (aggregatedData.rows || []).find((r:any)=>r.nama_ppl===name && r.kecamatan===kc);
+        if (found) pplRows.push(found);
+      }
+      if (tk.startsWith('PML: ')) {
+        const name = tk.replace('PML: ', '').split('|')[0].trim();
+        const kc = (tk.split('|')[1] || '').trim();
+        const found = (pmlDataWithActualSubmit || []).find((p:any)=>p.nama_pml===name && p.kecamatan===kc);
+        if (found) pmlRows.push(found);
+      }
+    });
+  }
+
+  // ensure uniqueness
+  const pplUnique = Array.from(new Map(pplRows.map((r:any)=>[`${r.nama_ppl}|${r.kecamatan}`, r])).values());
+  const pmlUnique = Array.from(new Map(pmlRows.map((r:any)=>[`${r.nama_pml}|${r.kecamatan}`, r])).values());
+
+  const headers = ['No','Nama PML','Sobat ID PML','Nama PPL','Sobat ID PPL','KEC','DESA/LURAH','SLS/Sub-SLS','Prelist Keluarga','Prelist Usaha','Target Prelist Awal','Realisasi Keluarga','Realisasi Usaha','Jumlah Realisasi','Persentase (%)','Keterangan'];
+
+  // For PML entries, include a sheet per PML summarizing aggregated values
+  pmlUnique.forEach((p:any, idx:number) => {
+    const rows: any[] = [headers];
+    const emailPML = normalizeString(getColumnValue(p, 'email', ['email', 'email_pml', 'email_pml', 'email_pml', 'email_pml'], '')).toLowerCase();
+    const namePML = normalizeString(getColumnValue(p, 'nama_pml', ['nama_pml', 'nama pml', 'nama pml'], '')).toLowerCase();
+    const sobatPML = emailPML
+      ? mitraByEmail.get(emailPML) || findSobatByName(namePML)
+      : findSobatByName(namePML);
+    const jumlah = Number(p.actualSubmit || 0) + Number(p.jumlah_approve || 0) + Number(p.jumlah_reject || 0) + Number(p.jumlah_revoke || 0);
+    const prelistKeluarga = Number(p.prelist_keluarga || 0) || 0;
+    const prelistUsaha = Number(p.prelist_usaha || 0) || 0;
+    const target = Number(p.prelist_awal || 0) || prelistKeluarga + prelistUsaha;
+    const pct = target > 0 ? (jumlah / target) * 100 : 0;
+    rows.push([1, p.nama_pml || '', sobatPML || '', '', '', '', '', '', prelistKeluarga, prelistUsaha, target, '', '', jumlah, formatPercent(pct), '']);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, safeName(`PML - ${p.nama_pml}`));
+  });
+
+  // For PPL entries, include a sheet per PPL
+  pplUnique.forEach((r:any, idx:number) => {
+    const rows: any[] = [headers];
+    const emailPPL = normalizeString(String(r.email_ppl || r.email || '')).toLowerCase();
+    const pmlName = r.nama_pml || '';
+    const pmlKey = `${pmlName}|${String(r.kecamatan || '').trim()}`;
+    const pmlEntry = pmlDataByKey.get(pmlKey);
+    const pmlEntryEmail = normalizeString(getColumnValue(pmlEntry, 'email', ['email', 'email_pml', 'email_pml', 'email_pml'], '')).toLowerCase();
+    const pmlNameKey = normalizeString(pmlName).toLowerCase();
+    const sobatPML = pmlEntryEmail
+      ? mitraByEmail.get(pmlEntryEmail) || findSobatByName(pmlNameKey)
+      : findSobatByName(pmlNameKey);
+    const sobatPPL = emailPPL
+      ? mitraByEmail.get(emailPPL) || findSobatByName(r.nama_ppl || '')
+      : findSobatByName(r.nama_ppl || '');
+    const slsList = usersSlsByEmail.get(emailPPL) || [];
+    const userRows = usersRowsByEmail.get(emailPPL) || [];
+
+    let totalPrelistKeluargaSum = 0;
+    let totalPrelistUsahaSum = 0;
+    let totalTargetSum = 0;
+    let totalRealisasiKeluargaSum = 0;
+    let totalRealisasiUsahaSum = 0;
+    let totalJumlahSum = 0;
+
+    if (slsList.length === 0) {
+      // fallback single summary row
+      const jumlah = Number(r.jumlah_submit || 0) + Number(r.jumlah_approve || 0) + Number(r.jumlah_reject || 0) + Number(r.jumlah_revoke || 0);
+      const prelistKeluarga = Number(r.prelist_keluarga || 0) || 0;
+      const prelistUsaha = Number(r.prelist_usaha || 0) || 0;
+      const target = Number(r.prelist_awal || 0) || prelistKeluarga + prelistUsaha;
+      const realKeluarga = 0;
+      const realUsaha = 0;
+      const pct = target > 0 ? (jumlah / target) * 100 : 0;
+      rows.push([1, pmlName, sobatPML || '', r.nama_ppl || '', sobatPPL || '', '', '', '', prelistKeluarga, prelistUsaha, target, realKeluarga, realUsaha, jumlah, formatPercent(pct), '']);
+      totalPrelistKeluargaSum = prelistKeluarga;
+      totalPrelistUsahaSum = prelistUsaha;
+      totalTargetSum = target;
+      totalRealisasiKeluargaSum = realKeluarga;
+      totalRealisasiUsahaSum = realUsaha;
+      totalJumlahSum = jumlah;
+    } else {
+      let no = 1;
+      slsList.forEach((slsRaw) => {
+        const sls = String(slsRaw || '').trim();
+        const prelistKeluarga = findBySlsKey(qualityKeluargaBySls, sls)?.prelistAwal || 0;
+        const prelistUsaha = findBySlsKey(qualityUsahaBySls, sls)?.prelistAwal || 0;
+        const target = findBySlsKey(prelistBySls, sls) || prelistKeluarga + prelistUsaha;
+        const realKeluarga = findBySlsKey(qualityKeluargaBySls, sls)?.totalHasilPendataan || 0;
+        const realUsaha = findBySlsKey(qualityUsahaBySls, sls)?.totalUsaha || 0;
+        const jumlah = realKeluarga + realUsaha;
+        const pct = target > 0 ? (jumlah / target) * 100 : 0;
+        const seg = parseCodeSegments(sls);
+        rows.push([no++, pmlName, sobatPML || '', r.nama_ppl || '', sobatPPL || '', seg.kec, seg.desa, seg.sls, prelistKeluarga, prelistUsaha, target, realKeluarga, realUsaha, jumlah, formatPercent(pct), '']);
+        totalPrelistKeluargaSum += prelistKeluarga;
+        totalPrelistUsahaSum += prelistUsaha;
+        totalTargetSum += target;
+        totalRealisasiKeluargaSum += realKeluarga;
+        totalRealisasiUsahaSum += realUsaha;
+        totalJumlahSum += jumlah;
+      });
+    }
+
+    const pctTotal = totalTargetSum > 0 ? (totalJumlahSum / totalTargetSum) * 100 : 0;
+    rows.push(['', 'Total', '', '', '', '', '', '', totalPrelistKeluargaSum, totalPrelistUsahaSum, totalTargetSum, totalRealisasiKeluargaSum, totalRealisasiUsahaSum, totalJumlahSum, formatPercent(pctTotal), '']);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, safeName(`PPL - ${r.nama_ppl}`));
+  });
+
+  console.log('[exportSelectedToExcel] before writeFile', {
+    sheetCount: wb.SheetNames.length,
+    sheetNames: wb.SheetNames,
+  });
+
+  if (wb.SheetNames.length === 0) {
+    const aoa = [['No','Message'],[1,'No matching petugas found for selected filters']];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws, 'Info');
+  }
+
+  XLSX.writeFile(wb, `TerminI_Selected_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+export default MonitoringLapangan;
+
 interface PendingPPLEntry {
   name: string;
   pendingCount: number;
@@ -1249,7 +1592,7 @@ const PendingPPLCard = React.memo(({ entries, totalPPL, totalRows }: PendingPPLC
   );
 });
 
-export function MonitoringLapangan() {
+function MonitoringLapangan() {
   const { user } = useAuth();
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
   const isLoggedIn = !!user;
@@ -1290,7 +1633,43 @@ export function MonitoringLapangan() {
     spreadsheetId: SPREADSHEET_ID,
     sheetName: SHEET_PRELIST,
   });
+  const [qualityReloadCounter, setQualityReloadCounter] = useState(0);
+  const { data: qualityUsahaData, loading: qualityUsahaLoading, error: qualityUsahaError } = useGoogleSheetsData({
+    spreadsheetId: QUALITY_SPREADSHEET_ID,
+    sheetName: "Progres_Usaha_BKU",
+    refreshKey: qualityReloadCounter,
+  });
+  const { data: qualityUsahaRumahData, loading: qualityUsahaRumahLoading, error: qualityUsahaRumahError } = useGoogleSheetsData({
+    spreadsheetId: QUALITY_SPREADSHEET_ID,
+    sheetName: "Usaha_Dlm_Rumah",
+    refreshKey: qualityReloadCounter,
+  });
+  const { data: qualityKeluargaData, loading: qualityKeluargaLoading, error: qualityKeluargaError } = useGoogleSheetsData({
+    spreadsheetId: QUALITY_SPREADSHEET_ID,
+    sheetName: "Pemutakhiran_KK",
+    refreshKey: qualityReloadCounter,
+  });
+  useEffect(() => {
+    console.debug('[useQualitySheets] status', {
+      qualityUsahaLoading,
+      qualityUsahaRumahLoading,
+      qualityKeluargaLoading,
+      qualityUsahaCount: qualityUsahaData?.length ?? 0,
+      qualityUsahaRumahCount: qualityUsahaRumahData?.length ?? 0,
+      qualityKeluargaCount: qualityKeluargaData?.length ?? 0,
+      qualityReloadCounter,
+      qualityUsahaError,
+      qualityUsahaRumahError,
+      qualityKeluargaError,
+    });
+  }, [qualityUsahaData, qualityUsahaRumahData, qualityKeluargaData, qualityUsahaLoading, qualityUsahaRumahLoading, qualityKeluargaLoading, qualityReloadCounter]);
+  const { data: mitraData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: "IMP.MITRA",
+  });
   const [searchTerm, setSearchTerm] = useState("");
+  const qualitySheetsLoading = qualityUsahaLoading || qualityUsahaRumahLoading || qualityKeluargaLoading;
+  const qualitySheetsReady = !qualitySheetsLoading && qualityUsahaData.length > 0 && qualityKeluargaData.length > 0;
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
   const [debouncedPMLSearchTerm, setDebouncedPMLSearchTerm] = useState("");
@@ -1301,6 +1680,8 @@ export function MonitoringLapangan() {
   const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg" | "prelist_awal" | "capaian">("dailyavg");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [fetchReport, setFetchReport] = useState({ requestPayload: '', responseBody: '', errorMessage: '' });
+  const [diagnosticRunning, setDiagnosticRunning] = useState(false);
   useEffect(() => {
     if (!isLoggedIn && (activeTab === 'afirmasi-ratih' || activeTab === 'afirmasi-ledya')) {
       setActiveTab('dashboard');
@@ -1308,6 +1689,9 @@ export function MonitoringLapangan() {
   }, [activeTab, isLoggedIn]);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentPagePML, setCurrentPagePML] = useState(1);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [selectedKecamatans, setSelectedKecamatans] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [itemsPerPagePPL, setItemsPerPagePPL] = useState(20);
   const [itemsPerPagePML, setItemsPerPagePML] = useState(20);
   const [terminISearchTerm, setTerminISearchTerm] = useState("");
@@ -3824,13 +4208,229 @@ export function MonitoringLapangan() {
 
                   <div className="flex items-center gap-3">
                     {isLoggedIn && terminIAggregates.length > 0 && (
-                      <button
-                        onClick={() => exportTerminIToExcel(terminIAggregates)}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download XLSX
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setShowExportDialog(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                          Download XLSX
+                        </button>
+                        <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Export Termin I — Pilih Kecamatan / Tim</DialogTitle>
+                              <DialogDescription>Pilih kecamatan dan/atau tim untuk diekspor. Opsi yang belum memenuhi 40% akan dinonaktifkan.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <div className="text-sm font-medium mb-2">Pilih Kecamatan (multi)</div>
+                                <div className="max-h-40 overflow-auto border rounded p-2 grid grid-cols-2 gap-2">
+                                  {terminIAggregates.map((t) => {
+                                    const disabled = (t.pctMet || 0) < 40;
+                                    return (
+                                      <label key={t.kecamatan} className={`flex items-center gap-2 text-sm ${disabled ? 'opacity-50' : ''}`}>
+                                        <input type="checkbox" disabled={disabled} checked={selectedKecamatans.includes(t.kecamatan)} onChange={(e) => {
+                                          if (e.target.checked) setSelectedKecamatans(prev => Array.from(new Set([...prev, t.kecamatan])));
+                                          else setSelectedKecamatans(prev => prev.filter(x => x !== t.kecamatan));
+                                        }} />
+                                        <span>{t.kecamatan} — {Number(t.pctMet || 0).toFixed(2)}%</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="text-sm font-medium mb-2">Pilih Tim (PPL / PML) (multi)</div>
+                                <div className="max-h-40 overflow-auto border rounded p-2 grid grid-cols-1 gap-2">
+                                  {[...new Set([...(aggregatedData.rows || []).map((r:any)=>`PPL: ${r.nama_ppl} | ${r.kecamatan}`), ...(pmlDataWithActualSubmit || []).map((p:any)=>`PML: ${p.nama_pml} | ${p.kecamatan}`)])].map((teamKey) => {
+                                    const isPML = teamKey.startsWith('PML: ');
+                                    const name = teamKey.replace(/^PPL: |^PML: /, '');
+                                    let pct = 0;
+                                    if (isPML) {
+                                      const parts = name.split('|').map(s=>s.trim());
+                                      const nm = parts[0]; const kc = parts[1] || '';
+                                      const found = (pmlDataWithActualSubmit || []).find((x:any)=>x.nama_pml===nm && x.kecamatan===kc);
+                                      pct = found ? (found.capaianPercent || found.capaian || 0) : 0;
+                                    } else {
+                                      const parts = name.split('|').map(s=>s.trim());
+                                      const nm = parts[0]; const kc = parts[1] || '';
+                                      const found = (aggregatedData.rows || []).find((x:any)=>x.nama_ppl===nm && x.kecamatan===kc);
+                                      if (found) {
+                                        const prel = Number(found.prelist_awal || 0) || 0;
+                                        const num = (Number(found.jumlah_submit||0)+Number(found.jumlah_approve||0)+Number(found.jumlah_reject||0)+Number(found.jumlah_revoke||0))||0;
+                                        pct = prel>0 ? (num / prel) * 100 : 0;
+                                      }
+                                    }
+                                    const disabled = Number(pct) < 40;
+                                    return (
+                                      <label key={teamKey} className={`flex items-center gap-2 text-sm ${disabled ? 'opacity-50' : ''}`}>
+                                        <input type="checkbox" disabled={disabled} checked={selectedTeams.includes(teamKey)} onChange={(e) => {
+                                          if (e.target.checked) setSelectedTeams(prev => Array.from(new Set([...prev, teamKey])));
+                                          else setSelectedTeams(prev => prev.filter(x => x !== teamKey));
+                                        }} />
+                                        <span>{teamKey} — {Number(pct).toFixed(2)}%</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <div className="text-sm text-slate-700 px-3 py-2 rounded border border-slate-200 bg-slate-50">
+                                  {qualitySheetsLoading
+                                    ? 'Sedang memuat quality data...'
+                                    : `Quality data rows: Usaha ${qualityUsahaData.length}, Keluarga ${qualityKeluargaData.length}.`}
+                                </div>
+                                {/* Fetch failure reporting UI - allow user to paste details for support */}
+                                <div className="mt-2 p-3 border border-slate-100 rounded bg-white">
+                                  <div className="font-semibold mb-1">Laporkan masalah pemuatan quality sheets</div>
+                                  <div className="text-xs text-slate-600 mb-2">Jika quality data tetap kosong, salin detail berikut dari DevTools dan tempel di kotak di bawah lalu kirim ke saya: 1) Response body (Network → google-sheets → Response), 2) Request payload (Payload tab), 3) Error console messages atau status code. Gunakan tombol "Salin template" untuk mempermudah.</div>
+                                  <div className="flex gap-2 mb-2">
+                                    <button
+                                      type="button"
+                                      className="px-2 py-1 bg-slate-100 text-slate-800 rounded border border-slate-200 hover:bg-slate-200 text-sm"
+                                      onClick={() => {
+                                        const template = `-- TEMPLATE: Isi detail fetch google-sheets --\nTimestamp: ${new Date().toISOString()}\nFunction: google-sheets\nSpreadsheetId: ${QUALITY_SPREADSHEET_ID}\nSheetName: Pemutakhiran_KK (and others)\n\n[REQUEST PAYLOAD]\n{...}\n\n[RESPONSE BODY]\n{...}\n\n[CONSOLE ERRORS]\n{...}\n`;
+                                        try {
+                                          navigator.clipboard.writeText(template);
+                                          // Best-effort: also prefill the response field if available in this runtime
+                                          setFetchReport(prev => ({ ...prev, responseBody: prev.responseBody || template }));
+                                          console.info('[TerminI] Template copied to clipboard');
+                                        } catch (e) {
+                                          console.warn('Clipboard not available', e);
+                                        }
+                                      }}
+                                    >
+                                      Salin template
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="px-2 py-1 bg-white text-slate-800 rounded border border-slate-200 hover:bg-slate-50 text-sm"
+                                      onClick={() => {
+                                        // autofill a minimal request payload snippet
+                                        const sample = `{"spreadsheetId":"${QUALITY_SPREADSHEET_ID}","operation":"read","range":"Pemutakhiran_KK"}`;
+                                        setFetchReport(prev => ({ ...prev, requestPayload: prev.requestPayload || sample }));
+                                      }}
+                                    >
+                                      Isi payload contoh
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="px-2 py-1 bg-emerald-600 text-white rounded border border-emerald-700 hover:bg-emerald-700 text-sm"
+                                      onClick={async () => {
+                                        try {
+                                          setDiagnosticRunning(true);
+                                          const tryIds = [QUALITY_SPREADSHEET_ID, '1SddZLzyRYZaA7aP-Re7Q8WHqQCdfXIw01SepP-v8Kx4'];
+                                          const ranges = ['Progres_Usaha_BKU', 'Usaha_Dlm_Rumah', 'Pemutakhiran_KK', 'Pemutakhiran_Anggota_K'];
+                                          let combinedResponse = '';
+                                          for (const sid of tryIds) {
+                                            for (const rangeName of ranges) {
+                                              const payload = { spreadsheetId: sid, operation: 'read', range: rangeName };
+                                              combinedResponse += `REQUEST => ${JSON.stringify(payload)}\n`;
+                                              try {
+                                                // invoke supabase function from browser
+                                                // @ts-ignore
+                                                const { data: resp, error } = await supabase.functions.invoke('google-sheets', { body: payload });
+                                                if (error) {
+                                                  combinedResponse += `ERROR => ${String(error)}\n\n`;
+                                                } else {
+                                                  combinedResponse += `RESPONSE => ${JSON.stringify(resp)}\n\n`;
+                                                }
+                                              } catch (e: any) {
+                                                combinedResponse += `EXCEPTION => ${String(e)}\n\n`;
+                                              }
+                                            }
+                                          }
+                                          setFetchReport(prev => ({ ...prev, requestPayload: prev.requestPayload || 'Ran diagnostics', responseBody: combinedResponse, errorMessage: '' }));
+                                          console.debug('[TerminI] diagnostics result', combinedResponse);
+                                        } finally {
+                                          setDiagnosticRunning(false);
+                                        }
+                                      }}
+                                    >
+                                      Jalankan diagnosa
+                                    </button>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div>
+                                      <div className="text-xs font-medium">Request payload (Payload tab)</div>
+                                      <textarea value={fetchReport.requestPayload} onChange={(e) => setFetchReport(prev => ({ ...prev, requestPayload: e.target.value }))} className="w-full h-20 p-2 border rounded text-xs" placeholder="Tempel request payload di sini" />
+                                    </div>
+                                    <div>
+                                      <div className="text-xs font-medium">Response body (Network → Response)</div>
+                                      <textarea value={fetchReport.responseBody} onChange={(e) => setFetchReport(prev => ({ ...prev, responseBody: e.target.value }))} className="w-full h-28 p-2 border rounded text-xs" placeholder="Tempel response body di sini (JSON atau teks)" />
+                                    </div>
+                                    <div>
+                                      <div className="text-xs font-medium">Console / Error message</div>
+                                      <input value={fetchReport.errorMessage} onChange={(e) => setFetchReport(prev => ({ ...prev, errorMessage: e.target.value }))} className="w-full p-2 border rounded text-xs" placeholder="Tempel console.error output atau status code" />
+                                    </div>
+                                    <div className="flex gap-2 justify-end mt-2">
+                                      <button type="button" className="px-3 py-1 border rounded text-sm" onClick={() => setFetchReport({ requestPayload: '', responseBody: '', errorMessage: '' })}>Bersihkan</button>
+                                      <button type="button" className="px-3 py-1 bg-blue-600 text-white rounded text-sm" onClick={() => {
+                                        console.log('[TerminI] user-submitted fetch report', fetchReport);
+                                        // also copy to clipboard for easy paste into chat
+                                        try { navigator.clipboard.writeText(JSON.stringify({ ...fetchReport, timestamp: new Date().toISOString() }, null, 2)); } catch (e) {}
+                                        alert('Detail disalin ke clipboard. Silakan tempel di chat kepada saya.');
+                                      }}>Salin & Kirim</button>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2 items-center">
+                                  <button
+                                    type="button"
+                                    className="px-3 py-2 bg-slate-100 text-slate-800 rounded border border-slate-200 hover:bg-slate-200"
+                                    onClick={() => setQualityReloadCounter((prev) => prev + 1)}
+                                  >
+                                    Muat ulang quality data
+                                  </button>
+                                    {!qualitySheetsReady && (
+                                      <div className="text-sm text-orange-600 px-3 py-2 rounded border border-orange-200 bg-orange-50">
+                                        Menunggu quality data selesai dimuat. Jika export masih dinonaktifkan, tekan "Muat ulang quality data".
+                                      </div>
+                                    )}
+                                    {(qualityUsahaError || qualityUsahaRumahError || qualityKeluargaError) && (
+                                      <div className="text-sm text-red-700 px-3 py-2 rounded border border-red-200 bg-red-50">
+                                        <div className="font-semibold">Terjadi error saat memuat quality sheets:</div>
+                                        {qualityUsahaError && <div>Progres_Usaha_BKU: {String(qualityUsahaError)}</div>}
+                                        {qualityUsahaRumahError && <div>Usaha_Dlm_Rumah: {String(qualityUsahaRumahError)}</div>}
+                                        {qualityKeluargaError && <div>Pemutakhiran_KK: {String(qualityKeluargaError)}</div>}
+                                      </div>
+                                    )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-end gap-2">
+                                <button className="px-3 py-2 border rounded" onClick={() => setShowExportDialog(false)}>Batal</button>
+                                <button
+                                  className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                  disabled={!qualitySheetsReady}
+                                  onClick={() => {
+                                    console.log('[TerminI] export button clicked', { selectedKecamatans, selectedTeams });
+                                    if (!qualitySheetsReady) {
+                                      console.warn('[TerminI] export blocked because quality sheets are not ready', {
+                                        qualityUsahaLoading,
+                                        qualityKeluargaLoading,
+                                        qualityUsahaRumahLoading,
+                                        qualityUsahaDataCount: qualityUsahaData.length,
+                                        qualityKeluargaDataCount: qualityKeluargaData.length,
+                                      });
+                                      return;
+                                    }
+                                    try {
+                                      exportSelectedToExcel(selectedKecamatans, selectedTeams, { mitraData, prelistData, usersData, aggregatedData, pmlDataWithActualSubmit, qualityUsahaData, qualityUsahaRumahData, qualityKeluargaData });
+                                    } catch (err) {
+                                      console.error('[TerminI] exportSelectedToExcel failed', err);
+                                    }
+                                    setShowExportDialog(false);
+                                  }}
+                                >Export</button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </>
                     )}
 
                     <div className="relative">
@@ -5243,5 +5843,3 @@ export function MonitoringLapangan() {
     </div>
   );
 }
-
-export default MonitoringLapangan;

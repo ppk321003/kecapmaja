@@ -6,9 +6,10 @@ interface UseGoogleSheetsDataProps {
   sheetName: string;
   range?: string;
   mode?: "rows" | "single-cell";
+  refreshKey?: any;
 }
 
-export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "rows" }: UseGoogleSheetsDataProps) => {
+export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "rows", refreshKey }: UseGoogleSheetsDataProps) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,9 +26,21 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
           }
         });
 
-        if (error) throw error;
+        // debug: log raw response and any function-level error
+        try {
+          console.debug(`[useGoogleSheetsData] raw response for ${sheetName}`, response);
+        } catch (e) {
+          /* ignore */
+        }
+
+        if (error) {
+          console.error(`[useGoogleSheetsData] error invoking google-sheets for ${sheetName}`, error);
+          throw error;
+        }
 
         const rows = response?.values || [];
+        // debug: show fetched row count for this sheet
+        console.debug(`[useGoogleSheetsData] fetched sheet ${sheetName}`, { rowCount: rows.length });
 
         if (mode === "single-cell") {
           const firstCell = Array.isArray(rows[0]) ? rows[0][0] : rows[0];
@@ -68,6 +81,12 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
 
         if (rows.length > headerRowIndex + 1) {
           let headers = rows[headerRowIndex];
+          // debug: header detection preview
+          try {
+            console.debug(`[useGoogleSheetsData] headerRowIndex for ${sheetName}`, { headerRowIndex, headersPreview: Array.isArray(headers) ? headers.slice(0, 10) : headers });
+          } catch (e) {
+            /* ignore */
+          }
           // Default: use the row immediately after the detected header as data start.
           // Some sheets include an extra sub-header/notes row after the header (e.g. Mikro Anomali Usaha/Keluarga),
           // so allow per-sheet extra-skip here.
@@ -114,6 +133,8 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
             obj.__rawRow = row;
             return obj;
           });
+          // debug: parsed data rows count
+          console.debug(`[useGoogleSheetsData] parsed dataRows for ${sheetName}`, { dataStartIndex, dataRowsCount: dataRows.length });
           setData(dataRows);
         }
       } catch (err: any) {
@@ -125,7 +146,7 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
     };
 
     fetchData();
-  }, [spreadsheetId, sheetName, range]);
+  }, [spreadsheetId, sheetName, range, refreshKey]);
 
   return { data, loading, error };
 };
