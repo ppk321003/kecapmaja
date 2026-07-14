@@ -158,7 +158,8 @@ interface PMLData {
 }
 
 const SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
-const QUALITY_SPREADSHEET_ID = "1SddZLzyRYZaA7aP-Re7Q8WHqQCdfXIw01SepP-v8X4";
+const QUALITY_SPREADSHEET_ID = "1SddZLzyRYZaA7aP-Re7Q8WHqQCdfXIw01SepP-v8Kx4"; // Correct quality data spreadsheet ID
+const QUALITY_SPREADSHEET_ID_FALLBACK = "1SddZLzyRYZaA7aP-Re7Q8WHqQCdfXIw01SepP-v8X4"; // Legacy/alternate ID used for diagnostics
 const SHEET_NAME = "REKAP_SCRP";
 const SHEET_USERS = "Semua Users";
 const SHEET_AFIRMASI = "AFIRMASI";
@@ -1157,8 +1158,9 @@ const exportSelectedToExcel = (
   const usersData = ctx?.usersData || [];
   const aggregatedData = ctx?.aggregatedData || { rows: [] };
   const pmlDataWithActualSubmit = ctx?.pmlDataWithActualSubmit || [];
-  const qualityUsahaData = ctx?.qualityUsahaData || [];
+  const qualityUsahaBkuData = ctx?.qualityUsahaData || [];
   const qualityUsahaRumahData = ctx?.qualityUsahaRumahData || [];
+  const qualityUsahaData = [...qualityUsahaBkuData, ...qualityUsahaRumahData];
   const qualityKeluargaData = ctx?.qualityKeluargaData || [];
 
   console.log('[exportSelectedToExcel] called', {
@@ -1175,6 +1177,9 @@ const exportSelectedToExcel = (
   });
 
   const wb = XLSX.utils.book_new();
+  const today = new Date();
+  const daysElapsed = Math.floor((today.getTime() - SCHEDULE_START.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const elapsedDays = Math.max(0, Math.min(daysElapsed, TOTAL_DAYS));
 
   // helper to sanitize sheet name
   const safeName = (s: string) => s.replace(/[\\/*?:\[\]]/g, '').slice(0, 31);
@@ -1249,7 +1254,10 @@ const exportSelectedToExcel = (
       const normalizedKey = normalizeCode(key);
       if (!normalizedKey) continue;
       if (normalizedKey === code) return value;
-      if (prefixes.some((prefix) => normalizedKey.startsWith(prefix) || prefix.startsWith(normalizedKey))) {
+      if (prefixes.some((prefix) => normalizedKey.startsWith(prefix) || prefix.startsWith(normalizedKey) || normalizedKey.endsWith(prefix) || prefix.endsWith(normalizedKey))) {
+        return value;
+      }
+      if (normalizedKey.includes(code) || code.includes(normalizedKey)) {
         return value;
       }
     }
@@ -1258,11 +1266,17 @@ const exportSelectedToExcel = (
 
   // map Prelist Awal target from Prelist_Awal sheet by SLS
   const prelistBySls = new Map<string, number>();
+  const prelistUsahaBySls = new Map<string, number>();
   (prelistData || []).forEach((p: any) => {
     const sls = normalizeCode(p['idsubsls_25_2'] || p['__col_3'] || p['__col_0'] || '');
     if (!sls) return;
     const totalVal = parseNumber(getColumnValue(p, 'total assignment fasih', ['total assignment fasih', 'total_assignment_fasih', 'total assignment', '__col_29'], '0'));
+    const umk = parseNumber(getColumnValue(p, 'umk', ['umk'], '0'));
+    const um = parseNumber(getColumnValue(p, 'um', ['um'], '0'));
+    const ub = parseNumber(getColumnValue(p, 'ub', ['ub'], '0'));
+    const usahaVal = umk + um + ub;
     prelistBySls.set(sls, (prelistBySls.get(sls) || 0) + totalVal);
+    prelistUsahaBySls.set(sls, (prelistUsahaBySls.get(sls) || 0) + usahaVal);
   });
 
   const qualityKeluargaBySls = new Map<string, { prelistAwal: number; totalHasilPendataan: number }>();
@@ -1277,16 +1291,54 @@ const exportSelectedToExcel = (
     qualityKeluargaBySls.set(code, current);
   });
 
-  const qualityUsahaBySls = new Map<string, { prelistAwal: number; totalUsaha: number }>();
-  (qualityUsahaData || []).forEach((row: any) => {
+  const usahaRumahBySls = new Map<string, number>();
+  const usahaRumahByPml = new Map<string, number>();
+  (qualityUsahaRumahData || []).forEach((row: any) => {
+    const code = getRowCode(row);
+    const usahaDalamKeluarga = parseNumber(getColumnValue(row, 'jumlah_usaha_dlm_keluarga', ['jumlah usaha dalam keluarga yang berhasil didata', 'jumlah_usaha_dlm_keluarga', 'usaha dalam keluarga didata', 'usaha_dlm_keluarga', '__col_3', 'd'], '0'));
+    if (code && usahaDalamKeluarga) {
+      usahaRumahBySls.set(code, (usahaRumahBySls.get(code) || 0) + usahaDalamKeluarga);
+    }
+    const pmlNameVal = normalizeString(getColumnValue(row, 'nama_pml', ['nama_pml', 'nama pml', 'pml'], '')).toLowerCase();
+    const kec = String(getColumnValue(row, 'kecamatan', ['kecamatan', 'nama_kecamatan'], '')).trim();
+    if (pmlNameVal && usahaDalamKeluarga) {
+      const key = `${pmlNameVal}|${kec}`;
+      usahaRumahByPml.set(key, (usahaRumahByPml.get(key) || 0) + usahaDalamKeluarga);
+    }
+  });
+
+  const qualityUsahaBySls = new Map<string, { prelistAwal: number; totalUsaha: number; usahaDalamKeluarga: number }>();
+  // Use Progres_Usaha_BKU as the primary source for total progress, then add Rumah usaha keluarga
+  (qualityUsahaBkuData || []).forEach((row: any) => {
     const code = getRowCode(row);
     if (!code) return;
     const prelistAwal = parseNumber(getColumnValue(row, 'jumlah_prelist_usaha', ['jumlah_prelist_usaha', 'jumlah prelist usaha', 'prelist_usaha', 'prelist'], '0'));
-    const totalUsaha = parseNumber(getColumnValue(row, 'total_usaha', ['total_usaha', 'jumlah usaha total', 'jumlah_usaha_total', 'total usaha', 'jumlah usaha'], '0'));
-    const current = qualityUsahaBySls.get(code) || { prelistAwal: 0, totalUsaha: 0 };
+    const totalProgres = parseNumber(getColumnValue(row, 'total', ['total', 'total_usaha', 'total usaha', 'jumlah_usaha_total', 'jumlah usaha total'], '0'));
+    const usahaDalamKeluarga = usahaRumahBySls.get(code) || 0;
+    const totalUsaha = totalProgres + usahaDalamKeluarga;
+    const current = qualityUsahaBySls.get(code) || { prelistAwal: 0, totalUsaha: 0, usahaDalamKeluarga: 0 };
     current.prelistAwal += prelistAwal;
     current.totalUsaha += totalUsaha;
+    current.usahaDalamKeluarga += usahaDalamKeluarga;
     qualityUsahaBySls.set(code, current);
+  });
+
+  // Aggregate quality usaha by PML (used for PML-level summary export)
+  const qualityUsahaByPml = new Map<string, { prelist: number; totalUsaha: number; usahaDalamKeluarga: number }>();
+  (qualityUsahaBkuData || []).forEach((row: any) => {
+    const pmlNameVal = normalizeString(getColumnValue(row, 'nama_pml', ['nama_pml', 'nama pml', 'pml'], '')).toLowerCase();
+    const kec = String(getColumnValue(row, 'kecamatan', ['kecamatan', 'nama_kecamatan'], '')).trim();
+    if (!pmlNameVal) return;
+    const key = `${pmlNameVal}|${kec}`;
+    const pre = parseNumber(getColumnValue(row, 'jumlah_prelist_usaha', ['jumlah_prelist_usaha', 'jumlah prelist usaha', 'prelist_usaha', 'prelist'], '0'));
+    const totalProgres = parseNumber(getColumnValue(row, 'total', ['total', 'total_usaha', 'total usaha', 'jumlah_usaha_total', 'jumlah usaha total'], '0'));
+    const usahaDalamKeluarga = usahaRumahByPml.get(key) || 0;
+    const totalUsaha = totalProgres + usahaDalamKeluarga;
+    const cur = qualityUsahaByPml.get(key) || { prelist: 0, totalUsaha: 0, usahaDalamKeluarga: 0 };
+    cur.prelist += pre;
+    cur.totalUsaha += totalUsaha;
+    cur.usahaDalamKeluarga += usahaDalamKeluarga;
+    qualityUsahaByPml.set(key, cur);
   });
 
   const exportDebug: any = {
@@ -1373,21 +1425,71 @@ const exportSelectedToExcel = (
   const pmlUnique = Array.from(new Map(pmlRows.map((r:any)=>[`${r.nama_pml}|${r.kecamatan}`, r])).values());
 
   const headers = ['No','Nama PML','Sobat ID PML','Nama PPL','Sobat ID PPL','KEC','DESA/LURAH','SLS/Sub-SLS','Prelist Keluarga','Prelist Usaha','Target Prelist Awal','Realisasi Keluarga','Realisasi Usaha','Jumlah Realisasi','Persentase (%)','Keterangan'];
+  const pplExportHeaders = ['No','Kecamatan','Nama PPL','Nama PML','Prelist Awal','Draft','Reject','Revoke','Submit','Approve','% Capaian','Rata-rata Harian'];
 
-  // For PML entries, include a sheet per PML summarizing aggregated values
+  // For PML entries, include a sheet per PML with child PPL rows and PPL export headers
   pmlUnique.forEach((p:any, idx:number) => {
-    const rows: any[] = [headers];
+    const rows: any[] = [pplExportHeaders];
     const emailPML = normalizeString(getColumnValue(p, 'email', ['email', 'email_pml', 'email_pml', 'email_pml', 'email_pml'], '')).toLowerCase();
     const namePML = normalizeString(getColumnValue(p, 'nama_pml', ['nama_pml', 'nama pml', 'nama pml'], '')).toLowerCase();
     const sobatPML = emailPML
       ? mitraByEmail.get(emailPML) || findSobatByName(namePML)
       : findSobatByName(namePML);
-    const jumlah = Number(p.actualSubmit || 0) + Number(p.jumlah_approve || 0) + Number(p.jumlah_reject || 0) + Number(p.jumlah_revoke || 0);
-    const prelistKeluarga = Number(p.prelist_keluarga || 0) || 0;
-    const prelistUsaha = Number(p.prelist_usaha || 0) || 0;
-    const target = Number(p.prelist_awal || 0) || prelistKeluarga + prelistUsaha;
-    const pct = target > 0 ? (jumlah / target) * 100 : 0;
-    rows.push([1, p.nama_pml || '', sobatPML || '', '', '', '', '', '', prelistKeluarga, prelistUsaha, target, '', '', jumlah, formatPercent(pct), '']);
+    const normalizedPmlName = normalizeString(p.nama_pml || '');
+    const pmlKec = String(p.kecamatan || '').trim();
+    const childPplRows = Array.from(
+      new Map(
+        (aggregatedData.rows || [])
+          .filter((r: any) => normalizeString(r.nama_pml || '') === normalizedPmlName && String(r.kecamatan || '').trim() === pmlKec)
+          .map((r: any) => [`${String(r.nama_ppl || '').trim()}|${String(r.kecamatan || '').trim()}`, r])
+      ).values()
+    );
+
+    if (childPplRows.length > 0) {
+      let childIndex = 1;
+      childPplRows.forEach((r: any) => {
+        const emailPPL = normalizeString(String(r.email_ppl || r.email || '')).toLowerCase();
+        const pmlName = r.nama_pml || '';
+        const pmlKey = `${pmlName}|${String(r.kecamatan || '').trim()}`;
+        const pmlEntry = pmlDataByKey.get(pmlKey);
+        const pmlEntryEmail = normalizeString(getColumnValue(pmlEntry, 'email', ['email', 'email_pml', 'email_pml', 'email_pml'], '')).toLowerCase();
+        const pmlNameKey = normalizeString(pmlName).toLowerCase();
+        const sobatPMLChild = pmlEntryEmail
+          ? mitraByEmail.get(pmlEntryEmail) || findSobatByName(pmlNameKey)
+          : findSobatByName(pmlNameKey);
+        const sobatPPL = emailPPL
+          ? mitraByEmail.get(emailPPL) || findSobatByName(r.nama_ppl || '')
+          : findSobatByName(r.nama_ppl || '');
+
+        const slsList = usersSlsByEmail.get(emailPPL) || [];
+        let prelistAwal = Number(r.prelist_awal || 0) || 0;
+        let draft = Number(r.draft || 0) || 0;
+        let reject = Number(r.jumlah_reject || 0) || 0;
+        let revoke = Number(r.jumlah_revoke || 0) || 0;
+        let submit = Number(r.jumlah_submit || 0) || 0;
+        let approve = Number(r.jumlah_approve || 0) || 0;
+        let jumlahChild = draft + reject + revoke + submit + approve;
+        let targetChild = prelistAwal;
+        let pctChild = targetChild > 0 ? (jumlahChild / targetChild) * 100 : 0;
+
+        rows.push([
+          childIndex + 1,
+          String(r.kecamatan || ''),
+          r.nama_ppl || '',
+          p.nama_pml || '',
+          prelistAwal,
+          draft,
+          reject,
+          revoke,
+          submit,
+          approve,
+          `${formatPercent(pctChild)}%`,
+          Number(Math.round((jumlahChild / Math.max(1, elapsedDays)) * 100) / 100)
+        ]);
+        childIndex += 1;
+      });
+    }
+
     const ws = XLSX.utils.aoa_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, safeName(`PML - ${p.nama_pml}`));
   });
@@ -1438,7 +1540,7 @@ const exportSelectedToExcel = (
       slsList.forEach((slsRaw) => {
         const sls = String(slsRaw || '').trim();
         const prelistKeluarga = findBySlsKey(qualityKeluargaBySls, sls)?.prelistAwal || 0;
-        const prelistUsaha = findBySlsKey(qualityUsahaBySls, sls)?.prelistAwal || 0;
+        const prelistUsaha = findBySlsKey(prelistUsahaBySls, sls) || 0;
         const target = findBySlsKey(prelistBySls, sls) || prelistKeluarga + prelistUsaha;
         const realKeluarga = findBySlsKey(qualityKeluargaBySls, sls)?.totalHasilPendataan || 0;
         const realUsaha = findBySlsKey(qualityUsahaBySls, sls)?.totalUsaha || 0;
@@ -1649,6 +1751,7 @@ function MonitoringLapangan() {
     sheetName: "Pemutakhiran_KK",
     refreshKey: qualityReloadCounter,
   });
+  const qualityUsahaMergedData = [...(qualityUsahaData || []), ...(qualityUsahaRumahData || [])];
   useEffect(() => {
     console.debug('[useQualitySheets] status', {
       qualityUsahaLoading,
@@ -1669,7 +1772,7 @@ function MonitoringLapangan() {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const qualitySheetsLoading = qualityUsahaLoading || qualityUsahaRumahLoading || qualityKeluargaLoading;
-  const qualitySheetsReady = !qualitySheetsLoading && qualityUsahaData.length > 0 && qualityKeluargaData.length > 0;
+  const qualitySheetsReady = !qualitySheetsLoading && qualityUsahaMergedData.length > 0 && qualityKeluargaData.length > 0;
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [pmlSearchTerm, setPMLSearchTerm] = useState("");
   const [debouncedPMLSearchTerm, setDebouncedPMLSearchTerm] = useState("");
@@ -1680,8 +1783,6 @@ function MonitoringLapangan() {
   const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg" | "prelist_awal" | "capaian">("dailyavg");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [fetchReport, setFetchReport] = useState({ requestPayload: '', responseBody: '', errorMessage: '' });
-  const [diagnosticRunning, setDiagnosticRunning] = useState(false);
   useEffect(() => {
     if (!isLoggedIn && (activeTab === 'afirmasi-ratih' || activeTab === 'afirmasi-ledya')) {
       setActiveTab('dashboard');
@@ -4281,101 +4382,7 @@ function MonitoringLapangan() {
                                 <div className="text-sm text-slate-700 px-3 py-2 rounded border border-slate-200 bg-slate-50">
                                   {qualitySheetsLoading
                                     ? 'Sedang memuat quality data...'
-                                    : `Quality data rows: Usaha ${qualityUsahaData.length}, Keluarga ${qualityKeluargaData.length}.`}
-                                </div>
-                                {/* Fetch failure reporting UI - allow user to paste details for support */}
-                                <div className="mt-2 p-3 border border-slate-100 rounded bg-white">
-                                  <div className="font-semibold mb-1">Laporkan masalah pemuatan quality sheets</div>
-                                  <div className="text-xs text-slate-600 mb-2">Jika quality data tetap kosong, salin detail berikut dari DevTools dan tempel di kotak di bawah lalu kirim ke saya: 1) Response body (Network → google-sheets → Response), 2) Request payload (Payload tab), 3) Error console messages atau status code. Gunakan tombol "Salin template" untuk mempermudah.</div>
-                                  <div className="flex gap-2 mb-2">
-                                    <button
-                                      type="button"
-                                      className="px-2 py-1 bg-slate-100 text-slate-800 rounded border border-slate-200 hover:bg-slate-200 text-sm"
-                                      onClick={() => {
-                                        const template = `-- TEMPLATE: Isi detail fetch google-sheets --\nTimestamp: ${new Date().toISOString()}\nFunction: google-sheets\nSpreadsheetId: ${QUALITY_SPREADSHEET_ID}\nSheetName: Pemutakhiran_KK (and others)\n\n[REQUEST PAYLOAD]\n{...}\n\n[RESPONSE BODY]\n{...}\n\n[CONSOLE ERRORS]\n{...}\n`;
-                                        try {
-                                          navigator.clipboard.writeText(template);
-                                          // Best-effort: also prefill the response field if available in this runtime
-                                          setFetchReport(prev => ({ ...prev, responseBody: prev.responseBody || template }));
-                                          console.info('[TerminI] Template copied to clipboard');
-                                        } catch (e) {
-                                          console.warn('Clipboard not available', e);
-                                        }
-                                      }}
-                                    >
-                                      Salin template
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="px-2 py-1 bg-white text-slate-800 rounded border border-slate-200 hover:bg-slate-50 text-sm"
-                                      onClick={() => {
-                                        // autofill a minimal request payload snippet
-                                        const sample = `{"spreadsheetId":"${QUALITY_SPREADSHEET_ID}","operation":"read","range":"Pemutakhiran_KK"}`;
-                                        setFetchReport(prev => ({ ...prev, requestPayload: prev.requestPayload || sample }));
-                                      }}
-                                    >
-                                      Isi payload contoh
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="px-2 py-1 bg-emerald-600 text-white rounded border border-emerald-700 hover:bg-emerald-700 text-sm"
-                                      onClick={async () => {
-                                        try {
-                                          setDiagnosticRunning(true);
-                                          const tryIds = [QUALITY_SPREADSHEET_ID, '1SddZLzyRYZaA7aP-Re7Q8WHqQCdfXIw01SepP-v8Kx4'];
-                                          const ranges = ['Progres_Usaha_BKU', 'Usaha_Dlm_Rumah', 'Pemutakhiran_KK', 'Pemutakhiran_Anggota_K'];
-                                          let combinedResponse = '';
-                                          for (const sid of tryIds) {
-                                            for (const rangeName of ranges) {
-                                              const payload = { spreadsheetId: sid, operation: 'read', range: rangeName };
-                                              combinedResponse += `REQUEST => ${JSON.stringify(payload)}\n`;
-                                              try {
-                                                // invoke supabase function from browser
-                                                // @ts-ignore
-                                                const { data: resp, error } = await supabase.functions.invoke('google-sheets', { body: payload });
-                                                if (error) {
-                                                  combinedResponse += `ERROR => ${String(error)}\n\n`;
-                                                } else {
-                                                  combinedResponse += `RESPONSE => ${JSON.stringify(resp)}\n\n`;
-                                                }
-                                              } catch (e: any) {
-                                                combinedResponse += `EXCEPTION => ${String(e)}\n\n`;
-                                              }
-                                            }
-                                          }
-                                          setFetchReport(prev => ({ ...prev, requestPayload: prev.requestPayload || 'Ran diagnostics', responseBody: combinedResponse, errorMessage: '' }));
-                                          console.debug('[TerminI] diagnostics result', combinedResponse);
-                                        } finally {
-                                          setDiagnosticRunning(false);
-                                        }
-                                      }}
-                                    >
-                                      Jalankan diagnosa
-                                    </button>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <div>
-                                      <div className="text-xs font-medium">Request payload (Payload tab)</div>
-                                      <textarea value={fetchReport.requestPayload} onChange={(e) => setFetchReport(prev => ({ ...prev, requestPayload: e.target.value }))} className="w-full h-20 p-2 border rounded text-xs" placeholder="Tempel request payload di sini" />
-                                    </div>
-                                    <div>
-                                      <div className="text-xs font-medium">Response body (Network → Response)</div>
-                                      <textarea value={fetchReport.responseBody} onChange={(e) => setFetchReport(prev => ({ ...prev, responseBody: e.target.value }))} className="w-full h-28 p-2 border rounded text-xs" placeholder="Tempel response body di sini (JSON atau teks)" />
-                                    </div>
-                                    <div>
-                                      <div className="text-xs font-medium">Console / Error message</div>
-                                      <input value={fetchReport.errorMessage} onChange={(e) => setFetchReport(prev => ({ ...prev, errorMessage: e.target.value }))} className="w-full p-2 border rounded text-xs" placeholder="Tempel console.error output atau status code" />
-                                    </div>
-                                    <div className="flex gap-2 justify-end mt-2">
-                                      <button type="button" className="px-3 py-1 border rounded text-sm" onClick={() => setFetchReport({ requestPayload: '', responseBody: '', errorMessage: '' })}>Bersihkan</button>
-                                      <button type="button" className="px-3 py-1 bg-blue-600 text-white rounded text-sm" onClick={() => {
-                                        console.log('[TerminI] user-submitted fetch report', fetchReport);
-                                        // also copy to clipboard for easy paste into chat
-                                        try { navigator.clipboard.writeText(JSON.stringify({ ...fetchReport, timestamp: new Date().toISOString() }, null, 2)); } catch (e) {}
-                                        alert('Detail disalin ke clipboard. Silakan tempel di chat kepada saya.');
-                                      }}>Salin & Kirim</button>
-                                    </div>
-                                  </div>
+                                    : `Quality data rows: Usaha BKU ${qualityUsahaData.length}, Usaha Rumah ${qualityUsahaRumahData.length}, Keluarga ${qualityKeluargaData.length}.`}
                                 </div>
                                 <div className="flex flex-wrap gap-2 items-center">
                                   <button

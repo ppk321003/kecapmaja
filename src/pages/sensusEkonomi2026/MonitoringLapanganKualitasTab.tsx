@@ -242,16 +242,18 @@ const PercentBadge = ({ value }: { value: any }) => {
 };
 
 export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) {
-  const { data: usahaBku = [], loading: l1 } = useGoogleSheetsData({ spreadsheetId, sheetName: "Progres_Usaha_BKU" });
-  const { data: usahaRumah = [], loading: l2 } = useGoogleSheetsData({ spreadsheetId, sheetName: "Usaha_Dlm_Rumah" });
-  const { data: kkData = [], loading: l3 } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_KK" });
-  const { data: anggotaData = [], loading: l4 } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_Anggota_K" });
-  const { data: prelistAwalData = [], loading: l5 } = useGoogleSheetsData({ spreadsheetId: PRELIST_SPREADSHEET_ID, sheetName: "Prelist_Awal" });
-  const { data: usahaHeader = [], loading: h1 } = useGoogleSheetsData({ spreadsheetId, sheetName: "Progres_Usaha_BKU", range: "Progres_Usaha_BKU!A2", mode: "single-cell" });
-  const { data: kkHeader = [], loading: h2 } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_KK", range: "Pemutakhiran_KK!A2", mode: "single-cell" });
-  const { data: anggotaHeader = [], loading: h3 } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_Anggota_K", range: "Pemutakhiran_Anggota_K!A2", mode: "single-cell" });
+  const [qualityReloadCounter, setQualityReloadCounter] = useState(0);
+  const { data: usahaBku = [], loading: l1, error: usahaBkuError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Progres_Usaha_BKU", refreshKey: qualityReloadCounter });
+  const { data: usahaRumah = [], loading: l2, error: usahaRumahError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Usaha_Dlm_Rumah", refreshKey: qualityReloadCounter });
+  const { data: kkData = [], loading: l3, error: kkError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_KK", refreshKey: qualityReloadCounter });
+  const { data: anggotaData = [], loading: l4, error: anggotaError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_Anggota_K", refreshKey: qualityReloadCounter });
+  const { data: prelistAwalData = [], loading: l5, error: prelistError } = useGoogleSheetsData({ spreadsheetId: PRELIST_SPREADSHEET_ID, sheetName: "Prelist_Awal", refreshKey: qualityReloadCounter });
+  const { data: usahaHeader = [], loading: h1, error: usahaHeaderError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Progres_Usaha_BKU", range: "Progres_Usaha_BKU!A2", mode: "single-cell", refreshKey: qualityReloadCounter });
+  const { data: kkHeader = [], loading: h2, error: kkHeaderError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_KK", range: "Pemutakhiran_KK!A2", mode: "single-cell", refreshKey: qualityReloadCounter });
+  const { data: anggotaHeader = [], loading: h3, error: anggotaHeaderError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_Anggota_K", range: "Pemutakhiran_Anggota_K!A2", mode: "single-cell", refreshKey: qualityReloadCounter });
 
   const loading = l1 || l2 || l3 || l4 || l5 || h1 || h2 || h3;
+  const qualityTabErrors = [usahaBkuError, usahaRumahError, kkError, anggotaError, prelistError, usahaHeaderError, kkHeaderError, anggotaHeaderError].filter(Boolean);
   const allRows = useMemo(() => [...(usahaBku || []), ...(usahaRumah || []), ...(kkData || []), ...(anggotaData || [])], [usahaBku, usahaRumah, kkData, anggotaData]);
 
   // filter states (moved up to avoid TDZ when useMemo reads them)
