@@ -1492,8 +1492,10 @@ const exportSelectedToExcel = (
     qualityUsahaData?: any[];
     qualityUsahaRumahData?: any[];
     qualityKeluargaData?: any[];
-  }
+  },
+  options?: { singleSheet?: boolean }
 ) => {
+  const singleSheet = options?.singleSheet || false;
   const mitraData = ctx?.mitraData || [];
   const prelistData = ctx?.prelistData || [];
   const usersData = ctx?.usersData || [];
@@ -1503,6 +1505,8 @@ const exportSelectedToExcel = (
   const qualityUsahaRumahData = ctx?.qualityUsahaRumahData || [];
   const qualityUsahaData = [...qualityUsahaBkuData, ...qualityUsahaRumahData];
   const qualityKeluargaData = ctx?.qualityKeluargaData || [];
+  const selectedKecsFinal = selectedKecs || [];
+  const selectedTeamsFinal = selectedTeams || [];
 
   console.log('[exportSelectedToExcel] called', {
     selectedKecs,
@@ -1569,7 +1573,8 @@ const exportSelectedToExcel = (
 
   const pmlDataByKey = new Map<string, any>();
   (pmlDataWithActualSubmit || []).forEach((p: any) => {
-    const key = `${String(p.nama_pml || '').trim()}|${String(p.kecamatan || '').trim()}`;
+    const pmlNameKey = normalizeString(String(p.nama_pml || '')).toLowerCase();
+    const key = `${pmlNameKey}|${String(p.kecamatan || '').trim()}`;
     pmlDataByKey.set(key, p);
   });
 
@@ -1620,16 +1625,81 @@ const exportSelectedToExcel = (
     prelistUsahaBySls.set(sls, (prelistUsahaBySls.get(sls) || 0) + usahaVal);
   });
 
-  const qualityKeluargaBySls = new Map<string, { prelistAwal: number; totalHasilPendataan: number }>();
+  const qualityKeluargaBySls = new Map<string, {
+    prelistAwal: number;
+    ditemukan: number;
+    keluargaBaru: number;
+    meninggal: number;
+    tidakEligible: number;
+    tidakDapatDitemui: number;
+    tidakDitemukan: number;
+    keluargaKhusus: number;
+  }>();
+  const qualityKeluargaByPml = new Map<string, {
+    prelistAwal: number;
+    ditemukan: number;
+    keluargaBaru: number;
+    meninggal: number;
+    tidakEligible: number;
+    tidakDapatDitemui: number;
+    tidakDitemukan: number;
+    keluargaKhusus: number;
+  }>();
   (qualityKeluargaData || []).forEach((row: any) => {
     const code = getRowCode(row);
     if (!code) return;
     const prelistAwal = parseNumber(getColumnValue(row, 'prelist_awal', ['prelist_awal', 'prelist awal', 'prelist'], '0'));
-    const totalHasilPendataan = parseNumber(getColumnValue(row, 'total_hasil_pendataan', ['total_hasil_pendataan', 'total hasil pendataan', 'totalhasilpendataan'], '0'));
-    const current = qualityKeluargaBySls.get(code) || { prelistAwal: 0, totalHasilPendataan: 0 };
+    const ditemukan = parseNumber(getColumnValue(row, 'ditemukan', ['ditemukan'], '0'));
+    const keluargaBaru = parseNumber(getColumnValue(row, 'keluarga_baru', ['keluarga baru', 'keluarga_baru'], '0'));
+    const meninggal = parseNumber(getColumnValue(row, 'meninggal', ['meninggal'], '0'));
+    const tidakEligible = parseNumber(getColumnValue(row, 'tidak_eligible', ['tidak eligible', 'tidak_eligible'], '0'));
+    const tidakDapatDitemui = parseNumber(getColumnValue(row, 'tidak_dapat_ditemui', ['tdk dapat ditemui', 'tidak dapat ditemui', 'tidak_dapat_ditemui'], '0'));
+    const tidakDitemukan = parseNumber(getColumnValue(row, 'tidak_ditemukan', ['tidak ditemukan', 'tidak_ditemukan'], '0'));
+    const keluargaKhusus = parseNumber(getColumnValue(row, 'keluarga_khusus', ['keluarga khusus', 'keluarga_khusus'], '0'));
+    const current = qualityKeluargaBySls.get(code) || {
+      prelistAwal: 0,
+      ditemukan: 0,
+      keluargaBaru: 0,
+      meninggal: 0,
+      tidakEligible: 0,
+      tidakDapatDitemui: 0,
+      tidakDitemukan: 0,
+      keluargaKhusus: 0,
+    };
     current.prelistAwal += prelistAwal;
-    current.totalHasilPendataan += totalHasilPendataan;
+    current.ditemukan += ditemukan;
+    current.keluargaBaru += keluargaBaru;
+    current.meninggal += meninggal;
+    current.tidakEligible += tidakEligible;
+    current.tidakDapatDitemui += tidakDapatDitemui;
+    current.tidakDitemukan += tidakDitemukan;
+    current.keluargaKhusus += keluargaKhusus;
     qualityKeluargaBySls.set(code, current);
+
+    const pmlNameVal = normalizeString(getColumnValue(row, 'nama_pml', ['nama_pml', 'nama pml', 'pml'], '')).toLowerCase();
+    const pmlKec = String(getColumnValue(row, 'kecamatan', ['kecamatan', 'nama_kecamatan'], '')).trim();
+    if (pmlNameVal) {
+      const pmlKey = `${pmlNameVal}|${pmlKec}`;
+      const currentPml = qualityKeluargaByPml.get(pmlKey) || {
+        prelistAwal: 0,
+        ditemukan: 0,
+        keluargaBaru: 0,
+        meninggal: 0,
+        tidakEligible: 0,
+        tidakDapatDitemui: 0,
+        tidakDitemukan: 0,
+        keluargaKhusus: 0,
+      };
+      currentPml.prelistAwal += prelistAwal;
+      currentPml.ditemukan += ditemukan;
+      currentPml.keluargaBaru += keluargaBaru;
+      currentPml.meninggal += meninggal;
+      currentPml.tidakEligible += tidakEligible;
+      currentPml.tidakDapatDitemui += tidakDapatDitemui;
+      currentPml.tidakDitemukan += tidakDitemukan;
+      currentPml.keluargaKhusus += keluargaKhusus;
+      qualityKeluargaByPml.set(pmlKey, currentPml);
+    }
   });
 
   const usahaRumahBySls = new Map<string, number>();
@@ -1648,36 +1718,66 @@ const exportSelectedToExcel = (
     }
   });
 
-  const qualityUsahaBySls = new Map<string, { prelistAwal: number; totalUsaha: number; usahaDalamKeluarga: number }>();
+  const qualityUsahaBySls = new Map<string, {
+    prelistAwal: number;
+    ditemukan: number;
+    tutup: number;
+    ganda: number;
+    tidakDitemukan: number;
+    baru: number;
+    usahaDalamKeluarga: number;
+  }>();
   // Use Progres_Usaha_BKU as the primary source for total progress, then add Rumah usaha keluarga
   (qualityUsahaBkuData || []).forEach((row: any) => {
     const code = getRowCode(row);
     if (!code) return;
     const prelistAwal = parseNumber(getColumnValue(row, 'jumlah_prelist_usaha', ['jumlah_prelist_usaha', 'jumlah prelist usaha', 'prelist_usaha', 'prelist'], '0'));
-    const totalProgres = parseNumber(getColumnValue(row, 'total', ['total', 'total_usaha', 'total usaha', 'jumlah_usaha_total', 'jumlah usaha total'], '0'));
+    const ditemukan = parseNumber(getColumnValue(row, 'ditemukan', ['ditemukan'], '0'));
+    const tutup = parseNumber(getColumnValue(row, 'tutup', ['tutup'], '0'));
+    const ganda = parseNumber(getColumnValue(row, 'ganda', ['ganda'], '0'));
+    const tidakDitemukan = parseNumber(getColumnValue(row, 'tidak_ditemukan', ['tidak ditemukan', 'tidak_ditemukan'], '0'));
+    const baru = parseNumber(getColumnValue(row, 'baru', ['baru'], '0'));
     const usahaDalamKeluarga = usahaRumahBySls.get(code) || 0;
-    const totalUsaha = totalProgres + usahaDalamKeluarga;
-    const current = qualityUsahaBySls.get(code) || { prelistAwal: 0, totalUsaha: 0, usahaDalamKeluarga: 0 };
+    const current = qualityUsahaBySls.get(code) || {
+      prelistAwal: 0,
+      ditemukan: 0,
+      tutup: 0,
+      ganda: 0,
+      tidakDitemukan: 0,
+      baru: 0,
+      usahaDalamKeluarga: 0,
+    };
     current.prelistAwal += prelistAwal;
-    current.totalUsaha += totalUsaha;
+    current.ditemukan += ditemukan;
+    current.tutup += tutup;
+    current.ganda += ganda;
+    current.tidakDitemukan += tidakDitemukan;
+    current.baru += baru;
     current.usahaDalamKeluarga += usahaDalamKeluarga;
     qualityUsahaBySls.set(code, current);
   });
 
   // Aggregate quality usaha by PML (used for PML-level summary export)
-  const qualityUsahaByPml = new Map<string, { prelist: number; totalUsaha: number; usahaDalamKeluarga: number }>();
+  const qualityUsahaByPml = new Map<string, { prelist: number; ditemukan: number; tutup: number; ganda: number; tidakDitemukan: number; baru: number; usahaDalamKeluarga: number }>();
   (qualityUsahaBkuData || []).forEach((row: any) => {
     const pmlNameVal = normalizeString(getColumnValue(row, 'nama_pml', ['nama_pml', 'nama pml', 'pml'], '')).toLowerCase();
     const kec = String(getColumnValue(row, 'kecamatan', ['kecamatan', 'nama_kecamatan'], '')).trim();
     if (!pmlNameVal) return;
     const key = `${pmlNameVal}|${kec}`;
     const pre = parseNumber(getColumnValue(row, 'jumlah_prelist_usaha', ['jumlah_prelist_usaha', 'jumlah prelist usaha', 'prelist_usaha', 'prelist'], '0'));
-    const totalProgres = parseNumber(getColumnValue(row, 'total', ['total', 'total_usaha', 'total usaha', 'jumlah_usaha_total', 'jumlah usaha total'], '0'));
+    const ditemukan = parseNumber(getColumnValue(row, 'ditemukan', ['ditemukan'], '0'));
+    const tutup = parseNumber(getColumnValue(row, 'tutup', ['tutup'], '0'));
+    const ganda = parseNumber(getColumnValue(row, 'ganda', ['ganda'], '0'));
+    const tidakDitemukan = parseNumber(getColumnValue(row, 'tidak_ditemukan', ['tidak ditemukan', 'tidak_ditemukan'], '0'));
+    const baru = parseNumber(getColumnValue(row, 'baru', ['baru'], '0'));
     const usahaDalamKeluarga = usahaRumahByPml.get(key) || 0;
-    const totalUsaha = totalProgres + usahaDalamKeluarga;
-    const cur = qualityUsahaByPml.get(key) || { prelist: 0, totalUsaha: 0, usahaDalamKeluarga: 0 };
+    const cur = qualityUsahaByPml.get(key) || { prelist: 0, ditemukan: 0, tutup: 0, ganda: 0, tidakDitemukan: 0, baru: 0, usahaDalamKeluarga: 0 };
     cur.prelist += pre;
-    cur.totalUsaha += totalUsaha;
+    cur.ditemukan += ditemukan;
+    cur.tutup += tutup;
+    cur.ganda += ganda;
+    cur.tidakDitemukan += tidakDitemukan;
+    cur.baru += baru;
     cur.usahaDalamKeluarga += usahaDalamKeluarga;
     qualityUsahaByPml.set(key, cur);
   });
@@ -1767,6 +1867,200 @@ const exportSelectedToExcel = (
 
   const headers = ['No','Nama PML','Sobat ID PML','Nama PPL','Sobat ID PPL','KEC','DESA/LURAH','SLS/Sub-SLS','Prelist Keluarga','Prelist Usaha','Target Prelist Awal','Realisasi Keluarga','Realisasi Usaha','Jumlah Realisasi','Persentase (%)','Keterangan'];
   const pplExportHeaders = ['No','Kecamatan','Nama PPL','Nama PML','Prelist Awal','Draft','Reject','Revoke','Submit','Approve','% Capaian','Rata-rata Harian'];
+
+  const buildPPLRow = (r:any, rowIndex:number) => {
+    const emailPPL = normalizeString(String(r.email_ppl || r.email || '')).toLowerCase();
+    const pmlName = r.nama_pml || '';
+    const pmlKey = `${normalizeString(pmlName).toLowerCase()}|${String(r.kecamatan || '').trim()}`;
+    const pmlEntry = pmlDataByKey.get(pmlKey);
+    const pmlEntryEmail = normalizeString(getColumnValue(pmlEntry, 'email', ['email', 'email_pml', 'email_pml', 'email_pml'], '')).toLowerCase();
+    const pmlNameKey = normalizeString(pmlName).toLowerCase();
+    const sobatPML = pmlEntryEmail
+      ? mitraByEmail.get(pmlEntryEmail) || findSobatByName(pmlNameKey)
+      : findSobatByName(pmlNameKey);
+    const sobatPPL = emailPPL
+      ? mitraByEmail.get(emailPPL) || findSobatByName(r.nama_ppl || '')
+      : findSobatByName(r.nama_ppl || '');
+
+    const slsAssignments = usersSlsByEmail.get(emailPPL) || [];
+    const prelistKeluargaFromSls = slsAssignments.reduce((sum, sls) => {
+      return sum + (findBySlsKey(qualityKeluargaBySls, sls)?.prelistAwal || 0);
+    }, 0);
+    const prelistUsahaFromSls = slsAssignments.reduce((sum, sls) => {
+      return sum + (findBySlsKey(prelistUsahaBySls, sls) || 0);
+    }, 0);
+
+    const prelistKeluarga = prelistKeluargaFromSls || Number(r.prelist_keluarga || 0) || 0;
+    const prelistUsaha = prelistUsahaFromSls || Number(r.prelist_usaha || 0) || 0;
+    const target = Number(r.prelist_awal || 0) || prelistKeluarga + prelistUsaha;
+
+    const realKeluarga = slsAssignments.reduce((sum, sls) => {
+      const keluargaData = findBySlsKey(qualityKeluargaBySls, sls) || {
+        ditemukan: 0,
+        keluargaBaru: 0,
+        meninggal: 0,
+        tidakEligible: 0,
+        tidakDapatDitemui: 0,
+        tidakDitemukan: 0,
+        keluargaKhusus: 0,
+      };
+      return sum + keluargaData.ditemukan + keluargaData.keluargaBaru + keluargaData.meninggal + keluargaData.tidakEligible + keluargaData.tidakDapatDitemui + keluargaData.tidakDitemukan + keluargaData.keluargaKhusus;
+    }, 0);
+
+    const realUsaha = slsAssignments.reduce((sum, sls) => {
+      const usahaData = findBySlsKey(qualityUsahaBySls, sls) || {
+        ditemukan: 0,
+        tutup: 0,
+        ganda: 0,
+        tidakDitemukan: 0,
+        baru: 0,
+        usahaDalamKeluarga: 0,
+      };
+      return sum + usahaData.ditemukan + usahaData.tutup + usahaData.ganda + usahaData.tidakDitemukan + usahaData.baru + usahaData.usahaDalamKeluarga;
+    }, 0);
+
+    const jumlah = realKeluarga + realUsaha;
+    const pct = target > 0 ? (jumlah / target) * 100 : 0;
+    return [
+      rowIndex,
+      pmlName,
+      sobatPML || '',
+      r.nama_ppl || '',
+      sobatPPL || '',
+      String(r.kecamatan || ''),
+      '',
+      '',
+      prelistKeluarga,
+      prelistUsaha,
+      target,
+      realKeluarga,
+      realUsaha,
+      jumlah,
+      formatPercent(pct),
+      ''
+    ];
+  };
+
+  if (singleSheet) {
+    const pplRowsSheet: any[] = [headers];
+    let rowIndex = 1;
+    let totalPrelistKeluargaSum = 0;
+    let totalPrelistUsahaSum = 0;
+    let totalTargetSum = 0;
+    let totalRealisasiKeluargaSum = 0;
+    let totalRealisasiUsahaSum = 0;
+    let totalJumlahSum = 0;
+
+    pplUnique.forEach((r:any) => {
+      const row = buildPPLRow(r, rowIndex++);
+      const prelistKeluarga = Number(row[8] || 0) || 0;
+      const prelistUsaha = Number(row[9] || 0) || 0;
+      const target = Number(row[10] || 0) || prelistKeluarga + prelistUsaha;
+      const realKeluarga = Number(row[11] || 0) || 0;
+      const realUsaha = Number(row[12] || 0) || 0;
+      const jumlah = Number(row[13] || 0) || 0;
+
+      pplRowsSheet.push(row);
+      totalPrelistKeluargaSum += prelistKeluarga;
+      totalPrelistUsahaSum += prelistUsaha;
+      totalTargetSum += target;
+      totalRealisasiKeluargaSum += realKeluarga;
+      totalRealisasiUsahaSum += realUsaha;
+      totalJumlahSum += jumlah;
+    });
+
+    const totalPct = totalTargetSum > 0 ? (totalJumlahSum / totalTargetSum) * 100 : 0;
+    pplRowsSheet.push(['', 'Total', '', '', '', '', '', '', totalPrelistKeluargaSum, totalPrelistUsahaSum, totalTargetSum, totalRealisasiKeluargaSum, totalRealisasiUsahaSum, totalJumlahSum, formatPercent(totalPct), '']);
+
+    const pmlRowsSheet: any[] = [headers];
+    let pmlIndex = 1;
+    let totalPmlPrelistKeluargaSum = 0;
+    let totalPmlPrelistUsahaSum = 0;
+    let totalPmlTargetSum = 0;
+    let totalPmlRealisasiKeluargaSum = 0;
+    let totalPmlRealisasiUsahaSum = 0;
+    let totalPmlJumlahSum = 0;
+
+    const pmlAggregates = new Map<string, {
+      pmlName: string;
+      kec: string;
+      sobatPML: string;
+      prelistKeluarga: number;
+      prelistUsaha: number;
+      target: number;
+      realKeluarga: number;
+      realUsaha: number;
+      jumlah: number;
+    }>();
+
+    pplRowsSheet.slice(1).forEach((row: any) => {
+      if (!row || row[0] === '' || row[1] === 'Total') return;
+      const pmlName = String(row[1] || '').trim();
+      const kec = String(row[5] || '').trim();
+      const key = `${pmlName}|${kec}`;
+      const existing = pmlAggregates.get(key) || {
+        pmlName,
+        kec,
+        sobatPML: String(row[2] || '').trim(),
+        prelistKeluarga: 0,
+        prelistUsaha: 0,
+        target: 0,
+        realKeluarga: 0,
+        realUsaha: 0,
+        jumlah: 0,
+      };
+      existing.prelistKeluarga += Number(row[8] || 0);
+      existing.prelistUsaha += Number(row[9] || 0);
+      existing.target += Number(row[10] || 0);
+      existing.realKeluarga += Number(row[11] || 0);
+      existing.realUsaha += Number(row[12] || 0);
+      existing.jumlah += Number(row[13] || 0);
+      pmlAggregates.set(key, existing);
+    });
+
+    Array.from(pmlAggregates.values()).forEach((entry) => {
+      const pct = entry.target > 0 ? (entry.jumlah / entry.target) * 100 : 0;
+      pmlRowsSheet.push([
+        pmlIndex,
+        entry.pmlName,
+        entry.sobatPML,
+        '',
+        '',
+        entry.kec,
+        '',
+        '',
+        entry.prelistKeluarga,
+        entry.prelistUsaha,
+        entry.target,
+        entry.realKeluarga,
+        entry.realUsaha,
+        entry.jumlah,
+        formatPercent(pct),
+        ''
+      ]);
+      totalPmlPrelistKeluargaSum += entry.prelistKeluarga;
+      totalPmlPrelistUsahaSum += entry.prelistUsaha;
+      totalPmlTargetSum += entry.target;
+      totalPmlRealisasiKeluargaSum += entry.realKeluarga;
+      totalPmlRealisasiUsahaSum += entry.realUsaha;
+      totalPmlJumlahSum += entry.jumlah;
+      pmlIndex += 1;
+    });
+
+    const totalPctPml = totalPmlTargetSum > 0 ? (totalPmlJumlahSum / totalPmlTargetSum) * 100 : 0;
+    pmlRowsSheet.push(['', 'Total', '', '', '', '', '', '', totalPmlPrelistKeluargaSum, totalPmlPrelistUsahaSum, totalPmlTargetSum, totalPmlRealisasiKeluargaSum, totalPmlRealisasiUsahaSum, totalPmlJumlahSum, formatPercent(totalPctPml), '']);
+
+    const wsPpl = XLSX.utils.aoa_to_sheet(pplRowsSheet);
+    XLSX.utils.book_append_sheet(wb, wsPpl, 'Semua PPL');
+    const wsPml = XLSX.utils.aoa_to_sheet(pmlRowsSheet);
+    XLSX.utils.book_append_sheet(wb, wsPml, 'Kumpulan PML');
+
+    const selectedKecamatanLabel = selectedKecsFinal.length === 1
+      ? selectedKecsFinal[0]
+      : 'Semua_Kecamatan';
+    XLSX.writeFile(wb, `LK-TERMIN1-${sanitizeFilename(selectedKecamatanLabel || 'Semua_Kecamatan')}.xlsx`);
+    return;
+  }
 
   // For PML entries, include a sheet per PML with child PPL rows and PPL export headers
   pmlUnique.forEach((p:any, idx:number) => {
@@ -1867,7 +2161,6 @@ const exportSelectedToExcel = (
     XLSX.utils.book_append_sheet(wb, ws, safeName(`PML - ${p.nama_pml}`));
   });
 
-  // For PPL entries, include a sheet per PPL
   pplUnique.forEach((r:any, idx:number) => {
     const rows: any[] = [headers];
     const emailPPL = normalizeString(String(r.email_ppl || r.email || '')).toLowerCase();
@@ -1912,11 +2205,30 @@ const exportSelectedToExcel = (
       let no = 1;
       slsList.forEach((slsRaw) => {
         const sls = String(slsRaw || '').trim();
-        const prelistKeluarga = findBySlsKey(qualityKeluargaBySls, sls)?.prelistAwal || 0;
+        const keluargaData = findBySlsKey(qualityKeluargaBySls, sls) || {
+          prelistAwal: 0,
+          ditemukan: 0,
+          keluargaBaru: 0,
+          meninggal: 0,
+          tidakEligible: 0,
+          tidakDapatDitemui: 0,
+          tidakDitemukan: 0,
+          keluargaKhusus: 0,
+        };
+        const usahaData = findBySlsKey(qualityUsahaBySls, sls) || {
+          prelistAwal: 0,
+          ditemukan: 0,
+          tutup: 0,
+          ganda: 0,
+          tidakDitemukan: 0,
+          baru: 0,
+          usahaDalamKeluarga: 0,
+        };
+        const prelistKeluarga = keluargaData.prelistAwal || 0;
         const prelistUsaha = findBySlsKey(prelistUsahaBySls, sls) || 0;
         const target = findBySlsKey(prelistBySls, sls) || prelistKeluarga + prelistUsaha;
-        const realKeluarga = findBySlsKey(qualityKeluargaBySls, sls)?.totalHasilPendataan || 0;
-        const realUsaha = findBySlsKey(qualityUsahaBySls, sls)?.totalUsaha || 0;
+        const realKeluarga = keluargaData.ditemukan + keluargaData.keluargaBaru + keluargaData.meninggal + keluargaData.tidakEligible + keluargaData.tidakDapatDitemui + keluargaData.tidakDitemukan + keluargaData.keluargaKhusus;
+        const realUsaha = usahaData.ditemukan + usahaData.tutup + usahaData.ganda + usahaData.tidakDitemukan + usahaData.baru;
         const jumlah = realKeluarga + realUsaha;
         const pct = target > 0 ? (jumlah / target) * 100 : 0;
         const seg = parseCodeSegments(sls);
@@ -2177,6 +2489,7 @@ function MonitoringLapangan() {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [selectedKecamatans, setSelectedKecamatans] = useState<string[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [exportAllKecamatan, setExportAllKecamatan] = useState(false);
   const [itemsPerPagePPL, setItemsPerPagePPL] = useState(20);
   const [itemsPerPagePML, setItemsPerPagePML] = useState(20);
   const [terminISearchTerm, setTerminISearchTerm] = useState("");
@@ -4709,10 +5022,24 @@ function MonitoringLapangan() {
                             </DialogHeader>
                             <div className="space-y-4">
                               <div>
-                                <div className="text-sm font-medium mb-2">Pilih Kecamatan (multi)</div>
-                                <div className="max-h-40 overflow-auto border rounded p-2 grid grid-cols-2 gap-2">
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                              <label className="flex items-start gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={exportAllKecamatan}
+                                  onChange={(e) => setExportAllKecamatan(e.target.checked)}
+                                  className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-600"
+                                />
+                                <span>
+                                  <span className="font-semibold">Export semua kecamatan dengan 2 sheet</span>
+                                  <div className="text-xs text-slate-500">Jika dicentang, hasil export akan berisi dua worksheet: Semua PPL dan Kumpulan PML. Pilihan kecamatan/tim akan diabaikan.</div>
+                                </span>
+                              </label>
+                            </div>
+                            <div className="text-sm font-medium mb-2">Pilih Kecamatan (multi)</div>
+                                <div className={`max-h-40 overflow-auto border rounded p-2 grid grid-cols-2 gap-2 ${exportAllKecamatan ? 'opacity-50 pointer-events-none' : ''}`}>
                                   {terminIAggregates.map((t) => {
-                                    const disabled = (t.pctMet || 0) < 40;
+                                    const disabled = exportAllKecamatan || (t.pctMet || 0) < 40;
                                     return (
                                       <label key={t.kecamatan} className={`flex items-center gap-2 text-sm ${disabled ? 'opacity-50' : ''}`}>
                                         <input type="checkbox" disabled={disabled} checked={selectedKecamatans.includes(t.kecamatan)} onChange={(e) => {
@@ -4728,7 +5055,7 @@ function MonitoringLapangan() {
 
                               <div>
                                 <div className="text-sm font-medium mb-2">Pilih Tim (PPL / PML) (multi)</div>
-                                <div className="max-h-40 overflow-auto border rounded p-2 grid grid-cols-1 gap-2">
+                                <div className={`max-h-40 overflow-auto border rounded p-2 grid grid-cols-1 gap-2 ${exportAllKecamatan ? 'opacity-50 pointer-events-none' : ''}`}>
                                   {[...new Set([...(aggregatedData.rows || []).map((r:any)=>`PPL: ${r.nama_ppl} | ${r.kecamatan}`), ...(pmlDataWithActualSubmit || []).map((p:any)=>`PML: ${p.nama_pml} | ${p.kecamatan}`)])].map((teamKey) => {
                                     const isPML = teamKey.startsWith('PML: ');
                                     const name = teamKey.replace(/^PPL: |^PML: /, '');
@@ -4748,7 +5075,7 @@ function MonitoringLapangan() {
                                         pct = prel>0 ? (num / prel) * 100 : 0;
                                       }
                                     }
-                                    const disabled = Number(pct) < 40;
+                                    const disabled = exportAllKecamatan || Number(pct) < 40;
                                     return (
                                       <label key={teamKey} className={`flex items-center gap-2 text-sm ${disabled ? 'opacity-50' : ''}`}>
                                         <input type="checkbox" disabled={disabled} checked={selectedTeams.includes(teamKey)} onChange={(e) => {
@@ -4798,7 +5125,7 @@ function MonitoringLapangan() {
                                   className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                   disabled={!qualitySheetsReady}
                                   onClick={() => {
-                                    console.log('[TerminI] export button clicked', { selectedKecamatans, selectedTeams });
+                                    console.log('[TerminI] export button clicked', { selectedKecamatans, selectedTeams, exportAllKecamatan });
                                     if (!qualitySheetsReady) {
                                       console.warn('[TerminI] export blocked because quality sheets are not ready', {
                                         qualityUsahaLoading,
@@ -4810,7 +5137,12 @@ function MonitoringLapangan() {
                                       return;
                                     }
                                     try {
-                                      exportSelectedToExcel(selectedKecamatans, selectedTeams, { mitraData, prelistData, usersData, aggregatedData, pmlDataWithActualSubmit, qualityUsahaData, qualityUsahaRumahData, qualityKeluargaData });
+                                      exportSelectedToExcel(
+                                        exportAllKecamatan ? terminIAggregates.map((t) => t.kecamatan) : selectedKecamatans,
+                                        exportAllKecamatan ? [] : selectedTeams,
+                                        { mitraData, prelistData, usersData, aggregatedData, pmlDataWithActualSubmit, qualityUsahaData, qualityUsahaRumahData, qualityKeluargaData },
+                                        { singleSheet: exportAllKecamatan }
+                                      );
                                     } catch (err) {
                                       console.error('[TerminI] exportSelectedToExcel failed', err);
                                     }
