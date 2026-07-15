@@ -1916,7 +1916,7 @@ const exportSelectedToExcel = (
         baru: 0,
         usahaDalamKeluarga: 0,
       };
-      return sum + usahaData.ditemukan + usahaData.tutup + usahaData.ganda + usahaData.tidakDitemukan + usahaData.baru + usahaData.usahaDalamKeluarga;
+      return sum + usahaData.ditemukan + usahaData.tutup + usahaData.ganda + usahaData.tidakDitemukan + usahaData.baru;
     }, 0);
 
     const jumlah = realKeluarga + realUsaha;
@@ -1996,8 +1996,9 @@ const exportSelectedToExcel = (
     pplRowsSheet.slice(1).forEach((row: any) => {
       if (!row || row[0] === '' || row[1] === 'Total') return;
       const pmlName = String(row[1] || '').trim();
+      const normalizedPmlName = normalizeString(pmlName).toLowerCase();
       const kec = String(row[5] || '').trim();
-      const key = `${pmlName}|${kec}`;
+      const key = `${normalizedPmlName}|${kec}`;
       const existing = pmlAggregates.get(key) || {
         pmlName,
         kec,
