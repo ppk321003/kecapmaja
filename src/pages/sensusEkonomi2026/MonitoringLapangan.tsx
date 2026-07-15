@@ -1818,9 +1818,9 @@ const exportSelectedToExcel = (
         let revoke = Number(r.jumlah_revoke || 0) || 0;
         let submit = Number(r.jumlah_submit || 0) || 0;
         let approve = Number(r.jumlah_approve || 0) || 0;
-        let jumlahChild = draft + reject + revoke + submit + approve;
+        let completedCount = reject + revoke + approve;
         let targetChild = prelistAwal;
-        let pctChild = targetChild > 0 ? (jumlahChild / targetChild) * 100 : 0;
+        let pctChild = targetChild > 0 ? (completedCount / targetChild) * 100 : 0;
 
         rows.push([
           childIndex,
@@ -1834,7 +1834,7 @@ const exportSelectedToExcel = (
           submit,
           approve,
           `${formatPercent(pctChild)}%`,
-          Number(Math.round((jumlahChild / Math.max(1, elapsedDays)) * 100) / 100)
+          Number(Math.round((completedCount / Math.max(1, elapsedDays)) * 100) / 100)
         ]);
 
         childTotals.prelistAwal += prelistAwal;
@@ -1846,7 +1846,7 @@ const exportSelectedToExcel = (
         childIndex += 1;
       });
 
-      const totalProcessed = childTotals.draft + childTotals.reject + childTotals.revoke + childTotals.submit + childTotals.approve;
+      const totalCompleted = childTotals.reject + childTotals.revoke + childTotals.approve;
       rows.push([
         '',
         'Total',
@@ -1858,8 +1858,8 @@ const exportSelectedToExcel = (
         childTotals.revoke,
         childTotals.submit,
         childTotals.approve,
-        childTotals.prelistAwal > 0 ? `${formatPercent((totalProcessed / childTotals.prelistAwal) * 100)}%` : '0.00%',
-        ''
+        childTotals.prelistAwal > 0 ? `${formatPercent((totalCompleted / childTotals.prelistAwal) * 100)}%` : '0.00%',
+        Number(Math.round((totalCompleted / Math.max(1, elapsedDays)) * 100) / 100)
       ]);
     }
 
