@@ -1788,6 +1788,15 @@ const exportSelectedToExcel = (
 
     if (childPplRows.length > 0) {
       let childIndex = 1;
+      const childTotals = {
+        prelistAwal: 0,
+        draft: 0,
+        reject: 0,
+        revoke: 0,
+        submit: 0,
+        approve: 0,
+      };
+
       childPplRows.forEach((r: any) => {
         const emailPPL = normalizeString(String(r.email_ppl || r.email || '')).toLowerCase();
         const pmlName = r.nama_pml || '';
@@ -1814,7 +1823,7 @@ const exportSelectedToExcel = (
         let pctChild = targetChild > 0 ? (jumlahChild / targetChild) * 100 : 0;
 
         rows.push([
-          childIndex + 1,
+          childIndex,
           String(r.kecamatan || ''),
           r.nama_ppl || '',
           p.nama_pml || '',
@@ -1827,8 +1836,31 @@ const exportSelectedToExcel = (
           `${formatPercent(pctChild)}%`,
           Number(Math.round((jumlahChild / Math.max(1, elapsedDays)) * 100) / 100)
         ]);
+
+        childTotals.prelistAwal += prelistAwal;
+        childTotals.draft += draft;
+        childTotals.reject += reject;
+        childTotals.revoke += revoke;
+        childTotals.submit += submit;
+        childTotals.approve += approve;
         childIndex += 1;
       });
+
+      const totalProcessed = childTotals.draft + childTotals.reject + childTotals.revoke + childTotals.submit + childTotals.approve;
+      rows.push([
+        '',
+        'Total',
+        '',
+        '',
+        childTotals.prelistAwal,
+        childTotals.draft,
+        childTotals.reject,
+        childTotals.revoke,
+        childTotals.submit,
+        childTotals.approve,
+        childTotals.prelistAwal > 0 ? `${formatPercent((totalProcessed / childTotals.prelistAwal) * 100)}%` : '0.00%',
+        ''
+      ]);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -1915,7 +1947,18 @@ const exportSelectedToExcel = (
     XLSX.utils.book_append_sheet(wb, ws, 'Info');
   }
 
-  XLSX.writeFile(wb, `TerminI_Selected_${new Date().toISOString().split('T')[0]}.xlsx`);
+  const selectedKecamatanLabel = selectedKecs.length === 1
+    ? selectedKecs[0]
+    : (() => {
+        const kecs = new Set<string>();
+        selectedTeams.forEach((tk) => {
+          const parts = tk.split('|').map((s) => s.trim());
+          if (parts.length > 1) kecs.add(parts[1]);
+        });
+        return kecs.size === 1 ? Array.from(kecs)[0] : 'Semua_Kecamatan';
+      })();
+
+  XLSX.writeFile(wb, `LK-TERMIN1-${sanitizeFilename(selectedKecamatanLabel || 'Semua_Kecamatan')}.xlsx`);
 };
 
 export default MonitoringLapangan;
