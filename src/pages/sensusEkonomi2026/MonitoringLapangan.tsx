@@ -380,6 +380,39 @@ const isFilled = (v: any) => {
   return !(s === "" || s === "-" || s === "na" || s === "n/a" || s === "null" || s === "none");
 };
 
+// Normalize any JSON-like 'breakdown' columns: sum values whose keys contain 'admin'
+const extractAdminCountsFromRow = (row: any): number => {
+  let sum = 0;
+  try {
+    for (const v of Object.values(row || {})) {
+      if (typeof v !== 'string') continue;
+      const s = v.trim();
+      if (!s || !(s.startsWith('{') || s.startsWith('['))) continue;
+      try {
+        const parsed = JSON.parse(s);
+        if (parsed && typeof parsed === 'object') {
+          for (const [k, val] of Object.entries(parsed)) {
+            if (String(k).toLowerCase().includes('admin')) {
+              const n = parseInt(String(val || '0').replace(/[^0-9-]/g, '')) || 0;
+              sum += n;
+            }
+          }
+        }
+      } catch (e) {
+        // ignore invalid JSON
+      }
+    }
+  } catch (e) {
+    // defensive noop
+  }
+  return sum;
+};
+
+const getApprovedTotalFromRow = (row: any): number => {
+  const base = parseInt(row.approved_by_pengawas || row['approved_by_pengawas'] || 0) || 0;
+  return base + extractAdminCountsFromRow(row);
+};
+
 const sanitizeFilename = (value: string): string =>
   String(value || "")
     .trim()
@@ -1234,7 +1267,7 @@ const PercentageTooltip = ({ active, payload }: any) => {
 };
 
 // Export PPL data to Excel
-const exportPPLToExcel = (data: AggregatedData[]) => {
+const exportPPLToExcel = (data: AggregatedData[], mitraDataParam: any[] = []) => {
   // Calculate days elapsed for daily average
   const today = new Date();
   const daysElapsed = Math.floor(
@@ -1242,21 +1275,40 @@ const exportPPLToExcel = (data: AggregatedData[]) => {
   ) + 1;
   const elapsedDays = Math.max(0, Math.min(daysElapsed, TOTAL_DAYS));
 
+  // Build mitra lookup maps to resolve Sobat ID from mitraData
+  const mitraByEmailForExport = new Map<string, string>();
+  const mitraByNameForExport = new Map<string, string>();
+  (mitraDataParam || []).forEach((m: any) => {
+    const e = String(getColumnValue(m, 'email', ['email', 'ai', 'email_pml', 'email_ppl'], '') || '').trim().toLowerCase();
+    const n = normalizeString(getColumnValue(m, 'nama', ['nama', 'name', 'nama lengkap', 'full_name', 'nama_lengkap', 'nama_mitra', 'nama mitra'], '') || '').toLowerCase();
+    const s = String(getColumnValue(m, 'sobat id', ['sobat id', 'af', 'sobatid', 'sobat_id'], '') || '').trim();
+    if (e) mitraByEmailForExport.set(e, s);
+    if (n) mitraByNameForExport.set(n, s);
+  });
+
   const aoa: (string | number)[][] = [
     ['DATA INDIVIDU PPL (PETUGAS PENCACAH LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Kecamatan', 'Nama PPL', 'Nama PML', 'Prelist Awal', 'Draft', 'Reject', 'Revoke', 'Submit', 'Approve', '% Capaian', 'Rata-rata Harian'],
+    ['No', 'Kecamatan', 'Nama PPL', 'Sobat ID PPL', 'Nama PML', 'Prelist Awal', 'Draft', 'Reject', 'Revoke', 'Submit', 'Approve', '% Capaian', 'Rata-rata Harian'],
     ...data.map((row, idx) => {
       const prelist = row.prelist_awal || 0;
       const totalProcessed = row.jumlah_reject + (row.jumlah_revoke || 0) + row.jumlah_submit + row.jumlah_approve;
       const percentage = prelist > 0 ? ((totalProcessed / prelist) * 100).toFixed(2) : '0.00';
       const dailyAverage = (row.draft + row.jumlah_reject + row.jumlah_submit + row.jumlah_approve + (row.jumlah_revoke || 0)) / Math.max(1, elapsedDays);
       const dailyAverageFormatted = Math.round(dailyAverage * 100) / 100;
+      const email = String(row.email_ppl || '').trim().toLowerCase();
+      let sobatId = '';
+      if (email && mitraByEmailForExport.has(email)) sobatId = mitraByEmailForExport.get(email) || '';
+      if (!sobatId) {
+        const nameKey = normalizeString(row.nama_ppl || '').toLowerCase();
+        sobatId = mitraByNameForExport.get(nameKey) || '';
+      }
       return [
         idx + 1,
         row.kecamatan,
         row.nama_ppl,
+        sobatId,
         row.nama_pml,
         prelist,
         row.draft,
@@ -1294,7 +1346,7 @@ const exportPPLToExcel = (data: AggregatedData[]) => {
 };
 
 // Export PML data to Excel (recalculated from aggregatedData for accuracy)
-const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
+const exportPMLToExcel = (aggregatedRows: AggregatedData[], mitraDataParam: any[] = []) => {
   // Rebuild PML data with EXACT same calculation as UI table
   // All values (Submit, Approve, Reject) must be calculated from individual PPL data
   const pmlMap = new Map<string, { 
@@ -1348,11 +1400,22 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
     return percB - percA;
   });
 
+  // Build mitra lookup maps to resolve Sobat ID for PML
+  const mitraByEmailForPML = new Map<string, string>();
+  const mitraByNameForPML = new Map<string, string>();
+  (mitraDataParam || []).forEach((m: any) => {
+    const e = String(getColumnValue(m, 'email', ['email', 'ai', 'email_pml', 'email_ppl'], '') || '').trim().toLowerCase();
+    const n = normalizeString(getColumnValue(m, 'nama', ['nama', 'name', 'nama lengkap', 'full_name', 'nama_lengkap', 'nama_mitra', 'nama mitra'], '') || '').toLowerCase();
+    const s = String(getColumnValue(m, 'sobat id', ['sobat id', 'af', 'sobatid', 'sobat_id'], '') || '').trim();
+    if (e) mitraByEmailForPML.set(e, s);
+    if (n) mitraByNameForPML.set(n, s);
+  });
+
   const aoa: (string | number)[][] = [
     ['DATA PML (PETUGAS PENGAWAS LAPANGAN)'],
     ['Tanggal Export', new Date().toLocaleString('id-ID')],
     [],
-    ['No', 'Nama PML', 'Kecamatan', 'Prelist Awal', 'Total Status', 'Submit', 'Approve', 'Reject', 'Revoke', '% Capaian', '% Periksa', '% Periksa/Prelist'],
+    ['No', 'Nama PML', 'Sobat ID PML', 'Kecamatan', 'Prelist Awal', 'Total Status', 'Submit', 'Approve', 'Reject', 'Revoke', '% Capaian', '% Periksa', '% Periksa/Prelist'],
     ...pmlRows.map((row, idx) => {
       const totalStatus = row.jumlah_submit_ppl + row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke;
       const prelistAwal = row.prelist_awal || 0;
@@ -1360,9 +1423,12 @@ const exportPMLToExcel = (aggregatedRows: AggregatedData[]) => {
       const capaian = prelistAwal > 0 ? ((totalProcessed / prelistAwal) * 100).toFixed(2) : '0.00';
       const percentage = totalStatus > 0 ? (((row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke) / totalStatus) * 100).toFixed(2) : '0.00';
       const periksaPrelist = prelistAwal > 0 ? (((row.jumlah_approve + row.jumlah_reject + row.jumlah_revoke) / prelistAwal) * 100).toFixed(2) : '0.00';
+      const nameKey = normalizeString(row.nama_pml || '').toLowerCase();
+      const sobatId = mitraByNameForPML.get(nameKey) || '';
       return [
         idx + 1,
         row.nama_pml,
+        sobatId,
         row.kecamatan,
         prelistAwal,
         totalStatus,
@@ -2641,12 +2707,12 @@ function MonitoringLapangan() {
       const dataMap = new Map<string, AggregatedData>();
       const kecamatanSet = new Set<string>();
 
-      // Process raw data into unique PPL rows
+      // Process raw data into unique PPL rows (use robust column access)
       sheetData.forEach((row: any) => {
-        const kecamatan = (row.kecamatan || "").trim();
-        const nama_ppl = (row["nama ppl"] || "").trim();
-        const nama_pml = (row["nama pml"] || "").trim();
-        const jumlah_submit = parseInt(row["submitted_by_pencacah"] || 0) || 0;
+        const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+        const nama_ppl = String(getColumnValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim();
+        const nama_pml = String(getColumnValue(row, "nama_pml", ["nama pml", "nama_pml", "pml", "nama pengawas"], "")).trim();
+        const jumlah_submit = parseInt(String(getColumnValue(row, "submitted_by_pencacah", ["submitted_by_pencacah", "submitted", "submit", "submitted_by"], "0")) || "0", 10) || 0;
 
         if (!kecamatan) return;
 
@@ -2679,17 +2745,126 @@ function MonitoringLapangan() {
         const current = dataMap.get(key)!;
         current.draft += parseInt(row.draft || 0) || 0;
         current.jumlah_submit += jumlah_submit;
-        current.jumlah_approve += parseInt(row.approved_by_pengawas || 0) || 0;
+        // approved may include additional counts in a JSON 'allStatusBreakdown' (keys like 'EDITED BY Admin Kabupaten')
+        current.jumlah_approve += getApprovedTotalFromRow(row);
         current.jumlah_reject += parseInt(row.rejected_by_pengawas || 0) || 0;
         current.total_assignments += parseInt(row.totalassignments || 0) || 0;
         current.status_counts.open += parseInt(row.open || 0) || 0;
         current.status_counts.draft += parseInt(row.draft || 0) || 0;
         current.status_counts.submitted += parseInt(row.submitted_by_pencacah || 0) || 0;
-        current.status_counts.approved += parseInt(row.approved_by_pengawas || 0) || 0;
+        current.status_counts.approved += getApprovedTotalFromRow(row);
         current.status_counts.rejected += parseInt(row.rejected_by_pengawas || 0) || 0;
       });
 
       const rows = Array.from(dataMap.values());
+
+      // Recalculate PPL parent totals from raw sheetData (sum of child SLS rows)
+      // This ensures the parent `jumlah_*` equals the sum of expanded child rows shown in the table.
+      const childSumsByPpl = new Map<string, { submit: number; approve: number; reject: number; revoke: number; totalassignments: number }>();
+      (sheetData || []).forEach((row: any) => {
+        const kecamatanRaw = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+        const namaPplRaw = String(getColumnValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim();
+        if (!kecamatanRaw || !namaPplRaw) return;
+        const key = `${kecamatanRaw}|${namaPplRaw}`;
+
+        const submit = parseInt(String(getColumnValue(row, "submitted_by_pencacah", ["submitted_by_pencacah", "submitted", "submit", "submitted_by"], "0")) || "0", 10) || 0;
+        const approve = getApprovedTotalFromRow(row) || 0;
+        const reject = parseInt(row.rejected_by_pengawas || 0) || 0;
+        const totalassignments = parseInt(row.totalassignments || 0) || 0;
+
+        const cur = childSumsByPpl.get(key) || { submit: 0, approve: 0, reject: 0, revoke: 0, totalassignments: 0 };
+        cur.submit += submit;
+        cur.approve += approve;
+        cur.reject += reject;
+        cur.totalassignments += totalassignments;
+        childSumsByPpl.set(key, cur);
+      });
+
+      // Apply child sums to aggregated PPL rows so parent matches expanded children
+      rows.forEach((r: any) => {
+        const key = `${r.kecamatan}|${r.nama_ppl}`;
+        const sums = childSumsByPpl.get(key);
+        if (sums) {
+          r.jumlah_submit = sums.submit;
+          r.jumlah_approve = sums.approve;
+          r.jumlah_reject = sums.reject;
+          r.total_assignments = sums.totalassignments;
+          // keep revoked from usersData mapping already applied earlier
+          r.status_counts.submitted = sums.submit;
+          r.status_counts.approved = sums.approve;
+          r.status_counts.rejected = sums.reject;
+        }
+      });
+
+      // If usersData contains per-SLS rows for this PPL (Semua Users sheet), prefer sums from usersData
+      // Build usersByEmail map from usersData
+      const usersByEmailLocal = new Map<string, any[]>();
+      (usersData || []).forEach((u: any) => {
+        const email = String(u["email"] || u["Email"] || "").trim().toLowerCase();
+        if (!email) return;
+        const list = usersByEmailLocal.get(email) || [];
+        list.push(u);
+        usersByEmailLocal.set(email, list);
+      });
+
+      // Override parent PPL aggregates with sums from usersData when available
+      rows.forEach((r: any) => {
+        const email = String(r.email_ppl || "").trim().toLowerCase();
+        if (!email) return;
+        const userRows = usersByEmailLocal.get(email) || [];
+        if (userRows.length === 0) return;
+        const sums = userRows.reduce((acc: any, user: any) => {
+          const submitted = parseInt(String(getColumnValue(user, "submitted_by_pencacah", ["submitted_by_pencacah", "submitted", "submit", "submitted_by"], "0")) || "0", 10) || 0;
+          const approve = getApprovedTotalFromRow(user) || 0;
+          const reject = parseInt(user.rejected_by_pengawas || 0) || 0;
+          const totalassignments = parseInt(user.totalassignments || 0) || 0;
+          acc.submit += submitted;
+          acc.approve += approve;
+          acc.reject += reject;
+          acc.totalassignments += totalassignments;
+          return acc;
+        }, { submit: 0, approve: 0, reject: 0, totalassignments: 0 });
+
+        // Apply sums from usersData
+        r.jumlah_submit = sums.submit;
+        r.jumlah_approve = sums.approve;
+        r.jumlah_reject = sums.reject;
+        r.total_assignments = sums.totalassignments;
+        r.status_counts.submitted = sums.submit;
+        r.status_counts.approved = sums.approve;
+        r.status_counts.rejected = sums.reject;
+      });
+
+      // Debug: if any PPL contains 'toni' (case-insensitive), log per-row details to help diagnose mismatch
+      try {
+        const debugPplNameRegex = /toni/i;
+        const matchingRows = (sheetData || []).filter((row: any) => {
+          const name = String(getColumnValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim();
+          return debugPplNameRegex.test(name);
+        });
+        if (matchingRows.length > 0) {
+          // Prepare table data: raw row id, kecamatan, nama_ppl, submitted, computed approve
+          const table = matchingRows.map((row: any, i: number) => ({
+            idx: i,
+            kecamatan: String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim(),
+            nama_ppl: String(getColumnValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim(),
+            submitted: parseInt(String(getColumnValue(row, "submitted_by_pencacah", ["submitted_by_pencacah", "submitted", "submit", "submitted_by"], "0")) || "0", 10) || 0,
+            approve_computed: getApprovedTotalFromRow(row) || 0,
+            raw: row,
+          }));
+          // Use console.table for quick inspection in browser devtools
+          // eslint-disable-next-line no-console
+          console.groupCollapsed("[DEBUG] PPL rows matching /toni/ — per-row computed approves");
+          // eslint-disable-next-line no-console
+          console.table(table.map(({ idx, kecamatan, nama_ppl, submitted, approve_computed }) => ({ idx, kecamatan, nama_ppl, submitted, approve_computed })));
+          // eslint-disable-next-line no-console
+          console.log("[DEBUG] Full matching rows (first 10):", table.slice(0, 10).map(t => t.raw));
+          // eslint-disable-next-line no-console
+          console.groupEnd();
+        }
+      } catch (e) {
+        // ignore debug errors in production
+      }
 
       // Enrich PPL rows early with REVOKED counts from "Semua Users" sheet column (JSON)
       const parseRevokedFromUserEarly = (user: any): number => {
@@ -2905,7 +3080,8 @@ function MonitoringLapangan() {
 
         const current = pmlMap.get(key)!;
         current.jumlah_submit_ppl += parseInt(row["jumlah submit ppl"] || 0) || 0;
-        current.jumlah_approve += parseInt(row.approved_by_pengawas || 0) || 0;
+        // Use normalized approved value (includes Admin keys)
+        current.jumlah_approve += getApprovedTotalFromRow(row);
         current.jumlah_reject += parseInt(row.rejected_by_pengawas || 0) || 0;
       });
 
@@ -3178,11 +3354,19 @@ function MonitoringLapangan() {
       const actualSubmit = pplUnderPML.reduce((sum, ppl) => sum + (ppl.jumlah_submit || 0), 0);
       const totalAssignments = pplUnderPML.reduce((sum, ppl) => sum + (ppl.total_assignments || 0), 0);
       const prelist_awal = pplUnderPML.reduce((sum, ppl) => sum + (ppl.prelist_awal || 0), 0);
-      const totalStatus = actualSubmit + pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0);
-      const pemeriksaan = totalStatus > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalStatus) * 100 : 0;
-      const targetPercent = totalAssignments > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / totalAssignments) * 100 : 0;
-      const capaianPercent = prelist_awal > 0 ? ((pml.jumlah_approve + pml.jumlah_reject + (pml.jumlah_revoke || 0)) / prelist_awal) * 100 : 0;
-      return { ...pml, actualSubmit, pemeriksaan, totalAssignments, targetPercent, prelist_awal, capaianPercent, pplUnderPML } as any;
+
+      // Sum approve/reject/revoke from child PPL rows to ensure parent totals match expanded children
+      const sumApproveFromPPL = pplUnderPML.reduce((s, ppl) => s + (ppl.jumlah_approve || 0), 0);
+      const sumRejectFromPPL = pplUnderPML.reduce((s, ppl) => s + (ppl.jumlah_reject || 0), 0);
+      const sumRevokeFromPPL = pplUnderPML.reduce((s, ppl) => s + (ppl.jumlah_revoke || 0), 0);
+
+      const totalStatus = actualSubmit + sumApproveFromPPL + sumRejectFromPPL + sumRevokeFromPPL;
+      const pemeriksaan = totalStatus > 0 ? ((sumApproveFromPPL + sumRejectFromPPL + sumRevokeFromPPL) / totalStatus) * 100 : 0;
+      const targetPercent = totalAssignments > 0 ? ((sumApproveFromPPL + sumRejectFromPPL + sumRevokeFromPPL) / totalAssignments) * 100 : 0;
+      const capaianPercent = prelist_awal > 0 ? ((sumApproveFromPPL + sumRejectFromPPL + sumRevokeFromPPL) / prelist_awal) * 100 : 0;
+
+      // Return object overriding jumlah_* with PPL-derived sums so UI and footers match expanded PPL totals
+      return { ...pml, actualSubmit, pemeriksaan, totalAssignments, targetPercent, prelist_awal, capaianPercent, pplUnderPML, jumlah_approve: sumApproveFromPPL, jumlah_reject: sumRejectFromPPL, jumlah_revoke: sumRevokeFromPPL } as any;
     });
   }, [pmlData, pmlGroups]);
 
@@ -3228,6 +3412,25 @@ function MonitoringLapangan() {
     }
     return sorted;
   }, [pmlDataWithActualSubmit, pmlSortBy, pmlSortOrder, debouncedPMLSearchTerm]);
+
+  // Consistency check between PML aggregates and sums of child PPL rows
+  const pmlConsistencyIssues = useMemo(() => {
+    const issues: { key: string; nama_pml: string; kecamatan: string; approveParent: number; approveChildren: number; rejectParent: number; rejectChildren: number; revokeParent: number; revokeChildren: number }[] = [];
+    (pmlDataWithActualSubmit || []).forEach((pml) => {
+      const key = `${pml.nama_pml}|${pml.kecamatan}`;
+      const children = pmlGroups.get(key) || [];
+      const approveChildren = children.reduce((s, c) => s + (c.jumlah_approve || 0), 0);
+      const rejectChildren = children.reduce((s, c) => s + (c.jumlah_reject || 0), 0);
+      const revokeChildren = children.reduce((s, c) => s + (c.jumlah_revoke || 0), 0);
+      const approveParent = Number(pml.jumlah_approve || 0) || 0;
+      const rejectParent = Number(pml.jumlah_reject || 0) || 0;
+      const revokeParent = Number(pml.jumlah_revoke || 0) || 0;
+      if (approveParent !== approveChildren || rejectParent !== rejectChildren || revokeParent !== revokeChildren) {
+        issues.push({ key, nama_pml: pml.nama_pml, kecamatan: pml.kecamatan, approveParent, approveChildren, rejectParent, rejectChildren, revokeParent, revokeChildren });
+      }
+    });
+    return issues;
+  }, [pmlDataWithActualSubmit, pmlGroups]);
 
   const totalPagesPML = Math.ceil(sortedPMLData.length / itemsPerPagePML);
   const startIndexPML = (currentPagePML - 1) * itemsPerPagePML;
@@ -4532,7 +4735,7 @@ function MonitoringLapangan() {
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
                     {isLoggedIn && aggregatedData.rows.length > 0 && (
                       <button
-                        onClick={() => exportPPLToExcel(aggregatedData.rows)}
+                        onClick={() => exportPPLToExcel(aggregatedData.rows, mitraData)}
                         className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
                       >
                         <Download className="h-4 w-4" />
@@ -4844,7 +5047,7 @@ function MonitoringLapangan() {
                                             {getColumnValue(user, "submitted_by_pencacah", ["subi", "SUBMITTED_BY_PENCACAH", "submitted", "Submitted", "Submit"], "0")}
                                           </TableCell>
                                           <TableCell className="text-sm text-green-700 font-semibold px-4 py-2 text-right">
-                                            {getColumnValue(user, "approved_by_pengawas", ["appr", "APPROVED_BY_PENGAWAS", "approved", "Approved", "Approve"], "0")}
+                                            {String(getApprovedTotalFromRow(user))}
                                           </TableCell>
                                           <TableCell className="text-sm font-semibold px-4 py-2 text-right">
                                             {(() => {
@@ -4856,7 +5059,7 @@ function MonitoringLapangan() {
                                               const prel = rc ? (prelistBySlsMap.get(rc) || 0) : 0;
                                               const num = toNum(getColumnValue(user, "draft", ["DRAFT"], "0")) === 0 ? 0 : 0; // unused
                                               const submitted = toNum(getColumnValue(user, "submitted_by_pencacah", ["SUBMITTED_BY_PENCACAH"], "0"));
-                                              const approved = toNum(getColumnValue(user, "approved_by_pengawas", ["APPROVED_BY_PENGAWAS"], "0"));
+                                              const approved = getApprovedTotalFromRow(user);
                                               const rejected = toNum(getColumnValue(user, "rejected_by_pengawas", ["REJECTED_BY_PENGAWAS"], "0"));
                                               let revoked = 0;
                                               for (const v of Object.values(user || {})) {
@@ -5449,12 +5652,27 @@ function MonitoringLapangan() {
                   <div className="flex flex-col md:flex-row gap-3 flex-1 md:max-w-2xl md:justify-end">
                     {isLoggedIn && aggregatedData.rows.length > 0 && (
                       <button
-                        onClick={() => exportPMLToExcel(aggregatedData.rows)}
+                        onClick={() => exportPMLToExcel(aggregatedData.rows, mitraData)}
                         className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-md transition-colors"
                       >
                         <Download className="h-4 w-4" />
                         Download Excel
                       </button>
+                    )}
+                    {pmlConsistencyIssues && pmlConsistencyIssues.length > 0 && (
+                      <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 inline-flex items-center gap-3">
+                        <AlertTriangle className="h-4 w-4" />
+                        <div>
+                          <div className="font-semibold">Data tidak konsisten</div>
+                          <div className="text-xs">{pmlConsistencyIssues.length} PML memiliki selisih antara parent dan jumlah PPL</div>
+                        </div>
+                        <button
+                          onClick={() => console.table(pmlConsistencyIssues)}
+                          className="ml-3 text-xs text-rose-700 underline"
+                        >
+                          Detail (console)
+                        </button>
+                      </div>
                     )}
                     
                     <div className="relative flex-1 md:max-w-xs">
