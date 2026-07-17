@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -623,33 +624,136 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
     return totals;
   }, [sortedAnggotaRows]);
 
-  const exportCsv = (tab: string) => {
-    let rows: any[] = [];
-    if (tab === "usaha") rows = sortedUsahaRows;
-    if (tab === "keluarga") rows = sortedKkRows;
-    if (tab === "anggota") rows = sortedAnggotaRows;
+  const getLocationValuesForRow = (row: any) => {
+    const code = String(getColumnValue(row, "kode", ["kode", "__col_0"], "")).trim();
+    const kecCode = code.length >= 7 ? code.slice(0, 7) : "";
+    const desaCode = code.length >= 10 ? code.slice(0, 10) : "";
+    const kecamatan = String(
+      (kecCode ? kodeToDesc[kecCode] : "") ||
+      getRowDescription(row, kecCode) ||
+      getColumnValue(row, "kecamatan", ["nama_kecamatan", "kecamatan", "__col_1"], "")
+    ).trim();
+    const desa = String(
+      (desaCode ? kodeToDesc[desaCode] : "") ||
+      getRowDescription(row, desaCode) ||
+      getColumnValue(row, "desa", ["nama_desa_kel", "kel", "desa", "__col_2"], "")
+    ).trim();
 
-    if (!rows || rows.length === 0) {
-      alert("Tidak ada data untuk diekspor");
+    return {
+      kecamatan: kecamatan || "-",
+      desa: desa || "-",
+    };
+  };
+
+  const exportExcel = (tab: string) => {
+    const baseRows = tab === "usaha"
+      ? (usahaBku || []).filter((row: any) => {
+          const code = String(getColumnValue(row, "kode", ["kode", "__col_0"], "")).trim();
+          return code.length === 16;
+        })
+      : tab === "keluarga"
+        ? (kkData || []).filter((row: any) => {
+            const code = String(getColumnValue(row, "kode", ["kode", "__col_0"], "")).trim();
+            return code.length === 16;
+          })
+        : (anggotaData || []).filter((row: any) => {
+            const code = String(getColumnValue(row, "kode", ["kode", "__col_0"], "")).trim();
+            return code.length === 16;
+          });
+
+    if (!baseRows || baseRows.length === 0) {
+      alert("Tidak ada data level SLS/RT untuk diekspor");
       return;
     }
 
-    // prepend normalized kecamatan description and full kode to CSV
-    const baseKeys = Object.keys(rows[0]);
-    const headers = ["kecamatan_desc", "kode_full", ...baseKeys];
-    const csv = [headers.join(",")].concat(rows.map(r => {
-      const code = String(getColumnValue(r, "kode", ["kode", "__col_0"], "")).trim();
-      const desc = getDisplayDesc(code) || kodeToDesc[code] || String(getColumnValue(r, "kecamatan", ["nama_kecamatan", "kecamatan"], "")).trim();
-      const base = baseKeys.map(h => String(r[h] ?? "").replace(/"/g, '""'));
-      return [desc, code, ...base].map(v => `"${v}"`).join(",");
-    })).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `kualitas_${tab}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const headers = tab === "usaha"
+      ? ["Kecamatan", "Desa", "Kode SLS/RT", "Nama PPL", "Nama PML", "Jumlah Prelist Usaha", "Ditemukan", "Tutup", "Ganda", "Tidak Ditemukan", "Persentase Tidak Ditemukan (%)", "Baru", "Total", "Usaha Dalam Keluarga Didata", "Jumlah Usaha Total", "Perlu BA"]
+      : tab === "keluarga"
+        ? ["Kecamatan", "Desa", "Kode SLS/RT", "Nama PPL", "Nama PML", "Prelist Awal", "Ditemukan", "Keluarga Baru", "Meninggal", "Tidak Eligible", "Tidak Dapat Ditemui", "Tidak Ditemukan", "Persentase Tidak Ditemukan (%)", "Keluarga Khusus", "Total Hasil Pendataan", "Perlu BA"]
+        : ["Kecamatan", "Desa", "Kode SLS/RT", "Nama PPL", "Nama PML", "Tinggal Bersama Keluarga", "Anggota Keluarga Baru", "Meninggal", "Pindah DN", "Pindah LN", "Tidak Ditemukan", "Anggota Keluarga Khusus", "Total Anggota Keluarga"];
+
+    const rows = baseRows.map((row: any) => {
+      const code = String(getColumnValue(row, "kode", ["kode", "__col_0"], "")).trim();
+      const { kecamatan, desa } = getLocationValuesForRow(row);
+      const namaPpl = formatPersonNameValue(getColumnValue(row, "nama_ppl", ["nama_ppl", "nama ppl", "ppl"], "-"));
+      const namaPml = formatPersonNameValue(getColumnValue(row, "nama_pml", ["nama_pml", "nama pml", "pml"], "-"));
+
+      if (tab === "usaha") {
+        const prelist = getPrelistAwalForCode(prelistAwalMap, code) ?? getColumnValue(row, "jumlah_prelist_usaha", ["prelist_usaha", "prelist"], "0");
+        const ditemukan = getColumnValue(row, "ditemukan", ["ditemukan"], "0");
+        const tutup = getColumnValue(row, "tutup", ["tutup"], "0");
+        const ganda = getColumnValue(row, "ganda", ["ganda"], "0");
+        const tidakDitemukan = getColumnValue(row, "tidak_ditemukan", ["tidak ditemukan", "tidak_ditemukan"], "0");
+        const baru = getColumnValue(row, "baru", ["baru"], "0");
+        const total = getColumnValue(row, "total", ["total"], "0");
+        const usahaDalamKeluarga = code && usahaRumahMap[code] !== undefined
+          ? usahaRumahMap[code]
+          : getColumnValue(row, "usaha_dlm_keluarga", ["usaha dalam keluarga didata", "usaha_dlm_keluarga"], "0");
+        const jumlahUsahaTotal = Number.isFinite(parseNumber(ditemukan)) && Number.isFinite(parseNumber(baru)) && Number.isFinite(parseNumber(usahaDalamKeluarga))
+          ? parseNumber(ditemukan)! + parseNumber(baru)! + parseNumber(usahaDalamKeluarga)!
+          : parseNumber(total) || 0;
+        const tidakDitemukanNum = parseNumber(tidakDitemukan);
+        const prelistNum = parseNumber(prelist);
+        const persenTidakDitemukan = Number.isFinite(tidakDitemukanNum) && Number.isFinite(prelistNum) && prelistNum !== 0
+          ? (tidakDitemukanNum / prelistNum) * 100
+          : undefined;
+        const perluBa = Number.isFinite(persenTidakDitemukan) && (persenTidakDitemukan ?? 0) >= 10 ? "Perlu BA" : "";
+
+        return [kecamatan, desa, code, namaPpl, namaPml, prelist, ditemukan, tutup, ganda, tidakDitemukan, persenTidakDitemukan ?? "", baru, total, usahaDalamKeluarga, jumlahUsahaTotal, perluBa];
+      }
+
+      if (tab === "keluarga") {
+        const prelist = getColumnValue(row, "prelist_awal", ["prelist_awal", "prelist"], "0");
+        const tidakDitemukan = getColumnValue(row, "tidak_ditemukan", ["tidak ditemukan"], "0");
+        const tidakDitemukanNum = parseNumber(tidakDitemukan);
+        const prelistNum = parseNumber(prelist);
+        const persenTidakDitemukan = Number.isFinite(tidakDitemukanNum) && Number.isFinite(prelistNum) && prelistNum !== 0
+          ? (tidakDitemukanNum / prelistNum) * 100
+          : undefined;
+        const perluBa = Number.isFinite(persenTidakDitemukan) && (persenTidakDitemukan ?? 0) >= 10 ? "Perlu BA" : "";
+        return [
+          kecamatan,
+          desa,
+          code,
+          namaPpl,
+          namaPml,
+          prelist,
+          getColumnValue(row, "ditemukan", ["ditemukan"], "0"),
+          getColumnValue(row, "keluarga_baru", ["keluarga baru", "keluarga_baru"], "0"),
+          getColumnValue(row, "meninggal", ["meninggal"], "0"),
+          getColumnValue(row, "tidak_eligible", ["tidak eligible"], "0"),
+          getColumnValue(row, "tidak_dapat_ditemui", ["tdk dapat ditemui", "tidak dapat ditemui"], "0"),
+          tidakDitemukan,
+          persenTidakDitemukan ?? "",
+          getColumnValue(row, "keluarga_khusus", ["keluarga khusus"], "0"),
+          getColumnValue(row, "total_hasil_pendataan", ["total hasil pendataan"], "0"),
+          perluBa,
+        ];
+      }
+
+      return [
+        kecamatan,
+        desa,
+        code,
+        namaPpl,
+        namaPml,
+        getColumnValue(row, "tinggal_bersama_keluarga", ["tinggal bersama keluarga", "tinggal_bersama_keluarga"], "0"),
+        getColumnValue(row, "anggota_keluarga_baru", ["anggota keluarga baru"], "0"),
+        getColumnValue(row, "meninggal", ["meninggal"], "0"),
+        getColumnValue(row, "pindah_dn", ["pindah dalam negeri", "pindah_dn"], "0"),
+        getColumnValue(row, "pindah_ln", ["pindah luar negeri", "pindah_ln"], "0"),
+        getColumnValue(row, "tidak_ditemukan", ["tidak ditemukan"], "0"),
+        getColumnValue(row, "anggota_keluarga_khusus", ["anggota keluarga khusus"], "0"),
+        getColumnValue(row, "total_anggota_keluarga", ["total anggota keluarga"], "0"),
+      ];
+    });
+
+    const sheetData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    const sheetName = tab === "usaha" ? "Usaha" : tab === "keluarga" ? "Keluarga" : "Anggota";
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, `kualitas_${tab}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const formatDisplayCode = (kodeRaw: string) => {
@@ -703,7 +807,7 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
           <Input placeholder="Cari seluruh kolom..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => exportCsv(activeTab)}>Export CSV</Button>
+          <Button onClick={() => exportExcel(activeTab)}>Export Excel</Button>
         </div>
       </div>
 
