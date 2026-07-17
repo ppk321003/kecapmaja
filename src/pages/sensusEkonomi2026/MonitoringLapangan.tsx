@@ -375,6 +375,21 @@ const getColumnValue = (obj: any, primaryName: string, fallbackNames: string[] =
   return defaultValue;
 };
 
+const getRowSignature = (row: any): string => {
+  if (!row || typeof row !== "object") return "";
+
+  const entries = Object.entries(row)
+    .filter(([key, value]) => {
+      if (!key || typeof key !== "string") return false;
+      if (key.startsWith("__")) return false;
+      return value !== undefined && value !== null;
+    })
+    .map(([key, value]) => [String(key).trim(), String(value).trim()])
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  return JSON.stringify(entries);
+};
+
 const isFilled = (v: any) => {
   const s = String(v ?? "").trim().toLowerCase();
   return !(s === "" || s === "-" || s === "na" || s === "n/a" || s === "null" || s === "none");
@@ -2706,9 +2721,26 @@ function MonitoringLapangan() {
 
       const dataMap = new Map<string, AggregatedData>();
       const kecamatanSet = new Set<string>();
+      const seenRawRowSignatures = new Set<string>();
+
+      const getPplIdentity = (row: any): string => {
+        const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+        const email = String(getColumnValue(row, "email", ["email", "Email", "email_ppl", "Email PPL"], "")).trim().toLowerCase();
+        const name = String(getColumnValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim();
+        const identity = email || name;
+        return `${kecamatan}|${identity}`;
+      };
 
       // Process raw data into unique PPL rows (use robust column access)
       sheetData.forEach((row: any) => {
+        const rawRowSignature = getRowSignature(row);
+        if (rawRowSignature && seenRawRowSignatures.has(rawRowSignature)) {
+          return;
+        }
+        if (rawRowSignature) {
+          seenRawRowSignatures.add(rawRowSignature);
+        }
+
         const kecamatan = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
         const nama_ppl = String(getColumnValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim();
         const nama_pml = String(getColumnValue(row, "nama_pml", ["nama pml", "nama_pml", "pml", "nama pengawas"], "")).trim();
@@ -2717,7 +2749,7 @@ function MonitoringLapangan() {
         if (!kecamatan) return;
 
         kecamatanSet.add(kecamatan);
-        const key = `${kecamatan}|${nama_ppl}`;
+        const key = getPplIdentity(row);
 
         if (!dataMap.has(key)) {
           dataMap.set(key, {
@@ -2761,7 +2793,16 @@ function MonitoringLapangan() {
       // Recalculate PPL parent totals from raw sheetData (sum of child SLS rows)
       // This ensures the parent `jumlah_*` equals the sum of expanded child rows shown in the table.
       const childSumsByPpl = new Map<string, { submit: number; approve: number; reject: number; revoke: number; totalassignments: number }>();
+      const seenChildRowSignatures = new Set<string>();
       (sheetData || []).forEach((row: any) => {
+        const rawRowSignature = getRowSignature(row);
+        if (rawRowSignature && seenChildRowSignatures.has(rawRowSignature)) {
+          return;
+        }
+        if (rawRowSignature) {
+          seenChildRowSignatures.add(rawRowSignature);
+        }
+
         const kecamatanRaw = String(getColumnValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
         const namaPplRaw = String(getColumnValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim();
         if (!kecamatanRaw || !namaPplRaw) return;
@@ -2797,11 +2838,23 @@ function MonitoringLapangan() {
       });
 
       // If usersData contains per-SLS rows for this PPL (Semua Users sheet), prefer sums from usersData
-      // Build usersByEmail map from usersData
+      // Build usersByEmail map from usersData while deduplicating repeated rows.
       const usersByEmailLocal = new Map<string, any[]>();
+      const seenUserRowSignatures = new Map<string, Set<string>>();
       (usersData || []).forEach((u: any) => {
         const email = String(u["email"] || u["Email"] || "").trim().toLowerCase();
         if (!email) return;
+
+        const signature = getRowSignature(u);
+        const seenSignatures = seenUserRowSignatures.get(email) || new Set<string>();
+        if (signature && seenSignatures.has(signature)) {
+          return;
+        }
+        if (signature) {
+          seenSignatures.add(signature);
+          seenUserRowSignatures.set(email, seenSignatures);
+        }
+
         const list = usersByEmailLocal.get(email) || [];
         list.push(u);
         usersByEmailLocal.set(email, list);
@@ -2956,9 +3009,14 @@ function MonitoringLapangan() {
       const { daysElapsed } = calculateDayProgress();
 
       // Chart data: Semua 26 Kecamatan - dynamic based on selected components
-      // Track activity per kecamatan for chart display
+      // Track activity per kecamatan for chart display, counting each unique PPL once per kecamatan.
       const kecamatanActivityMap = new Map<string, { totalActivity: number; totalSubmit: number; countPPL: number }>();
+      const seenKecamatanPplActivity = new Set<string>();
       rows.forEach((row) => {
+        const pplKey = `${row.kecamatan}|${String(row.email_ppl || row.nama_ppl || "").trim().toLowerCase()}`;
+        if (seenKecamatanPplActivity.has(pplKey)) return;
+        seenKecamatanPplActivity.add(pplKey);
+
         const current = kecamatanActivityMap.get(row.kecamatan) || { totalActivity: 0, totalSubmit: 0, countPPL: 0 };
         let activityToAdd = 0;
         if (kecamatanActivityComponents.draft) activityToAdd += row.draft;
@@ -2994,9 +3052,16 @@ function MonitoringLapangan() {
         ? [...chartDataKecamatanAll].sort((a, b) => a.value - b.value)[0]
         : { name: "-", value: 0, totalActivity: 0, countPPL: 0 };
 
-      // Chart data: Persentase per Kecamatan - dynamic based on selected components
+      // Chart data: Persentase per Kecamatan - dynamic based on selected components.
+      // Each unique PPL per kecamatan contributes once. The denominator now uses the PPL target/prelist
+      // when available, instead of raw total assignments.
       const kecamatanPercentageMap = new Map<string, { totalActivity: number; totalAssignments: number }>();
+      const seenKecamatanPplPercentage = new Set<string>();
       rows.forEach((row) => {
+        const pplKey = `${row.kecamatan}|${String(row.email_ppl || row.nama_ppl || "").trim().toLowerCase()}`;
+        if (seenKecamatanPplPercentage.has(pplKey)) return;
+        seenKecamatanPplPercentage.add(pplKey);
+
         const current = kecamatanPercentageMap.get(row.kecamatan) || { totalActivity: 0, totalAssignments: 0 };
         let activityToAdd = 0;
         if (kecamatanPercentageComponents.draft) activityToAdd += row.draft;
@@ -3005,7 +3070,11 @@ function MonitoringLapangan() {
         if (kecamatanPercentageComponents.reject) activityToAdd += row.jumlah_reject;
         if (kecamatanPercentageComponents.revoke) activityToAdd += (row.jumlah_revoke || 0);
         current.totalActivity += activityToAdd;
-        current.totalAssignments += row.total_assignments;
+
+        const targetForRow = Number.isFinite(Number(row.prelist_awal)) && Number(row.prelist_awal) > 0
+          ? Number(row.prelist_awal)
+          : Number(row.total_assignments || 0);
+        current.totalAssignments += targetForRow;
         kecamatanPercentageMap.set(row.kecamatan, current);
       });
 
@@ -3738,30 +3807,34 @@ function MonitoringLapangan() {
     : 0;
 
   // Chart data: Persentase Pemeriksaan per Kecamatan (agregasi dari data PML)
-  // % Pemeriksaan = (Approve + Reject + Revoke) / Total Assignments per Kecamatan
+  // % Pemeriksaan = (Approve + Reject + Revoke) / target prelist per kecamatan
   const chartDataKecamatanPemeriksaan = useMemo(() => {
     // Build PML aggregates from PPL rows to match table logic (per-PML targetPercent average)
-    const pmlFromRowsMap = new Map<string, { nama_pml: string; kecamatan: string; sumApprove: number; sumReject: number; sumRevoke: number; sumAssignments: number }>();
+    const pmlFromRowsMap = new Map<string, { nama_pml: string; kecamatan: string; sumApprove: number; sumReject: number; sumRevoke: number; sumTarget: number }>();
     aggregatedData.rows.forEach((r: any) => {
       const key = `${r.nama_pml}|${r.kecamatan}`;
-      const cur = pmlFromRowsMap.get(key) || { nama_pml: r.nama_pml, kecamatan: r.kecamatan, sumApprove: 0, sumReject: 0, sumRevoke: 0, sumAssignments: 0 };
+      const cur = pmlFromRowsMap.get(key) || { nama_pml: r.nama_pml, kecamatan: r.kecamatan, sumApprove: 0, sumReject: 0, sumRevoke: 0, sumTarget: 0 };
       cur.sumApprove += (r.jumlah_approve || 0);
       cur.sumReject += (r.jumlah_reject || 0);
       cur.sumRevoke += (r.jumlah_revoke || 0);
-      cur.sumAssignments += (r.total_assignments || 0);
+
+      const targetForRow = Number.isFinite(Number(r.prelist_awal)) && Number(r.prelist_awal) > 0
+        ? Number(r.prelist_awal)
+        : Number(r.total_assignments || 0);
+      cur.sumTarget += targetForRow;
       pmlFromRowsMap.set(key, cur);
     });
 
-    const kecMap = new Map<string, { totalPercent: number; count: number; totalPeriksa: number; totalAssignments: number }>();
+    const kecMap = new Map<string, { totalPercent: number; count: number; totalPeriksa: number; totalTarget: number }>();
     Array.from(pmlFromRowsMap.values()).forEach((pml) => {
       const numerator = (pml.sumApprove || 0) + (pml.sumReject || 0) + (pml.sumRevoke || 0);
-      const denom = pml.sumAssignments || 0;
+      const denom = pml.sumTarget || 0;
       const targetPercent = denom > 0 ? (numerator / denom) * 100 : 0;
-      const cur = kecMap.get(pml.kecamatan) || { totalPercent: 0, count: 0, totalPeriksa: 0, totalAssignments: 0 };
+      const cur = kecMap.get(pml.kecamatan) || { totalPercent: 0, count: 0, totalPeriksa: 0, totalTarget: 0 };
       cur.totalPercent += targetPercent;
       cur.count += 1;
       cur.totalPeriksa += numerator;
-      cur.totalAssignments += denom;
+      cur.totalTarget += denom;
       kecMap.set(pml.kecamatan, cur);
     });
 
@@ -3769,7 +3842,7 @@ function MonitoringLapangan() {
       name,
       value: d.count > 0 ? Math.round((d.totalPercent / d.count) * 100) / 100 : 0,
       totalPeriksa: d.totalPeriksa,
-      totalAssignments: d.totalAssignments,
+      totalTarget: d.totalTarget,
     })).sort((a, b) => b.value - a.value);
   }, [aggregatedData.rows]);
 
