@@ -77,7 +77,8 @@ const kepegawaianItems = [
 const sensusEkonomiItems = [
   { title: "Petugas", url: "/sensus-ekonomi-2026/petugas", icon: Users },
   { title: "Pelatihan", url: "/sensus-ekonomi-2026/pelatihan", icon: BookOpen },
-  { title: "Monitoring Lapangan", url: "/sensus-ekonomi-2026/monitoring-lapangan", icon: TrendingUp },
+  { title: "Monitoring Lapangan", url: "/monitoringlapangandash", icon: TrendingUp },
+  { title: "Monitoring Lapangan (old)", url: "/monitoringlapangan", icon: TrendingUp, conditional: "isPPK" },
 ];
 
 // MENU GROUP: REKRUTMEN

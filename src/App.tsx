@@ -2,8 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SatkerConfigProvider } from "./contexts/SatkerConfigContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
@@ -61,9 +61,25 @@ import MitraSE2026 from "./pages/mitraSE2026";
 import SensusEkonomiPetugas from "./pages/sensusEkonomiPetugas";
 import SensusEkonomiPelatihan from "./pages/sensusEkonomiPelatihan";
 import MonitoringLapangan from "./pages/sensusEkonomi2026/MonitoringLapangan";
+import MonitoringLapanganDash from "./pages/sensusEkonomi2026/MonitoringLapanganDash";
 import BahanRevisiAnggaran from "./components/bahanrevisi/BahanRevisiAnggaran";
 
 const queryClient = new QueryClient();
+
+const MonitoringLapanganAccessGate = () => {
+  const { user } = useAuth();
+  const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+
+  if (isPPK) {
+    return (
+      <Layout>
+        <MonitoringLapangan />
+      </Layout>
+    );
+  }
+
+  return <Navigate to="/monitoringlapangandash" replace />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -128,7 +144,10 @@ const App = () => (
             <Route path="/konfirmasikepka2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/petugas" element={<ProtectedRoute><Layout><SensusEkonomiPetugas /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/pelatihan" element={<ProtectedRoute><Layout><SensusEkonomiPelatihan /></Layout></ProtectedRoute>} />
-            <Route path="/sensus-ekonomi-2026/monitoring-lapangan" element={<Layout><MonitoringLapangan /></Layout>} />
+            <Route path="/monitoringlapangandash" element={<Layout><MonitoringLapanganDash /></Layout>} />
+            <Route path="/monitoringlapangan" element={<MonitoringLapanganAccessGate />} />
+            <Route path="/sensus-ekonomi-2026/monitoring-lapangan" element={<MonitoringLapanganAccessGate />} />
+            <Route path="/sensus-ekonomi-2026/monitoring-lapangan-dash" element={<Layout><MonitoringLapanganDash /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
