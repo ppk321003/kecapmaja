@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowUpDown, Loader2, AlertCircle, ChevronDown, ChevronRight, Search, Database, Trophy, Users } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 
@@ -11,6 +12,11 @@ const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
 const PROGRES_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const PROGRES_SHEET = "PROGRES PENDATAAN";
+const MONITORING_LAPANGAN_SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
+const SHEET_ANOMALI_USAHA = "Mikro Anomali Usaha";
+const SHEET_ANOMALI_KELUARGA = "Mikro Anomali Keluarga";
+
+const MonitoringLapanganAnomaliTab = React.lazy(() => import("./MonitoringLapanganAnomaliTab"));
 
 const normalizeSheetKey = (value: unknown) => {
   const digits = String(value ?? "").replace(/\D/g, "");
@@ -158,6 +164,30 @@ export default function MonitoringLapanganDash() {
     range: `${PROGRES_SHEET}!A2`,
     mode: "single-cell",
   });
+
+  const { data: anomaliUsahaData, loading: anomaliUsahaLoading, error: anomaliUsahaError } = useGoogleSheetsData({
+    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
+    sheetName: SHEET_ANOMALI_USAHA,
+  });
+  const { data: anomaliKeluargaData, loading: anomaliKeluargaLoading, error: anomaliKeluargaError } = useGoogleSheetsData({
+    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
+    sheetName: SHEET_ANOMALI_KELUARGA,
+  });
+  const { data: anomaliUsahaInfoData } = useGoogleSheetsData({
+    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
+    sheetName: SHEET_ANOMALI_USAHA,
+    range: `${SHEET_ANOMALI_USAHA}!A2`,
+    mode: "single-cell",
+  });
+  const { data: anomaliKeluargaInfoData } = useGoogleSheetsData({
+    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
+    sheetName: SHEET_ANOMALI_KELUARGA,
+    range: `${SHEET_ANOMALI_KELUARGA}!A2`,
+    mode: "single-cell",
+  });
+
+  const { user } = useAuth();
+  const isLoggedIn = !!user?.username;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
@@ -539,10 +569,9 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="dashboard" className="rounded-xl py-2 text-sm font-semibold">Dashboard</TabsTrigger>
               <TabsTrigger value="ppl" className="rounded-xl py-2 text-sm font-semibold">PPL</TabsTrigger>
               <TabsTrigger value="pml" className="rounded-xl py-2 text-sm font-semibold">PML</TabsTrigger>
+              <TabsTrigger value="anomali" className="rounded-xl py-2 text-sm font-semibold">Anomali</TabsTrigger>
             </TabsList>
-
             <TabsContent value="dashboard" className="space-y-6 mt-6">
-              {/* Stats Cards */}
               {pmlStats && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Total PML */}
@@ -969,6 +998,20 @@ export default function MonitoringLapanganDash() {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+            <TabsContent value="anomali" className="space-y-6 mt-6">
+              <React.Suspense fallback={<div className="py-12 text-center text-slate-500">Memuat Anomali...</div>}>
+                <MonitoringLapanganAnomaliTab
+                  anomaliUsahaData={anomaliUsahaData || []}
+                  anomaliUsahaLoading={anomaliUsahaLoading}
+                  anomaliKeluargaData={anomaliKeluargaData || []}
+                  anomaliKeluargaLoading={anomaliKeluargaLoading}
+                  anomaliUsahaInfo={anomaliUsahaInfoData?.[0] || "-"}
+                  anomaliKeluargaInfo={anomaliKeluargaInfoData?.[0] || "-"}
+                  isLoggedIn={isLoggedIn}
+                  user={user}
+                />
+              </React.Suspense>
             </TabsContent>
             <TabsContent value="pml" className="space-y-6 mt-6">
               <div className="space-y-6">
