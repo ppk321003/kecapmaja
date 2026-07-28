@@ -3,7 +3,11 @@ import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpDown, Loader2, AlertCircle, ChevronDown, ChevronRight, Search, Database, Trophy, Users } from "lucide-react";
+import { ArrowUpDown, Loader2, AlertCircle, ChevronDown, ChevronRight, Search, Database, Trophy, Users, Link, Edit3, CheckSquare, User as UserIcon, Phone, Copy, Flag as FlagIcon, Mail, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from "@/contexts/AuthContext";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
@@ -201,6 +205,229 @@ export default function MonitoringLapanganDash() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [pmlItemsPerPage, setPmlItemsPerPage] = useState(20);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+
+  // Ngibar Disdik tab: safe incremental implementation
+  const NGIBAR_SPREADSHEET_ID = "1EyrssWtjEGd64SYelUMON3nnLpj6KU5INCMeD-Amjto";
+  const NGIBAR_SHEET = "Sheet4";
+  const { data: ngibarData, loading: ngibarLoading, error: ngibarError } = useGoogleSheetsData({
+    spreadsheetId: NGIBAR_SPREADSHEET_ID,
+    sheetName: NGIBAR_SHEET,
+  });
+  const [ngibarSearch, setNgibarSearch] = useState("");
+  const [ngibarSortField, setNgibarSortField] = useState<string | null>(null);
+  const [ngibarSortOrder, setNgibarSortOrder] = useState<"asc" | "desc">("asc");
+  const [ngibarPage, setNgibarPage] = useState(1);
+  const [ngibarItemsPerPage, setNgibarItemsPerPage] = useState(20);
+  const { toast } = useToast();
+  const [ngibarOverrides, setNgibarOverrides] = useState<Record<number, Record<string, string>>>({});
+  const [ngibarJenisFilter, setNgibarJenisFilter] = useState<string | null>(null);
+
+  const columnLetterToField = (col: string) => {
+    switch ((col || "").toUpperCase()) {
+      case "K":
+        return "hasil_pengecekkan";
+      case "L":
+        return "flag_input_fasih";
+      case "M":
+        return "nama_pml";
+      case "N":
+        return "nama_ppl";
+      default:
+        return null;
+    }
+  };
+
+  // Dialog state for editing fields
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editDialogField, setEditDialogField] = useState<string | null>(null);
+  const [editDialogRow, setEditDialogRow] = useState<number | null>(null);
+  const [editDialogValue, setEditDialogValue] = useState<string>("");
+  const [editSaving, setEditSaving] = useState(false);
+
+  useEffect(() => {
+    console.debug("editDialogOpen changed", { editDialogOpen, editDialogField, editDialogRow });
+  }, [editDialogOpen, editDialogField, editDialogRow]);
+
+  const openEditDialog = (field: string, rowNumber: number | undefined, initialValue: string) => {
+    console.debug("openEditDialog called", { field, rowNumber, initialValue });
+    if (rowNumber == null) {
+      console.warn("openEditDialog skipped because rowNumber is null/undefined", { field, rowNumber, initialValue });
+      return;
+    }
+    console.debug("openEditDialog", { field, rowNumber, initialValue });
+    setEditDialogField(field);
+    setEditDialogRow(Number(rowNumber));
+    setEditDialogValue(initialValue ?? "");
+    setEditDialogOpen(true);
+  };
+
+  const saveEditDialog = async () => {
+    if (editDialogField == null || editDialogRow == null) return;
+    const col = editDialogField === 'hasil_pengecekkan' ? 'K' : editDialogField === 'flag_input_fasih' ? 'L' : editDialogField === 'nama_pml' ? 'M' : editDialogField === 'nama_ppl' ? 'N' : undefined;
+    if (!col) return;
+    setEditSaving(true);
+    // optimistic update
+    setNgibarOverrides((prev) => ({ ...(prev || {}), [Number(editDialogRow)]: { ...(prev?.[Number(editDialogRow)] || {}), [editDialogField]: editDialogValue } }));
+    try {
+      await updateNgibarCell(Number(editDialogRow), col, editDialogValue);
+      setEditDialogOpen(false);
+    } catch (err) {
+      // rollback
+      setNgibarOverrides((prev) => {
+        const copy = { ...(prev || {}) };
+        if (copy[Number(editDialogRow)]) {
+          const { [editDialogField]: _removed, ...rest } = copy[Number(editDialogRow)];
+          copy[Number(editDialogRow)] = rest;
+        }
+        return copy;
+      });
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const formatIndoNow = () => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getHours())}.${pad(d.getMinutes())}, ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  };
+
+  const toggleFlag = async (row: any) => {
+    if (!row || row.__rowNumber == null) return;
+    const current = String(row.flag_input_fasih || "").trim();
+    if (current) {
+      // unflag -> write blank
+      setNgibarOverrides((prev) => ({ ...(prev || {}), [row.__rowNumber]: { ...(prev?.[row.__rowNumber] || {}), flag_input_fasih: "" } }));
+      await updateNgibarCell(Number(row.__rowNumber), "L", "");
+    } else {
+      const val = `Sudah - ${formatIndoNow()}`;
+      setNgibarOverrides((prev) => ({ ...(prev || {}), [row.__rowNumber]: { ...(prev?.[row.__rowNumber] || {}), flag_input_fasih: val } }));
+      await updateNgibarCell(Number(row.__rowNumber), "L", val);
+    }
+  };
+
+  const normalizeWa = (raw: string) => {
+    if (!raw) return "";
+    const digits = String(raw).replace(/[^0-9]/g, "");
+    if (digits.startsWith("0")) return "62" + digits.slice(1);
+    return digits;
+  };
+
+  const updateNgibarCell = async (rowNumber: number | undefined, columnLetter: string, value: string) => {
+    if (rowNumber == null) return;
+    try {
+      const { error } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: NGIBAR_SPREADSHEET_ID,
+          operation: "update",
+          range: `${NGIBAR_SHEET}!${columnLetter}${rowNumber}`,
+          values: [[value]],
+        },
+      });
+      if (error) throw error;
+      toast({ title: "Sukses", description: "Perubahan tersimpan." });
+      const field = columnLetterToField(columnLetter);
+      if (field) {
+        setNgibarOverrides((prev) => {
+          const copy = { ...(prev || {}) };
+          const rowKey = Number(rowNumber);
+          copy[rowKey] = { ...(copy[rowKey] || {}), [field]: value };
+          return copy;
+        });
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Gagal", description: err?.message || "Gagal menyimpan ke sheet.", variant: "destructive" });
+    }
+  };
+
+  const ngibarRows = useMemo(() => {
+    return (ngibarData || []).map((r: any) => {
+      const row: any = {
+        __rowNumber: r.__rowNumber,
+        timestamp: getSheetCellText(r, 0),
+        nama_lengkap: getSheetCellText(r, 1),
+        nomor_wa: getSheetCellText(r, 2),
+        email: getSheetCellText(r, 3),
+        nama_satuan: getSheetCellText(r, 4),
+        upload_link: getSheetCellText(r, 5),
+        kecamatan: getSheetCellText(r, 6),
+        alamat: getSheetCellText(r, 7),
+        desa: getSheetCellText(r, 8),
+        jenis_satuan: getSheetCellText(r, 9),
+        hasil_pengecekkan: getSheetCellText(r, 10),
+        flag_input_fasih: getSheetCellText(r, 11),
+        nama_pml: getSheetCellText(r, 12),
+        nama_ppl: getSheetCellText(r, 13),
+      };
+      const overrides = ngibarOverrides?.[row.__rowNumber];
+      if (overrides) {
+        Object.keys(overrides).forEach((k) => {
+          row[k] = overrides[k];
+        });
+      }
+      return row;
+    });
+  }, [ngibarData, ngibarOverrides]);
+
+  const ngibarFilteredSorted = useMemo(() => {
+    const q = String(ngibarSearch || "").trim().toLowerCase();
+    let rows = ngibarRows.slice();
+    if (q) {
+      rows = rows.filter((r) => {
+        return (
+          String(r.nama_satuan || "").toLowerCase().includes(q) ||
+          String(r.kecamatan || "").toLowerCase().includes(q) ||
+          String(r.desa || "").toLowerCase().includes(q) ||
+          String(r.jenis_satuan || "").toLowerCase().includes(q)
+        );
+      });
+    }
+    if (ngibarJenisFilter) {
+      rows = rows.filter((r) => String(r.jenis_satuan || "").toLowerCase() === String(ngibarJenisFilter).toLowerCase());
+    }
+    if (ngibarSortField) {
+      rows.sort((a: any, b: any) => {
+        const va = String(a[ngibarSortField] ?? "").toLowerCase();
+        const vb = String(b[ngibarSortField] ?? "").toLowerCase();
+        if (va < vb) return ngibarSortOrder === "asc" ? -1 : 1;
+        if (va > vb) return ngibarSortOrder === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return rows;
+  }, [ngibarRows, ngibarSearch, ngibarSortField, ngibarSortOrder, ngibarJenisFilter]);
+
+  const ngibarJenisOptions = useMemo(() => {
+    const s = new Set<string>();
+    (ngibarRows || []).forEach((r: any) => { if (r?.jenis_satuan) s.add(String(r.jenis_satuan)); });
+    return Array.from(s).filter(Boolean);
+  }, [ngibarRows]);
+
+  const ngibarTotalPages = Math.max(1, Math.ceil((ngibarFilteredSorted || []).length / ngibarItemsPerPage));
+  const ngibarTotalCount = ngibarFilteredSorted.length;
+  const ngibarFlaggedCount = ngibarFilteredSorted.filter((row: any) => String(row.flag_input_fasih || "").trim()).length;
+  const ngibarVerifiedCount = ngibarFilteredSorted.filter((row: any) => String(row.hasil_pengecekkan || "").trim()).length;
+  const ngibarLinkCount = ngibarFilteredSorted.filter((row: any) => String(row.upload_link || "").trim()).length;
+
+  const ngibarFlaggedPercent = ngibarTotalCount > 0 ? (ngibarFlaggedCount / ngibarTotalCount) * 100 : 0;
+  const ngibarVerifiedPercent = ngibarTotalCount > 0 ? (ngibarVerifiedCount / ngibarTotalCount) * 100 : 0;
+  const ngibarLinkPercent = ngibarTotalCount > 0 ? (ngibarLinkCount / ngibarTotalCount) * 100 : 0;
+
+  const ngibarJenisSummary = useMemo(() => {
+    const summary = new Map<string, { count: number; percent: number }>();
+    ngibarFilteredSorted.forEach((row: any) => {
+      const jenis = String(row.jenis_satuan || "-");
+      const existing = summary.get(jenis) || { count: 0, percent: 0 };
+      existing.count += 1;
+      summary.set(jenis, existing);
+    });
+    return Array.from(summary.entries()).map(([jenis, data]) => ({
+      jenis,
+      count: data.count,
+      percent: ngibarTotalCount > 0 ? (data.count / ngibarTotalCount) * 100 : 0,
+    })).sort((a, b) => b.count - a.count);
+  }, [ngibarFilteredSorted, ngibarTotalCount]);
 
   const pplRows = useMemo<PPLRow[]>(() => {
     const progressByKey = new Map<string, Array<{
@@ -543,6 +770,28 @@ export default function MonitoringLapanganDash() {
       .sort((a, b) => b.persentase - a.persentase);
   }, [pmlRows]);
 
+  // Global edit dialog (rendered outside TabsContent so it is available on all tabs)
+  // Uses same state variables: editDialogOpen, editDialogField, editDialogValue, editSaving
+  const GlobalEditDialog = (
+    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{editDialogField === 'hasil_pengecekkan' ? 'Hasil Pengecekkan' : editDialogField === 'flag_input_fasih' ? 'Flag Input Fasih' : editDialogField === 'nama_pml' ? 'Nama PML' : editDialogField === 'nama_ppl' ? 'Nama PPL' : 'Edit'}</DialogTitle>
+          <DialogDescription>Rekam perubahan langsung ke Sheet</DialogDescription>
+        </DialogHeader>
+        <div className="mt-2">
+          <Input value={editDialogValue} onChange={(e) => setEditDialogValue(e.target.value)} className="w-full" />
+        </div>
+        <DialogFooter>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 rounded bg-slate-100" onClick={() => setEditDialogOpen(false)}>Batal</button>
+            <button className="px-4 py-2 rounded bg-emerald-600 text-white" onClick={saveEditDialog} disabled={editSaving}>{editSaving ? 'Menyimpan...' : 'Simpan'}</button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   const loading = stackingLoading || progresLoading || progresHeaderLoading;
   const error = stackingError || progresError || progresHeaderError;
   const avgKecamatanPercentage = kecamatanStats.length > 0
@@ -569,6 +818,7 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="dashboard" className="rounded-xl py-2 text-sm font-semibold">Dashboard</TabsTrigger>
               <TabsTrigger value="ppl" className="rounded-xl py-2 text-sm font-semibold">PPL</TabsTrigger>
               <TabsTrigger value="pml" className="rounded-xl py-2 text-sm font-semibold">PML</TabsTrigger>
+              <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
               <TabsTrigger value="anomali" className="rounded-xl py-2 text-sm font-semibold">Anomali</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard" className="space-y-6 mt-6">
@@ -661,7 +911,6 @@ export default function MonitoringLapanganDash() {
                   </div>
                 </CardContent>
               </Card>
-
               {/* Kecamatan Chart */}
               <Card className="border-0 shadow-sm">
                 <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-slate-50">
@@ -999,6 +1248,239 @@ export default function MonitoringLapanganDash() {
                 </Card>
               </div>
             </TabsContent>
+            <TabsContent value="ngibar" className="space-y-6 mt-6">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Ngibar Disdik Kab. Majalengka</h3>
+                  <p className="text-sm text-slate-500">Tabel ringkas dan resume progres</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button onClick={() => { setNgibarJenisFilter(null); setNgibarPage(1); }} className={`px-2 py-1 text-sm rounded ${ngibarJenisFilter ? 'bg-slate-100' : 'bg-slate-800 text-white'}`}>Semua</button>
+                    {ngibarJenisOptions.map((opt) => (
+                      <button key={opt} onClick={() => { setNgibarJenisFilter(opt); setNgibarPage(1); }} className={`px-2 py-1 text-sm rounded ${ngibarJenisFilter === opt ? 'bg-slate-800 text-white' : 'bg-slate-100'}`}>{opt}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="w-full md:w-80">
+                  <Input size={"sm" as any} placeholder="Cari Nama Satuan / Kecamatan / Desa / Jenis..." value={ngibarSearch} onChange={(e) => { setNgibarSearch(e.target.value); }} />
+                </div>
+              </div>
+
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead onClick={() => { setNgibarSortField('nama_satuan'); setNgibarSortOrder(ngibarSortField === 'nama_satuan' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Nama Satuan Pendidikan</TableHead>
+                          <TableHead onClick={() => { setNgibarSortField('jenis_satuan'); setNgibarSortOrder(ngibarSortField === 'jenis_satuan' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Jenis Satuan Pendidikan</TableHead>
+                          <TableHead onClick={() => { setNgibarSortField('kecamatan'); setNgibarSortOrder(ngibarSortField === 'kecamatan' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Kecamatan</TableHead>
+                          <TableHead onClick={() => { setNgibarSortField('desa'); setNgibarSortOrder(ngibarSortField === 'desa' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Desa/Kelurahan</TableHead>
+                          <TableHead onClick={() => { setNgibarSortField('nama_lengkap'); setNgibarSortOrder(ngibarSortField === 'nama_lengkap' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Nama Lengkap</TableHead>
+                          <TableHead>Nomor Telepon (WA)</TableHead>
+                          <TableHead onClick={() => { setNgibarSortField('email'); setNgibarSortOrder(ngibarSortField === 'email' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>E-mail</TableHead>
+                          <TableHead>Link</TableHead>
+                          <TableHead>Hasil Pengecekkan</TableHead>
+                          <TableHead>Flag Input Fasih</TableHead>
+                          <TableHead onClick={() => { setNgibarSortField('nama_pml'); setNgibarSortOrder(ngibarSortField === 'nama_pml' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Nama PML</TableHead>
+                          <TableHead onClick={() => { setNgibarSortField('nama_ppl'); setNgibarSortOrder(ngibarSortField === 'nama_ppl' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Nama PPL</TableHead>
+                          
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {ngibarFilteredSorted.slice((ngibarPage - 1) * ngibarItemsPerPage, ngibarPage * ngibarItemsPerPage).map((row, idx) => (
+                          <TableRow key={row?.__rowNumber ?? idx}>
+                            <TableCell className="max-w-xs truncate">{row?.nama_satuan ?? '-'}</TableCell>
+                            <TableCell>{row?.jenis_satuan ?? '-'}</TableCell>
+                            <TableCell>{row?.kecamatan ?? '-'}</TableCell>
+                            <TableCell>{row?.desa ?? '-'}</TableCell>
+                            <TableCell>{row?.nama_lengkap ?? '-'}</TableCell>
+                            <TableCell>
+                              {row?.nomor_wa ? (
+                                <div className="flex items-center gap-2">
+                                  <button type="button" title="Chat WA" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const n = normalizeWa(row.nomor_wa); if (n) window.open(`https://wa.me/${n}`, '_blank'); }} className="p-1 rounded bg-slate-100">
+                                    <Phone className="w-4 h-4" />
+                                  </button>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button type="button" title="Tampilkan nomor" className="p-1 rounded bg-slate-100">
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="truncate">{row.nomor_wa}</div>
+                                        <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(String(row.nomor_wa)); toast({ title: 'Disalin' }); } catch {}}} className="p-1 rounded bg-slate-100">
+                                          <Copy className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                              ) : ('-')}
+                            </TableCell>
+                            <TableCell>
+                              {row?.email ? (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button title="Tampilkan email" className="p-1 rounded bg-slate-100">
+                                      <Mail className="w-4 h-4" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="truncate">{row.email}</div>
+                                      <button onClick={async () => { try { await navigator.clipboard.writeText(String(row.email)); toast({ title: 'Disalin' }); } catch {}}} className="p-1 rounded bg-slate-100">
+                                        <Copy className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              ) : ('-')}
+                            </TableCell>
+                            <TableCell>
+                              {row?.upload_link ? (
+                                <a href={row.upload_link} target="_blank" rel="noreferrer"><Link className="w-4 h-4" /></a>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="truncate max-w-xs">{row?.hasil_pengecekkan || '-'}</span>
+                                <button type="button" title={row?.hasil_pengecekkan ? 'Edit Hasil Pengecekkan' : 'Tambah Hasil Pengecekkan'} onClick={() => {
+                                  console.debug('hasil_pengecekkan button clicked', { rowNumber: row?.__rowNumber, value: row?.hasil_pengecekkan });
+                                  openEditDialog('hasil_pengecekkan', row?.__rowNumber, row?.hasil_pengecekkan ?? '');
+                                }} className={`p-1 rounded ${String(row?.hasil_pengecekkan || '').trim() ? 'bg-emerald-600 text-white' : 'bg-slate-100'}`}>
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <button type="button" title={row?.flag_input_fasih ? 'Unflag' : 'Flag as Sudah'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFlag(row); }} className={`p-1 rounded ${String(row?.flag_input_fasih || '').trim() ? 'bg-emerald-600 text-white' : 'bg-slate-100'}`}>
+                                <FlagIcon className="w-4 h-4" />
+                              </button>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="truncate max-w-[180px]">{row?.nama_pml ?? '-'}</span>
+                                <button type="button" title="Edit Nama PML" onClick={() => {
+                                  console.debug('nama_pml button clicked', { rowNumber: row?.__rowNumber, value: row?.nama_pml });
+                                  openEditDialog('nama_pml', row?.__rowNumber, row?.nama_pml ?? '');
+                                }} className="p-1 rounded bg-slate-100">
+                                  <UserIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="truncate max-w-[180px]">{row?.nama_ppl ?? '-'}</span>
+                                <button type="button" title="Edit Nama PPL" onClick={() => {
+                                  console.debug('nama_ppl button clicked', { rowNumber: row?.__rowNumber, value: row?.nama_ppl });
+                                  openEditDialog('nama_ppl', row?.__rowNumber, row?.nama_ppl ?? '');
+                                }} className="p-1 rounded bg-slate-100">
+                                  <UserIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                        <span>Per halaman:</span>
+                        <select
+                          value={ngibarItemsPerPage}
+                          onChange={(e) => { setNgibarItemsPerPage(Number(e.target.value)); setNgibarPage(1); }}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                        >
+                          {[10, 20, 50, 100].map((size) => (
+                            <option key={size} value={size}>{size}</option>
+                          ))}
+                        </select>
+                        <span>Hal {ngibarPage} dari {ngibarTotalPages}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setNgibarPage(1)}
+                          disabled={ngibarPage === 1}
+                          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                        >
+                          Awal
+                        </button>
+                        <button
+                          onClick={() => setNgibarPage((prev) => Math.max(1, prev - 1))}
+                          disabled={ngibarPage === 1}
+                          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                        >
+                          Sebelumnya
+                        </button>
+                        <button
+                          onClick={() => setNgibarPage((prev) => Math.min(ngibarTotalPages, prev + 1))}
+                          disabled={ngibarPage === ngibarTotalPages}
+                          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                        >
+                          Berikutnya
+                        </button>
+                        <button
+                          onClick={() => setNgibarPage(ngibarTotalPages)}
+                          disabled={ngibarPage === ngibarTotalPages}
+                          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                        >
+                          Akhir
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 mt-6">
+                <Card className="h-full min-h-[180px] border-0 shadow-sm bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
+                  <CardContent className="flex h-full flex-col justify-between p-5">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-200">Total Baris Filter</div>
+                      <div className="mt-4 text-3xl font-bold text-white">{ngibarTotalCount.toLocaleString('id-ID')}</div>
+                      <div className="mt-2 text-sm text-slate-300">Jumlah baris di tabel berdasarkan filter saat ini.</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="h-full min-h-[180px] border-0 shadow-sm bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
+                  <CardContent className="flex h-full flex-col justify-between p-5">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-200">Flag Input Fasih</div>
+                      <div className="mt-4 text-3xl font-bold text-white">{ngibarFlaggedCount.toLocaleString('id-ID')}</div>
+                      <div className="mt-2 text-sm text-slate-300">{ngibarFlaggedPercent.toFixed(1)}% sudah diberi flag.</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="h-full min-h-[180px] border-0 shadow-sm bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
+                  <CardContent className="flex h-full flex-col justify-between p-5">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-200">Hasil Pengecekkan Lengkap</div>
+                      <div className="mt-4 text-3xl font-bold text-white">{ngibarVerifiedCount.toLocaleString('id-ID')}</div>
+                      <div className="mt-2 text-sm text-slate-300">{ngibarVerifiedPercent.toFixed(1)}% sudah berisi hasil pengecekkan.</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="h-full min-h-[180px] border-0 shadow-sm bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
+                  <CardContent className="flex h-full flex-col justify-between p-4">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-200">Distribusi Jenis Satuan</div>
+                      <div className="mt-3 space-y-2">
+                        {ngibarJenisSummary.slice(0, 4).map((item) => (
+                          <div key={item.jenis} className="flex items-center justify-between gap-3 text-sm">
+                            <span className="truncate text-slate-100">{item.jenis}</span>
+                            <span className="text-right text-slate-300">{item.count.toLocaleString('id-ID')} · {item.percent.toFixed(1)}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {ngibarJenisSummary.length > 4 && (
+                      <div className="mt-3 text-xs text-slate-400">Menampilkan 4 jenis teratas dari {ngibarJenisSummary.length} jenis.</div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
             <TabsContent value="anomali" className="space-y-6 mt-6">
               <React.Suspense fallback={<div className="py-12 text-center text-slate-500">Memuat Anomali...</div>}>
                 <MonitoringLapanganAnomaliTab
@@ -1318,6 +1800,23 @@ export default function MonitoringLapanganDash() {
           </Tabs>
         </div>
       </Card>
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editDialogField === 'hasil_pengecekkan' ? 'Hasil Pengecekkan' : editDialogField === 'flag_input_fasih' ? 'Flag Input Fasih' : editDialogField === 'nama_pml' ? 'Nama PML' : editDialogField === 'nama_ppl' ? 'Nama PPL' : 'Edit'}</DialogTitle>
+            <DialogDescription>Rekam perubahan langsung ke Sheet</DialogDescription>
+          </DialogHeader>
+          <div className="mt-2">
+            <Input value={editDialogValue} onChange={(e) => setEditDialogValue(e.target.value)} className="w-full" />
+          </div>
+          <DialogFooter>
+            <div className="flex gap-2">
+              <button className="px-4 py-2 rounded bg-slate-100" onClick={() => setEditDialogOpen(false)}>Batal</button>
+              <button className="px-4 py-2 rounded bg-emerald-600 text-white" onClick={saveEditDialog} disabled={editSaving}>{editSaving ? 'Menyimpan...' : 'Simpan'}</button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
