@@ -2514,7 +2514,7 @@ export default function MonitoringLapanganDash() {
                                       <span className="block">Ditemukan</span>
                                     </TableHead>
                                     <TableHead className="text-right text-slate-700 font-semibold px-3 py-3 bg-amber-50">Baru</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-2 py-3 w-14 whitespace-normal break-words border-r-2 border-slate-300 bg-cyan-50 text-sky-700">
+                                    <TableHead className="text-right font-semibold px-2 py-3 w-14 whitespace-normal break-words border-r-2 border-slate-300 bg-cyan-50 text-sky-700">
                                       <span className="block">Ditemukan+</span>
                                       <span className="block">Baru</span>
                                     </TableHead>
@@ -2526,7 +2526,7 @@ export default function MonitoringLapanganDash() {
                                       <span className="block">Ditemukan</span>
                                     </TableHead>
                                     <TableHead className="text-right text-slate-700 font-semibold px-3 py-3 bg-amber-50">Baru</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-2 py-3 w-14 whitespace-normal break-words bg-cyan-50 text-sky-700">
+                                    <TableHead className="text-right font-semibold px-2 py-3 w-14 whitespace-normal break-words bg-cyan-50 text-sky-700">
                                       <span className="block">Ditemukan+</span>
                                       <span className="block">Baru</span>
                                     </TableHead>
@@ -2565,13 +2565,13 @@ export default function MonitoringLapanganDash() {
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.perusahaan_ganda).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-rose-800 px-2 py-3 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(row.perusahaan_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-3 py-3 bg-amber-50">{parseNumericValue(row.perusahaan_baru).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-2 py-3 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(row.perusahaan_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold px-2 py-3 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(row.perusahaan_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.keluarga_ditemukan).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-50">{parseNumericValue(row.keluarga_tutup).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.keluarga_ganda).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-rose-800 px-2 py-3 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(row.keluarga_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-3 py-3 bg-amber-50">{parseNumericValue(row.keluarga_baru).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-2 py-3 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(row.keluarga_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold px-2 py-3 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(row.keluarga_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
                                         </TableRow>
                                         {isExpanded && row.details.map((detail) => (
                                           <TableRow key={detail.id} className="bg-slate-50 hover:bg-slate-100 transition-colors">
@@ -2579,18 +2579,18 @@ export default function MonitoringLapanganDash() {
                                             <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8">{detail.sls_code}</TableCell>
                                             <TableCell className="text-sm text-slate-600 px-4 py-2">{detail.sls_rt}</TableCell>
                                             <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.perusahaan_jumlah_prelist_usaha).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.perusahaan_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.perusahaan_tutup).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.perusahaan_ganda).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-rose-800 px-2 py-2 w-14 whitespace-nowrap">{parseNumericValue(detail.perusahaan_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-3 py-2">{parseNumericValue(detail.perusahaan_baru).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-2 py-2 w-14 whitespace-nowrap">{parseNumericValue(detail.perusahaan_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.keluarga_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.perusahaan_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-50">{parseNumericValue(detail.perusahaan_tutup).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.perusahaan_ganda).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold text-rose-800 px-2 py-2 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(detail.perusahaan_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900 px-3 py-2 bg-amber-50">{parseNumericValue(detail.perusahaan_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold px-2 py-2 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(detail.perusahaan_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.keluarga_ditemukan).toLocaleString("id-ID")}</TableCell>
                                             <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-50">{parseNumericValue(detail.keluarga_tutup).toLocaleString("id-ID")}</TableCell>
                                             <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.keluarga_ganda).toLocaleString("id-ID")}</TableCell>
                                             <TableCell className="text-right font-semibold text-rose-800 px-2 py-2 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(detail.keluarga_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
                                             <TableCell className="text-right font-semibold text-slate-900 px-3 py-2 bg-amber-50">{parseNumericValue(detail.keluarga_baru).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-2 py-2 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(detail.keluarga_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold px-2 py-2 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(detail.keluarga_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
                                           </TableRow>
                                         ))}
                                       </React.Fragment>
