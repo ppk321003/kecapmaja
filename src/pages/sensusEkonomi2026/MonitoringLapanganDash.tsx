@@ -62,6 +62,51 @@ const getTargetMinimalPercentage = (daysElapsed: number): number => {
   return Math.round(Math.max(0, Math.min(rawPercentage, 100)) * 100) / 100;
 };
 
+const getActivityStatusText = (jumlahAktivitas: number): { label: string; detail: string; color: string } => {
+  const { daysElapsed } = calculateDayProgress();
+  const minDayTarget = daysElapsed * 10;
+  const maxDayTarget = daysElapsed * 15;
+
+  if (daysElapsed <= 0) {
+    return {
+      label: "Belum Dimulai",
+      detail: "Jadwal dimulai 15 Juni 2026",
+      color: "#64748b",
+    };
+  }
+
+  if (jumlahAktivitas >= maxDayTarget) {
+    return {
+      label: "Sesuai Jadwal",
+      detail: `${jumlahAktivitas} aktivitas (target ${minDayTarget}-${maxDayTarget}, hari ke-${daysElapsed})`,
+      color: "#16a34a",
+    };
+  }
+
+  if (jumlahAktivitas >= minDayTarget) {
+    return {
+      label: "Sesuai Jadwal",
+      detail: `${jumlahAktivitas} aktivitas (target ${minDayTarget}-${maxDayTarget}, hari ke-${daysElapsed})`,
+      color: "#16a34a",
+    };
+  }
+
+  const warningThreshold = minDayTarget * 0.6;
+  if (jumlahAktivitas >= warningThreshold) {
+    return {
+      label: "Tertinggal",
+      detail: `${jumlahAktivitas} aktivitas, kurang ${minDayTarget - jumlahAktivitas} (hari ke-${daysElapsed})`,
+      color: "#ea580c",
+    };
+  }
+
+  return {
+    label: "Sangat Tertinggal",
+    detail: `${jumlahAktivitas} aktivitas, kurang ${minDayTarget - jumlahAktivitas} (hari ke-${daysElapsed})`,
+    color: "#dc2626",
+  };
+};
+
 const parsePercentage = (value: unknown): number => {
   const text = String(value ?? "").trim();
   if (!text) return 0;
@@ -113,8 +158,11 @@ interface PPLDetail {
   matchingKey: string;
   address: string;
   prelist_awal: string;
+  prelist_wilkerstat: string;
   responden_didata: string;
   persentase_responden_didata: string;
+  aktivitas: string;
+  aktivitasColor: string;
   draft: string;
   persentase_draft: string;
 }
@@ -124,8 +172,11 @@ interface PPLRow {
   nama_ppl: string;
   kecamatan: string;
   prelist_awal: string;
+  prelist_wilkerstat: string;
   responden_didata: string;
   persentase_responden_didata: string;
+  aktivitas: string;
+  aktivitasColor: string;
   draft: string;
   persentase_draft: string;
   matchingKeys: string;
@@ -134,6 +185,7 @@ interface PPLRow {
 
 interface PMLChildRow {
   nama_ppl: string;
+  prelist_wilkerstat: string;
   prelist_awal: string;
   responden_didata: string;
   persentase_responden_didata: string;
@@ -145,6 +197,7 @@ interface PMLRow {
   id: string;
   nama_pml: string;
   kecamatan: string;
+  prelist_wilkerstat: string;
   prelist_awal: string;
   responden_didata: string;
   persentase_responden_didata: string;
@@ -438,6 +491,7 @@ export default function MonitoringLapanganDash() {
       draft: string;
       persentaseDraft: string;
     }>>();
+    const wilkerstatByKey = new Map<string, number>();
 
     (progresData || []).forEach((row: any) => {
       const key = normalizeSheetKey(getSheetCellText(row, 0));
@@ -454,7 +508,14 @@ export default function MonitoringLapanganDash() {
       progressByKey.set(key, existing);
     });
 
-    const pplMap = new Map<string, { nama_ppl: string; kecamatan: string; keys: Set<string> }>();
+    (stackingData || []).forEach((row: any) => {
+      const key = normalizeSheetKey(getSheetCellText(row, 3));
+      if (!key) return;
+      const wilkerstatValue = parseNumericValue(getSheetCellText(row, 24));
+      wilkerstatByKey.set(key, (wilkerstatByKey.get(key) || 0) + wilkerstatValue);
+    });
+
+    const pplMap = new Map<string, { nama_ppl: string; kecamatan: string; keys: Set<string>; prelistWilkerstat: number }>();
 
     (stackingData || []).forEach((row: any) => {
       const key = normalizeSheetKey(getSheetCellText(row, 3));
@@ -463,6 +524,7 @@ export default function MonitoringLapanganDash() {
       const kecamatan = toProperCase(getSheetCellText(row, 12));
       if (!namaPpl || !kecamatan) return;
 
+      const wilkerstatValue = parseNumericValue(getSheetCellText(row, 24));
       const mapKey = `${namaPpl}||${kecamatan}`;
       const existing = pplMap.get(mapKey);
       if (!existing) {
@@ -470,9 +532,11 @@ export default function MonitoringLapanganDash() {
           nama_ppl: namaPpl,
           kecamatan,
           keys: new Set([key]),
+          prelistWilkerstat: wilkerstatValue,
         });
       } else {
         existing.keys.add(key);
+        existing.prelistWilkerstat += wilkerstatValue;
       }
     });
 
@@ -485,23 +549,29 @@ export default function MonitoringLapanganDash() {
           const draft = parseNumericValue(progressRow.draft || "0");
           const pctResponden = prelist > 0 ? ((responden / prelist) * 100).toFixed(2) : "0.00";
           const pctDraft = prelist > 0 ? ((draft / prelist) * 100).toFixed(2) : "0.00";
+          const activityStatus = getActivityStatusText(responden);
 
           return {
             matchingKey: key,
             address: toProperCase(progressRow.address || "-"),
             prelist_awal: progressRow.prelistAwal || "0",
+            prelist_wilkerstat: (wilkerstatByKey.get(key) || 0).toString(),
             responden_didata: progressRow.respondenDidata || "0",
             persentase_responden_didata: pctResponden,
+            aktivitas: activityStatus.detail,
+            aktivitasColor: activityStatus.color,
             draft: progressRow.draft || "0",
             persentase_draft: pctDraft,
           };
         })
       );
       const prelistSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.prelist_awal), 0);
+      const wilkerstatSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.prelist_wilkerstat), 0);
       const respondenSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.responden_didata), 0);
       const draftSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.draft), 0);
       const pctResponden = prelistSum > 0 ? ((respondenSum / prelistSum) * 100).toFixed(2) : "0.00";
       const pctDraft = prelistSum > 0 ? ((draftSum / prelistSum) * 100).toFixed(2) : "0.00";
+      const activityStatus = getActivityStatusText(respondenSum);
       const kecamatanText = ppl.kecamatan || "-";
 
       return {
@@ -509,8 +579,11 @@ export default function MonitoringLapanganDash() {
         nama_ppl: ppl.nama_ppl,
         kecamatan: kecamatanText,
         prelist_awal: prelistSum.toString(),
+        prelist_wilkerstat: wilkerstatSum.toString(),
         responden_didata: respondenSum.toString(),
         persentase_responden_didata: pctResponden,
+        aktivitas: activityStatus.detail,
+        aktivitasColor: activityStatus.color,
         draft: draftSum.toString(),
         persentase_draft: pctDraft,
         matchingKeys: keys.join(", "),
@@ -520,7 +593,7 @@ export default function MonitoringLapanganDash() {
   }, [stackingData, progresData]);
 
   const pmlRows = useMemo<PMLRow[]>(() => {
-    const pmlMap = new Map<string, { nama_pml: string; kecamatan: string; childMap: Map<string, { prelist: number; responden: number; draft: number }> }>();
+    const pmlMap = new Map<string, { nama_pml: string; kecamatan: string; childMap: Map<string, { prelist: number; prelist_wilkerstat: number; responden: number; draft: number }> }>();
 
     (stackingData || []).forEach((row: any) => {
       const key = normalizeSheetKey(getSheetCellText(row, 3));
@@ -535,12 +608,13 @@ export default function MonitoringLapanganDash() {
       const prelist = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 2)), 0);
       const responden = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 3)), 0);
       const draft = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 5)), 0);
+      const prelistWilkerstat = parseNumericValue(getSheetCellText(row, 24));
 
       const mapKey = namaPml;
       const existing = pmlMap.get(mapKey);
       if (!existing) {
-        const childMap = new Map<string, { prelist: number; responden: number; draft: number }>();
-        childMap.set(namaPpl, { prelist, responden, draft });
+        const childMap = new Map<string, { prelist: number; prelist_wilkerstat: number; responden: number; draft: number }>();
+        childMap.set(namaPpl, { prelist, prelist_wilkerstat: prelistWilkerstat, responden, draft });
         pmlMap.set(mapKey, {
           nama_pml: namaPml,
           kecamatan,
@@ -549,9 +623,10 @@ export default function MonitoringLapanganDash() {
       } else {
         const childEntry = existing.childMap.get(namaPpl);
         if (!childEntry) {
-          existing.childMap.set(namaPpl, { prelist, responden, draft });
+          existing.childMap.set(namaPpl, { prelist, prelist_wilkerstat: prelistWilkerstat, responden, draft });
         } else {
           childEntry.prelist += prelist;
+          childEntry.prelist_wilkerstat += prelistWilkerstat;
           childEntry.responden += responden;
           childEntry.draft += draft;
         }
@@ -564,6 +639,7 @@ export default function MonitoringLapanganDash() {
         const pctDraft = values.prelist > 0 ? ((values.draft / values.prelist) * 100).toFixed(2) : "0.00";
         return {
           nama_ppl: namaPpl,
+          prelist_wilkerstat: values.prelist_wilkerstat.toString(),
           prelist_awal: values.prelist.toString(),
           responden_didata: values.responden.toString(),
           persentase_responden_didata: pctResponden,
@@ -573,6 +649,7 @@ export default function MonitoringLapanganDash() {
       });
 
       const prelistSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.prelist_awal), 0);
+      const prelistWilkerstatSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.prelist_wilkerstat), 0);
       const respondenSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.responden_didata), 0);
       const draftSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.draft), 0);
       const pctResponden = prelistSum > 0 ? ((respondenSum / prelistSum) * 100).toFixed(2) : "0.00";
@@ -582,6 +659,7 @@ export default function MonitoringLapanganDash() {
         id: `${index}-${pml.nama_pml}`,
         nama_pml: pml.nama_pml,
         kecamatan: pml.kecamatan,
+        prelist_wilkerstat: prelistWilkerstatSum.toString(),
         prelist_awal: prelistSum.toString(),
         responden_didata: respondenSum.toString(),
         persentase_responden_didata: pctResponden,
@@ -611,6 +689,7 @@ export default function MonitoringLapanganDash() {
           case "matchingKeys":
             return String(row[sortBy]).toLowerCase();
           case "prelist_awal":
+          case "prelist_wilkerstat":
           case "responden_didata":
           case "draft":
             return parseNumericValue(row[sortBy]);
@@ -672,6 +751,7 @@ export default function MonitoringLapanganDash() {
           case "nama_pml":
           case "kecamatan":
             return String(row[pmlSortBy]).toLowerCase();
+          case "prelist_wilkerstat":
           case "prelist_awal":
           case "responden_didata":
           case "draft":
@@ -1066,6 +1146,18 @@ export default function MonitoringLapanganDash() {
                               <TableHead
                                 className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
                                 onClick={() => {
+                                  setSortBy("prelist_wilkerstat");
+                                  setSortOrder(sortBy === "prelist_wilkerstat" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Prelist Wilkerstat
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
                                   setSortBy("prelist_awal");
                                   setSortOrder(sortBy === "prelist_awal" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
                                 }}
@@ -1083,7 +1175,7 @@ export default function MonitoringLapanganDash() {
                                 }}
                               >
                                 <div className="flex items-center justify-end gap-2">
-                                  Responden Didata
+                                  Didata
                                   <ArrowUpDown className="h-4 w-4" />
                                 </div>
                               </TableHead>
@@ -1095,7 +1187,7 @@ export default function MonitoringLapanganDash() {
                                 }}
                               >
                                 <div className="flex items-center justify-end gap-2">
-                                  % Responden Didata
+                                  % Didata
                                   <ArrowUpDown className="h-4 w-4" />
                                 </div>
                               </TableHead>
@@ -1120,6 +1212,18 @@ export default function MonitoringLapanganDash() {
                               >
                                 <div className="flex items-center justify-end gap-2">
                                   % Draft
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-left text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setSortBy("aktivitas");
+                                  setSortOrder(sortBy === "aktivitas" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Aktivitas
                                   <ArrowUpDown className="h-4 w-4" />
                                 </div>
                               </TableHead>
@@ -1158,7 +1262,8 @@ export default function MonitoringLapanganDash() {
                                       </div>
                                     </TableCell>
                                     <TableCell className="text-slate-900 px-4 py-3">{row.kecamatan}</TableCell>
-                                    <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(row.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                    <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(row.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
+                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.prelist_awal).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.responden_didata).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>
                                       {row.persentase_responden_didata}%
@@ -1167,13 +1272,17 @@ export default function MonitoringLapanganDash() {
                                     <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">
                                       {row.persentase_draft}%
                                     </TableCell>
+                                    <TableCell className="max-w-[240px] px-4 py-3">
+                                      <div className="text-sm font-medium" style={{ color: row.aktivitasColor }}>{row.aktivitas}</div>
+                                    </TableCell>
                                   </TableRow>
                                   {isExpanded && row.details.map((detail, detailIndex) => (
                                     <TableRow key={`${row.id}-detail-${detailIndex}`} className="bg-slate-50 border-b hover:bg-slate-100 transition-colors">
                                       <TableCell className="px-4 py-2" />
                                       <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8">{detail.matchingKey}</TableCell>
                                       <TableCell className="text-sm text-slate-600 px-4 py-2">{detail.address}</TableCell>
-                                      <TableCell className="text-right font-semibold text-blue-900 px-4 py-2">{parseNumericValue(detail.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-blue-900 px-4 py-2">{parseNumericValue(detail.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.prelist_awal).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.responden_didata).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_responden_didata)) }}>
                                         {detail.persentase_responden_didata}%
@@ -1181,6 +1290,9 @@ export default function MonitoringLapanganDash() {
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.draft).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_draft)) }}>
                                         {detail.persentase_draft}%
+                                      </TableCell>
+                                      <TableCell className="max-w-[240px] px-4 py-2">
+                                        <div className="text-sm font-medium" style={{ color: detail.aktivitasColor }}>{detail.aktivitas}</div>
                                       </TableCell>
                                     </TableRow>
                                   ))}
@@ -1601,6 +1713,24 @@ export default function MonitoringLapanganDash() {
                               <TableHead 
                                 className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
                                 onClick={() => {
+                                  if (pmlSortBy === "prelist_wilkerstat") {
+                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                  } else {
+                                    setPmlSortBy("prelist_wilkerstat");
+                                    setPmlSortOrder("asc");
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Prelist Wilkerstat
+                                  {pmlSortBy === "prelist_wilkerstat" && (
+                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
+                                  )}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
+                                onClick={() => {
                                   if (pmlSortBy === "prelist_awal") {
                                     setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
                                   } else {
@@ -1720,6 +1850,7 @@ export default function MonitoringLapanganDash() {
                                       <span>{pml.nama_pml}</span>
                                     </TableCell>
                                     <TableCell className="text-slate-900 px-4 py-3">{pml.kecamatan}</TableCell>
+                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(pml.prelist_awal).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.responden_didata).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>
@@ -1735,6 +1866,7 @@ export default function MonitoringLapanganDash() {
                                       <TableCell className="px-4 py-2" />
                                       <TableCell className="text-sm text-slate-700 px-4 py-2 pl-12 font-medium">{child.nama_ppl}</TableCell>
                                       <TableCell className="text-sm text-slate-600 px-4 py-2">-</TableCell>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 text-sm">{parseNumericValue(child.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-blue-900 px-4 py-2 text-sm">{parseNumericValue(child.prelist_awal).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 text-sm">{parseNumericValue(child.responden_didata).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold px-4 py-2 text-sm" style={{ color: getColorForPercentage(parsePercentage(child.persentase_responden_didata)) }}>
@@ -1761,6 +1893,7 @@ export default function MonitoringLapanganDash() {
                                   <TableCell className="text-center text-slate-700 w-12 px-4 py-3" />
                                   <TableCell className="text-slate-900 px-4 py-3">TOTAL</TableCell>
                                   <TableCell className="text-slate-900 px-4 py-3" />
+                                  <TableCell className="text-right text-slate-900 px-4 py-3">{filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0).toLocaleString("id-ID")}</TableCell>
                                   <TableCell className="text-right text-blue-900 px-4 py-3">{totalPrelist.toLocaleString("id-ID")}</TableCell>
                                   <TableCell className="text-right text-slate-900 px-4 py-3">{totalResponden.toLocaleString("id-ID")}</TableCell>
                                   <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctResponden)) }}>
