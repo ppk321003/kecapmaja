@@ -1615,8 +1615,7 @@ export default function MonitoringLapanganDash() {
                               <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
                               <TableHead className="text-slate-700 font-semibold px-4 py-3">Nama Satuan</TableHead>
                               <TableHead className="text-slate-700 font-semibold px-4 py-3">Jenis Satuan</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Kecamatan</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Desa</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Kecamatan - Desa</TableHead>
                               <TableHead className="text-slate-700 font-semibold px-4 py-3">Kontak</TableHead>
                               <TableHead className="text-slate-700 font-semibold px-4 py-3">Link</TableHead>
                               <TableHead className="text-slate-700 font-semibold px-4 py-3">Hasil Pengecekkan</TableHead>
@@ -1631,8 +1630,12 @@ export default function MonitoringLapanganDash() {
                                 <TableCell className="text-center text-slate-600 font-medium w-12">{(ngibarPage - 1) * ngibarItemsPerPage + idx + 1}</TableCell>
                                 <TableCell className="text-slate-900 px-4 py-3">{row?.nama_satuan || "-"}</TableCell>
                                 <TableCell className="text-slate-700 px-4 py-3">{row?.jenis_satuan || "-"}</TableCell>
-                                <TableCell className="text-slate-700 px-4 py-3">{row?.kecamatan || "-"}</TableCell>
-                                <TableCell className="text-slate-700 px-4 py-3">{row?.desa || "-"}</TableCell>
+                                <TableCell className="px-4 py-3">
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-slate-900 font-medium">{row?.kecamatan || "-"}</span>
+                                    <span className="text-xs text-slate-500">{row?.desa || "-"}</span>
+                                  </div>
+                                </TableCell>
                                 <TableCell className="px-4 py-3">
                                   <div className="flex flex-col gap-1 text-sm">
                                     <span className="font-medium text-slate-800">{row?.nama_lengkap || "-"}</span>
