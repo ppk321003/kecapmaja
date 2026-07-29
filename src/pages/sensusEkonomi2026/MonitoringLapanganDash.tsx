@@ -1327,14 +1327,14 @@ export default function MonitoringLapanganDash() {
                                       {row.persentase_draft}%
                                     </TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.responden_didata).toLocaleString("id-ID")}</TableCell>
-                                    <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>
+                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>
                                       {row.persentase_responden_didata}%
                                     </TableCell>
-                                    <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(row.persentase_wilkerstat)) }}>
+                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                       {row.persentase_wilkerstat}%
                                     </TableCell>
                                     <TableCell className="max-w-[240px] px-4 py-3">
-                                      <div className="text-sm font-medium" style={{ color: row.aktivitasColor }}>{row.aktivitas}</div>
+                                      <div className="text-sm font-medium text-slate-900">{row.aktivitas}</div>
                                     </TableCell>
                                   </TableRow>
                                   {isExpanded && row.details.map((detail, detailIndex) => (
@@ -1352,11 +1352,11 @@ export default function MonitoringLapanganDash() {
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_responden_didata)) }}>
                                         {detail.persentase_responden_didata}%
                                       </TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_wilkerstat)) }}>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">
                                         {detail.persentase_wilkerstat}%
                                       </TableCell>
                                       <TableCell className="max-w-[240px] px-4 py-2">
-                                        <div className="text-sm font-medium" style={{ color: detail.aktivitasColor }}>{detail.aktivitas}</div>
+                                        <div className="text-sm font-medium text-slate-900">{detail.aktivitas}</div>
                                       </TableCell>
                                     </TableRow>
                                   ))}
@@ -1496,8 +1496,8 @@ export default function MonitoringLapanganDash() {
                                   <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Prelist Awal</TableHead>
                                   <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Draft</TableHead>
                                   <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Draft</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Responden Didata</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Responden Didata</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Didata</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Didata</TableHead>
                                   <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Wilkerstat</TableHead>
                                 </TableRow>
                               </TableHeader>
@@ -1539,7 +1539,7 @@ export default function MonitoringLapanganDash() {
                                         <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{pml.persentase_draft}%</TableCell>
                                         <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.responden_didata).toLocaleString("id-ID")}</TableCell>
                                         <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>{pml.persentase_responden_didata}%</TableCell>
-                                        <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(pml.persentase_wilkerstat)) }}>{pml.persentase_wilkerstat}%</TableCell>
+                                        <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{pml.persentase_wilkerstat}%</TableCell>
                                       </TableRow>
                                       {isExpanded && pml.children.map((child, childIndex) => (
                                         <TableRow key={`${pml.id}-child-${childIndex}`} className="bg-slate-50 border-b hover:bg-slate-100 transition-colors">
@@ -1551,8 +1551,8 @@ export default function MonitoringLapanganDash() {
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(child.draft).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{child.persentase_draft}%</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(child.responden_didata).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_responden_didata)) }}>{child.persentase_responden_didata}%</TableCell>
-                                          <TableCell className="text-right font-semibold px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_wilkerstat)) }}>{child.persentase_wilkerstat}%</TableCell>
+                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_responden_didata)) }}>{child.persentase_responden_didata}%</TableCell>
+                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{child.persentase_wilkerstat}%</TableCell>
                                         </TableRow>
                                       ))}
                                       </React.Fragment>
