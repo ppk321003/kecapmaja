@@ -1084,38 +1084,61 @@ export default function MonitoringLapanganDash() {
             <TabsContent value="umkm-sosek" className="space-y-6 mt-6">
               <div className="space-y-4">
                 <Tabs value={umkmSubTab} onValueChange={setUmkmSubTab}>
-                  <TabsList className="inline-flex h-auto p-1 bg-white border border-slate-200 rounded-lg shadow-sm gap-2">
-                    <TabsTrigger value="ppl" className="rounded-xl py-2 text-sm font-semibold">PPL</TabsTrigger>
-                    <TabsTrigger value="pml" className="rounded-xl py-2 text-sm font-semibold">PML</TabsTrigger>
-                  </TabsList>
+                  <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-r from-slate-50 via-white to-slate-50 p-2 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)]">
+                    <TabsList className="inline-flex h-auto w-full max-w-md gap-2 rounded-xl border border-slate-200/70 bg-white/80 p-1.5 shadow-inner">
+                      <TabsTrigger
+                        value="ppl"
+                        className="group flex-1 rounded-xl border border-transparent px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all duration-200 hover:border-blue-200 hover:text-slate-900 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:border-blue-200"
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-current opacity-80" />
+                          PPL
+                        </span>
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="pml"
+                        className="group flex-1 rounded-xl border border-transparent px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all duration-200 hover:border-emerald-200 hover:text-slate-900 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:border-emerald-200"
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-current opacity-80" />
+                          PML
+                        </span>
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
                   <TabsContent value="ppl" className="space-y-6 mt-6">
                     <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="space-y-2">
                     <div>
                       <h2 className="text-lg font-semibold">Data Individu PPL</h2>
                     </div>
                   </div>
-                  <div className="hidden md:flex items-center gap-4">
-                    <div className="rounded-2xl px-4 py-2 shadow-lg bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-500 text-white flex flex-col justify-center items-start">
-                      <div className="text-xs uppercase tracking-[0.12em] font-semibold">Hari ke-{daysElapsed}</div>
-                      <div className="mt-0.5 text-sm font-bold">Target minimal: {minPercentageTarget.toFixed(2)}%</div>
+                  <div className="flex flex-col gap-3 w-full lg:flex-row lg:items-center lg:justify-end lg:space-x-4">
+                    <div className="relative w-full lg:w-96">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
+                        placeholder="Cari Nama PPL atau Kecamatan..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 h-10 w-full"
+                      />
                     </div>
-                    <div className="rounded-2xl px-4 py-2 shadow-lg bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 text-white flex flex-col justify-center items-start min-w-[170px]">
-                      <div className="text-xs uppercase tracking-[0.12em] font-semibold text-slate-300">Rata-rata Kab. Majalengka</div>
-                      <div className="mt-0.5 text-sm font-bold text-emerald-300">{averageMajalengka.toFixed(2)}%</div>
+                    <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-r from-emerald-50 via-white to-slate-50 p-4 shadow-sm">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                            Hari ke-{daysElapsed}
+                          </span>
+                          <span className="rounded-full bg-slate-900 px-3 py-1 text-sm font-semibold text-white">
+                            Target minimal: {minPercentageTarget.toFixed(2)}%
+                          </span>
+                        </div>
+                        <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
+                          Rata-rata Kab. Majalengka: <span className="ml-1 text-emerald-600">{averageMajalengka.toFixed(2)}%</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="relative w-full md:w-96">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                      placeholder="Cari Nama PPL atau Kecamatan..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 h-10 w-full"
-                    />
                   </div>
                 </div>
 
@@ -1409,25 +1432,38 @@ export default function MonitoringLapanganDash() {
                     </TabsContent>
                   <TabsContent value="pml" className="space-y-6 mt-6">
                     <div className="space-y-6">
-                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-2">
                           <div>
                             <h2 className="text-lg font-semibold">Data PML</h2>
                             <p className="text-sm text-slate-500">Ringkasan progres PML dari data yang tersedia.</p>
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                          <span>Per halaman:</span>
-                          <select
-                            value={pmlItemsPerPage}
-                            onChange={(e) => setPmlItemsPerPage(Number(e.target.value))}
-                            className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm"
-                          >
-                            {[10, 20, 50, 100].map((size) => (
-                              <option key={size} value={size}>{size}</option>
-                            ))}
-                          </select>
-                          <span>Hal {pmlCurrentPage} dari {pmlTotalPages}</span>
+                        <div className="flex flex-col gap-3 w-full lg:flex-row lg:items-center lg:justify-end lg:space-x-4">
+                          <div className="relative w-full lg:w-96">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                              placeholder="Cari Nama PML atau Kecamatan..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="pl-10 h-10 w-full"
+                            />
+                          </div>
+                          <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-r from-emerald-50 via-white to-slate-50 p-4 shadow-sm">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                                  Hari ke-{daysElapsed}
+                                </span>
+                                <span className="rounded-full bg-slate-900 px-3 py-1 text-sm font-semibold text-white">
+                                  Target minimal: {minPercentageTarget.toFixed(2)}%
+                                </span>
+                              </div>
+                              <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
+                                Rata-rata Kab. Majalengka: <span className="ml-1 text-emerald-600">{averageMajalengka.toFixed(2)}%</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -1452,27 +1488,52 @@ export default function MonitoringLapanganDash() {
                             <div className="overflow-x-auto">
                               <Table>
                                 <TableHeader>
-                                  <TableRow className="bg-slate-50 hover:bg-slate-50">
-                                    <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
-                                    <TableHead className="text-slate-700 font-semibold px-4 py-3">Nama PML</TableHead>
-                                    <TableHead className="text-slate-700 font-semibold px-4 py-3">Kecamatan</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Prelist Awal</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Draft</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Draft</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Responden Didata</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Responden Didata</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Wilkerstat</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {pmlPaginatedRows.map((pml, index) => {
-                                    const rowNumber = (pmlCurrentPage - 1) * pmlItemsPerPage + index + 1;
-                                    const respPct = parsePercentage(pml.persentase_responden_didata);
-                                    return (
-                                      <TableRow key={pml.id} className="hover:bg-slate-50 border-b transition-colors">
-                                        <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
-                                        <TableCell className="text-slate-700 px-4 py-3">{pml.nama_pml}</TableCell>
+                                <TableRow className="bg-slate-50 hover:bg-slate-50">
+                                  <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
+                                  <TableHead className="text-slate-700 font-semibold px-4 py-3">Nama PML</TableHead>
+                                  <TableHead className="text-slate-700 font-semibold px-4 py-3">Kecamatan</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Wilkerstat</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Prelist Awal</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Draft</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Draft</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Responden Didata</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Responden Didata</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Wilkerstat</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {pmlPaginatedRows.map((pml, index) => {
+                                  const rowNumber = (pmlCurrentPage - 1) * pmlItemsPerPage + index + 1;
+                                  const isExpanded = expandedPML.has(pml.id);
+                                  const respPct = parsePercentage(pml.persentase_responden_didata);
+                                  return (
+                                    <React.Fragment key={pml.id}>
+                                      <TableRow className="hover:bg-slate-50 border-b transition-colors">
+                                        <TableCell className="text-center text-slate-600 font-medium w-12 px-4 py-3">
+                                          {rowNumber}
+                                        </TableCell>
+                                        <TableCell
+                                          className="text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600"
+                                          onClick={() => {
+                                            setExpandedPML((prev) => {
+                                              const next = new Set(prev);
+                                              if (next.has(pml.id)) next.delete(pml.id);
+                                              else next.add(pml.id);
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            {isExpanded ? (
+                                              <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                                            ) : (
+                                              <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                                            )}
+                                            <span>{pml.nama_pml}</span>
+                                          </div>
+                                        </TableCell>
                                         <TableCell className="text-slate-900 px-4 py-3">{pml.kecamatan}</TableCell>
+                                        <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(pml.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
                                         <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(pml.prelist_awal).toLocaleString("id-ID")}</TableCell>
                                         <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.draft).toLocaleString("id-ID")}</TableCell>
                                         <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{pml.persentase_draft}%</TableCell>
@@ -1480,6 +1541,21 @@ export default function MonitoringLapanganDash() {
                                         <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>{pml.persentase_responden_didata}%</TableCell>
                                         <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(pml.persentase_wilkerstat)) }}>{pml.persentase_wilkerstat}%</TableCell>
                                       </TableRow>
+                                      {isExpanded && pml.children.map((child, childIndex) => (
+                                        <TableRow key={`${pml.id}-child-${childIndex}`} className="bg-slate-50 border-b hover:bg-slate-100 transition-colors">
+                                          <TableCell className="px-4 py-2" />
+                                          <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8">{child.nama_ppl}</TableCell>
+                                          <TableCell className="text-slate-700 px-4 py-2">{pml.kecamatan}</TableCell>
+                                          <TableCell className="text-right font-semibold text-blue-900 px-4 py-2">{parseNumericValue(child.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-blue-900 px-4 py-2">{parseNumericValue(child.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(child.draft).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{child.persentase_draft}%</TableCell>
+                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(child.responden_didata).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_responden_didata)) }}>{child.persentase_responden_didata}%</TableCell>
+                                          <TableCell className="text-right font-semibold px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_wilkerstat)) }}>{child.persentase_wilkerstat}%</TableCell>
+                                        </TableRow>
+                                      ))}
+                                      </React.Fragment>
                                     );
                                   })}
                                 </TableBody>
