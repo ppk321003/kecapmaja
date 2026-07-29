@@ -262,6 +262,7 @@ export default function MonitoringLapanganDash() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [pmlItemsPerPage, setPmlItemsPerPage] = useState(20);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [umkmSubTab, setUmkmSubTab] = useState<string>("ppl");
 
   // Ngibar Disdik tab: safe incremental implementation
   const NGIBAR_SPREADSHEET_ID = "1EyrssWtjEGd64SYelUMON3nnLpj6KU5INCMeD-Amjto";
@@ -912,8 +913,7 @@ export default function MonitoringLapanganDash() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="flex w-full h-auto p-1 bg-white border border-slate-200 rounded-lg shadow-sm mb-6 gap-2 overflow-x-auto">
               <TabsTrigger value="dashboard" className="rounded-xl py-2 text-sm font-semibold">Dashboard</TabsTrigger>
-              <TabsTrigger value="ppl" className="rounded-xl py-2 text-sm font-semibold">PPL</TabsTrigger>
-              <TabsTrigger value="pml" className="rounded-xl py-2 text-sm font-semibold">PML</TabsTrigger>
+              <TabsTrigger value="umkm-sosek" className="rounded-xl py-2 text-sm font-semibold">UMKM dan Sosek</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
               <TabsTrigger value="anomali" className="rounded-xl py-2 text-sm font-semibold">Anomali</TabsTrigger>
             </TabsList>
@@ -1081,8 +1081,15 @@ export default function MonitoringLapanganDash() {
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="ppl" className="space-y-6 mt-6">
-              <div className="space-y-6">
+            <TabsContent value="umkm-sosek" className="space-y-6 mt-6">
+              <div className="space-y-4">
+                <Tabs value={umkmSubTab} onValueChange={setUmkmSubTab}>
+                  <TabsList className="inline-flex h-auto p-1 bg-white border border-slate-200 rounded-lg shadow-sm gap-2">
+                    <TabsTrigger value="ppl" className="rounded-xl py-2 text-sm font-semibold">PPL</TabsTrigger>
+                    <TabsTrigger value="pml" className="rounded-xl py-2 text-sm font-semibold">PML</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="ppl" className="space-y-6 mt-6">
+                    <div className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                   <div className="space-y-2">
                     <div>
@@ -1293,7 +1300,7 @@ export default function MonitoringLapanganDash() {
                                     <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(row.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.prelist_awal).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.draft).toLocaleString("id-ID")}</TableCell>
-                                    <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">
+                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                       {row.persentase_draft}%
                                     </TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.responden_didata).toLocaleString("id-ID")}</TableCell>
@@ -1315,7 +1322,7 @@ export default function MonitoringLapanganDash() {
                                       <TableCell className="text-right font-semibold text-blue-900 px-4 py-2">{parseNumericValue(detail.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.prelist_awal).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.draft).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_draft)) }}>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">
                                         {detail.persentase_draft}%
                                       </TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.responden_didata).toLocaleString("id-ID")}</TableCell>
@@ -1399,240 +1406,424 @@ export default function MonitoringLapanganDash() {
                   </CardContent>
                 </Card>
               </div>
+                    </TabsContent>
+                  <TabsContent value="pml" className="space-y-6 mt-6">
+                    <div className="space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div className="space-y-2">
+                          <div>
+                            <h2 className="text-lg font-semibold">Data PML</h2>
+                            <p className="text-sm text-slate-500">Ringkasan progres PML dari data yang tersedia.</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                          <span>Per halaman:</span>
+                          <select
+                            value={pmlItemsPerPage}
+                            onChange={(e) => setPmlItemsPerPage(Number(e.target.value))}
+                            className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                          >
+                            {[10, 20, 50, 100].map((size) => (
+                              <option key={size} value={size}>{size}</option>
+                            ))}
+                          </select>
+                          <span>Hal {pmlCurrentPage} dari {pmlTotalPages}</span>
+                        </div>
+                      </div>
+
+                      <Card className="border-0 shadow-sm">
+                        <CardContent className="p-0">
+                          {loading ? (
+                            <div className="flex items-center justify-center py-12">
+                              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                              <span className="ml-2 text-slate-600">Memuat data...</span>
+                            </div>
+                          ) : error ? (
+                            <div className="flex items-center justify-center py-12 text-red-600">
+                              <AlertCircle className="h-5 w-5 mr-2" />
+                              Error: {error}
+                            </div>
+                          ) : filteredPmlRows.length === 0 ? (
+                            <div className="flex items-center justify-center py-12 text-slate-500">
+                              <AlertCircle className="h-5 w-5 mr-2" />
+                              Tidak ada data PML.
+                            </div>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                                    <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
+                                    <TableHead className="text-slate-700 font-semibold px-4 py-3">Nama PML</TableHead>
+                                    <TableHead className="text-slate-700 font-semibold px-4 py-3">Kecamatan</TableHead>
+                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Prelist Awal</TableHead>
+                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Draft</TableHead>
+                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Draft</TableHead>
+                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Responden Didata</TableHead>
+                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Responden Didata</TableHead>
+                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Wilkerstat</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {pmlPaginatedRows.map((pml, index) => {
+                                    const rowNumber = (pmlCurrentPage - 1) * pmlItemsPerPage + index + 1;
+                                    const respPct = parsePercentage(pml.persentase_responden_didata);
+                                    return (
+                                      <TableRow key={pml.id} className="hover:bg-slate-50 border-b transition-colors">
+                                        <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
+                                        <TableCell className="text-slate-700 px-4 py-3">{pml.nama_pml}</TableCell>
+                                        <TableCell className="text-slate-900 px-4 py-3">{pml.kecamatan}</TableCell>
+                                        <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(pml.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                        <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.draft).toLocaleString("id-ID")}</TableCell>
+                                        <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{pml.persentase_draft}%</TableCell>
+                                        <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.responden_didata).toLocaleString("id-ID")}</TableCell>
+                                        <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>{pml.persentase_responden_didata}%</TableCell>
+                                        <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(pml.persentase_wilkerstat)) }}>{pml.persentase_wilkerstat}%</TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => setPmlCurrentPage((prev) => Math.max(1, prev - 1))}
+                                    disabled={pmlCurrentPage === 1}
+                                    className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                                  >
+                                    Sebelumnya
+                                  </button>
+                                  <button
+                                    onClick={() => setPmlCurrentPage((prev) => Math.min(pmlTotalPages, prev + 1))}
+                                    disabled={pmlCurrentPage === pmlTotalPages}
+                                    className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                                  >
+                                    Berikutnya
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
             </TabsContent>
             <TabsContent value="ngibar" className="space-y-6 mt-6">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Ngibar Disdik Kab. Majalengka</h3>
-                  <p className="text-sm text-slate-500">Tabel ringkas dan resume progres</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <button onClick={() => { setNgibarJenisFilter(null); setNgibarPage(1); }} className={`px-2 py-1 text-sm rounded ${ngibarJenisFilter ? 'bg-slate-100' : 'bg-slate-800 text-white'}`}>Semua</button>
-                    {ngibarJenisOptions.map((opt) => (
-                      <button key={opt} onClick={() => { setNgibarJenisFilter(opt); setNgibarPage(1); }} className={`px-2 py-1 text-sm rounded ${ngibarJenisFilter === opt ? 'bg-slate-800 text-white' : 'bg-slate-100'}`}>{opt}</button>
-                    ))}
+              <div className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="space-y-2">
+                    <div>
+                      <h2 className="text-lg font-semibold">Ngibar Disdik</h2>
+                      <p className="text-sm text-slate-500">Data pencatatan, status pengecekan, dan penugasan PML/PPL dari sheet Ngibar Disdik.</p>
+                    </div>
+                  </div>
+                  <div className="w-full md:w-80">
+                    <Input
+                      placeholder="Cari nama satuan / kecamatan / desa / jenis..."
+                      value={ngibarSearch}
+                      onChange={(e) => {
+                        setNgibarSearch(e.target.value);
+                        setNgibarPage(1);
+                      }}
+                      className="h-10"
+                    />
                   </div>
                 </div>
-                <div className="w-full md:w-80">
-                  <Input size={"sm" as any} placeholder="Cari Nama Satuan / Kecamatan / Desa / Jenis..." value={ngibarSearch} onChange={(e) => { setNgibarSearch(e.target.value); }} />
-                </div>
-              </div>
 
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead onClick={() => { setNgibarSortField('nama_satuan'); setNgibarSortOrder(ngibarSortField === 'nama_satuan' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Nama Satuan Pendidikan</TableHead>
-                          <TableHead onClick={() => { setNgibarSortField('jenis_satuan'); setNgibarSortOrder(ngibarSortField === 'jenis_satuan' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Jenis Satuan Pendidikan</TableHead>
-                          <TableHead onClick={() => { setNgibarSortField('kecamatan'); setNgibarSortOrder(ngibarSortField === 'kecamatan' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Kecamatan</TableHead>
-                          <TableHead onClick={() => { setNgibarSortField('desa'); setNgibarSortOrder(ngibarSortField === 'desa' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Desa/Kelurahan</TableHead>
-                          <TableHead onClick={() => { setNgibarSortField('nama_lengkap'); setNgibarSortOrder(ngibarSortField === 'nama_lengkap' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Nama Lengkap</TableHead>
-                          <TableHead>Nomor Telepon (WA)</TableHead>
-                          <TableHead onClick={() => { setNgibarSortField('email'); setNgibarSortOrder(ngibarSortField === 'email' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>E-mail</TableHead>
-                          <TableHead>Link</TableHead>
-                          <TableHead>Hasil Pengecekkan</TableHead>
-                          <TableHead>Flag Input Fasih</TableHead>
-                          <TableHead onClick={() => { setNgibarSortField('nama_pml'); setNgibarSortOrder(ngibarSortField === 'nama_pml' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Nama PML</TableHead>
-                          <TableHead onClick={() => { setNgibarSortField('nama_ppl'); setNgibarSortOrder(ngibarSortField === 'nama_ppl' && ngibarSortOrder === 'asc' ? 'desc' : 'asc'); }}>Nama PPL</TableHead>
-                          
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {ngibarFilteredSorted.slice((ngibarPage - 1) * ngibarItemsPerPage, ngibarPage * ngibarItemsPerPage).map((row, idx) => (
-                          <TableRow key={row?.__rowNumber ?? idx}>
-                            <TableCell className="max-w-xs truncate">{row?.nama_satuan ?? '-'}</TableCell>
-                            <TableCell>{row?.jenis_satuan ?? '-'}</TableCell>
-                            <TableCell>{row?.kecamatan ?? '-'}</TableCell>
-                            <TableCell>{row?.desa ?? '-'}</TableCell>
-                            <TableCell>{row?.nama_lengkap ?? '-'}</TableCell>
-                            <TableCell>
-                              {row?.nomor_wa ? (
-                                <div className="flex items-center gap-2">
-                                  <button type="button" title="Chat WA" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const n = normalizeWa(row.nomor_wa); if (n) window.open(`https://wa.me/${n}`, '_blank'); }} className="p-1 rounded bg-slate-100">
-                                    <Phone className="w-4 h-4" />
-                                  </button>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <button type="button" title="Tampilkan nomor" className="p-1 rounded bg-slate-100">
-                                        <Eye className="w-4 h-4" />
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent>
-                                      <div className="flex items-center justify-between gap-2">
-                                        <div className="truncate">{row.nomor_wa}</div>
-                                        <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(String(row.nomor_wa)); toast({ title: 'Disalin' }); } catch {}}} className="p-1 rounded bg-slate-100">
-                                          <Copy className="w-4 h-4" />
-                                        </button>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </div>
-                              ) : ('-')}
-                            </TableCell>
-                            <TableCell>
-                              {row?.email ? (
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <button title="Tampilkan email" className="p-1 rounded bg-slate-100">
-                                      <Mail className="w-4 h-4" />
-                                    </button>
-                                  </PopoverTrigger>
-                                  <PopoverContent>
-                                    <div className="flex items-center justify-between gap-2">
-                                      <div className="truncate">{row.email}</div>
-                                      <button onClick={async () => { try { await navigator.clipboard.writeText(String(row.email)); toast({ title: 'Disalin' }); } catch {}}} className="p-1 rounded bg-slate-100">
-                                        <Copy className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              ) : ('-')}
-                            </TableCell>
-                            <TableCell>
-                              {row?.upload_link ? (
-                                <a href={row.upload_link} target="_blank" rel="noreferrer"><Link className="w-4 h-4" /></a>
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <span className="truncate max-w-xs">{row?.hasil_pengecekkan || '-'}</span>
-                                <button type="button" title={row?.hasil_pengecekkan ? 'Edit Hasil Pengecekkan' : 'Tambah Hasil Pengecekkan'} onClick={() => {
-                                  console.debug('hasil_pengecekkan button clicked', { rowNumber: row?.__rowNumber, value: row?.hasil_pengecekkan });
-                                  openEditDialog('hasil_pengecekkan', row?.__rowNumber, row?.hasil_pengecekkan ?? '');
-                                }} className={`p-1 rounded ${String(row?.hasil_pengecekkan || '').trim() ? 'bg-emerald-600 text-white' : 'bg-slate-100'}`}>
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <button type="button" title={row?.flag_input_fasih ? 'Unflag' : 'Flag as Sudah'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFlag(row); }} className={`p-1 rounded ${String(row?.flag_input_fasih || '').trim() ? 'bg-emerald-600 text-white' : 'bg-slate-100'}`}>
-                                <FlagIcon className="w-4 h-4" />
-                              </button>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="truncate max-w-[180px]">{row?.nama_pml ?? '-'}</span>
-                                <button type="button" title="Edit Nama PML" onClick={() => {
-                                  console.debug('nama_pml button clicked', { rowNumber: row?.__rowNumber, value: row?.nama_pml });
-                                  openEditDialog('nama_pml', row?.__rowNumber, row?.nama_pml ?? '');
-                                }} className="p-1 rounded bg-slate-100">
-                                  <UserIcon className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="truncate max-w-[180px]">{row?.nama_ppl ?? '-'}</span>
-                                <button type="button" title="Edit Nama PPL" onClick={() => {
-                                  console.debug('nama_ppl button clicked', { rowNumber: row?.__rowNumber, value: row?.nama_ppl });
-                                  openEditDialog('nama_ppl', row?.__rowNumber, row?.nama_ppl ?? '');
-                                }} className="p-1 rounded bg-slate-100">
-                                  <UserIcon className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                        <span>Per halaman:</span>
-                        <select
-                          value={ngibarItemsPerPage}
-                          onChange={(e) => { setNgibarItemsPerPage(Number(e.target.value)); setNgibarPage(1); }}
-                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm"
-                        >
-                          {[10, 20, 50, 100].map((size) => (
-                            <option key={size} value={size}>{size}</option>
-                          ))}
-                        </select>
-                        <span>Hal {ngibarPage} dari {ngibarTotalPages}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setNgibarPage(1)}
-                          disabled={ngibarPage === 1}
-                          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
-                        >
-                          Awal
-                        </button>
-                        <button
-                          onClick={() => setNgibarPage((prev) => Math.max(1, prev - 1))}
-                          disabled={ngibarPage === 1}
-                          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
-                        >
-                          Sebelumnya
-                        </button>
-                        <button
-                          onClick={() => setNgibarPage((prev) => Math.min(ngibarTotalPages, prev + 1))}
-                          disabled={ngibarPage === ngibarTotalPages}
-                          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
-                        >
-                          Berikutnya
-                        </button>
-                        <button
-                          onClick={() => setNgibarPage(ngibarTotalPages)}
-                          disabled={ngibarPage === ngibarTotalPages}
-                          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
-                        >
-                          Akhir
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 mt-6">
-                <Card className="h-full min-h-[180px] border-0 shadow-sm bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
-                  <CardContent className="flex h-full flex-col justify-between p-5">
-                    <div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNgibarJenisFilter(null);
+                      setNgibarPage(1);
+                    }}
+                    className={`rounded-lg px-3 py-2 text-sm font-medium ${ngibarJenisFilter ? "bg-slate-100 text-slate-700" : "bg-slate-900 text-white"}`}
+                  >
+                    Semua
+                  </button>
+                  {ngibarJenisOptions.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        setNgibarJenisFilter(opt);
+                        setNgibarPage(1);
+                      }}
+                      className={`rounded-lg px-3 py-2 text-sm font-medium ${ngibarJenisFilter === opt ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"}`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <Card className="border-0 shadow-sm bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white">
+                    <CardContent className="p-5">
                       <div className="text-sm font-semibold text-slate-200">Total Baris Filter</div>
-                      <div className="mt-4 text-3xl font-bold text-white">{ngibarTotalCount.toLocaleString('id-ID')}</div>
-                      <div className="mt-2 text-sm text-slate-300">Jumlah baris di tabel berdasarkan filter saat ini.</div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="h-full min-h-[180px] border-0 shadow-sm bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
-                  <CardContent className="flex h-full flex-col justify-between p-5">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-200">Flag Input Fasih</div>
-                      <div className="mt-4 text-3xl font-bold text-white">{ngibarFlaggedCount.toLocaleString('id-ID')}</div>
-                      <div className="mt-2 text-sm text-slate-300">{ngibarFlaggedPercent.toFixed(1)}% sudah diberi flag.</div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="h-full min-h-[180px] border-0 shadow-sm bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
-                  <CardContent className="flex h-full flex-col justify-between p-5">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-200">Hasil Pengecekkan Lengkap</div>
-                      <div className="mt-4 text-3xl font-bold text-white">{ngibarVerifiedCount.toLocaleString('id-ID')}</div>
-                      <div className="mt-2 text-sm text-slate-300">{ngibarVerifiedPercent.toFixed(1)}% sudah berisi hasil pengecekkan.</div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="h-full min-h-[180px] border-0 shadow-sm bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
-                  <CardContent className="flex h-full flex-col justify-between p-4">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-200">Distribusi Jenis Satuan</div>
-                      <div className="mt-3 space-y-2">
-                        {ngibarJenisSummary.slice(0, 4).map((item) => (
-                          <div key={item.jenis} className="flex items-center justify-between gap-3 text-sm">
-                            <span className="truncate text-slate-100">{item.jenis}</span>
-                            <span className="text-right text-slate-300">{item.count.toLocaleString('id-ID')} · {item.percent.toFixed(1)}%</span>
-                          </div>
-                        ))}
+                      <div className="mt-4 text-3xl font-bold">{ngibarTotalCount.toLocaleString("id-ID")}</div>
+                      <div className="mt-2 text-sm text-slate-300">Jumlah baris yang sesuai pencarian dan filter saat ini.</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-500 text-white">
+                    <CardContent className="p-5">
+                      <div className="text-sm font-semibold text-emerald-100">Flag Input Fasih</div>
+                      <div className="mt-4 text-3xl font-bold">{ngibarFlaggedCount.toLocaleString("id-ID")}</div>
+                      <div className="mt-2 text-sm text-emerald-50">{ngibarFlaggedPercent.toFixed(1)}% sudah diberi flag.</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 text-white">
+                    <CardContent className="p-5">
+                      <div className="text-sm font-semibold text-blue-100">Hasil Pengecekkan</div>
+                      <div className="mt-4 text-3xl font-bold">{ngibarVerifiedCount.toLocaleString("id-ID")}</div>
+                      <div className="mt-2 text-sm text-blue-50">{ngibarVerifiedPercent.toFixed(1)}% sudah diisi.</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-700 via-violet-600 to-fuchsia-500 text-white">
+                    <CardContent className="p-5">
+                      <div className="text-sm font-semibold text-violet-100">Link Upload</div>
+                      <div className="mt-4 text-3xl font-bold">{ngibarLinkCount.toLocaleString("id-ID")}</div>
+                      <div className="mt-2 text-sm text-violet-50">{ngibarLinkPercent.toFixed(1)}% memiliki tautan upload.</div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-0">
+                    {ngibarLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                        <span className="ml-2 text-slate-600">Memuat data Ngibar...</span>
                       </div>
-                    </div>
-                    {ngibarJenisSummary.length > 4 && (
-                      <div className="mt-3 text-xs text-slate-400">Menampilkan 4 jenis teratas dari {ngibarJenisSummary.length} jenis.</div>
+                    ) : ngibarError ? (
+                      <div className="flex items-center justify-center py-12 text-red-600">
+                        <AlertCircle className="h-5 w-5 mr-2" />
+                        Error: {ngibarError}
+                      </div>
+                    ) : ngibarFilteredSorted.length === 0 ? (
+                      <div className="flex items-center justify-center py-12 text-slate-500">
+                        <AlertCircle className="h-5 w-5 mr-2" />
+                        Tidak ada data Ngibar.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-slate-50 hover:bg-slate-50">
+                              <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Nama Satuan</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Jenis Satuan</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Kecamatan</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Desa</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Kontak</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Link</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Hasil Pengecekkan</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Flag</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">PML</TableHead>
+                              <TableHead className="text-slate-700 font-semibold px-4 py-3">PPL</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {ngibarFilteredSorted.slice((ngibarPage - 1) * ngibarItemsPerPage, ngibarPage * ngibarItemsPerPage).map((row: any, idx: number) => (
+                              <TableRow key={row?.__rowNumber ?? idx} className="hover:bg-slate-50 border-b transition-colors">
+                                <TableCell className="text-center text-slate-600 font-medium w-12">{(ngibarPage - 1) * ngibarItemsPerPage + idx + 1}</TableCell>
+                                <TableCell className="text-slate-900 px-4 py-3">{row?.nama_satuan || "-"}</TableCell>
+                                <TableCell className="text-slate-700 px-4 py-3">{row?.jenis_satuan || "-"}</TableCell>
+                                <TableCell className="text-slate-700 px-4 py-3">{row?.kecamatan || "-"}</TableCell>
+                                <TableCell className="text-slate-700 px-4 py-3">{row?.desa || "-"}</TableCell>
+                                <TableCell className="px-4 py-3">
+                                  <div className="flex flex-col gap-1 text-sm">
+                                    <span className="font-medium text-slate-800">{row?.nama_lengkap || "-"}</span>
+                                    <div className="flex flex-wrap gap-2">
+                                      {row?.nomor_wa ? (
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <button type="button" title="Lihat nomor WA" className="rounded bg-slate-100 p-1">
+                                              <Phone className="h-4 w-4" />
+                                            </button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="max-w-xs">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="truncate">{row.nomor_wa}</div>
+                                              <div className="flex items-center gap-1">
+                                                <button
+                                                  type="button"
+                                                  onClick={async () => {
+                                                    try {
+                                                      await navigator.clipboard.writeText(String(row.nomor_wa));
+                                                      toast({ title: "Disalin" });
+                                                    } catch {}
+                                                  }}
+                                                  className="rounded bg-slate-100 p-1"
+                                                >
+                                                  <Copy className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    const n = normalizeWa(row.nomor_wa);
+                                                    if (n) window.open(`https://wa.me/${n}`, "_blank", "noopener,noreferrer");
+                                                  }}
+                                                  className="rounded bg-slate-100 p-1"
+                                                >
+                                                  <Link className="h-4 w-4" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          </PopoverContent>
+                                        </Popover>
+                                      ) : null}
+                                      {row?.email ? (
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <button type="button" title="Lihat email" className="rounded bg-slate-100 p-1">
+                                              <Mail className="h-4 w-4" />
+                                            </button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="max-w-xs">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="truncate">{row.email}</div>
+                                              <button
+                                                type="button"
+                                                onClick={async () => {
+                                                  try {
+                                                    await navigator.clipboard.writeText(String(row.email));
+                                                    toast({ title: "Disalin" });
+                                                  } catch {}
+                                                }}
+                                                className="rounded bg-slate-100 p-1"
+                                              >
+                                                <Copy className="h-4 w-4" />
+                                              </button>
+                                            </div>
+                                          </PopoverContent>
+                                        </Popover>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="px-4 py-3">
+                                  {row?.upload_link ? (
+                                    <a href={row.upload_link} target="_blank" rel="noreferrer" title="Buka tautan" className="inline-flex items-center text-blue-600 hover:underline">
+                                      <Link className="h-4 w-4" />
+                                    </a>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </TableCell>
+                                <TableCell className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="max-w-[180px] truncate">{row?.hasil_pengecekkan || "-"}</span>
+                                    <button
+                                      type="button"
+                                      title={row?.hasil_pengecekkan ? "Edit hasil pengecekkan" : "Tambah hasil pengecekkan"}
+                                      onClick={() => openEditDialog("hasil_pengecekkan", row?.__rowNumber, row?.hasil_pengecekkan ?? "")}
+                                      className={`rounded p-1 ${String(row?.hasil_pengecekkan || "").trim() ? "bg-emerald-600 text-white" : "bg-slate-100"}`}
+                                    >
+                                      <Edit3 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="px-4 py-3">
+                                  <button
+                                    type="button"
+                                    title={row?.flag_input_fasih ? "Batal flag" : "Flag sebagai sudah"}
+                                    onClick={() => toggleFlag(row)}
+                                    className={`rounded p-1 ${String(row?.flag_input_fasih || "").trim() ? "bg-emerald-600 text-white" : "bg-slate-100"}`}
+                                  >
+                                    <FlagIcon className="h-4 w-4" />
+                                  </button>
+                                </TableCell>
+                                <TableCell className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="max-w-[180px] truncate">{row?.nama_pml || "-"}</span>
+                                    <button
+                                      type="button"
+                                      title={row?.nama_pml ? "Edit nama PML" : "Tambah nama PML"}
+                                      onClick={() => openEditDialog("nama_pml", row?.__rowNumber, row?.nama_pml ?? "")}
+                                      className={`rounded p-1 ${String(row?.nama_pml || "").trim() ? "bg-emerald-600 text-white" : "bg-slate-100"}`}
+                                    >
+                                      <Edit3 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="max-w-[180px] truncate">{row?.nama_ppl || "-"}</span>
+                                    <button
+                                      type="button"
+                                      title={row?.nama_ppl ? "Edit nama PPL" : "Tambah nama PPL"}
+                                      onClick={() => openEditDialog("nama_ppl", row?.__rowNumber, row?.nama_ppl ?? "")}
+                                      className={`rounded p-1 ${String(row?.nama_ppl || "").trim() ? "bg-emerald-600 text-white" : "bg-slate-100"}`}
+                                    >
+                                      <Edit3 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                            <span>Per halaman:</span>
+                            <select
+                              value={ngibarItemsPerPage}
+                              onChange={(e) => {
+                                setNgibarItemsPerPage(Number(e.target.value));
+                                setNgibarPage(1);
+                              }}
+                              className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                            >
+                              {[10, 20, 50, 100].map((size) => (
+                                <option key={size} value={size}>{size}</option>
+                              ))}
+                            </select>
+                            <span>Hal {ngibarPage} dari {ngibarTotalPages}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setNgibarPage(1)}
+                              disabled={ngibarPage === 1}
+                              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                            >
+                              Awal
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNgibarPage((prev) => Math.max(1, prev - 1))}
+                              disabled={ngibarPage === 1}
+                              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                            >
+                              Sebelumnya
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNgibarPage((prev) => Math.min(ngibarTotalPages, prev + 1))}
+                              disabled={ngibarPage === ngibarTotalPages}
+                              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                            >
+                              Berikutnya
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNgibarPage(ngibarTotalPages)}
+                              disabled={ngibarPage === ngibarTotalPages}
+                              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                            >
+                              Akhir
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
-
             <TabsContent value="anomali" className="space-y-6 mt-6">
               <React.Suspense fallback={<div className="py-12 text-center text-slate-500">Memuat Anomali...</div>}>
                 <MonitoringLapanganAnomaliTab
@@ -1646,358 +1837,6 @@ export default function MonitoringLapanganDash() {
                   user={user}
                 />
               </React.Suspense>
-            </TabsContent>
-            <TabsContent value="pml" className="space-y-6 mt-6">
-              <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="space-y-2">
-                    <div>
-                      <h2 className="text-lg font-semibold">Data PML</h2>
-                    </div>
-                  </div>
-                  <div className="hidden md:flex items-center gap-4">
-                    <div className="rounded-2xl px-4 py-2 shadow-lg bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-500 text-white flex flex-col justify-center items-start">
-                      <div className="text-xs uppercase tracking-[0.12em] font-semibold">Hari ke-{daysElapsed}</div>
-                      <div className="mt-0.5 text-sm font-bold">Target minimal: {minPercentageTarget.toFixed(2)}%</div>
-                    </div>
-                    <div className="rounded-2xl px-4 py-2 shadow-lg bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 text-white flex flex-col justify-center items-start min-w-[170px]">
-                      <div className="text-xs uppercase tracking-[0.12em] font-semibold text-slate-300">Rata-rata Kab. Majalengka</div>
-                      <div className="mt-0.5 text-sm font-bold text-emerald-300">{averageMajalengka.toFixed(2)}%</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="relative w-full md:w-96">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                      placeholder="Cari PML atau Kecamatan..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 h-10 w-full"
-                    />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                    <span>Per halaman:</span>
-                    <select
-                      value={pmlItemsPerPage}
-                      onChange={(e) => setPmlItemsPerPage(Number(e.target.value))}
-                      className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm"
-                    >
-                      {[10, 20, 50, 100].map((size) => (
-                        <option key={size} value={size}>{size}</option>
-                      ))}
-                    </select>
-                    <span>Hal {pmlCurrentPage} dari {pmlTotalPages}</span>
-                  </div>
-                </div>
-
-                <Card className="border-0 shadow-sm">
-                  <CardContent className="p-0">
-                    {loading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                        <span className="ml-2 text-slate-600">Memuat data...</span>
-                      </div>
-                    ) : error ? (
-                      <div className="flex items-center justify-center py-12 text-red-600">
-                        <AlertCircle className="h-5 w-5 mr-2" />
-                        Error: {error}
-                      </div>
-                    ) : filteredPmlRows.length === 0 ? (
-                      <div className="flex items-center justify-center py-12 text-slate-500">
-                        <AlertCircle className="h-5 w-5 mr-2" />
-                        Tidak ada data PML.
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-slate-50 hover:bg-slate-50">
-                              <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
-                              <TableHead 
-                                className="text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "nama_pml") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("nama_pml");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Nama PML
-                                  {pmlSortBy === "nama_pml" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "kecamatan") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("kecamatan");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Kecamatan
-                                  {pmlSortBy === "kecamatan" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "prelist_wilkerstat") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("prelist_wilkerstat");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center justify-end gap-2">
-                                  Wilkerstat
-                                  {pmlSortBy === "prelist_wilkerstat" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "prelist_awal") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("prelist_awal");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center justify-end gap-2">
-                                  Prelist Awal
-                                  {pmlSortBy === "prelist_awal" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "draft") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("draft");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center justify-end gap-2">
-                                  Draft
-                                  {pmlSortBy === "draft" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "persentase_draft") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("persentase_draft");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center justify-end gap-2">
-                                  % Draft
-                                  {pmlSortBy === "persentase_draft" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "responden_didata") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("responden_didata");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center justify-end gap-2">
-                                  Responden Didata
-                                  {pmlSortBy === "responden_didata" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "persentase_responden_didata") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("persentase_responden_didata");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center justify-end gap-2">
-                                  % Responden Didata
-                                  {pmlSortBy === "persentase_responden_didata" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "persentase_wilkerstat") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("persentase_wilkerstat");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center justify-end gap-2">
-                                  % Wilkerstat
-                                  {pmlSortBy === "persentase_wilkerstat" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {pmlPaginatedRows.map((pml, index) => {
-                              const rowNumber = (pmlCurrentPage - 1) * pmlItemsPerPage + index + 1;
-                              const isExpanded = expandedPML.has(pml.id);
-                              const respPct = parsePercentage(pml.persentase_responden_didata);
-                              return (
-                                <React.Fragment key={pml.id}>
-                                  <TableRow className="hover:bg-slate-50 border-b transition-colors">
-                                    <TableCell className="text-center text-slate-600 font-medium w-12">
-                                      {rowNumber}
-                                    </TableCell>
-                                    <TableCell
-                                      className="text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2"
-                                      onClick={() => {
-                                        setExpandedPML((prev) => {
-                                          const next = new Set(prev);
-                                          if (next.has(pml.id)) next.delete(pml.id);
-                                          else next.add(pml.id);
-                                          return next;
-                                        });
-                                      }}
-                                    >
-                                      {isExpanded ? (
-                                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                      )}
-                                      <span>{pml.nama_pml}</span>
-                                    </TableCell>
-                                    <TableCell className="text-slate-900 px-4 py-3">{pml.kecamatan}</TableCell>
-                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
-                                    <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(pml.prelist_awal).toLocaleString("id-ID")}</TableCell>
-                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.draft).toLocaleString("id-ID")}</TableCell>
-                                    <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">
-                                      {pml.persentase_draft}%
-                                    </TableCell>
-                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.responden_didata).toLocaleString("id-ID")}</TableCell>
-                                    <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>
-                                      {pml.persentase_responden_didata}%
-                                    </TableCell>
-                                    <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(pml.persentase_wilkerstat)) }}>
-                                      {pml.persentase_wilkerstat}%
-                                    </TableCell>
-                                  </TableRow>
-                                  {isExpanded && pml.children.map((child, childIndex) => (
-                                    <TableRow key={`${pml.id}-child-${childIndex}`} className="bg-slate-50 border-b hover:bg-slate-100 transition-colors">
-                                      <TableCell className="px-4 py-2" />
-                                      <TableCell className="text-sm text-slate-700 px-4 py-2 pl-12 font-medium">{child.nama_ppl}</TableCell>
-                                      <TableCell className="text-sm text-slate-600 px-4 py-2">-</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 text-sm">{parseNumericValue(child.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-blue-900 px-4 py-2 text-sm">{parseNumericValue(child.prelist_awal).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 text-sm">{parseNumericValue(child.draft).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-2 text-sm">
-                                        {child.persentase_draft}%
-                                      </TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 text-sm">{parseNumericValue(child.responden_didata).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold px-4 py-2 text-sm" style={{ color: getColorForPercentage(parsePercentage(child.persentase_responden_didata)) }}>
-                                        {child.persentase_responden_didata}%
-                                      </TableCell>
-                                      <TableCell className="text-right font-semibold px-4 py-2 text-sm" style={{ color: getColorForPercentage(parsePercentage(child.persentase_wilkerstat)) }}>
-                                        {child.persentase_wilkerstat}%
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </React.Fragment>
-                              );
-                            })}
-                            {/* Total Row */}
-                            {(() => {
-                              const totalPrelist = filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
-                              const totalWilkerstat = filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0);
-                              const totalResponden = filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.responden_didata), 0);
-                              const totalDraft = filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.draft), 0);
-                              const totalPctResponden = totalPrelist > 0 ? ((totalResponden / totalPrelist) * 100).toFixed(2) : "0.00";
-                              const totalPctDraft = totalPrelist > 0 ? ((totalDraft / totalPrelist) * 100).toFixed(2) : "0.00";
-                              const totalPctWilkerstat = totalWilkerstat > 0 ? ((totalResponden / totalWilkerstat) * 100).toFixed(2) : "0.00";
-                              return (
-                                <TableRow className="bg-blue-50 border-b font-semibold">
-                                  <TableCell className="text-center text-slate-700 w-12 px-4 py-3" />
-                                  <TableCell className="text-slate-900 px-4 py-3">TOTAL</TableCell>
-                                  <TableCell className="text-slate-900 px-4 py-3" />
-                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalWilkerstat.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-900 px-4 py-3">{totalPrelist.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalDraft.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600 px-4 py-3">{totalPctDraft}%</TableCell>
-                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalResponden.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctResponden)) }}>
-                                    {totalPctResponden}%
-                                  </TableCell>
-                                  <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctWilkerstat)) }}>
-                                    {totalPctWilkerstat}%
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })()}
-                          </TableBody>
-                        </Table>
-                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setPmlCurrentPage((prev) => Math.max(1, prev - 1))}
-                              disabled={pmlCurrentPage === 1}
-                              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
-                            >
-                              Sebelumnya
-                            </button>
-                            <button
-                              onClick={() => setPmlCurrentPage((prev) => Math.min(pmlTotalPages, prev + 1))}
-                              disabled={pmlCurrentPage === pmlTotalPages}
-                              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
-                            >
-                              Berikutnya
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
             </TabsContent>
           </Tabs>
         </div>
