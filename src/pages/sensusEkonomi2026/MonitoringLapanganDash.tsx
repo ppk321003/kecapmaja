@@ -161,6 +161,7 @@ interface PPLDetail {
   prelist_wilkerstat: string;
   responden_didata: string;
   persentase_responden_didata: string;
+  persentase_wilkerstat: string;
   aktivitas: string;
   aktivitasColor: string;
   draft: string;
@@ -175,6 +176,7 @@ interface PPLRow {
   prelist_wilkerstat: string;
   responden_didata: string;
   persentase_responden_didata: string;
+  persentase_wilkerstat: string;
   aktivitas: string;
   aktivitasColor: string;
   draft: string;
@@ -189,6 +191,7 @@ interface PMLChildRow {
   prelist_awal: string;
   responden_didata: string;
   persentase_responden_didata: string;
+  persentase_wilkerstat: string;
   draft: string;
   persentase_draft: string;
 }
@@ -201,6 +204,7 @@ interface PMLRow {
   prelist_awal: string;
   responden_didata: string;
   persentase_responden_didata: string;
+  persentase_wilkerstat: string;
   draft: string;
   persentase_draft: string;
   children: PMLChildRow[];
@@ -551,6 +555,9 @@ export default function MonitoringLapanganDash() {
           const pctDraft = prelist > 0 ? ((draft / prelist) * 100).toFixed(2) : "0.00";
           const activityStatus = getActivityStatusText(responden);
 
+          const wilkerstatValue = parseNumericValue(wilkerstatByKey.get(key) || 0);
+          const pctWilkerstat = wilkerstatValue > 0 ? ((responden / wilkerstatValue) * 100).toFixed(2) : "0.00";
+
           return {
             matchingKey: key,
             address: toProperCase(progressRow.address || "-"),
@@ -558,6 +565,7 @@ export default function MonitoringLapanganDash() {
             prelist_wilkerstat: (wilkerstatByKey.get(key) || 0).toString(),
             responden_didata: progressRow.respondenDidata || "0",
             persentase_responden_didata: pctResponden,
+            persentase_wilkerstat: pctWilkerstat,
             aktivitas: activityStatus.detail,
             aktivitasColor: activityStatus.color,
             draft: progressRow.draft || "0",
@@ -571,6 +579,7 @@ export default function MonitoringLapanganDash() {
       const draftSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.draft), 0);
       const pctResponden = prelistSum > 0 ? ((respondenSum / prelistSum) * 100).toFixed(2) : "0.00";
       const pctDraft = prelistSum > 0 ? ((draftSum / prelistSum) * 100).toFixed(2) : "0.00";
+      const pctWilkerstat = wilkerstatSum > 0 ? ((respondenSum / wilkerstatSum) * 100).toFixed(2) : "0.00";
       const activityStatus = getActivityStatusText(respondenSum);
       const kecamatanText = ppl.kecamatan || "-";
 
@@ -582,6 +591,7 @@ export default function MonitoringLapanganDash() {
         prelist_wilkerstat: wilkerstatSum.toString(),
         responden_didata: respondenSum.toString(),
         persentase_responden_didata: pctResponden,
+        persentase_wilkerstat: pctWilkerstat,
         aktivitas: activityStatus.detail,
         aktivitasColor: activityStatus.color,
         draft: draftSum.toString(),
@@ -637,12 +647,14 @@ export default function MonitoringLapanganDash() {
       const childArray = Array.from(pml.childMap.entries()).map(([namaPpl, values]) => {
         const pctResponden = values.prelist > 0 ? ((values.responden / values.prelist) * 100).toFixed(2) : "0.00";
         const pctDraft = values.prelist > 0 ? ((values.draft / values.prelist) * 100).toFixed(2) : "0.00";
+        const pctWilkerstat = values.prelist_wilkerstat > 0 ? ((values.responden / values.prelist_wilkerstat) * 100).toFixed(2) : "0.00";
         return {
           nama_ppl: namaPpl,
           prelist_wilkerstat: values.prelist_wilkerstat.toString(),
           prelist_awal: values.prelist.toString(),
           responden_didata: values.responden.toString(),
           persentase_responden_didata: pctResponden,
+          persentase_wilkerstat: pctWilkerstat,
           draft: values.draft.toString(),
           persentase_draft: pctDraft,
         };
@@ -654,6 +666,7 @@ export default function MonitoringLapanganDash() {
       const draftSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.draft), 0);
       const pctResponden = prelistSum > 0 ? ((respondenSum / prelistSum) * 100).toFixed(2) : "0.00";
       const pctDraft = prelistSum > 0 ? ((draftSum / prelistSum) * 100).toFixed(2) : "0.00";
+      const pctWilkerstat = prelistWilkerstatSum > 0 ? ((respondenSum / prelistWilkerstatSum) * 100).toFixed(2) : "0.00";
 
       return {
         id: `${index}-${pml.nama_pml}`,
@@ -663,6 +676,7 @@ export default function MonitoringLapanganDash() {
         prelist_awal: prelistSum.toString(),
         responden_didata: respondenSum.toString(),
         persentase_responden_didata: pctResponden,
+        persentase_wilkerstat: pctWilkerstat,
         draft: draftSum.toString(),
         persentase_draft: pctDraft,
         children: childArray,
@@ -695,6 +709,7 @@ export default function MonitoringLapanganDash() {
             return parseNumericValue(row[sortBy]);
           case "persentase_responden_didata":
           case "persentase_draft":
+          case "persentase_wilkerstat":
             return Number(String(row[sortBy]).replace(/[^0-9.-]/g, "")) || 0;
           default:
             return String(row[sortBy]).toLowerCase();
@@ -758,6 +773,7 @@ export default function MonitoringLapanganDash() {
             return parseNumericValue(row[pmlSortBy]);
           case "persentase_responden_didata":
           case "persentase_draft":
+          case "persentase_wilkerstat":
             return parsePercentage(row[pmlSortBy]);
           default:
             return String(row[pmlSortBy]).toLowerCase();
@@ -1151,7 +1167,7 @@ export default function MonitoringLapanganDash() {
                                 }}
                               >
                                 <div className="flex items-center justify-end gap-2">
-                                  Prelist Wilkerstat
+                                  Wilkerstat
                                   <ArrowUpDown className="h-4 w-4" />
                                 </div>
                               </TableHead>
@@ -1164,6 +1180,30 @@ export default function MonitoringLapanganDash() {
                               >
                                 <div className="flex items-center justify-end gap-2">
                                   Prelist Awal
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setSortBy("draft");
+                                  setSortOrder(sortBy === "draft" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Draft
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setSortBy("persentase_draft");
+                                  setSortOrder(sortBy === "persentase_draft" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  % Draft
                                   <ArrowUpDown className="h-4 w-4" />
                                 </div>
                               </TableHead>
@@ -1194,24 +1234,12 @@ export default function MonitoringLapanganDash() {
                               <TableHead
                                 className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
                                 onClick={() => {
-                                  setSortBy("draft");
-                                  setSortOrder(sortBy === "draft" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
+                                  setSortBy("persentase_wilkerstat");
+                                  setSortOrder(sortBy === "persentase_wilkerstat" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
                                 }}
                               >
                                 <div className="flex items-center justify-end gap-2">
-                                  Draft
-                                  <ArrowUpDown className="h-4 w-4" />
-                                </div>
-                              </TableHead>
-                              <TableHead
-                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
-                                onClick={() => {
-                                  setSortBy("persentase_draft");
-                                  setSortOrder(sortBy === "persentase_draft" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
-                                }}
-                              >
-                                <div className="flex items-center justify-end gap-2">
-                                  % Draft
+                                  % Wilkerstat
                                   <ArrowUpDown className="h-4 w-4" />
                                 </div>
                               </TableHead>
@@ -1264,13 +1292,16 @@ export default function MonitoringLapanganDash() {
                                     <TableCell className="text-slate-900 px-4 py-3">{row.kecamatan}</TableCell>
                                     <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(row.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.draft).toLocaleString("id-ID")}</TableCell>
+                                    <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">
+                                      {row.persentase_draft}%
+                                    </TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.responden_didata).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>
                                       {row.persentase_responden_didata}%
                                     </TableCell>
-                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.draft).toLocaleString("id-ID")}</TableCell>
-                                    <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">
-                                      {row.persentase_draft}%
+                                    <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(row.persentase_wilkerstat)) }}>
+                                      {row.persentase_wilkerstat}%
                                     </TableCell>
                                     <TableCell className="max-w-[240px] px-4 py-3">
                                       <div className="text-sm font-medium" style={{ color: row.aktivitasColor }}>{row.aktivitas}</div>
@@ -1283,13 +1314,16 @@ export default function MonitoringLapanganDash() {
                                       <TableCell className="text-sm text-slate-600 px-4 py-2">{detail.address}</TableCell>
                                       <TableCell className="text-right font-semibold text-blue-900 px-4 py-2">{parseNumericValue(detail.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.draft).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_draft)) }}>
+                                        {detail.persentase_draft}%
+                                      </TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.responden_didata).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_responden_didata)) }}>
                                         {detail.persentase_responden_didata}%
                                       </TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.draft).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_draft)) }}>
-                                        {detail.persentase_draft}%
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_wilkerstat)) }}>
+                                        {detail.persentase_wilkerstat}%
                                       </TableCell>
                                       <TableCell className="max-w-[240px] px-4 py-2">
                                         <div className="text-sm font-medium" style={{ color: detail.aktivitasColor }}>{detail.aktivitas}</div>
@@ -1302,22 +1336,28 @@ export default function MonitoringLapanganDash() {
                             {/* Total Row */}
                             {(() => {
                               const totalPrelist = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
+                              const totalWilkerstat = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0);
                               const totalResponden = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.responden_didata), 0);
                               const totalDraft = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.draft), 0);
                               const totalPctResponden = totalPrelist > 0 ? ((totalResponden / totalPrelist) * 100).toFixed(2) : "0.00";
                               const totalPctDraft = totalPrelist > 0 ? ((totalDraft / totalPrelist) * 100).toFixed(2) : "0.00";
+                              const totalPctWilkerstat = totalWilkerstat > 0 ? ((totalResponden / totalWilkerstat) * 100).toFixed(2) : "0.00";
                               return (
                                 <TableRow className="bg-emerald-50 border-b font-semibold">
                                   <TableCell className="text-center text-slate-700 w-12 px-4 py-3" />
                                   <TableCell className="text-slate-900 px-4 py-3">TOTAL</TableCell>
                                   <TableCell className="text-slate-900 px-4 py-3" />
-                                  <TableCell className="text-right text-blue-900 px-4 py-3">{totalPrelist.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-900 px-4 py-3">{totalWilkerstat.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalPrelist.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalDraft.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600 px-4 py-3">{totalPctDraft}%</TableCell>
                                   <TableCell className="text-right text-slate-900 px-4 py-3">{totalResponden.toLocaleString("id-ID")}</TableCell>
                                   <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctResponden)) }}>
                                     {totalPctResponden}%
                                   </TableCell>
-                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalDraft.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600 px-4 py-3">{totalPctDraft}%</TableCell>
+                                  <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctWilkerstat)) }}>
+                                    {totalPctWilkerstat}%
+                                  </TableCell>
                                 </TableRow>
                               );
                             })()}
@@ -1722,7 +1762,7 @@ export default function MonitoringLapanganDash() {
                                 }}
                               >
                                 <div className="flex items-center justify-end gap-2">
-                                  Prelist Wilkerstat
+                                  Wilkerstat
                                   {pmlSortBy === "prelist_wilkerstat" && (
                                     <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
                                   )}
@@ -1742,6 +1782,42 @@ export default function MonitoringLapanganDash() {
                                 <div className="flex items-center justify-end gap-2">
                                   Prelist Awal
                                   {pmlSortBy === "prelist_awal" && (
+                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
+                                  )}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
+                                onClick={() => {
+                                  if (pmlSortBy === "draft") {
+                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                  } else {
+                                    setPmlSortBy("draft");
+                                    setPmlSortOrder("asc");
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Draft
+                                  {pmlSortBy === "draft" && (
+                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
+                                  )}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
+                                onClick={() => {
+                                  if (pmlSortBy === "persentase_draft") {
+                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
+                                  } else {
+                                    setPmlSortBy("persentase_draft");
+                                    setPmlSortOrder("asc");
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  % Draft
+                                  {pmlSortBy === "persentase_draft" && (
                                     <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
                                   )}
                                 </div>
@@ -1785,35 +1861,17 @@ export default function MonitoringLapanganDash() {
                               <TableHead 
                                 className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
                                 onClick={() => {
-                                  if (pmlSortBy === "draft") {
+                                  if (pmlSortBy === "persentase_wilkerstat") {
                                     setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
                                   } else {
-                                    setPmlSortBy("draft");
+                                    setPmlSortBy("persentase_wilkerstat");
                                     setPmlSortOrder("asc");
                                   }
                                 }}
                               >
                                 <div className="flex items-center justify-end gap-2">
-                                  Draft
-                                  {pmlSortBy === "draft" && (
-                                    <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100 select-none"
-                                onClick={() => {
-                                  if (pmlSortBy === "persentase_draft") {
-                                    setPmlSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                  } else {
-                                    setPmlSortBy("persentase_draft");
-                                    setPmlSortOrder("asc");
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center justify-end gap-2">
-                                  % Draft
-                                  {pmlSortBy === "persentase_draft" && (
+                                  % Wilkerstat
+                                  {pmlSortBy === "persentase_wilkerstat" && (
                                     <ArrowUpDown className="h-4 w-4" style={{ transform: pmlSortOrder === "asc" ? "rotate(0)" : "rotate(180deg)" }} />
                                   )}
                                 </div>
@@ -1852,13 +1910,16 @@ export default function MonitoringLapanganDash() {
                                     <TableCell className="text-slate-900 px-4 py-3">{pml.kecamatan}</TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold text-blue-900 px-4 py-3">{parseNumericValue(pml.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.draft).toLocaleString("id-ID")}</TableCell>
+                                    <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">
+                                      {pml.persentase_draft}%
+                                    </TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.responden_didata).toLocaleString("id-ID")}</TableCell>
                                     <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>
                                       {pml.persentase_responden_didata}%
                                     </TableCell>
-                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.draft).toLocaleString("id-ID")}</TableCell>
-                                    <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">
-                                      {pml.persentase_draft}%
+                                    <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(pml.persentase_wilkerstat)) }}>
+                                      {pml.persentase_wilkerstat}%
                                     </TableCell>
                                   </TableRow>
                                   {isExpanded && pml.children.map((child, childIndex) => (
@@ -1868,13 +1929,16 @@ export default function MonitoringLapanganDash() {
                                       <TableCell className="text-sm text-slate-600 px-4 py-2">-</TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 text-sm">{parseNumericValue(child.prelist_wilkerstat).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold text-blue-900 px-4 py-2 text-sm">{parseNumericValue(child.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 text-sm">{parseNumericValue(child.draft).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-2 text-sm">
+                                        {child.persentase_draft}%
+                                      </TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 text-sm">{parseNumericValue(child.responden_didata).toLocaleString("id-ID")}</TableCell>
                                       <TableCell className="text-right font-semibold px-4 py-2 text-sm" style={{ color: getColorForPercentage(parsePercentage(child.persentase_responden_didata)) }}>
                                         {child.persentase_responden_didata}%
                                       </TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 text-sm">{parseNumericValue(child.draft).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-2 text-sm">
-                                        {child.persentase_draft}%
+                                      <TableCell className="text-right font-semibold px-4 py-2 text-sm" style={{ color: getColorForPercentage(parsePercentage(child.persentase_wilkerstat)) }}>
+                                        {child.persentase_wilkerstat}%
                                       </TableCell>
                                     </TableRow>
                                   ))}
@@ -1884,23 +1948,28 @@ export default function MonitoringLapanganDash() {
                             {/* Total Row */}
                             {(() => {
                               const totalPrelist = filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
+                              const totalWilkerstat = filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0);
                               const totalResponden = filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.responden_didata), 0);
                               const totalDraft = filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.draft), 0);
                               const totalPctResponden = totalPrelist > 0 ? ((totalResponden / totalPrelist) * 100).toFixed(2) : "0.00";
                               const totalPctDraft = totalPrelist > 0 ? ((totalDraft / totalPrelist) * 100).toFixed(2) : "0.00";
+                              const totalPctWilkerstat = totalWilkerstat > 0 ? ((totalResponden / totalWilkerstat) * 100).toFixed(2) : "0.00";
                               return (
                                 <TableRow className="bg-blue-50 border-b font-semibold">
                                   <TableCell className="text-center text-slate-700 w-12 px-4 py-3" />
                                   <TableCell className="text-slate-900 px-4 py-3">TOTAL</TableCell>
                                   <TableCell className="text-slate-900 px-4 py-3" />
-                                  <TableCell className="text-right text-slate-900 px-4 py-3">{filteredPmlRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0).toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalWilkerstat.toLocaleString("id-ID")}</TableCell>
                                   <TableCell className="text-right text-blue-900 px-4 py-3">{totalPrelist.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalDraft.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600 px-4 py-3">{totalPctDraft}%</TableCell>
                                   <TableCell className="text-right text-slate-900 px-4 py-3">{totalResponden.toLocaleString("id-ID")}</TableCell>
                                   <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctResponden)) }}>
                                     {totalPctResponden}%
                                   </TableCell>
-                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalDraft.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600 px-4 py-3">{totalPctDraft}%</TableCell>
+                                  <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctWilkerstat)) }}>
+                                    {totalPctWilkerstat}%
+                                  </TableCell>
                                 </TableRow>
                               );
                             })()}
