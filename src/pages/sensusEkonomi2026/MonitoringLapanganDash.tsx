@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpDown, Loader2, AlertCircle, ChevronDown, ChevronRight, Search, Database, Trophy, Users, Link, Edit3, CheckSquare, User as UserIcon, Phone, Copy, Flag as FlagIcon, Mail, Eye } from "lucide-react";
+import { ArrowUpDown, Loader2, AlertCircle, ChevronDown, ChevronRight, Search, Database, Trophy, Users, Link, Edit3, CheckSquare, User as UserIcon, Phone, Copy, Flag as FlagIcon, Mail, Eye, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from "@/contexts/AuthContext";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
+import * as XLSX from "xlsx";
 
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
@@ -21,7 +22,7 @@ const SHEET_ANOMALI_USAHA = "Mikro Anomali Usaha";
 const SHEET_ANOMALI_KELUARGA = "Mikro Anomali Keluarga";
 const SHEET_USAHA_PERUSAHAAN = "USAHA PERUSAHAAN";
 const SHEET_USAHA_KELUARGA = "USAHA KELUARGA";
-const SHEET_PROPORSI_USAHA = "PROPORSI USAHA";
+const SHEET_PROPORSI_USAHA = "PROPORSI PERTANIAN NON PERTANIAN";
 
 const MonitoringLapanganAnomaliTab = React.lazy(() => import("./MonitoringLapanganAnomaliTab"));
 
@@ -42,6 +43,16 @@ const parseNumericValue = (value: unknown) => {
   const cleaned = String(value ?? "").replace(/[^0-9.-]/g, "");
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatProporsiPercentage = (numerator: number, denominator: number): string =>
+  denominator > 0 ? `${((numerator / denominator) * 100).toFixed(2)}%` : "0.00%";
+
+const getProporsiPercentageClass = (numerator: number, denominator: number): string => {
+  const percentage = denominator > 0 ? (numerator / denominator) * 100 : 0;
+  if (percentage >= 100) return "text-emerald-600";
+  if (percentage >= 50) return "text-orange-500";
+  return "text-red-600";
 };
 
 const normalizeColumnKey = (key: string): string =>
@@ -286,10 +297,27 @@ const getRawColumnNumber = (row: any, columnIndex: number, defaultValue = 0): nu
 };
 
 const getRawRowId16 = (row: any): string => {
-  const rawId = getRawColumnText(row, 0, "");
+  const rawId = getRawColumnText(row, 0, getRowValue(row, "kode", ["idsubsls", "id sub sls", "kode_sls"], ""));
   const normalized = normalizeSheetKey(rawId);
   return normalized.length === 16 ? normalized : "";
 };
+
+const getStackingKey = (row: any): string => {
+  const rawKey = getRawColumnText(row, 3, getRowValue(row, "idsubsls", ["id sub sls", "kode", "kode_sls"], ""));
+  const normalized = normalizeSheetKey(rawKey);
+  if (normalized.length === 16) return normalized;
+  const rawRow = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+  const candidate = rawRow.find((value: unknown) => normalizeSheetKey(value).length === 16);
+  return normalizeSheetKey(candidate);
+};
+
+const getStackingNamaPpl = (row: any): string => toProperCase(
+  getRawColumnText(row, 26, getRowValue(row, "nama_ppl", ["nama ppl", "ppl"], ""))
+);
+
+const getStackingKecamatan = (row: any): string => toProperCase(
+  getRawColumnText(row, 12, getRowValue(row, "nmkec", ["nama kecamatan", "kecamatan"], ""))
+);
 
 const extractProgressHeader = (value: string): string => {
   const segments = String(value || "")
@@ -402,13 +430,39 @@ interface UsahaKeluargaRow {
 
 interface UsahaProporsiRow {
   id: string;
-  key: string;
-  sub_sls: string;
-  jumlah_usaha: string;
-  jumlah_usaha_bku: string;
-  persentase_usaha_bku: string;
-  jumlah_usaha_dalam_keluarga: string;
-  persentase_usaha_dalam_keluarga: string;
+  nama_ppl: string;
+  kecamatan: string;
+  prelist_awal: string;
+  prelist_usaha: string;
+  utp_subsektor_st2023: string;
+  didata: string;
+  bku_ditemukan_pertanian: string;
+  bku_ditemukan_non_pertanian: string;
+  bku_baru_pertanian: string;
+  bku_baru_non_pertanian: string;
+  keluarga_ditemukan_pertanian: string;
+  keluarga_ditemukan_non_pertanian: string;
+  keluarga_baru_pertanian: string;
+  keluarga_baru_non_pertanian: string;
+  children: UsahaProporsiDetailRow[];
+}
+
+interface UsahaProporsiDetailRow {
+  id: string;
+  kode: string;
+  sls_rt: string;
+  prelist_awal: string;
+  prelist_usaha: string;
+  utp_subsektor_st2023: string;
+  didata: string;
+  bku_ditemukan_pertanian: string;
+  bku_ditemukan_non_pertanian: string;
+  bku_baru_pertanian: string;
+  bku_baru_non_pertanian: string;
+  keluarga_ditemukan_pertanian: string;
+  keluarga_ditemukan_non_pertanian: string;
+  keluarga_baru_pertanian: string;
+  keluarga_baru_non_pertanian: string;
 }
 
 interface MergedUsahaDetailRow {
@@ -516,6 +570,7 @@ export default function MonitoringLapanganDash() {
 
   const { user } = useAuth();
   const isLoggedIn = !!user?.username;
+  const isPpk = user?.role === "Pejabat Pembuat Komitmen";
 
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
@@ -551,6 +606,7 @@ export default function MonitoringLapanganDash() {
   const [usahaProporsiSortOrder, setUsahaProporsiSortOrder] = useState<"asc" | "desc">("asc");
   const [expandedUsahaPerusahaan, setExpandedUsahaPerusahaan] = useState<Set<string>>(new Set());
   const [expandedUsahaKeluarga, setExpandedUsahaKeluarga] = useState<Set<string>>(new Set());
+  const [expandedUsahaProporsi, setExpandedUsahaProporsi] = useState<Set<string>>(new Set());
 
   // Ngibar Disdik tab: safe incremental implementation
   const NGIBAR_SPREADSHEET_ID = "1EyrssWtjEGd64SYelUMON3nnLpj6KU5INCMeD-Amjto";
@@ -1312,19 +1368,6 @@ export default function MonitoringLapanganDash() {
     }));
   }, [usahaKeluargaData]);
 
-  const usahaProporsiRows = useMemo<UsahaProporsiRow[]>(() => {
-    return (usahaProporsiData || []).map((row: any, index: number) => ({
-      id: `proporsi-${index}`,
-      key: getRawColumnText(row, 0, ""),
-      sub_sls: getRawColumnText(row, 1, ""),
-      jumlah_usaha: getRawColumnText(row, 2, "0"),
-      jumlah_usaha_bku: getRawColumnText(row, 3, "0"),
-      persentase_usaha_bku: getRawColumnText(row, 4, "0"),
-      jumlah_usaha_dalam_keluarga: getRawColumnText(row, 5, "0"),
-      persentase_usaha_dalam_keluarga: getRawColumnText(row, 6, "0"),
-    }));
-  }, [usahaProporsiData]);
-
   const namaPplByKey = useMemo(() => {
     const lookup = new Map<string, string>();
     (pplRows || []).forEach((ppl) => {
@@ -1337,10 +1380,10 @@ export default function MonitoringLapanganDash() {
     });
 
     (stackingData || []).forEach((row: any) => {
-      const key = normalizeSheetKey(getSheetCellText(row, 3));
+      const key = getStackingKey(row);
       if (key.length !== 16) return;
       if (!lookup.has(key)) {
-        const namaPpl = toProperCase(getSheetCellText(row, 26));
+        const namaPpl = getStackingNamaPpl(row);
         if (namaPpl) lookup.set(key, namaPpl);
       }
     });
@@ -1351,15 +1394,115 @@ export default function MonitoringLapanganDash() {
   const kecamatanByKey = useMemo(() => {
     const lookup = new Map<string, string>();
     (stackingData || []).forEach((row: any) => {
-      const key = normalizeSheetKey(getSheetCellText(row, 3));
+      const key = getStackingKey(row);
       if (key.length !== 16) return;
-      const kecamatan = toProperCase(getSheetCellText(row, 12));
+      const kecamatan = getStackingKecamatan(row);
       if (kecamatan && !lookup.has(key)) {
         lookup.set(key, kecamatan);
       }
     });
     return lookup;
   }, [stackingData]);
+
+  const didataByKey = useMemo(() => {
+    const lookup = new Map<string, number>();
+    (pplRows || []).forEach((ppl) => {
+      (ppl.details || []).forEach((detail) => {
+        const key = normalizeSheetKey(detail.matchingKey);
+        if (key.length === 16) lookup.set(key, parseNumericValue(detail.responden_didata));
+      });
+    });
+    return lookup;
+  }, [pplRows]);
+
+  const prelistAwalByKey = useMemo(() => {
+    const lookup = new Map<string, number>();
+    (pplRows || []).forEach((ppl) => {
+      (ppl.details || []).forEach((detail) => {
+        const key = normalizeSheetKey(detail.matchingKey);
+        if (key.length === 16) lookup.set(key, parseNumericValue(detail.prelist_awal));
+      });
+    });
+    return lookup;
+  }, [pplRows]);
+
+  const usahaProporsiRows = useMemo<UsahaProporsiRow[]>(() => {
+    const groups = new Map<string, UsahaProporsiRow>();
+    const numericFields: Array<keyof Omit<UsahaProporsiDetailRow, "id" | "kode" | "sls_rt" | "utp_subsektor_st2023">> = [
+      "prelist_usaha",
+      "prelist_awal",
+      "bku_ditemukan_pertanian",
+      "bku_ditemukan_non_pertanian",
+      "bku_baru_pertanian",
+      "bku_baru_non_pertanian",
+      "keluarga_ditemukan_pertanian",
+      "keluarga_ditemukan_non_pertanian",
+      "keluarga_baru_pertanian",
+      "keluarga_baru_non_pertanian",
+      "didata",
+    ];
+
+    (usahaProporsiData || [])
+      .filter((row: any) => getRawRowId16(row) || getStackingKey(row))
+      .forEach((row: any, index: number) => {
+        const rowId = getRawRowId16(row) || getStackingKey(row);
+        const rawNamaPpl = toProperCase(String(getRowValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim());
+        const rawKecamatan = toProperCase(String(getRowValue(row, "kecamatan", ["nama kecamatan", "kecamatan", "region", "regioncode"], "")).trim());
+        const namaPpl = (rowId ? namaPplByKey.get(rowId) : undefined) || rawNamaPpl || "-";
+        const kecamatan = (rowId ? kecamatanByKey.get(rowId) : undefined) || rawKecamatan || "-";
+        if (namaPpl === "-") return;
+        const detail: UsahaProporsiDetailRow = {
+          id: `proporsi-detail-${rowId || index}`,
+          kode: rowId,
+          sls_rt: toProperCase(getRawColumnText(row, 1, "-")),
+          prelist_awal: (rowId ? prelistAwalByKey.get(rowId) : 0)?.toString() || "0",
+          prelist_usaha: getRawColumnText(row, 2, "0"),
+          utp_subsektor_st2023: getRawColumnText(row, 4, ""),
+          didata: (rowId ? didataByKey.get(rowId) : 0)?.toString() || "0",
+          bku_ditemukan_pertanian: getRawColumnText(row, 5, "0"),
+          bku_ditemukan_non_pertanian: getRawColumnText(row, 7, "0"),
+          bku_baru_pertanian: getRawColumnText(row, 8, "0"),
+          bku_baru_non_pertanian: getRawColumnText(row, 10, "0"),
+          keluarga_ditemukan_pertanian: getRawColumnText(row, 11, "0"),
+          keluarga_ditemukan_non_pertanian: getRawColumnText(row, 13, "0"),
+          keluarga_baru_pertanian: getRawColumnText(row, 14, "0"),
+          keluarga_baru_non_pertanian: getRawColumnText(row, 16, "0"),
+        };
+        const groupKey = `${normalizePersonKey(namaPpl)}||${normalizeKecamatanKey(kecamatan)}`;
+        const existing = groups.get(groupKey);
+        if (!existing) {
+          groups.set(groupKey, {
+            id: `proporsi-${groupKey}`,
+            nama_ppl: namaPpl,
+            kecamatan,
+            prelist_awal: detail.prelist_awal,
+            prelist_usaha: detail.prelist_usaha,
+            utp_subsektor_st2023: detail.utp_subsektor_st2023,
+            didata: detail.didata,
+            bku_ditemukan_pertanian: detail.bku_ditemukan_pertanian,
+            bku_ditemukan_non_pertanian: detail.bku_ditemukan_non_pertanian,
+            bku_baru_pertanian: detail.bku_baru_pertanian,
+            bku_baru_non_pertanian: detail.bku_baru_non_pertanian,
+            keluarga_ditemukan_pertanian: detail.keluarga_ditemukan_pertanian,
+            keluarga_ditemukan_non_pertanian: detail.keluarga_ditemukan_non_pertanian,
+            keluarga_baru_pertanian: detail.keluarga_baru_pertanian,
+            keluarga_baru_non_pertanian: detail.keluarga_baru_non_pertanian,
+            children: [detail],
+          });
+          return;
+        }
+
+        existing.utp_subsektor_st2023 = (
+          parseNumericValue(existing.utp_subsektor_st2023) + parseNumericValue(detail.utp_subsektor_st2023)
+        ).toString();
+        numericFields.forEach((field) => {
+          existing[field] = (parseNumericValue(existing[field]) + parseNumericValue(detail[field])).toString();
+        });
+        existing.children.push(detail);
+      });
+
+    return Array.from(groups.values());
+  }, [usahaProporsiData, namaPplByKey, kecamatanByKey, didataByKey, prelistAwalByKey]);
 
   const mergedUsahaRows = useMemo<MergedUsahaRow[]>(() => {
     type GroupedUsaha = {
@@ -1723,23 +1866,44 @@ export default function MonitoringLapanganDash() {
     let rows = usahaProporsiRows;
     if (q) {
       rows = rows.filter((row) =>
-        row.sub_sls.toLowerCase().includes(q) ||
-        row.key.toLowerCase().includes(q)
+        row.nama_ppl.toLowerCase().includes(q) ||
+        row.kecamatan.toLowerCase().includes(q)
       );
     }
 
     const getValue = (row: UsahaProporsiRow) => {
-      const numericFields = [
-        "prelist_awal",
-        "jumlah_usaha",
-        "jumlah_usaha_bku",
-        "persentase_usaha_bku",
-        "jumlah_usaha_dalam_keluarga",
-        "persentase_usaha_dalam_keluarga",
-      ];
-      if (numericFields.includes(usahaProporsiSortBy)) {
-        return parseNumericValue(row[usahaProporsiSortBy as keyof UsahaProporsiRow]);
+      const numericValues: Record<string, number> = {
+        prelist_awal: parseNumericValue(row.prelist_awal),
+        prelist_usaha: parseNumericValue(row.prelist_usaha),
+        utp_subsektor_st2023: parseNumericValue(row.utp_subsektor_st2023),
+        didata: parseNumericValue(row.didata),
+        bku_ditemukan_pertanian: parseNumericValue(row.bku_ditemukan_pertanian),
+        bku_ditemukan_non_pertanian: parseNumericValue(row.bku_ditemukan_non_pertanian),
+        bku_baru_pertanian: parseNumericValue(row.bku_baru_pertanian),
+        bku_baru_non_pertanian: parseNumericValue(row.bku_baru_non_pertanian),
+        keluarga_ditemukan_pertanian: parseNumericValue(row.keluarga_ditemukan_pertanian),
+        keluarga_ditemukan_non_pertanian: parseNumericValue(row.keluarga_ditemukan_non_pertanian),
+        keluarga_baru_pertanian: parseNumericValue(row.keluarga_baru_pertanian),
+        keluarga_baru_non_pertanian: parseNumericValue(row.keluarga_baru_non_pertanian),
+      };
+      numericValues.jumlah_usaha = [
+        "bku_ditemukan_non_pertanian", "bku_baru_non_pertanian",
+        "keluarga_ditemukan_non_pertanian", "keluarga_baru_non_pertanian",
+      ].reduce((sum, field) => sum + numericValues[field], 0);
+      numericValues.jumlah_usaha_pertanian = [
+        "bku_ditemukan_pertanian", "bku_baru_pertanian", "keluarga_ditemukan_pertanian", "keluarga_baru_pertanian",
+      ].reduce((sum, field) => sum + numericValues[field], 0);
+      if (usahaProporsiSortBy === "jumlah_usaha") {
+        return numericValues.prelist_usaha > 0
+          ? numericValues.jumlah_usaha / numericValues.prelist_usaha
+          : 0;
       }
+      if (usahaProporsiSortBy === "jumlah_usaha_pertanian") {
+        return numericValues.utp_subsektor_st2023 > 0
+          ? numericValues.jumlah_usaha_pertanian / numericValues.utp_subsektor_st2023
+          : 0;
+      }
+      if (usahaProporsiSortBy in numericValues) return numericValues[usahaProporsiSortBy];
       return String(row[usahaProporsiSortBy as keyof UsahaProporsiRow] || "").toLowerCase();
     };
 
@@ -1754,6 +1918,25 @@ export default function MonitoringLapanganDash() {
         : String(bValue).localeCompare(String(aValue), "id");
     });
   }, [usahaProporsiRows, usahaSearchTerm, usahaProporsiSortBy, usahaProporsiSortOrder]);
+
+  const toggleUsahaProporsiSort = (field: string) => {
+    setUsahaProporsiSortBy(field);
+    setUsahaProporsiSortOrder((current) => usahaProporsiSortBy === field ? (current === "asc" ? "desc" : "asc") : "asc");
+    setUsahaProporsiCurrentPage(1);
+  };
+
+  const proporsiSortHead = (label: string, field: string, className = "", rowSpan = 1) => (
+    <TableHead
+      rowSpan={rowSpan > 1 ? rowSpan : undefined}
+      className={`${className} cursor-pointer hover:bg-slate-100`}
+      onClick={() => toggleUsahaProporsiSort(field)}
+    >
+      <div className={`flex items-center gap-2 ${className.includes("text-right") ? "justify-end" : ""}`}>
+        {label}
+        <ArrowUpDown className="h-4 w-4 flex-shrink-0" />
+      </div>
+    </TableHead>
+  );
 
   const usahaPerusahaanTotalPages = Math.max(1, Math.ceil(filteredUsahaPerusahaanRows.length / usahaItemsPerPage));
   const usahaKeluargaTotalPages = Math.max(1, Math.ceil(filteredUsahaKeluargaRows.length / usahaItemsPerPage));
@@ -1773,6 +1956,60 @@ export default function MonitoringLapanganDash() {
     const startIndex = (usahaProporsiCurrentPage - 1) * usahaItemsPerPage;
     return filteredUsahaProporsiRows.slice(startIndex, startIndex + usahaItemsPerPage);
   }, [filteredUsahaProporsiRows, usahaProporsiCurrentPage, usahaItemsPerPage]);
+
+  const handleDownloadProporsiExcel = () => {
+    if (!isPpk) return;
+
+    const getJumlahUsaha = (row: UsahaProporsiRow | UsahaProporsiDetailRow) => [
+      row.bku_ditemukan_non_pertanian,
+      row.bku_baru_non_pertanian,
+      row.keluarga_ditemukan_non_pertanian,
+      row.keluarga_baru_non_pertanian,
+    ].reduce((total, value) => total + parseNumericValue(value), 0);
+    const getJumlahUsahaPertanian = (row: UsahaProporsiRow | UsahaProporsiDetailRow) => [
+      row.bku_ditemukan_pertanian,
+      row.bku_baru_pertanian,
+      row.keluarga_ditemukan_pertanian,
+      row.keluarga_baru_pertanian,
+    ].reduce((total, value) => total + parseNumericValue(value), 0);
+    const toExportRow = (row: UsahaProporsiRow | UsahaProporsiDetailRow, namaPpl: string, kecamatan: string, tipe: string) => {
+      const jumlahUsaha = getJumlahUsaha(row);
+      const jumlahUsahaPertanian = getJumlahUsahaPertanian(row);
+      return {
+        Tipe: tipe,
+        "Nama PPL": namaPpl,
+        Kecamatan: kecamatan,
+        "Prelist Awal": parseNumericValue(row.prelist_awal),
+        "Prelist Usaha": parseNumericValue(row.prelist_usaha),
+        "UTP ST2023": parseNumericValue(row.utp_subsektor_st2023),
+        Didata: parseNumericValue(row.didata),
+        "BKU Ditemukan Pertanian": parseNumericValue(row.bku_ditemukan_pertanian),
+        "BKU Ditemukan Non Pertanian": parseNumericValue(row.bku_ditemukan_non_pertanian),
+        "BKU Baru Pertanian": parseNumericValue(row.bku_baru_pertanian),
+        "BKU Baru Non Pertanian": parseNumericValue(row.bku_baru_non_pertanian),
+        "Keluarga Ditemukan Pertanian": parseNumericValue(row.keluarga_ditemukan_pertanian),
+        "Keluarga Ditemukan Non Pertanian": parseNumericValue(row.keluarga_ditemukan_non_pertanian),
+        "Keluarga Baru Pertanian": parseNumericValue(row.keluarga_baru_pertanian),
+        "Keluarga Baru Non Pertanian": parseNumericValue(row.keluarga_baru_non_pertanian),
+        "Jumlah Usaha": jumlahUsaha,
+        "% Usaha": formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.prelist_usaha)),
+        "Jumlah Usaha Pertanian": jumlahUsahaPertanian,
+        "% Usaha Pertanian": formatProporsiPercentage(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023)),
+      };
+    };
+
+    const exportRows = filteredUsahaProporsiRows.flatMap((row) => [
+      toExportRow(row, row.nama_ppl, row.kecamatan, "PPL"),
+      ...row.children.map((detail) => toExportRow(detail, detail.kode, detail.sls_rt, "Detail")),
+    ]);
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    worksheet["!cols"] = Object.keys(exportRows[0] || {}).map((key) => ({
+      wch: Math.min(Math.max(key.length + 2, 12), 32),
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Proporsi Usaha");
+    XLSX.writeFile(workbook, `proporsi-usaha-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   const usahaKondisiSummary = useMemo(() => {
     const totalPerusahaanPrelist = filteredUsahaPerusahaanRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
@@ -3416,11 +3653,37 @@ export default function MonitoringLapanganDash() {
 
                   <TabsContent value="proporsi" className="space-y-6 mt-6">
                     <Card className="border-0 shadow-sm">
-                      <CardHeader className="border-b bg-slate-50">
-                        <CardTitle className="text-sm font-semibold">Proporsi Usaha</CardTitle>
-                        <CardDescription>Data proporsi usaha pertanian dan non pertanian.</CardDescription>
+                      <CardHeader className="border-b bg-slate-50 sm:flex sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <CardTitle className="text-sm font-semibold">Proporsi Usaha</CardTitle>
+                          <CardDescription>Data proporsi usaha pertanian dan non pertanian.</CardDescription>
+                        </div>
+                        {isPpk && (
+                          <button
+                            type="button"
+                            onClick={handleDownloadProporsiExcel}
+                            className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:mt-0"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download Excel
+                          </button>
+                        )}
                       </CardHeader>
                       <CardContent className="p-0">
+                        <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
+                          <div className="relative max-w-md">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                              placeholder="Cari Nama PPL atau Kecamatan..."
+                              value={usahaSearchTerm}
+                              onChange={(event) => {
+                                setUsahaSearchTerm(event.target.value);
+                                setUsahaProporsiCurrentPage(1);
+                              }}
+                              className="pl-10 h-10 w-full"
+                            />
+                          </div>
+                        </div>
                         {usahaLoading ? (
                           <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
@@ -3441,30 +3704,135 @@ export default function MonitoringLapanganDash() {
                             <Table>
                               <TableHeader>
                                 <TableRow className="bg-slate-50 hover:bg-slate-50">
-                                  <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
-                                  <TableHead className="text-slate-700 font-semibold px-4 py-3">Kode</TableHead>
-                                  <TableHead className="text-slate-700 font-semibold px-4 py-3">Sub SLS</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Jumlah Usaha</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Jumlah Usaha BKU</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Usaha BKU</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Jumlah Usaha Keluarga</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Usaha Keluarga</TableHead>
+                                  <TableHead rowSpan={2} className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
+                                  {proporsiSortHead("Nama PPL", "nama_ppl", "text-slate-700 font-semibold px-4 py-3", 2)}
+                                  {proporsiSortHead("Kecamatan", "kecamatan", "text-slate-700 font-semibold px-4 py-3", 2)}
+                                  {proporsiSortHead("Prelist Awal", "prelist_awal", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
+                                  {proporsiSortHead("Prelist Usaha", "prelist_usaha", "text-right text-blue-700 font-bold px-4 py-3", 2)}
+                                  {proporsiSortHead("UTP ST2023", "utp_subsektor_st2023", "text-green-700 font-bold px-4 py-3", 2)}
+                                  {proporsiSortHead("Didata", "didata", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
+                                  <TableHead colSpan={4} className="text-center text-slate-700 font-semibold px-4 py-3 border-l-2 border-slate-300">Usaha BKU</TableHead>
+                                  <TableHead colSpan={4} className="text-center text-slate-700 font-semibold px-4 py-3 border-l-2 border-slate-300">Usaha Dalam Keluarga</TableHead>
+                                  {proporsiSortHead("Jumlah Usaha", "jumlah_usaha", "text-center text-slate-700 font-semibold px-4 py-3 border-l-2 border-slate-300", 2)}
+                                  {proporsiSortHead("Jumlah Usaha Pertanian", "jumlah_usaha_pertanian", "text-center text-slate-700 font-semibold px-4 py-3 border-l-2 border-slate-300", 2)}
+                                </TableRow>
+                                <TableRow className="bg-slate-50 hover:bg-slate-50">
+                                  {proporsiSortHead("Ditemukan Pertanian", "bku_ditemukan_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3 border-l-2 border-slate-300")}
+                                  {proporsiSortHead("Ditemukan Non Pertanian", "bku_ditemukan_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3")}
+                                  {proporsiSortHead("Baru Pertanian", "bku_baru_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3")}
+                                  {proporsiSortHead("Baru Non Pertanian", "bku_baru_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3")}
+                                  {proporsiSortHead("Ditemukan Pertanian", "keluarga_ditemukan_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3 border-l-2 border-slate-300")}
+                                  {proporsiSortHead("Ditemukan Non Pertanian", "keluarga_ditemukan_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3")}
+                                  {proporsiSortHead("Baru Pertanian", "keluarga_baru_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3")}
+                                  {proporsiSortHead("Baru Non Pertanian", "keluarga_baru_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3")}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {usahaProporsiPaginatedRows.map((row, index) => {
                                   const rowNumber = (usahaProporsiCurrentPage - 1) * usahaItemsPerPage + index + 1;
+                                  const isExpanded = expandedUsahaProporsi.has(row.id);
+                                  const jumlahUsaha = [
+                                    row.bku_ditemukan_non_pertanian,
+                                    row.bku_baru_non_pertanian,
+                                    row.keluarga_ditemukan_non_pertanian,
+                                    row.keluarga_baru_non_pertanian,
+                                  ].reduce((total, value) => total + parseNumericValue(value), 0);
+                                  const jumlahUsahaPertanian = [
+                                    row.bku_ditemukan_pertanian,
+                                    row.bku_baru_pertanian,
+                                    row.keluarga_ditemukan_pertanian,
+                                    row.keluarga_baru_pertanian,
+                                  ].reduce((total, value) => total + parseNumericValue(value), 0);
                                   return (
-                                    <TableRow key={row.id} className="hover:bg-slate-50 border-b transition-colors">
-                                      <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
-                                      <TableCell className="text-slate-900 px-4 py-3">{row.key}</TableCell>
-                                      <TableCell className="text-slate-900 px-4 py-3">{row.sub_sls}</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.jumlah_usaha).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.jumlah_usaha_bku).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parsePercentage(row.persentase_usaha_bku).toFixed(2)}%</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.jumlah_usaha_dalam_keluarga).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parsePercentage(row.persentase_usaha_dalam_keluarga).toFixed(2)}%</TableCell>
-                                    </TableRow>
+                                    <React.Fragment key={row.id}>
+                                      <TableRow className="hover:bg-slate-50 border-b transition-colors">
+                                        <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
+                                        <TableCell
+                                          className="text-slate-900 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2 whitespace-nowrap"
+                                          onClick={() => {
+                                            setExpandedUsahaProporsi((previous) => {
+                                              const next = new Set(previous);
+                                              if (next.has(row.id)) next.delete(row.id);
+                                              else next.add(row.id);
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          {isExpanded ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
+                                          <span>{row.nama_ppl}</span>
+                                        </TableCell>
+                                        <TableCell className="text-slate-900 px-4 py-3 whitespace-nowrap">{row.kecamatan}</TableCell>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-bold text-blue-700 px-4 py-3">{parseNumericValue(row.prelist_usaha).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-left font-bold text-green-700 px-4 py-3">{row.utp_subsektor_st2023}</TableCell>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.didata).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3 border-l-2 border-slate-300">{parseNumericValue(row.bku_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.bku_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3">{parseNumericValue(row.bku_baru_pertanian).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.bku_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3 border-l-2 border-slate-300">{parseNumericValue(row.keluarga_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.keluarga_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3">{parseNumericValue(row.keluarga_baru_pertanian).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.keluarga_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right px-4 py-3 border-l-2 border-slate-300">
+                                        <div className="font-semibold text-slate-900">{jumlahUsaha.toLocaleString("id-ID")}</div>
+                                        <div className={`text-xs font-medium ${getProporsiPercentageClass(jumlahUsaha, parseNumericValue(row.prelist_usaha))}`}>{formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.prelist_usaha))}</div>
+                                      </TableCell>
+                                      <TableCell className="text-right px-4 py-3 border-l-2 border-slate-300">
+                                        <div className="font-semibold text-slate-900">{jumlahUsahaPertanian.toLocaleString("id-ID")}</div>
+                                        <div className={`text-xs font-medium ${getProporsiPercentageClass(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}`}>{formatProporsiPercentage(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}</div>
+                                      </TableCell>
+                                      </TableRow>
+                                      {isExpanded && row.children.map((detail) => (
+                                        <TableRow key={detail.id} className="border-b border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
+                                          <TableCell className="px-4 py-2" />
+                                          <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8">{detail.kode}</TableCell>
+                                          <TableCell className="text-sm text-slate-600 px-4 py-2">{detail.sls_rt}</TableCell>
+                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.prelist_awal).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-bold text-blue-700 px-4 py-2">{parseNumericValue(detail.prelist_usaha).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-left font-bold text-green-700 px-4 py-2">{detail.utp_subsektor_st2023}</TableCell>
+                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.didata).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2 border-l-2 border-slate-300">{parseNumericValue(detail.bku_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.bku_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2">{parseNumericValue(detail.bku_baru_pertanian).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.bku_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2 border-l-2 border-slate-300">{parseNumericValue(detail.keluarga_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.keluarga_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2">{parseNumericValue(detail.keluarga_baru_pertanian).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.keluarga_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right px-4 py-2 border-l-2 border-slate-300">
+                                            <div className="font-semibold text-slate-900">{[
+                                              detail.bku_ditemukan_non_pertanian,
+                                              detail.bku_baru_non_pertanian,
+                                              detail.keluarga_ditemukan_non_pertanian,
+                                              detail.keluarga_baru_non_pertanian,
+                                            ].reduce((total, value) => total + parseNumericValue(value), 0).toLocaleString("id-ID")}</div>
+                                            <div className={`text-xs font-medium ${getProporsiPercentageClass(
+                                              [detail.bku_ditemukan_non_pertanian, detail.bku_baru_non_pertanian, detail.keluarga_ditemukan_non_pertanian, detail.keluarga_baru_non_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
+                                              parseNumericValue(detail.prelist_usaha)
+                                            )}`}>{formatProporsiPercentage(
+                                              [detail.bku_ditemukan_non_pertanian, detail.bku_baru_non_pertanian, detail.keluarga_ditemukan_non_pertanian, detail.keluarga_baru_non_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
+                                              parseNumericValue(detail.prelist_usaha)
+                                            )}</div>
+                                          </TableCell>
+                                          <TableCell className="text-right px-4 py-2 border-l-2 border-slate-300">
+                                            <div className="font-semibold text-slate-900">{[
+                                              detail.bku_ditemukan_pertanian,
+                                              detail.bku_baru_pertanian,
+                                              detail.keluarga_ditemukan_pertanian,
+                                              detail.keluarga_baru_pertanian,
+                                            ].reduce((total, value) => total + parseNumericValue(value), 0).toLocaleString("id-ID")}</div>
+                                            <div className={`text-xs font-medium ${getProporsiPercentageClass(
+                                              [detail.bku_ditemukan_pertanian, detail.bku_baru_pertanian, detail.keluarga_ditemukan_pertanian, detail.keluarga_baru_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
+                                              parseNumericValue(detail.utp_subsektor_st2023)
+                                            )}`}>{formatProporsiPercentage(
+                                              [detail.bku_ditemukan_pertanian, detail.bku_baru_pertanian, detail.keluarga_ditemukan_pertanian, detail.keluarga_baru_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
+                                              parseNumericValue(detail.utp_subsektor_st2023)
+                                            )}</div>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </React.Fragment>
                                   );
                                 })}
                               </TableBody>
