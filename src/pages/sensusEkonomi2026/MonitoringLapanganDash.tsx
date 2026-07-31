@@ -44,6 +44,129 @@ const parseNumericValue = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const normalizeColumnKey = (key: string): string =>
+  String(key || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+const normalizeKecamatanKey = (key: unknown): string => {
+  // strip leading bracketed numeric codes like "[050] ", leading numeric prefixes, and common region words
+  const raw = String(key ?? "");
+  const withoutCode = raw.replace(/^\s*\[?\s*\d+\s*\]?\s*/g, "");
+  return normalizeColumnKey(
+    withoutCode
+      .replace(/\b(kec(amatan)?|kabupaten|kota)\b/gi, "")
+      .trim()
+  );
+};
+
+const normalizePersonKey = (key: unknown): string => normalizeColumnKey(String(key ?? ""));
+
+const getRowValue = (row: any, primaryName: string, fallbackNames: string[] = [], defaultValue: any = "-"): any => {
+  if (!row || typeof row !== "object") return defaultValue;
+
+  const normalizedMap: Record<string, any> = {};
+  const lowerMap: Record<string, any> = {};
+  Object.keys(row).forEach((key) => {
+    const normalizedKey = normalizeColumnKey(key);
+    if (normalizedKey) normalizedMap[normalizedKey] = row[key];
+    lowerMap[String(key).toLowerCase()] = row[key];
+  });
+
+  const tryKeys = [primaryName, ...fallbackNames];
+  for (const key of tryKeys) {
+    const normalizedKey = normalizeColumnKey(key);
+    const rawKeyLower = String(key).toLowerCase();
+
+    if (normalizedKey && normalizedMap[normalizedKey] !== undefined && normalizedMap[normalizedKey] !== null && normalizedMap[normalizedKey] !== "") {
+      return normalizedMap[normalizedKey];
+    }
+    if (rawKeyLower in lowerMap && lowerMap[rawKeyLower] !== undefined && lowerMap[rawKeyLower] !== null && lowerMap[rawKeyLower] !== "") {
+      return lowerMap[rawKeyLower];
+    }
+  }
+
+  for (const key of Object.keys(normalizedMap)) {
+    if (tryKeys.some((candidate) => normalizeColumnKey(candidate).includes(key) || key.includes(normalizeColumnKey(candidate)))) {
+      const value = normalizedMap[key];
+      if (value !== undefined && value !== null && value !== "") {
+        return value;
+      }
+    }
+  }
+
+  return defaultValue;
+};
+
+const getRowSignature = (row: any): string => {
+  if (!row || typeof row !== "object") return "";
+  const entries = Object.entries(row)
+    .filter(([key, value]) => key && !key.startsWith("__") && value !== undefined && value !== null)
+    .map(([key, value]) => [String(key).trim(), String(value).trim()])
+    .sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(entries);
+};
+
+const extractAdminCountsFromRow = (row: any): number => {
+  let sum = 0;
+  try {
+    for (const value of Object.values(row || {})) {
+      if (typeof value !== "string") continue;
+      const s = value.trim();
+      if (!s || !(s.startsWith("{") || s.startsWith("["))) continue;
+      try {
+        const parsed = JSON.parse(s);
+        if (parsed && typeof parsed === "object") {
+          for (const [key, val] of Object.entries(parsed)) {
+            if (String(key).toLowerCase().includes("admin")) {
+              const n = parseInt(String(val || "0").replace(/[^0-9-]/g, ""), 10) || 0;
+              sum += n;
+            }
+          }
+        }
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return sum;
+};
+
+const getApprovedTotalFromRow = (row: any): number => {
+  const base = parseInt(String(row.approved_by_pengawas || row["approved_by_pengawas"] || 0), 10) || 0;
+  return base + extractAdminCountsFromRow(row);
+};
+
+const parseRevokedFromUserRow = (row: any): number => {
+  let sum = 0;
+  try {
+    for (const value of Object.values(row || {})) {
+      if (typeof value !== "string") continue;
+      const s = value.trim();
+      if (!s || !(s.startsWith("{") || s.startsWith("["))) continue;
+      try {
+        const parsed = JSON.parse(s);
+        if (parsed && typeof parsed === "object") {
+          for (const [key, val] of Object.entries(parsed)) {
+            if (String(key).toLowerCase().includes("revok")) {
+              const n = parseInt(String(val || "0").replace(/[^0-9-]/g, ""), 10) || 0;
+              sum += n;
+            }
+          }
+        }
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return sum;
+};
+
 const toProperCase = (value: string) =>
   String(value || "")
     .trim()
@@ -145,37 +268,6 @@ const getColorForPercentage = (percentage: number): string => {
     return "#f97316";
   }
   return "#dc2626";
-};
-
-const normalizeColumnKey = (value: unknown): string =>
-  String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-
-const getRowValue = (row: any, primary: string, fallbackNames: string[] = [], defaultValue = ""): string => {
-  if (!row || typeof row !== "object") return defaultValue;
-  const searchKeys = [primary, ...fallbackNames].map(normalizeColumnKey);
-
-  for (const key of Object.keys(row)) {
-    const normalizedKey = normalizeColumnKey(key);
-    if (searchKeys.includes(normalizedKey)) {
-      const value = row[key];
-      return value !== undefined && value !== null ? String(value).trim() : defaultValue;
-    }
-  }
-
-  for (const key of Object.keys(row)) {
-    const normalizedKey = normalizeColumnKey(key);
-    if (searchKeys.some((searchKey) => normalizedKey.includes(searchKey) || searchKey.includes(normalizedKey))) {
-      const value = row[key];
-      if (value !== undefined && value !== null && String(value).trim() !== "") {
-        return String(value).trim();
-      }
-    }
-  }
-
-  return defaultValue;
 };
 
 const getRowNumeric = (row: any, primary: string, fallbackNames: string[] = [], defaultValue = 0): number => {
@@ -399,6 +491,16 @@ export default function MonitoringLapanganDash() {
     range: `${SHEET_ANOMALI_KELUARGA}!A2`,
     mode: "single-cell",
   });
+  const { data: monitoringSheetData, loading: monitoringSheetLoading, error: monitoringSheetError } = useGoogleSheetsData({
+    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
+    sheetName: "REKAP_SCRP",
+  });
+  const { data: monitoringUsersData, loading: monitoringUsersLoading, error: monitoringUsersError } = useGoogleSheetsData({
+    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
+    sheetName: "Semua Users",
+  });
+  const monitoringLoading = monitoringSheetLoading || monitoringUsersLoading;
+  const monitoringError = monitoringSheetError || monitoringUsersError;
   const { data: usahaPerusahaanData, loading: usahaPerusahaanLoading, error: usahaPerusahaanError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
     sheetName: SHEET_USAHA_PERUSAHAAN,
@@ -427,6 +529,11 @@ export default function MonitoringLapanganDash() {
   const [pmlCurrentPage, setPmlCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [pmlItemsPerPage, setPmlItemsPerPage] = useState(20);
+  const [capaianSearchTerm, setCapaianSearchTerm] = useState("");
+  const [capaianSortBy, setCapaianSortBy] = useState<"nama_ppl" | "kecamatan" | "prelist_awal" | "delta" | "totalStatus" | "didata" | "status">("nama_ppl");
+  const [capaianSortOrder, setCapaianSortOrder] = useState<"asc" | "desc">("asc");
+  const [capaianCurrentPage, setCapaianCurrentPage] = useState(1);
+  const [capaianItemsPerPage, setCapaianItemsPerPage] = useState(20);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [umkmSubTab, setUmkmSubTab] = useState<string>("ppl");
   const [usahaSubTab, setUsahaSubTab] = useState<string>("kondisi");
@@ -482,6 +589,7 @@ export default function MonitoringLapanganDash() {
   const [editDialogRow, setEditDialogRow] = useState<number | null>(null);
   const [editDialogValue, setEditDialogValue] = useState<string>("");
   const [editSaving, setEditSaving] = useState(false);
+  const debugRef = React.useRef<{ sizes: any; zeroEntries: any[]; zeroCount: number }>({ sizes: {}, zeroEntries: [], zeroCount: 0 });
 
   useEffect(() => {
     console.debug("editDialogOpen changed", { editDialogOpen, editDialogField, editDialogRow });
@@ -783,6 +891,173 @@ export default function MonitoringLapanganDash() {
       };
     });
   }, [stackingData, progresData]);
+
+
+
+  const monitoringProgressMap = useMemo(() => {
+    const map = new Map<string, { draft: number; submit: number; approve: number; reject: number; revoke: number; totalStatus: number }>();
+    const seenSignatures = new Set<string>();
+
+    (monitoringSheetData || []).forEach((row: any) => {
+      const signature = getRowSignature(row);
+      if (signature && seenSignatures.has(signature)) return;
+      if (signature) seenSignatures.add(signature);
+
+      const kecamatan = String(getRowValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim();
+      const namaPpl = String(getRowValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim();
+      if (!kecamatan || !namaPpl) return;
+
+      const draft = parseInt(String(getRowValue(row, "draft", ["draft"], "0")), 10) || 0;
+      const submit = parseInt(String(getRowValue(row, "submitted_by_pencacah", ["submitted_by_pencacah", "submitted", "submit", "submitted_by"], "0")), 10) || 0;
+      const approve = getApprovedTotalFromRow(row) || 0;
+      const reject = parseInt(String(getRowValue(row, "rejected_by_pengawas", ["rejected_by_pengawas", "rejected", "reject"], "0")), 10) || 0;
+      const key = `${normalizeKecamatanKey(kecamatan)}|${normalizePersonKey(namaPpl)}`;
+      const existing = map.get(key) || { draft: 0, submit: 0, approve: 0, reject: 0, revoke: 0, totalStatus: 0 };
+      existing.draft += draft;
+      existing.submit += submit;
+      existing.approve += approve;
+      existing.reject += reject;
+      existing.totalStatus = existing.submit + existing.approve + existing.reject + existing.revoke;
+      map.set(key, existing);
+    });
+
+    const seenUserSignatures = new Map<string, Set<string>>();
+    (monitoringUsersData || []).forEach((row: any) => {
+      const signature = getRowSignature(row);
+      const email = String(getRowValue(row, "email", ["email", "Email"], "")).trim().toLowerCase();
+      const seen = seenUserSignatures.get(email) || new Set<string>();
+      if (signature && seen.has(signature)) return;
+      if (signature) {
+        seen.add(signature);
+        seenUserSignatures.set(email, seen);
+      }
+
+      const kecamatan = String(getRowValue(row, "regioncode", ["regioncode", "regionCode", "region", "kecamatan"], "")).trim();
+      const namaPpl = String(getRowValue(row, "nama_ppl", ["nama_ppl", "nama ppl", "nama pencacah", "nama"], "")).trim();
+      if (!kecamatan || !namaPpl) return;
+      const revoke = parseRevokedFromUserRow(row);
+      if (!revoke) return;
+
+      const key = `${normalizeKecamatanKey(kecamatan)}|${normalizePersonKey(namaPpl)}`;
+      const existing = map.get(key) || { draft: 0, submit: 0, approve: 0, reject: 0, revoke: 0, totalStatus: 0 };
+      existing.revoke += revoke;
+      existing.totalStatus = existing.submit + existing.approve + existing.reject + existing.revoke;
+      map.set(key, existing);
+    });
+
+    return map;
+  }, [monitoringSheetData, monitoringUsersData]);
+
+  const monitoringProgressRawMap = useMemo(() => {
+    const map = new Map<string, { draft: number; submit: number; approve: number; reject: number; revoke: number; totalStatus: number }>();
+
+    (monitoringSheetData || []).forEach((row: any) => {
+      const signature = getRowSignature(row);
+      // we don't dedupe signature here because raw map is for fallback only
+      const kecamatan = String(getRowValue(row, "kecamatan", ["nama_kecamatan", "nama kecamatan", "kec", "kecamatan"], "")).trim().toLowerCase();
+      const namaPpl = String(getRowValue(row, "nama_ppl", ["nama ppl", "nama_ppl", "nama pencacah", "nama"], "")).trim().toLowerCase();
+      if (!kecamatan || !namaPpl) return;
+
+      const draft = parseInt(String(getRowValue(row, "draft", ["draft"], "0")), 10) || 0;
+      const submit = parseInt(String(getRowValue(row, "submitted_by_pencacah", ["submitted_by_pencacah", "submitted", "submit", "submitted_by"], "0")), 10) || 0;
+      const approve = getApprovedTotalFromRow(row) || 0;
+      const reject = parseInt(String(getRowValue(row, "rejected_by_pengawas", ["rejected_by_pengawas", "rejected", "reject"], "0")), 10) || 0;
+      const key = `${kecamatan}|${namaPpl}`;
+      const existing = map.get(key) || { draft: 0, submit: 0, approve: 0, reject: 0, revoke: 0, totalStatus: 0 };
+      existing.draft += draft;
+      existing.submit += submit;
+      existing.approve += approve;
+      existing.reject += reject;
+      existing.totalStatus = existing.submit + existing.approve + existing.reject + existing.revoke;
+      map.set(key, existing);
+      try {
+        const strippedKec = String(kecamatan || "").replace(/^\s*\[?\s*\d+\s*\]?\s*/g, "").trim();
+        if (strippedKec && strippedKec !== kecamatan) {
+          const altKey = `${strippedKec}|${namaPpl}`;
+          if (!map.has(altKey)) map.set(altKey, existing);
+        }
+      } catch (e) {
+        // ignore
+      }
+    });
+
+    (monitoringUsersData || []).forEach((row: any) => {
+      const email = String(getRowValue(row, "email", ["email", "Email"], "")).trim().toLowerCase();
+      const kecamatan = String(getRowValue(row, "regioncode", ["regioncode", "regionCode", "region", "kecamatan"], "")).trim().toLowerCase();
+      const namaPpl = String(getRowValue(row, "nama_ppl", ["nama_ppl", "nama ppl", "nama pencacah", "nama"], "")).trim().toLowerCase();
+      if (!kecamatan || !namaPpl) return;
+      const revoke = parseRevokedFromUserRow(row);
+      if (!revoke) return;
+      const key = `${kecamatan}|${namaPpl}`;
+      const existing = map.get(key) || { draft: 0, submit: 0, approve: 0, reject: 0, revoke: 0, totalStatus: 0 };
+      existing.revoke += revoke;
+      existing.totalStatus = existing.submit + existing.approve + existing.reject + existing.revoke;
+      map.set(key, existing);
+      try {
+        const strippedKec = String(kecamatan || "").replace(/^\s*\[?\s*\d+\s*\]?\s*/g, "").trim();
+        if (strippedKec && strippedKec !== kecamatan) {
+          const altKey = `${strippedKec}|${namaPpl}`;
+          if (!map.has(altKey)) map.set(altKey, existing);
+        }
+      } catch (e) {
+        // ignore
+      }
+    });
+
+    return map;
+  }, [monitoringSheetData, monitoringUsersData]);
+
+  const monitoringProgressByName = useMemo(() => {
+    const countByName = new Map<string, number>();
+    const valueByName = new Map<string, { draft: number; submit: number; approve: number; reject: number; revoke: number; totalStatus: number }>();
+
+    monitoringProgressMap.forEach((value, key) => {
+      const parts = key.split("|");
+      const name = parts.length > 1 ? parts[1] : parts[0];
+      const normalizedName = normalizePersonKey(name);
+      countByName.set(normalizedName, (countByName.get(normalizedName) || 0) + 1);
+      valueByName.set(normalizedName, value);
+    });
+
+    const result = new Map<string, { draft: number; submit: number; approve: number; reject: number; revoke: number; totalStatus: number }>();
+    valueByName.forEach((value, normalizedName) => {
+      if (countByName.get(normalizedName) === 1) {
+        result.set(normalizedName, value);
+      }
+    });
+
+    return result;
+  }, [monitoringProgressMap]);
+
+  const debugInfo = useMemo(() => {
+    try {
+      const entries: any[] = [];
+      const keys = Array.from(monitoringProgressMap.keys());
+      (pplRows || []).forEach((row: any, index: number) => {
+        const normalizedName = normalizePersonKey(row.nama_ppl);
+        const normalizedKec = normalizeKecamatanKey(row.kecamatan);
+        const key = `${normalizedKec}|${normalizedName}`;
+        let monitoring = monitoringProgressMap.get(key);
+        if (!monitoring) {
+          const rawKey = `${String(row.kecamatan || "").trim().toLowerCase()}|${String(row.nama_ppl || "").trim().toLowerCase()}`;
+          monitoring = monitoringProgressRawMap.get(rawKey) || monitoringProgressByName.get(normalizedName);
+        }
+        const prelist = parseNumericValue(row.prelist_awal);
+        const termin = monitoring ? Number(monitoring.totalStatus) : 0;
+        const now = parseNumericValue(row.didata);
+        if (termin === 0) {
+          entries.push({ index, key, normalizedName, normalizedKec, termin, now, prelist, monitoringFound: !!monitoring });
+        }
+      });
+      return {
+        sizes: { monitoringProgressMap: monitoringProgressMap.size, monitoringProgressRawMap: monitoringProgressRawMap.size, monitoringProgressByName: monitoringProgressByName.size },
+        zeroEntries: entries.slice(0, 100),
+        zeroCount: entries.length,
+      };
+    } catch (err) {
+      return { sizes: {}, zeroEntries: [], zeroCount: 0 };
+    }
+  }, [pplRows, monitoringProgressMap, monitoringProgressRawMap, monitoringProgressByName]);
 
   const pmlRows = useMemo<PMLRow[]>(() => {
     const pmlMap = new Map<string, { nama_pml: string; kecamatan: string; childMap: Map<string, { prelist: number; prelist_wilkerstat: number; responden: number; draft: number }> }>();
@@ -1592,6 +1867,7 @@ export default function MonitoringLapanganDash() {
 
   const overallTotalPrelist = pplRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
   const overallTotalResponden = pplRows.reduce((sum, row) => sum + parseNumericValue(row.responden_didata), 0);
+  const overallTotalStatus = Array.from(monitoringProgressMap.values()).reduce((sum, item) => sum + item.totalStatus, 0) || overallTotalResponden;
   const averageMajalengka = overallTotalPrelist > 0 ? (overallTotalResponden / overallTotalPrelist) * 100 : 0;
 
   // PML filtering and sorting
@@ -1689,6 +1965,289 @@ export default function MonitoringLapanganDash() {
     };
   }, [pmlRows]);
 
+  const transitionRows = useMemo(() => {
+    const targetThreshold = getTargetMinimalPercentage(daysElapsed);
+
+    return pplRows
+      .map((row) => {
+        const prelistAwal = parseNumericValue(row.prelist_awal);
+        const respondenDidata = parseNumericValue(row.responden_didata);
+        const draft = parseNumericValue(row.draft);
+        const capaian = prelistAwal > 0 ? (respondenDidata / prelistAwal) * 100 : 0;
+        const delta = capaian - targetThreshold;
+
+        let status = "Tertinggal";
+        let statusClasses = "bg-rose-50 text-rose-700 border-rose-200";
+
+        if (delta >= 0) {
+          status = "Sesuai Target";
+          statusClasses = "bg-emerald-50 text-emerald-700 border-emerald-200";
+        } else if (delta >= -5) {
+          status = "Tertinggal Tipis";
+          statusClasses = "bg-amber-50 text-amber-700 border-amber-200";
+        }
+
+        return {
+          id: row.id,
+          nama_ppl: row.nama_ppl,
+          kecamatan: row.kecamatan,
+          prelist_awal: prelistAwal,
+          responden_didata: respondenDidata,
+          draft,
+          totalStatus: draft + respondenDidata,
+          didata: respondenDidata,
+          capaian,
+          delta,
+          status,
+          statusClasses,
+        };
+      })
+      .sort((a, b) => b.capaian - a.capaian);
+  }, [pplRows, daysElapsed]);
+
+  const capaianRows = useMemo(() => {
+    const debugEntries: any[] = [];
+    const monitoringKeys = Array.from(monitoringProgressMap.keys());
+    const result = transitionRows.map((row, index) => {
+      const normalizedName = normalizePersonKey(row.nama_ppl);
+      const normalizedKec = normalizeKecamatanKey(row.kecamatan);
+      const key = `${normalizedKec}|${normalizedName}`;
+
+      // robust monitoring lookup: prefer normalized exact key, but if it has zero totalStatus,
+      // prefer any non-zero value from raw map or by-name unique map.
+      let monitoring = monitoringProgressMap.get(key);
+      let monitoringSource: string | null = monitoring ? "normalized" : null;
+
+      // If normalized entry exists but has zero totalStatus, check other fallbacks for non-zero
+      if (monitoring && Number(monitoring.totalStatus) === 0) {
+        const rawKey = `${String(row.kecamatan || "").trim().toLowerCase()}|${String(row.nama_ppl || "").trim().toLowerCase()}`;
+        const rawMonitoring = monitoringProgressRawMap.get(rawKey);
+        if (rawMonitoring && Number(rawMonitoring.totalStatus) > 0) {
+          monitoring = rawMonitoring;
+          monitoringSource = "raw (preferred over zero normalized)";
+        } else {
+          const byName = monitoringProgressByName.get(normalizedName);
+          if (byName && Number(byName.totalStatus) > 0) {
+            monitoring = byName;
+            monitoringSource = "byName (preferred over zero normalized)";
+          }
+        }
+      }
+
+      if (!monitoring) {
+        // try to find an entry by normalized name + kecamatan in the progress map
+        for (const [mkey, val] of monitoringProgressMap.entries()) {
+          const parts = mkey.split("|");
+          const mKec = parts.length > 0 ? parts[0] : "";
+          const mName = parts.length > 1 ? parts[1] : "";
+          if (mKec === normalizedKec && mName === normalizedName) {
+            monitoring = val;
+            monitoringSource = "normalized-loop";
+            break;
+          }
+        }
+      }
+
+      if (!monitoring) {
+        // try raw key fallback (exact kecamatan/name lowercased)
+        const rawKey = `${String(row.kecamatan || "").trim().toLowerCase()}|${String(row.nama_ppl || "").trim().toLowerCase()}`;
+        monitoring = monitoringProgressRawMap.get(rawKey) || monitoringProgressByName.get(normalizedName) || null;
+        if (monitoring && !monitoringSource) {
+          monitoringSource = monitoringProgressRawMap.has(rawKey) ? "raw" : monitoringProgressByName.has(normalizedName) ? "byName" : monitoringSource;
+        }
+      }
+
+      const prelist = parseNumericValue(row.prelist_awal);
+      const termin = monitoring ? Number(monitoring.totalStatus) : 0; // Termin-1 (15 Juli 2026)
+      const now = parseNumericValue(row.didata); // Saat Ini
+
+      const terminPct = prelist > 0 ? (termin / prelist) * 100 : 0;
+      const nowPct = prelist > 0 ? (now / prelist) * 100 : 0;
+      const pctChange = nowPct - terminPct; // percent point change
+      const absChange = now - termin; // absolute change in counts
+
+      const { daysElapsed } = calculateDayProgress();
+      const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
+      const MIN_DAILY_DELTA = 10; // minimal expected increase threshold
+
+      // Richer status logic using percent points relative to prelist and target
+      let status = "Tidak Ada Data";
+      if (prelist <= 0) {
+        status = "Tanpa Prelist";
+      } else {
+        if (absChange === 0) {
+          status = "Perlu Perhatian"; // tidak ada kenaikan dari Termin-1
+        } else if (absChange > 0 && absChange < MIN_DAILY_DELTA) {
+          status = "Perlu Perhatian"; // kenaikan tapi di bawah target minimal per hari
+        } else if (pctChange <= -5) status = "Menurun Tajam";
+        else if (pctChange < 0) status = "Menurun";
+        else if (Math.abs(pctChange) < 0.0001) {
+          status = nowPct >= minPercentageTarget ? "Stabil (Cukup)" : "Stabil (Risiko)";
+        } else if (pctChange >= 5) status = "Meningkat Tajam";
+        else status = "Meningkat";
+      }
+
+      const out = {
+        ...row,
+        prelist_awal: prelist,
+        totalStatus: termin,
+        didata: now,
+        delta: absChange,
+        deltaPct: pctChange,
+        status,
+      };
+
+      const nameCount = monitoringKeys.filter((k) => {
+        const parts = k.split("|");
+        const n = parts.length > 1 ? parts[1] : parts[0];
+        return n === normalizedName;
+      }).length;
+
+      debugEntries.push({
+        index,
+        key,
+        normalizedName,
+        normalizedKec,
+        monitoringFound: !!monitoring,
+        monitoringValue: monitoring ? monitoring.totalStatus : 0,
+        monitoringSource,
+        byNameFound: monitoringProgressByName.has(normalizedName),
+        nameCount,
+        prelist,
+        now,
+        termin: termin,
+      });
+
+      return out;
+    });
+
+    const zeroCount = result.filter((r) => Number(r.totalStatus) === 0).length;
+    // build unmatched list once and reuse for details (fix empty unmatchedDetails)
+    const unmatchedList: any[] = [];
+    try {
+      (transitionRows || []).forEach((row: any) => {
+        const normalizedName = normalizePersonKey(row.nama_ppl);
+        const normalizedKec = normalizeKecamatanKey(row.kecamatan);
+        const key = `${normalizedKec}|${normalizedName}`;
+        const rawKey = `${String(row.kecamatan || "").trim().toLowerCase()}|${String(row.nama_ppl || "").trim().toLowerCase()}`;
+        const m1 = monitoringProgressMap.get(key);
+        const m2 = monitoringProgressRawMap.get(rawKey);
+        const m3 = monitoringProgressByName.get(normalizedName);
+        if (!m1 && !m2 && !m3) {
+          unmatchedList.push({ key, rawKey, normalizedName, normalizedKec, prelist: parseNumericValue(row.prelist_awal), didata: parseNumericValue(row.didata) });
+        }
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    const findCandidates = (normalizedName: string, rawKey: string) => {
+      const candidates: any = { normalized: [], raw: [], byName: null };
+      for (const [mkey, val] of monitoringProgressMap.entries()) {
+        const parts = mkey.split("|");
+        const mName = parts.length > 1 ? parts[1] : parts[0];
+        if (mName === normalizedName) {
+          candidates.normalized.push({ key: mkey, value: val });
+          if (candidates.normalized.length >= 6) break;
+        }
+      }
+      for (const [rkey, val] of monitoringProgressRawMap.entries()) {
+        if (rkey.includes(normalizedName) || rkey.includes(rawKey) || rkey.includes(normalizedName.replace(/\s+/g, ""))) {
+          candidates.raw.push({ key: rkey, value: val });
+          if (candidates.raw.length >= 6) break;
+        }
+      }
+      if (monitoringProgressByName.has(normalizedName)) {
+        candidates.byName = monitoringProgressByName.get(normalizedName);
+      }
+      return candidates;
+    };
+
+    const unmatchedDetails = unmatchedList.map((u) => {
+      const rawKey = String(u.rawKey || "").toLowerCase();
+      const normalizedName = String(u.normalizedName || "").toLowerCase();
+      return {
+        key: u.key,
+        rawKey: u.rawKey,
+        normalizedName: u.normalizedName,
+        prelist: u.prelist,
+        didata: u.didata,
+        candidates: findCandidates(normalizedName, rawKey),
+      };
+    });
+
+    // populate debugRef for UI consumption
+    debugRef.current = {
+      sizes: { monitoringProgressMap: monitoringProgressMap.size, monitoringProgressRawMap: monitoringProgressRawMap.size, monitoringProgressByName: monitoringProgressByName.size },
+      zeroEntries: debugEntries.slice(0, 100),
+      zeroCount,
+      unmatched: unmatchedList,
+      unmatchedDetails,
+    };
+    if (zeroCount > 0) {
+      // also log to console for developers
+      // eslint-disable-next-line no-console
+      console.log("Monitoring mapping sizes:", debugRef.current.sizes);
+      // eslint-disable-next-line no-console
+      console.log("Monitoring mapping debug (first 50):", debugRef.current.zeroEntries);
+      // eslint-disable-next-line no-console
+      console.log(`Monitoring mapping: ${zeroCount} rows have Termin-1 = 0`);
+    }
+
+    return result;
+  }, [transitionRows, monitoringProgressMap, monitoringProgressByName]);
+
+  const capaianFilteredRows = useMemo(() => {
+    const normalizedSearch = capaianSearchTerm.trim().toLowerCase();
+    let rows = capaianRows;
+
+    if (normalizedSearch) {
+      rows = rows.filter((row) =>
+        row.nama_ppl.toLowerCase().includes(normalizedSearch) ||
+        row.kecamatan.toLowerCase().includes(normalizedSearch)
+      );
+    }
+
+    const compareValue = (a: any, b: any) => {
+      const getValue = (row: any) => {
+        switch (capaianSortBy) {
+          case "nama_ppl":
+          case "kecamatan":
+          case "status":
+            return String(row[capaianSortBy]).toLowerCase();
+          case "prelist_awal":
+          case "delta":
+          case "totalStatus":
+          case "didata":
+            return Number(row[capaianSortBy]) || 0;
+          default:
+            return String(row[capaianSortBy]).toLowerCase();
+        }
+      };
+
+      const valueA = getValue(a);
+      const valueB = getValue(b);
+      if (typeof valueA === "number" && typeof valueB === "number") {
+        return capaianSortOrder === "asc" ? valueA - valueB : valueB - valueA;
+      }
+      return capaianSortOrder === "asc"
+        ? String(valueA).localeCompare(String(valueB), "id")
+        : String(valueB).localeCompare(String(valueA), "id");
+    };
+
+    return [...rows].sort(compareValue);
+  }, [capaianRows, capaianSearchTerm, capaianSortBy, capaianSortOrder]);
+
+  const capaianTotalPages = Math.max(1, Math.ceil(capaianFilteredRows.length / capaianItemsPerPage));
+  const capaianPaginatedRows = useMemo(() => {
+    const startIndex = (capaianCurrentPage - 1) * capaianItemsPerPage;
+    return capaianFilteredRows.slice(startIndex, startIndex + capaianItemsPerPage);
+  }, [capaianFilteredRows, capaianCurrentPage, capaianItemsPerPage]);
+
+  useEffect(() => {
+    setCapaianCurrentPage(1);
+  }, [capaianFilteredRows.length, capaianItemsPerPage]);
+
   // Kecamatan data for chart
   const kecamatanStats = useMemo(() => {
     const kecamatanMap = new Map<string, { prelist: number; responden: number }>();
@@ -1759,6 +2318,7 @@ export default function MonitoringLapanganDash() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="flex w-full h-auto p-1 bg-white border border-slate-200 rounded-lg shadow-sm mb-6 gap-2 overflow-x-auto">
               <TabsTrigger value="dashboard" className="rounded-xl py-2 text-sm font-semibold">Dashboard</TabsTrigger>
+              <TabsTrigger value="capaian-kinerja" className="rounded-xl py-2 text-sm font-semibold">Capaian Kinerja</TabsTrigger>
               <TabsTrigger value="umkm-sosek" className="rounded-xl py-2 text-sm font-semibold">UMKM dan Sosek</TabsTrigger>
               <TabsTrigger value="pendataan-usaha" className="rounded-xl py-2 text-sm font-semibold">Pendataan Usaha</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
@@ -1925,6 +2485,242 @@ export default function MonitoringLapanganDash() {
                       </BarChart>
                     </ResponsiveContainer>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="capaian-kinerja" className="space-y-6 mt-6">
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Capaian Kinerja: Transisi PPL ke UMKM/Sosek</CardTitle>
+                      <CardDescription>
+                        Ringkasan perkembangan dari titik awal monitoring PPL menuju capaian saat ini pada subtab UMKM dan Sosek PPL secara dinamis. <span className="font-semibold text-slate-800">Didata = Draft + Reject + Revoke + Submit + Approve</span>
+                      </CardDescription>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
+                      Hari ke-{daysElapsed} • Target minimal {minPercentageTarget.toFixed(2)}%
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Card className="border border-slate-200/70 shadow-sm">
+                      <CardContent className="pt-5 pb-4">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">PPL Aktif</div>
+                        <div className="mt-2 text-3xl font-bold text-slate-900">{pplRows.length}</div>
+                        <div className="mt-2 text-sm text-slate-600">Jumlah individu PPL yang terdata</div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border border-slate-200/70 shadow-sm">
+                      <CardContent className="pt-5 pb-4">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Prelist Awal</div>
+                        <div className="mt-2 text-3xl font-bold text-slate-900">{overallTotalPrelist.toLocaleString("id-ID")}</div>
+                        <div className="mt-2 text-sm text-slate-600">Baseline pemantauan awal</div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border border-slate-200/70 shadow-sm">
+                      <CardContent className="pt-5 pb-4">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Status (Didata)</div>
+                        <div className="mt-2 text-3xl font-bold text-slate-900">{overallTotalStatus.toLocaleString("id-ID")}</div>
+                        <div className="mt-2 text-sm text-slate-600">Draft + Reject + Revoke + Submit + Approve</div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border border-slate-200/70 shadow-sm">
+                      <CardContent className="pt-5 pb-4">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Capaian Saat Ini</div>
+                        <div className="mt-2 text-3xl font-bold text-emerald-700">{averageMajalengka.toFixed(2)}%</div>
+                        <div className="mt-2 text-sm text-slate-600">Selisih ke target: {(averageMajalengka - minPercentageTarget).toFixed(2)}%</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card className="border border-slate-200/70 shadow-sm">
+                    <CardHeader className="border-b bg-slate-50">
+                      <CardTitle className="text-base">Perkembangan per PPL ke UMKM/Sosek</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input
+                            placeholder="Cari Nama PPL atau Kecamatan..."
+                            value={capaianSearchTerm}
+                            onChange={(e) => {
+                              setCapaianSearchTerm(e.target.value);
+                              setCapaianCurrentPage(1);
+                            }}
+                            className="pl-10 h-10"
+                          />
+                        </div>
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <span>Per halaman:</span>
+                          <select
+                            value={capaianItemsPerPage}
+                            onChange={(e) => {
+                              setCapaianItemsPerPage(Number(e.target.value));
+                              setCapaianCurrentPage(1);
+                            }}
+                            className="h-10 rounded-lg border border-slate-300 bg-white px-3"
+                          >
+                            {[10, 20, 50, 100].map((size) => (
+                              <option key={size} value={size}>{size}</option>
+                            ))}
+                          </select>
+                          <span>{capaianFilteredRows.length.toLocaleString("id-ID")} baris</span>
+                        </div>
+                      </div>
+                      
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-slate-50 hover:bg-slate-50">
+                              <TableHead
+                                className="text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setCapaianSortBy("nama_ppl");
+                                  setCapaianSortOrder(capaianSortBy === "nama_ppl" ? (capaianSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Nama PPL
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setCapaianSortBy("kecamatan");
+                                  setCapaianSortOrder(capaianSortBy === "kecamatan" ? (capaianSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Kecamatan
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setCapaianSortBy("prelist_awal");
+                                  setCapaianSortOrder(capaianSortBy === "prelist_awal" ? (capaianSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Prelist
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setCapaianSortBy("totalStatus");
+                                  setCapaianSortOrder(capaianSortBy === "totalStatus" ? (capaianSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Termin-1
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setCapaianSortBy("didata");
+                                  setCapaianSortOrder(capaianSortBy === "didata" ? (capaianSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Saat Ini
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setCapaianSortBy("delta");
+                                  setCapaianSortOrder(capaianSortBy === "delta" ? (capaianSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Perubahan
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-slate-700 font-semibold px-4 py-3"
+                              >
+                                Status
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {capaianPaginatedRows.map((row) => {
+                              const isLagging = row.delta < 0;
+                              return (
+                                <TableRow
+                                  key={row.id}
+                                  className={`border-b transition-colors ${isLagging ? "bg-amber-50/70 hover:bg-amber-100" : "hover:bg-slate-50"}`}
+                                >
+                                  <TableCell className="px-4 py-3 font-semibold text-slate-900 flex items-center gap-2">
+                                    <span>{row.nama_ppl || "-"}</span>
+                                    {isLagging ? (
+                                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-800">
+                                        Tertinggal
+                                      </span>
+                                    ) : null}
+                                  </TableCell>
+                                  <TableCell className="px-4 py-3 text-slate-700">{row.kecamatan || "-"}</TableCell>
+                                  <TableCell className="px-4 py-3 text-right text-slate-700">{row.prelist_awal.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="px-4 py-3 text-right font-semibold text-slate-900">{row.totalStatus.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="px-4 py-3 text-right font-semibold text-slate-900">{row.didata.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="px-4 py-3 text-right text-slate-700">{row.delta >= 0 ? "+" : ""}{row.delta.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="px-4 py-3 text-slate-700">
+                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                      row.status === "Meningkat Tajam" || row.status === "Meningkat" ? "bg-emerald-100 text-emerald-700" :
+                                      row.status === "Stabil (Cukup)" ? "bg-emerald-50 text-emerald-700" :
+                                      row.status === "Stabil (Risiko)" ? "bg-amber-100 text-amber-700" :
+                                      row.status === "Menurun" || row.status === "Menurun Tajam" ? "bg-rose-100 text-rose-700" :
+                                      "bg-slate-100 text-slate-700"
+                                    }`}>
+                                      {row.status}
+                                    </span>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-2 py-3 bg-slate-50 border-t border-slate-200">
+                        <div className="text-sm text-slate-600">
+                          Menampilkan {capaianPaginatedRows.length} dari {capaianFilteredRows.length.toLocaleString("id-ID")} baris
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCapaianCurrentPage((prev) => Math.max(1, prev - 1))}
+                            disabled={capaianCurrentPage === 1}
+                            className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                          >
+                            Sebelumnya
+                          </button>
+                          <span className="text-sm text-slate-600">Hal {capaianCurrentPage} dari {capaianTotalPages}</span>
+                          <button
+                            type="button"
+                            onClick={() => setCapaianCurrentPage((prev) => Math.min(capaianTotalPages, prev + 1))}
+                            disabled={capaianCurrentPage === capaianTotalPages}
+                            className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
+                          >
+                            Berikutnya
+                          </button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </CardContent>
               </Card>
             </TabsContent>

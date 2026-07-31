@@ -2558,7 +2558,7 @@ function MonitoringLapangan() {
   const [expandedPML, setExpandedPML] = useState<Set<string>>(new Set());
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
   const [expandedDistricts, setExpandedDistricts] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg" | "prelist_awal" | "capaian">("dailyavg");
+  const [sortBy, setSortBy] = useState<"submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg" | "prelist_awal" | "capaian" | "total_status" | "status">("dailyavg");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState("dashboard");
   useEffect(() => {
@@ -3324,7 +3324,7 @@ function MonitoringLapangan() {
     return () => clearTimeout(handler);
   }, [pmlSearchTerm]);
 
-  const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg" | "prelist_awal" | "capaian") => {
+  const toggleSort = (field: "submit" | "kecamatan" | "ppl" | "draft" | "reject" | "approve" | "revoke" | "dailyavg" | "prelist_awal" | "capaian" | "total_status" | "status") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -3363,6 +3363,8 @@ function MonitoringLapangan() {
         compareValue = a.jumlah_reject - b.jumlah_reject;
       } else if (sortBy === "approve") {
         compareValue = a.jumlah_approve - b.jumlah_approve;
+      } else if (sortBy === "revoke") {
+        compareValue = (a.jumlah_revoke || 0) - (b.jumlah_revoke || 0);
       } else if (sortBy === "dailyavg") {
         const { daysElapsed: elapsedDays } = calculateDayProgress();
         const avgA = (a.draft + a.jumlah_reject + a.jumlah_submit + a.jumlah_approve + (a.jumlah_revoke || 0)) / Math.max(1, elapsedDays);
@@ -3370,6 +3372,8 @@ function MonitoringLapangan() {
         compareValue = avgA - avgB;
       } else if (sortBy === "prelist_awal") {
         compareValue = (a.prelist_awal || 0) - (b.prelist_awal || 0);
+      } else if (sortBy === "total_status") {
+        compareValue = ((a.draft + a.jumlah_reject + (a.jumlah_revoke || 0) + a.jumlah_submit + a.jumlah_approve) - (b.draft + b.jumlah_reject + (b.jumlah_revoke || 0) + b.jumlah_submit + b.jumlah_approve));
       } else if (sortBy === "capaian") {
         const getCapaianPct = (row: AggregatedData) => {
           const prelist = row.prelist_awal || 0;
@@ -3381,6 +3385,13 @@ function MonitoringLapangan() {
         compareValue = a.kecamatan.localeCompare(b.kecamatan);
       } else if (sortBy === "ppl") {
         compareValue = a.nama_ppl.localeCompare(b.nama_ppl);
+      } else if (sortBy === "status") {
+        const getRank = (row: AggregatedData) => {
+          const totalAktivitas = (row.draft || 0) + (row.jumlah_reject || 0) + (row.jumlah_submit || 0) + (row.jumlah_approve || 0) + (row.jumlah_revoke || 0);
+          const value = getScheduleStatus(totalAktivitas).status;
+          return value === "optimal" ? 3 : value === "warning" ? 2 : 1;
+        };
+        compareValue = getRank(a) - getRank(b);
       }
 
       return sortOrder === "desc" ? -compareValue : compareValue;
@@ -4779,7 +4790,7 @@ function MonitoringLapangan() {
                   <div>
                     <CardTitle>Data Individu PPL</CardTitle>
                     <CardDescription>
-                      Detail monitoring per Kecamatan dan Petugas ({aggregatedData.rows.length} total)
+                      Detail monitoring per Kecamatan dan Petugas ({aggregatedData.rows.length} total). <span className="font-semibold text-slate-800">Didata = Draft + Reject + Revoke + Submit + Approve</span>
                     </CardDescription>
                   </div>
 
@@ -4871,8 +4882,14 @@ function MonitoringLapangan() {
                             <TableHead className="w-12 text-center text-slate-700 font-semibold">
                               No
                             </TableHead>
-                            <TableHead className="text-slate-700 font-semibold px-4 py-3">
-                              Nama PPL
+                            <TableHead
+                              className="text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => toggleSort("ppl")}
+                            >
+                              <div className="flex items-center gap-2">
+                                Nama PPL
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
                             <TableHead
                               className="text-slate-700 cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -4921,13 +4938,7 @@ function MonitoringLapangan() {
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
-                              onClick={() => {
-                                if (pmlSortBy === "revoke") {
-                                  setPMLSortOrder(pmlSortOrder === "asc" ? "desc" : "asc");
-                                } else {
-                                  setPMLSortBy("revoke");
-                                }
-                              }}
+                              onClick={() => toggleSort("revoke")}
                             >
                               <div className="flex items-center justify-end gap-2">
                                 Revoke
@@ -4951,6 +4962,24 @@ function MonitoringLapangan() {
                                 Approve
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
+                            </TableHead>
+                            <TableHead
+                              className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => toggleSort("total_status")}
+                            >
+                              <UITooltipProvider delayDuration={200}>
+                                <UITooltip>
+                                  <UITooltipTrigger asChild>
+                                    <div className="flex items-center justify-end gap-2">
+                                      Total Status (Didata)
+                                      <ArrowUpDown className="h-4 w-4" />
+                                    </div>
+                                  </UITooltipTrigger>
+                                  <UITooltipContent className="bg-white border border-gray-200 shadow-lg p-2 max-w-xs">
+                                    <div className="text-sm text-slate-700">Total Status = Draft + Reject + Revoke + Submit + Approve</div>
+                                  </UITooltipContent>
+                                </UITooltip>
+                              </UITooltipProvider>
                             </TableHead>
                             <TableHead
                               className="text-right text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
@@ -4979,8 +5008,14 @@ function MonitoringLapangan() {
                                 <ArrowUpDown className="h-4 w-4" />
                               </div>
                             </TableHead>
-                            <TableHead className="text-center text-slate-700 font-semibold px-4 py-3">
-                              Status
+                            <TableHead
+                              className="text-center text-slate-700 font-semibold cursor-pointer hover:bg-slate-100 px-4 py-3"
+                              onClick={() => toggleSort("status")}
+                            >
+                              <div className="flex items-center justify-center gap-2">
+                                Status
+                                <ArrowUpDown className="h-4 w-4" />
+                              </div>
                             </TableHead>
                             <TableHead className="text-slate-700 font-semibold px-4 py-3">
                               Notifikasi
@@ -5045,6 +5080,9 @@ function MonitoringLapangan() {
                                   </TableCell>
                                   <TableCell className="text-right font-semibold text-green-700 px-4 py-3">
                                     {row.jumlah_approve.toLocaleString("id-ID")}
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                    {(row.draft + row.jumlah_reject + (row.jumlah_revoke || 0) + row.jumlah_submit + row.jumlah_approve).toLocaleString("id-ID")}
                                   </TableCell>
                                   <TableCell className="text-right font-semibold px-4 py-3">
                                     {(() => {
@@ -5190,6 +5228,9 @@ function MonitoringLapangan() {
                             </TableCell>
                             <TableCell className="text-right font-bold text-green-700 px-4 py-3">
                               {paginatedRows.reduce((sum, row) => sum + row.jumlah_approve, 0).toLocaleString("id-ID")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-slate-900 px-4 py-3">
+                              {paginatedRows.reduce((sum, row) => sum + (row.draft + row.jumlah_reject + (row.jumlah_revoke || 0) + row.jumlah_submit + row.jumlah_approve), 0).toLocaleString("id-ID")}
                             </TableCell>
                             <TableCell className="text-right font-bold px-4 py-3">
                               {(() => {
