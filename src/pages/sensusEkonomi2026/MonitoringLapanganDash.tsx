@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowUpDown, Loader2, AlertCircle, ChevronDown, ChevronRight, Search, Database, Trophy, Users, Link, Edit3, CheckSquare, User as UserIcon, Phone, Copy, Flag as FlagIcon, Mail, Eye, Download } from "lucide-react";
@@ -1957,6 +1957,65 @@ export default function MonitoringLapanganDash() {
     return filteredUsahaProporsiRows.slice(startIndex, startIndex + usahaItemsPerPage);
   }, [filteredUsahaProporsiRows, usahaProporsiCurrentPage, usahaItemsPerPage]);
 
+  const usahaProporsiTotals = useMemo(() => {
+    const total = (field: keyof UsahaProporsiRow) => usahaProporsiPaginatedRows.reduce(
+      (sum, row) => sum + parseNumericValue(row[field]),
+      0
+    );
+    return {
+      prelistAwal: total("prelist_awal"),
+      prelistUsaha: total("prelist_usaha"),
+      utpSt2023: total("utp_subsektor_st2023"),
+      didata: total("didata"),
+      bkuDitemukanPertanian: total("bku_ditemukan_pertanian"),
+      bkuDitemukanNonPertanian: total("bku_ditemukan_non_pertanian"),
+      bkuBaruPertanian: total("bku_baru_pertanian"),
+      bkuBaruNonPertanian: total("bku_baru_non_pertanian"),
+      keluargaDitemukanPertanian: total("keluarga_ditemukan_pertanian"),
+      keluargaDitemukanNonPertanian: total("keluarga_ditemukan_non_pertanian"),
+      keluargaBaruPertanian: total("keluarga_baru_pertanian"),
+      keluargaBaruNonPertanian: total("keluarga_baru_non_pertanian"),
+    };
+  }, [usahaProporsiPaginatedRows]);
+
+  const usahaProporsiOverallTotals = useMemo(() => {
+    const total = (field: keyof UsahaProporsiRow) => usahaProporsiRows.reduce(
+      (sum, row) => sum + parseNumericValue(row[field]),
+      0
+    );
+    return {
+      prelistAwal: total("prelist_awal"),
+      prelistUsaha: total("prelist_usaha"),
+      utpSt2023: total("utp_subsektor_st2023"),
+      didata: total("didata"),
+      bkuDitemukanPertanian: total("bku_ditemukan_pertanian"),
+      bkuDitemukanNonPertanian: total("bku_ditemukan_non_pertanian"),
+      bkuBaruPertanian: total("bku_baru_pertanian"),
+      bkuBaruNonPertanian: total("bku_baru_non_pertanian"),
+      keluargaDitemukanPertanian: total("keluarga_ditemukan_pertanian"),
+      keluargaDitemukanNonPertanian: total("keluarga_ditemukan_non_pertanian"),
+      keluargaBaruPertanian: total("keluarga_baru_pertanian"),
+      keluargaBaruNonPertanian: total("keluarga_baru_non_pertanian"),
+    };
+  }, [usahaProporsiRows]);
+
+  const totalJumlahUsaha = usahaProporsiTotals.bkuDitemukanNonPertanian
+    + usahaProporsiTotals.bkuBaruNonPertanian
+    + usahaProporsiTotals.keluargaDitemukanNonPertanian
+    + usahaProporsiTotals.keluargaBaruNonPertanian;
+  const totalJumlahUsahaPertanian = usahaProporsiTotals.bkuDitemukanPertanian
+    + usahaProporsiTotals.bkuBaruPertanian
+    + usahaProporsiTotals.keluargaDitemukanPertanian
+    + usahaProporsiTotals.keluargaBaruPertanian;
+  const overallJumlahUsaha = usahaProporsiOverallTotals.bkuDitemukanNonPertanian
+    + usahaProporsiOverallTotals.bkuBaruNonPertanian
+    + usahaProporsiOverallTotals.keluargaDitemukanNonPertanian
+    + usahaProporsiOverallTotals.keluargaBaruNonPertanian;
+  const overallJumlahUsahaPertanian = usahaProporsiOverallTotals.bkuDitemukanPertanian
+    + usahaProporsiOverallTotals.bkuBaruPertanian
+    + usahaProporsiOverallTotals.keluargaDitemukanPertanian
+    + usahaProporsiOverallTotals.keluargaBaruPertanian;
+
   const handleDownloadProporsiExcel = () => {
     if (!isPpk) return;
 
@@ -3836,6 +3895,58 @@ export default function MonitoringLapanganDash() {
                                   );
                                 })}
                               </TableBody>
+                              <TableFooter>
+                                <TableRow className="border-t-2 border-slate-300 bg-slate-100 font-bold">
+                                  <TableCell className="text-center">-</TableCell>
+                                  <TableCell className="text-slate-900">Jumlah ({usahaProporsiPaginatedRows.length.toLocaleString("id-ID")} PPL)</TableCell>
+                                  <TableCell className="text-slate-900">Semua Kecamatan</TableCell>
+                                  <TableCell className="text-right">{usahaProporsiTotals.prelistAwal.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-700">{usahaProporsiTotals.prelistUsaha.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-green-700">{usahaProporsiTotals.utpSt2023.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right">{usahaProporsiTotals.didata.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiTotals.bkuDitemukanPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600">{usahaProporsiTotals.bkuDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-emerald-600">{usahaProporsiTotals.bkuBaruPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600">{usahaProporsiTotals.bkuBaruNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiTotals.keluargaDitemukanPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600">{usahaProporsiTotals.keluargaDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-emerald-600">{usahaProporsiTotals.keluargaBaruPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600">{usahaProporsiTotals.keluargaBaruNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right border-l-2 border-slate-300">
+                                    <div>{totalJumlahUsaha.toLocaleString("id-ID")}</div>
+                                    <div className={`text-xs ${getProporsiPercentageClass(totalJumlahUsaha, usahaProporsiTotals.prelistUsaha)}`}>{formatProporsiPercentage(totalJumlahUsaha, usahaProporsiTotals.prelistUsaha)}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right border-l-2 border-slate-300">
+                                    <div>{totalJumlahUsahaPertanian.toLocaleString("id-ID")}</div>
+                                    <div className={`text-xs ${getProporsiPercentageClass(totalJumlahUsahaPertanian, usahaProporsiTotals.utpSt2023)}`}>{formatProporsiPercentage(totalJumlahUsahaPertanian, usahaProporsiTotals.utpSt2023)}</div>
+                                  </TableCell>
+                                </TableRow>
+                                <TableRow className="border-t border-slate-300 bg-white font-bold">
+                                  <TableCell className="text-center">-</TableCell>
+                                  <TableCell className="text-slate-900">Jumlah Keseluruhan ({usahaProporsiRows.length.toLocaleString("id-ID")} PPL)</TableCell>
+                                  <TableCell className="text-slate-900">Semua Kecamatan</TableCell>
+                                  <TableCell className="text-right">{usahaProporsiOverallTotals.prelistAwal.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-700">{usahaProporsiOverallTotals.prelistUsaha.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-green-700">{usahaProporsiOverallTotals.utpSt2023.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right">{usahaProporsiOverallTotals.didata.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiOverallTotals.bkuDitemukanPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.bkuDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-emerald-600">{usahaProporsiOverallTotals.bkuBaruPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.bkuBaruNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiOverallTotals.keluargaDitemukanPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.keluargaDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-emerald-600">{usahaProporsiOverallTotals.keluargaBaruPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.keluargaBaruNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right border-l-2 border-slate-300">
+                                    <div>{overallJumlahUsaha.toLocaleString("id-ID")}</div>
+                                    <div className={`text-xs ${getProporsiPercentageClass(overallJumlahUsaha, usahaProporsiOverallTotals.prelistUsaha)}`}>{formatProporsiPercentage(overallJumlahUsaha, usahaProporsiOverallTotals.prelistUsaha)}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right border-l-2 border-slate-300">
+                                    <div>{overallJumlahUsahaPertanian.toLocaleString("id-ID")}</div>
+                                    <div className={`text-xs ${getProporsiPercentageClass(overallJumlahUsahaPertanian, usahaProporsiOverallTotals.utpSt2023)}`}>{formatProporsiPercentage(overallJumlahUsahaPertanian, usahaProporsiOverallTotals.utpSt2023)}</div>
+                                  </TableCell>
+                                </TableRow>
+                              </TableFooter>
                             </Table>
                             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
                               <div className="flex items-center gap-2 text-sm text-slate-600">
