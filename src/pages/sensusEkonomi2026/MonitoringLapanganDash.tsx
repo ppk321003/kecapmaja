@@ -176,9 +176,9 @@ const toProperCase = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
-const calculateDayProgress = (): { daysElapsed: number } => {
+const calculateDayProgress = (baseline = new Date(2026, 5, 15)): { daysElapsed: number } => {
   const today = new Date();
-  const daysElapsed = Math.floor((today.getTime() - new Date(2026, 5, 15).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const daysElapsed = Math.floor((today.getTime() - baseline.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   return { daysElapsed: Math.max(0, Math.min(daysElapsed, 63)) };
 };
 
@@ -1863,6 +1863,7 @@ export default function MonitoringLapanganDash() {
 
   const progressHeaderDisplay = progresHeaderData?.[0] ? extractProgressHeader(progresHeaderData[0]) : "";
   const { daysElapsed } = calculateDayProgress();
+  const daysElapsedTer1 = calculateDayProgress(new Date(2026, 6, 15)).daysElapsed;
   const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
 
   const overallTotalPrelist = pplRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
@@ -2067,6 +2068,7 @@ export default function MonitoringLapanganDash() {
       const absChange = now - termin; // absolute change in counts
 
       const { daysElapsed } = calculateDayProgress();
+      const { daysElapsed: daysElapsedTer1 } = calculateDayProgress(new Date(2026, 6, 15));
       const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
       const MIN_DAILY_DELTA = 10; // minimal expected increase threshold
 
@@ -2087,6 +2089,12 @@ export default function MonitoringLapanganDash() {
         else status = "Meningkat";
       }
 
+      const averagePerDay = daysElapsedTer1 > 0 ? absChange / daysElapsedTer1 : 0;
+      const statusDetail = prelist <= 0
+        ? "Tanpa prelist tersedia"
+        : `Δ ${absChange >= 0 ? "+" : ""}${absChange.toLocaleString("id-ID")} dari Termin-1 • Rata-rata aktivitas setelah termin-1 s.d. hari ke-${daysElapsedTer1} • ${averagePerDay >= 0 ? "+" : ""}${averagePerDay.toFixed(1)}/hari`;
+      const statusLabel = status;
+
       const out = {
         ...row,
         prelist_awal: prelist,
@@ -2094,7 +2102,8 @@ export default function MonitoringLapanganDash() {
         didata: now,
         delta: absChange,
         deltaPct: pctChange,
-        status,
+        status: statusLabel,
+        statusDetail,
       };
 
       const nameCount = monitoringKeys.filter((k) => {
@@ -2318,7 +2327,7 @@ export default function MonitoringLapanganDash() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="flex w-full h-auto p-1 bg-white border border-slate-200 rounded-lg shadow-sm mb-6 gap-2 overflow-x-auto">
               <TabsTrigger value="dashboard" className="rounded-xl py-2 text-sm font-semibold">Dashboard</TabsTrigger>
-              <TabsTrigger value="capaian-kinerja" className="rounded-xl py-2 text-sm font-semibold">Capaian Kinerja</TabsTrigger>
+              <TabsTrigger value="capaian-kinerja" className="rounded-xl py-2 text-sm font-semibold">Ter-1 &gt; Saat Ini</TabsTrigger>
               <TabsTrigger value="umkm-sosek" className="rounded-xl py-2 text-sm font-semibold">UMKM dan Sosek</TabsTrigger>
               <TabsTrigger value="pendataan-usaha" className="rounded-xl py-2 text-sm font-semibold">Pendataan Usaha</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
@@ -2493,10 +2502,8 @@ export default function MonitoringLapanganDash() {
                 <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <CardTitle className="text-lg">Capaian Kinerja: Transisi PPL ke UMKM/Sosek</CardTitle>
-                      <CardDescription>
-                        Ringkasan perkembangan dari titik awal monitoring PPL menuju capaian saat ini pada subtab UMKM dan Sosek PPL secara dinamis. <span className="font-semibold text-slate-800">Didata = Draft + Reject + Revoke + Submit + Approve</span>
-                      </CardDescription>
+                      <CardTitle className="text-lg">Ter-1 &gt; Saat Ini</CardTitle>
+                      <p className="mt-2 text-sm text-slate-500">Termin-1 baseline ditetapkan pada 15/07/2026, perubahan dihitung sampai hari ke-{""}{daysElapsedTer1}.</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
                       Hari ke-{daysElapsed} • Target minimal {minPercentageTarget.toFixed(2)}%
@@ -2504,43 +2511,9 @@ export default function MonitoringLapanganDash() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card className="border border-slate-200/70 shadow-sm">
-                      <CardContent className="pt-5 pb-4">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">PPL Aktif</div>
-                        <div className="mt-2 text-3xl font-bold text-slate-900">{pplRows.length}</div>
-                        <div className="mt-2 text-sm text-slate-600">Jumlah individu PPL yang terdata</div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border border-slate-200/70 shadow-sm">
-                      <CardContent className="pt-5 pb-4">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Prelist Awal</div>
-                        <div className="mt-2 text-3xl font-bold text-slate-900">{overallTotalPrelist.toLocaleString("id-ID")}</div>
-                        <div className="mt-2 text-sm text-slate-600">Baseline pemantauan awal</div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border border-slate-200/70 shadow-sm">
-                      <CardContent className="pt-5 pb-4">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Status (Didata)</div>
-                        <div className="mt-2 text-3xl font-bold text-slate-900">{overallTotalStatus.toLocaleString("id-ID")}</div>
-                        <div className="mt-2 text-sm text-slate-600">Draft + Reject + Revoke + Submit + Approve</div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border border-slate-200/70 shadow-sm">
-                      <CardContent className="pt-5 pb-4">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Capaian Saat Ini</div>
-                        <div className="mt-2 text-3xl font-bold text-emerald-700">{averageMajalengka.toFixed(2)}%</div>
-                        <div className="mt-2 text-sm text-slate-600">Selisih ke target: {(averageMajalengka - minPercentageTarget).toFixed(2)}%</div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
                   <Card className="border border-slate-200/70 shadow-sm">
                     <CardHeader className="border-b bg-slate-50">
-                      <CardTitle className="text-base">Perkembangan per PPL ke UMKM/Sosek</CardTitle>
+                      <CardTitle className="text-base">Capaian dari Termin-1 sampai dengan kondisi sekarang</CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
                       <div className="grid gap-4 md:grid-cols-2">
@@ -2679,15 +2652,19 @@ export default function MonitoringLapanganDash() {
                                   <TableCell className="px-4 py-3 text-right font-semibold text-slate-900">{row.didata.toLocaleString("id-ID")}</TableCell>
                                   <TableCell className="px-4 py-3 text-right text-slate-700">{row.delta >= 0 ? "+" : ""}{row.delta.toLocaleString("id-ID")}</TableCell>
                                   <TableCell className="px-4 py-3 text-slate-700">
-                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                      row.status === "Meningkat Tajam" || row.status === "Meningkat" ? "bg-emerald-100 text-emerald-700" :
-                                      row.status === "Stabil (Cukup)" ? "bg-emerald-50 text-emerald-700" :
-                                      row.status === "Stabil (Risiko)" ? "bg-amber-100 text-amber-700" :
-                                      row.status === "Menurun" || row.status === "Menurun Tajam" ? "bg-rose-100 text-rose-700" :
-                                      "bg-slate-100 text-slate-700"
-                                    }`}>
-                                      {row.status}
-                                    </span>
+                                    <div className="flex flex-col gap-1">
+                                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                        row.status === "Meningkat Tajam" || row.status === "Meningkat" ? "bg-emerald-100 text-emerald-700" :
+                                        row.status === "Stabil (Cukup)" ? "bg-emerald-50 text-emerald-700" :
+                                        row.status === "Stabil (Risiko)" ? "bg-amber-100 text-amber-700" :
+                                        row.status === "Menurun" || row.status === "Menurun Tajam" ? "bg-rose-100 text-rose-700" :
+                                        row.status === "Perlu Perhatian" ? "bg-amber-100 text-amber-700" :
+                                        "bg-slate-100 text-slate-700"
+                                      }`}>
+                                        {row.status}
+                                      </span>
+                                      <span className="text-[11px] leading-4 text-slate-500">{row.statusDetail}</span>
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               );
@@ -3334,7 +3311,7 @@ export default function MonitoringLapanganDash() {
                                     const isExpanded = expandedMergedUsaha.has(row.id);
                                     return (
                                       <React.Fragment key={row.id}>
-                                        <TableRow className="hover:bg-slate-50 transition-colors">
+                                        <TableRow className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
                                           <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
                                           <TableCell
                                             className="text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2 whitespace-nowrap"
@@ -3370,7 +3347,7 @@ export default function MonitoringLapanganDash() {
                                           <TableCell className="text-right font-semibold px-2 py-3 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(row.keluarga_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
                                         </TableRow>
                                         {isExpanded && row.details.map((detail) => (
-                                          <TableRow key={detail.id} className="bg-slate-50 hover:bg-slate-100 transition-colors">
+                                          <TableRow key={detail.id} className="border-b border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
                                             <TableCell className="px-4 py-2" />
                                             <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8">{detail.sls_code}</TableCell>
                                             <TableCell className="text-sm text-slate-600 px-4 py-2">{detail.sls_rt}</TableCell>
