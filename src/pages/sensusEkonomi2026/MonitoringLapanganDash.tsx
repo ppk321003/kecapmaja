@@ -621,6 +621,8 @@ export default function MonitoringLapanganDash() {
   const [umkmSubTab, setUmkmSubTab] = useState<string>("ppl");
   const [usahaSubTab, setUsahaSubTab] = useState<string>("kondisi");
   const [usahaSearchTerm, setUsahaSearchTerm] = useState("");
+  const [usahaKecamatanFilter, setUsahaKecamatanFilter] = useState("all");
+  const [proporsiKecamatanFilter, setProporsiKecamatanFilter] = useState("all");
   const [usahaItemsPerPage, setUsahaItemsPerPage] = useState(20);
   const [usahaKondisiPerusahaanCurrentPage, setUsahaKondisiPerusahaanCurrentPage] = useState(1);
   const [usahaKondisiKeluargaCurrentPage, setUsahaKondisiKeluargaCurrentPage] = useState(1);
@@ -1845,6 +1847,16 @@ export default function MonitoringLapanganDash() {
     });
   }, [usahaPerusahaanData, usahaKeluargaData, namaPplByKey, usahaProporsiRows]);
 
+  const mergedUsahaKecamatanOptions = useMemo(() => {
+    const values = new Set<string>();
+    mergedUsahaRows.forEach((row) => {
+      const rawKec = String(row.kecamatan || "").trim();
+      if (!rawKec) return;
+      rawKec.split(/,|\n/).map((part) => part.trim()).filter(Boolean).forEach((value) => values.add(value));
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, "id"));
+  }, [mergedUsahaRows]);
+
   const filteredMergedUsahaRows = useMemo(() => {
     const q = usahaSearchTerm.trim().toLowerCase();
     let rows = mergedUsahaRows;
@@ -1854,6 +1866,16 @@ export default function MonitoringLapanganDash() {
         row.id.includes(q) ||
         row.kecamatan.toLowerCase().includes(q)
       );
+    }
+    if (usahaKecamatanFilter !== "all") {
+      const selected = usahaKecamatanFilter.toLowerCase();
+      rows = rows.filter((row) => {
+        const values = String(row.kecamatan || "")
+          .split(/,|\n/)
+          .map((part) => part.trim().toLowerCase())
+          .filter(Boolean);
+        return values.includes(selected);
+      });
     }
 
     const isBlankNamaPpl = (value: string) => {
@@ -1904,7 +1926,7 @@ export default function MonitoringLapanganDash() {
         : String(aValue).localeCompare(String(bValue), "id");
       return comparison !== 0 ? comparison * direction : a.id.localeCompare(b.id, "id");
     });
-  }, [mergedUsahaRows, usahaSearchTerm, usahaMergedSortBy, usahaMergedSortOrder]);
+  }, [mergedUsahaRows, usahaSearchTerm, usahaMergedSortBy, usahaMergedSortOrder, usahaKecamatanFilter]);
 
   const toggleMergedUsahaSort = (field: string) => {
     if (usahaMergedSortBy === field) {
@@ -1996,6 +2018,16 @@ export default function MonitoringLapanganDash() {
     );
   };
 
+  const proporsiKecamatanOptions = useMemo(() => {
+    const values = new Set<string>();
+    usahaProporsiRows.forEach((row) => {
+      const rawKec = String(row.kecamatan || "").trim();
+      if (!rawKec) return;
+      rawKec.split(/,|\n/).map((part) => part.trim()).filter(Boolean).forEach((value) => values.add(value));
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, "id"));
+  }, [usahaProporsiRows]);
+
   const filteredUsahaPerusahaanRows = useMemo(() => {
     const q = usahaSearchTerm.trim().toLowerCase();
     let rows = usahaPerusahaanRows;
@@ -2082,6 +2114,16 @@ export default function MonitoringLapanganDash() {
         row.kecamatan.toLowerCase().includes(q)
       );
     }
+    if (proporsiKecamatanFilter !== "all") {
+      const selected = proporsiKecamatanFilter.toLowerCase();
+      rows = rows.filter((row) => {
+        const values = String(row.kecamatan || "")
+          .split(/,|\n/)
+          .map((part) => part.trim().toLowerCase())
+          .filter(Boolean);
+        return values.includes(selected);
+      });
+    }
 
     const getValue = (row: UsahaProporsiRow) => {
       const numericValues: Record<string, number> = {
@@ -2129,7 +2171,7 @@ export default function MonitoringLapanganDash() {
         ? String(aValue).localeCompare(String(bValue), "id")
         : String(bValue).localeCompare(String(aValue), "id");
     });
-  }, [usahaProporsiRows, usahaSearchTerm, usahaProporsiSortBy, usahaProporsiSortOrder]);
+  }, [usahaProporsiRows, usahaSearchTerm, usahaProporsiSortBy, usahaProporsiSortOrder, proporsiKecamatanFilter]);
 
   const toggleUsahaProporsiSort = (field: string) => {
     setUsahaProporsiSortBy(field);
@@ -3923,6 +3965,20 @@ export default function MonitoringLapanganDash() {
                                     className="pl-10 h-10 w-full"
                                   />
                                 </div>
+                                <select
+                                  aria-label="Filter kecamatan kondisi keseluruhan"
+                                  value={usahaKecamatanFilter}
+                                  onChange={(event) => {
+                                    setUsahaKecamatanFilter(event.target.value);
+                                    setUsahaKondisiMergedCurrentPage(1);
+                                  }}
+                                  className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                                >
+                                  <option value="all">Semua Kecamatan</option>
+                                  {mergedUsahaKecamatanOptions.map((kecamatan) => (
+                                    <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                                  ))}
+                                </select>
                                 <span className="text-sm font-medium text-slate-600">Kolom:</span>
                                 <button type="button" onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, true])) as typeof usahaKondisiColumns)} className="inline-flex h-8 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-100"><ChevronDown className="mr-1 h-4 w-4" /> Buka Semua</button>
                                 <button type="button" onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, false])) as typeof usahaKondisiColumns)} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-medium text-slate-700 hover:bg-slate-200"><ChevronRight className="mr-1 h-4 w-4" /> Tutup Semua</button>
@@ -4126,6 +4182,20 @@ export default function MonitoringLapanganDash() {
                                   className="pl-10 h-10 w-full"
                                 />
                               </div>
+                              <select
+                                aria-label="Filter kecamatan proporsi"
+                                value={proporsiKecamatanFilter}
+                                onChange={(event) => {
+                                  setProporsiKecamatanFilter(event.target.value);
+                                  setUsahaProporsiCurrentPage(1);
+                                }}
+                                className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                              >
+                                <option value="all">Semua Kecamatan</option>
+                                {proporsiKecamatanOptions.map((kecamatan) => (
+                                  <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                                ))}
+                              </select>
                               <span className="text-sm font-medium text-slate-600">Kolom:</span>
                               <button
                                 type="button"
