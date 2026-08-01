@@ -4193,7 +4193,7 @@ export default function MonitoringLapanganDash() {
                                     {proporsiColumnGroups.keluargaBaruNonPertanian && proporsiSortHead("Baru Non Pertanian", "keluarga_baru_non_pertanian", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-blue-600 font-semibold px-1 py-2", 1, "keluargaBaruNonPertanian")}
                                     </>
                                   {proporsiColumnGroups.ringkasan && <>
-                                    {proporsiSortHead("Jumlah Usaha", "jumlah_usaha", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
+                                    {proporsiSortHead("Jumlah Usaha Non Pertanian", "jumlah_usaha", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
                                     {proporsiSortHead("Jumlah Usaha Pertanian", "jumlah_usaha_pertanian", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
                                   </>}
                                 </TableRow>
