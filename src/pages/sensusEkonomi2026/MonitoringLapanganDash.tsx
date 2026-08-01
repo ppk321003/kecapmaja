@@ -474,6 +474,8 @@ interface MergedUsahaDetailRow {
   kecamatan: string;
   sls_code: string;
   sls_rt: string;
+  prelist_awal_baru: string;
+  didata: string;
   perusahaan_prelist_awal: string;
   perusahaan_jumlah_prelist_usaha: string;
   perusahaan_ditemukan: string;
@@ -494,6 +496,8 @@ interface MergedUsahaRow {
   id: string;
   nama_ppl: string;
   kecamatan: string;
+  prelist_awal_baru: string;
+  didata: string;
   perusahaan_prelist_awal: string;
   perusahaan_jumlah_prelist_usaha: string;
   perusahaan_ditemukan: string;
@@ -599,6 +603,8 @@ export default function MonitoringLapanganDash() {
   const [usahaKondisiPerusahaanCurrentPage, setUsahaKondisiPerusahaanCurrentPage] = useState(1);
   const [usahaKondisiKeluargaCurrentPage, setUsahaKondisiKeluargaCurrentPage] = useState(1);
   const [usahaKondisiMergedCurrentPage, setUsahaKondisiMergedCurrentPage] = useState(1);
+  const [usahaMergedSortBy, setUsahaMergedSortBy] = useState<string>("nama_ppl");
+  const [usahaMergedSortOrder, setUsahaMergedSortOrder] = useState<"asc" | "desc">("asc");
   const [usahaProporsiCurrentPage, setUsahaProporsiCurrentPage] = useState(1);
   const [usahaPerusahaanSortBy, setUsahaPerusahaanSortBy] = useState<string>("nama_ppl");
   const [usahaPerusahaanSortOrder, setUsahaPerusahaanSortOrder] = useState<"asc" | "desc">("asc");
@@ -625,6 +631,26 @@ export default function MonitoringLapanganDash() {
     keluargaBaruPertanian: true,
     keluargaBaruNonPertanian: true,
     ringkasan: true,
+  });
+  const [usahaKondisiColumns, setUsahaKondisiColumns] = useState({
+    prelistAwal: true,
+    prelistUsaha: true,
+    didata: true,
+    perusahaanDitemukan: true,
+    perusahaanTutup: true,
+    perusahaanGanda: true,
+    perusahaanTidakDitemukan: true,
+    perusahaanBaru: true,
+    perusahaanDitemukanBaru: true,
+    keluargaDitemukan: true,
+    keluargaTutup: true,
+    keluargaGanda: true,
+    keluargaTidakDitemukan: true,
+    keluargaBaru: true,
+    keluargaDitemukanBaru: true,
+    totalTidakDitemukan: true,
+    totalUsaha: true,
+    surplusDefisit: true,
   });
 
   // Ngibar Disdik tab: safe incremental implementation
@@ -1528,6 +1554,8 @@ export default function MonitoringLapanganDash() {
       id: string;
       nama_ppl: string;
       kecamatanSet: Set<string>;
+      prelist_awal_baru: number;
+      didata: number;
       perusahaan_prelist_awal: number;
       perusahaan_jumlah_prelist_usaha: number;
       perusahaan_ditemukan: number;
@@ -1554,6 +1582,17 @@ export default function MonitoringLapanganDash() {
       prelistAwalByKey.set(key, (prelistAwalByKey.get(key) || 0) + prelistAwal);
     });
 
+    const proporsiByKey = new Map<string, UsahaProporsiDetailRow>();
+    const proporsiByGroup = new Map<string, { prelist_awal: number; didata: number }>();
+    (usahaProporsiRows || []).forEach((row) => {
+      const groupKey = `${normalizePersonKey(row.nama_ppl)}||${normalizeKecamatanKey(row.kecamatan)}`;
+      proporsiByGroup.set(groupKey, {
+        prelist_awal: parseNumericValue(row.prelist_awal),
+        didata: parseNumericValue(row.didata),
+      });
+      row.children.forEach((detail) => proporsiByKey.set(normalizeSheetKey(detail.kode), detail));
+    });
+
     const merged = new Map<string, GroupedUsaha>();
 
     const upsert = (groupKey: string, namaPpl: string) => {
@@ -1562,6 +1601,8 @@ export default function MonitoringLapanganDash() {
           id: groupKey,
           nama_ppl: namaPpl,
           kecamatanSet: new Set<string>(),
+          prelist_awal_baru: proporsiByGroup.get(groupKey)?.prelist_awal || 0,
+          didata: proporsiByGroup.get(groupKey)?.didata || 0,
           perusahaan_prelist_awal: 0,
           perusahaan_jumlah_prelist_usaha: 0,
           perusahaan_ditemukan: 0,
@@ -1594,6 +1635,7 @@ export default function MonitoringLapanganDash() {
       if (kecamatan) entry.kecamatanSet.add(kecamatan);
 
       const existingDetail = entry.detailsMap.get(id);
+      const proporsiDetail = proporsiByKey.get(normalizeSheetKey(id));
       const perusahaanPrelistAwal = (prelistAwalByKey.get(id) ?? 0).toString();
       const perusahaanJumlahPrelistUsaha = sourceType === "Perusahaan" ? getRawColumnText(row, 2, "0") : "0";
       const perusahaanDitemukan = sourceType === "Perusahaan" ? getRawColumnText(row, 3, "0") : "0";
@@ -1633,6 +1675,8 @@ export default function MonitoringLapanganDash() {
           kecamatan,
           sls_code: id,
           sls_rt: slsRt,
+          prelist_awal_baru: proporsiDetail?.prelist_awal || "0",
+          didata: proporsiDetail?.didata || "0",
           perusahaan_prelist_awal: perusahaanPrelistAwal,
           perusahaan_jumlah_prelist_usaha: perusahaanJumlahPrelistUsaha,
           perusahaan_ditemukan: perusahaanDitemukan,
@@ -1658,9 +1702,7 @@ export default function MonitoringLapanganDash() {
       const kecamatanFromRow = toProperCase(getRowValue(row, "kecamatan", ["nama_kecamatan", "desa", "kelurahan", "kec"], getRawColumnText(row, 1, "")));
       const namaPpl = namaPplByKey.get(id) || rawNamaPpl || "-";
       const kecamatan = kecamatanByKey.get(id) || kecamatanFromRow;
-      const normalizedNamaPpl = namaPpl.trim();
-      const normalizedKecamatan = kecamatan.trim();
-      const groupKey = `${normalizedNamaPpl}||${normalizedKecamatan}`;
+      const groupKey = `${normalizePersonKey(namaPpl)}||${normalizeKecamatanKey(kecamatan)}`;
       const entry = upsert(groupKey, namaPpl);
       if (kecamatan) entry.kecamatanSet.add(kecamatan);
       addDetail(entry, row, id, "Perusahaan");
@@ -1673,9 +1715,7 @@ export default function MonitoringLapanganDash() {
       const kecamatanFromRow = toProperCase(getRowValue(row, "kecamatan", ["nama_kecamatan", "desa", "kelurahan", "kec"], getRawColumnText(row, 1, "")));
       const namaPpl = namaPplByKey.get(id) || rawNamaPpl || "-";
       const kecamatan = kecamatanByKey.get(id) || kecamatanFromRow;
-      const normalizedNamaPpl = namaPpl.trim();
-      const normalizedKecamatan = kecamatan.trim();
-      const groupKey = `${normalizedNamaPpl}||${normalizedKecamatan}`;
+      const groupKey = `${normalizePersonKey(namaPpl)}||${normalizeKecamatanKey(kecamatan)}`;
       const entry = upsert(groupKey, namaPpl);
       if (kecamatan) entry.kecamatanSet.add(kecamatan);
       entry.keluarga_ditemukan += getRawColumnNumber(row, 3, 0);
@@ -1749,6 +1789,8 @@ export default function MonitoringLapanganDash() {
         id: entry.id,
         nama_ppl: entry.nama_ppl,
         kecamatan: Array.from(entry.kecamatanSet).filter(Boolean).join(", "),
+        prelist_awal_baru: entry.prelist_awal_baru.toString(),
+        didata: entry.didata.toString(),
         perusahaan_prelist_awal: perusahaan_prelist_awal.toString(),
         perusahaan_jumlah_prelist_usaha: perusahaan_jumlah_prelist_usaha.toString(),
         perusahaan_ditemukan: perusahaan_ditemukan.toString(),
@@ -1766,7 +1808,7 @@ export default function MonitoringLapanganDash() {
         details,
       };
     });
-  }, [usahaPerusahaanData, usahaKeluargaData, namaPplByKey]);
+  }, [usahaPerusahaanData, usahaKeluargaData, namaPplByKey, usahaProporsiRows]);
 
   const filteredMergedUsahaRows = useMemo(() => {
     const q = usahaSearchTerm.trim().toLowerCase();
@@ -1784,24 +1826,136 @@ export default function MonitoringLapanganDash() {
       return normalized === "" || normalized === "-" || normalized === "tidak diketahui";
     };
 
-    return [...rows].sort((a, b) => {
-      const aBlank = isBlankNamaPpl(a.nama_ppl);
-      const bBlank = isBlankNamaPpl(b.nama_ppl);
-      if (aBlank !== bBlank) return aBlank ? 1 : -1;
+    const getSortValue = (row: MergedUsahaRow): string | number => {
+      const totalTidakDitemukan = parseNumericValue(row.perusahaan_tidak_ditemukan) + parseNumericValue(row.keluarga_tidak_ditemukan);
+      const totalUsaha = parseNumericValue(row.perusahaan_ditemukan) + parseNumericValue(row.perusahaan_baru) + parseNumericValue(row.keluarga_ditemukan) + parseNumericValue(row.keluarga_baru);
+      switch (usahaMergedSortBy) {
+        case "nama_ppl": return row.nama_ppl;
+        case "kecamatan": return row.kecamatan;
+        case "prelist_awal_baru": return parseNumericValue(row.prelist_awal_baru);
+        case "perusahaan_jumlah_prelist_usaha": return parseNumericValue(row.perusahaan_jumlah_prelist_usaha);
+        case "didata": return parseNumericValue(row.didata);
+        case "perusahaan_ditemukan": return parseNumericValue(row.perusahaan_ditemukan);
+        case "perusahaan_tutup": return parseNumericValue(row.perusahaan_tutup);
+        case "perusahaan_ganda": return parseNumericValue(row.perusahaan_ganda);
+        case "perusahaan_tidak_ditemukan": return parseNumericValue(row.perusahaan_tidak_ditemukan);
+        case "perusahaan_baru": return parseNumericValue(row.perusahaan_baru);
+        case "perusahaan_ditemukan_plus_baru": return parseNumericValue(row.perusahaan_ditemukan_plus_baru);
+        case "keluarga_ditemukan": return parseNumericValue(row.keluarga_ditemukan);
+        case "keluarga_tutup": return parseNumericValue(row.keluarga_tutup);
+        case "keluarga_ganda": return parseNumericValue(row.keluarga_ganda);
+        case "keluarga_tidak_ditemukan": return parseNumericValue(row.keluarga_tidak_ditemukan);
+        case "keluarga_baru": return parseNumericValue(row.keluarga_baru);
+        case "keluarga_ditemukan_plus_baru": return parseNumericValue(row.keluarga_ditemukan_plus_baru);
+        case "total_tidak_ditemukan": return totalTidakDitemukan;
+        case "total_usaha": return totalUsaha;
+        case "surplus_defisit": return totalUsaha - totalTidakDitemukan;
+        default: return row.nama_ppl;
+      }
+    };
 
-      const aValue = a.nama_ppl.toLowerCase();
-      const bValue = b.nama_ppl.toLowerCase();
-      if (aValue < bValue) return -1;
-      if (aValue > bValue) return 1;
-      return a.id.localeCompare(b.id, "id");
+    return [...rows].sort((a, b) => {
+      if (usahaMergedSortBy === "nama_ppl") {
+        const aBlank = isBlankNamaPpl(a.nama_ppl);
+        const bBlank = isBlankNamaPpl(b.nama_ppl);
+        if (aBlank !== bBlank) return aBlank ? 1 : -1;
+      }
+      const aValue = getSortValue(a);
+      const bValue = getSortValue(b);
+      const direction = usahaMergedSortOrder === "asc" ? 1 : -1;
+      const comparison = typeof aValue === "number" && typeof bValue === "number"
+        ? aValue - bValue
+        : String(aValue).localeCompare(String(bValue), "id");
+      return comparison !== 0 ? comparison * direction : a.id.localeCompare(b.id, "id");
     });
-  }, [mergedUsahaRows, usahaSearchTerm]);
+  }, [mergedUsahaRows, usahaSearchTerm, usahaMergedSortBy, usahaMergedSortOrder]);
+
+  const toggleMergedUsahaSort = (field: string) => {
+    if (usahaMergedSortBy === field) {
+      setUsahaMergedSortOrder((order) => order === "asc" ? "desc" : "asc");
+    } else {
+      setUsahaMergedSortBy(field);
+      setUsahaMergedSortOrder("asc");
+    }
+    setUsahaKondisiMergedCurrentPage(1);
+  };
 
   const usahaMergedTotalPages = Math.max(1, Math.ceil(filteredMergedUsahaRows.length / usahaItemsPerPage));
   const usahaMergedPaginatedRows = useMemo(() => {
     const startIndex = (usahaKondisiMergedCurrentPage - 1) * usahaItemsPerPage;
     return filteredMergedUsahaRows.slice(startIndex, startIndex + usahaItemsPerPage);
   }, [filteredMergedUsahaRows, usahaKondisiMergedCurrentPage, usahaItemsPerPage]);
+
+  const summarizeMergedUsahaRows = (rows: MergedUsahaRow[]) => rows.reduce((summary, row) => {
+    summary.prelist_awal_baru += parseNumericValue(row.prelist_awal_baru);
+    summary.perusahaan_jumlah_prelist_usaha += parseNumericValue(row.perusahaan_jumlah_prelist_usaha);
+    summary.didata += parseNumericValue(row.didata);
+    summary.perusahaan_ditemukan += parseNumericValue(row.perusahaan_ditemukan);
+    summary.perusahaan_tutup += parseNumericValue(row.perusahaan_tutup);
+    summary.perusahaan_ganda += parseNumericValue(row.perusahaan_ganda);
+    summary.perusahaan_tidak_ditemukan += parseNumericValue(row.perusahaan_tidak_ditemukan);
+    summary.perusahaan_baru += parseNumericValue(row.perusahaan_baru);
+    summary.perusahaan_ditemukan_plus_baru += parseNumericValue(row.perusahaan_ditemukan_plus_baru);
+    summary.keluarga_ditemukan += parseNumericValue(row.keluarga_ditemukan);
+    summary.keluarga_tutup += parseNumericValue(row.keluarga_tutup);
+    summary.keluarga_ganda += parseNumericValue(row.keluarga_ganda);
+    summary.keluarga_tidak_ditemukan += parseNumericValue(row.keluarga_tidak_ditemukan);
+    summary.keluarga_baru += parseNumericValue(row.keluarga_baru);
+    summary.keluarga_ditemukan_plus_baru += parseNumericValue(row.keluarga_ditemukan_plus_baru);
+    return summary;
+  }, {
+    prelist_awal_baru: 0,
+    perusahaan_jumlah_prelist_usaha: 0,
+    didata: 0,
+    perusahaan_ditemukan: 0,
+    perusahaan_tutup: 0,
+    perusahaan_ganda: 0,
+    perusahaan_tidak_ditemukan: 0,
+    perusahaan_baru: 0,
+    perusahaan_ditemukan_plus_baru: 0,
+    keluarga_ditemukan: 0,
+    keluarga_tutup: 0,
+    keluarga_ganda: 0,
+    keluarga_tidak_ditemukan: 0,
+    keluarga_baru: 0,
+    keluarga_ditemukan_plus_baru: 0,
+  });
+
+  const paginatedMergedUsahaSummary = summarizeMergedUsahaRows(usahaMergedPaginatedRows);
+  const totalMergedUsahaSummary = summarizeMergedUsahaRows(filteredMergedUsahaRows);
+
+  const renderMergedUsahaSummaryRow = (label: string, summary: typeof paginatedMergedUsahaSummary) => {
+    const totalTidakDitemukan = summary.perusahaan_tidak_ditemukan + summary.keluarga_tidak_ditemukan;
+    const totalUsaha = summary.perusahaan_ditemukan + summary.perusahaan_baru + summary.keluarga_ditemukan + summary.keluarga_baru;
+    const surplusDefisit = totalUsaha - totalTidakDitemukan;
+    const percentage = (value: number) => summary.perusahaan_jumlah_prelist_usaha > 0
+      ? `${((value / summary.perusahaan_jumlah_prelist_usaha) * 100).toFixed(2).replace(".", ",")}%`
+      : "0,00%";
+    const number = (value: number) => value.toLocaleString("id-ID");
+    return (
+      <TableRow className="border-t-2 border-slate-300 bg-slate-100 hover:bg-slate-100">
+        <TableCell colSpan={3} className="font-bold text-slate-800 px-4 py-3">{label}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.prelistAwal} className="text-right font-bold text-slate-900 px-4 py-3">{number(summary.prelist_awal_baru)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.prelistUsaha} className="text-right font-bold text-slate-900 px-4 py-3">{number(summary.perusahaan_jumlah_prelist_usaha)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.didata} className="text-right font-bold text-slate-900 px-4 py-3">{number(summary.didata)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.perusahaanDitemukan} className="text-right font-bold text-slate-900 px-4 py-3 bg-slate-100">{number(summary.perusahaan_ditemukan)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.perusahaanTutup} className="text-right font-bold text-slate-900 px-4 py-3 bg-slate-50">{number(summary.perusahaan_tutup)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.perusahaanGanda} className="text-right font-bold text-slate-900 px-4 py-3 bg-slate-100">{number(summary.perusahaan_ganda)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.perusahaanTidakDitemukan} className="text-right font-bold text-rose-800 px-2 py-3 bg-rose-50">{number(summary.perusahaan_tidak_ditemukan)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.perusahaanBaru} className="text-right font-bold text-slate-900 px-3 py-3 bg-amber-50">{number(summary.perusahaan_baru)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.perusahaanDitemukanBaru} className="text-right font-bold text-sky-700 px-2 py-3 bg-cyan-50">{number(summary.perusahaan_ditemukan_plus_baru)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.keluargaDitemukan} className="text-right font-bold text-slate-900 px-4 py-3 bg-slate-100">{number(summary.keluarga_ditemukan)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.keluargaTutup} className="text-right font-bold text-slate-900 px-4 py-3 bg-slate-50">{number(summary.keluarga_tutup)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.keluargaGanda} className="text-right font-bold text-slate-900 px-4 py-3 bg-slate-100">{number(summary.keluarga_ganda)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.keluargaTidakDitemukan} className="text-right font-bold text-rose-800 px-2 py-3 bg-rose-50">{number(summary.keluarga_tidak_ditemukan)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.keluargaBaru} className="text-right font-bold text-slate-900 px-3 py-3 bg-amber-50">{number(summary.keluarga_baru)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.keluargaDitemukanBaru} className="text-right font-bold text-sky-700 px-2 py-3 bg-cyan-50">{number(summary.keluarga_ditemukan_plus_baru)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.totalTidakDitemukan} className="text-right font-bold text-rose-800 px-4 py-3 bg-rose-50"><div>{number(totalTidakDitemukan)}</div><div className="text-xs font-medium">{percentage(totalTidakDitemukan)}</div></TableCell>
+        <TableCell hidden={!usahaKondisiColumns.totalUsaha} className="text-right font-bold text-sky-700 px-4 py-3 bg-cyan-50"><div>{number(totalUsaha)}</div><div className="text-xs font-medium">{percentage(totalUsaha)}</div></TableCell>
+        <TableCell hidden={!usahaKondisiColumns.surplusDefisit} className={`text-right font-bold px-4 py-3 ${surplusDefisit < 0 ? "text-rose-800" : "text-emerald-700"}`}>{number(surplusDefisit)}</TableCell>
+      </TableRow>
+    );
+  };
 
   const filteredUsahaPerusahaanRows = useMemo(() => {
     const q = usahaSearchTerm.trim().toLowerCase();
@@ -1950,9 +2104,8 @@ export default function MonitoringLapanganDash() {
       className={`${className} cursor-pointer hover:bg-slate-100`}
       onClick={() => toggleUsahaProporsiSort(field)}
     >
-      <div className={`flex ${className.includes("w-[72px]") ? "flex-wrap items-center justify-center gap-0.5 text-center" : "items-center gap-2"} ${className.includes("text-right") && !className.includes("w-[72px]") ? "justify-end" : ""}`}>
+      <div className={`flex ${className.includes("w-[72px]") ? "flex-wrap items-center justify-center text-center" : "items-center"} ${className.includes("text-right") && !className.includes("w-[72px]") ? "justify-end" : ""}`}>
         <span className={className.includes("w-[72px]") ? "w-full leading-tight" : ""}>{label}</span>
-        <ArrowUpDown className="h-2.5 w-2.5 flex-shrink-0" />
         {visibilityKey && (
           <button
             type="button"
@@ -1966,6 +2119,29 @@ export default function MonitoringLapanganDash() {
             <ChevronDown className="h-3 w-3" />
           </button>
         )}
+      </div>
+    </TableHead>
+  );
+
+  const kondisiSortHead = (label: React.ReactNode, field: string, visibilityKey: keyof typeof usahaKondisiColumns, className = "", rowSpan = 1) => (
+    <TableHead
+      rowSpan={rowSpan > 1 ? rowSpan : undefined}
+      className={`${className} cursor-pointer hover:bg-slate-100`}
+      onClick={() => toggleMergedUsahaSort(field)}
+    >
+      <div className="flex flex-col items-end gap-0">
+        <span>{label}</span>
+        <button
+          type="button"
+          aria-label={`Sembunyikan ${String(label)}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            setUsahaKondisiColumns((previous) => ({ ...previous, [visibilityKey]: false }));
+          }}
+          className="rounded p-0.5 text-slate-500 hover:bg-white hover:text-slate-900"
+        >
+          <ChevronDown className="h-3 w-3" />
+        </button>
       </div>
     </TableHead>
   );
@@ -3481,6 +3657,69 @@ export default function MonitoringLapanganDash() {
                             </div>
                           ) : (
                             <div className="overflow-x-auto">
+                              <div className="hidden">
+                                <span className="text-sm font-medium text-slate-600">Kolom:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, true])) as typeof usahaKondisiColumns)}
+                                  className="inline-flex h-8 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                                >
+                                  <ChevronDown className="mr-1 h-4 w-4" /> Buka Semua
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, false])) as typeof usahaKondisiColumns)}
+                                  className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                                >
+                                  <ChevronRight className="mr-1 h-4 w-4" /> Tutup Semua
+                                </button>
+                                {([
+                                  ["BKU", ["perusahaanDitemukan", "perusahaanTutup", "perusahaanGanda", "perusahaanTidakDitemukan", "perusahaanBaru", "perusahaanDitemukanBaru"]],
+                                  ["Usaha Keluarga", ["keluargaDitemukan", "keluargaTutup", "keluargaGanda", "keluargaTidakDitemukan", "keluargaBaru", "keluargaDitemukanBaru"]],
+                                  ["Ringkasan", ["totalTidakDitemukan", "totalUsaha", "surplusDefisit"]],
+                                ] as const).map(([label, keys]) => {
+                                  const isOpen = keys.some((key) => usahaKondisiColumns[key]);
+                                  return (
+                                    <button
+                                      key={label}
+                                      type="button"
+                                      onClick={() => setUsahaKondisiColumns((previous) => ({ ...previous, ...Object.fromEntries(keys.map((key) => [key, !isOpen])) }))}
+                                      className="inline-flex h-8 items-center rounded-md border border-blue-200 bg-blue-50 px-3 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                                    >
+                                      {isOpen ? <ChevronDown className="mr-1 h-4 w-4" /> : <ChevronRight className="mr-1 h-4 w-4" />} {label}
+                                    </button>
+                                  );
+                                })}
+                                {([
+                                  ["prelistAwal", "Prelist Awal"],
+                                  ["prelistUsaha", "Jml Prelist Usaha"],
+                                  ["didata", "Didata"],
+                                  ["perusahaanDitemukan", "BKU Ditemukan"],
+                                  ["perusahaanTutup", "BKU Tutup"],
+                                  ["perusahaanGanda", "BKU Ganda"],
+                                  ["perusahaanTidakDitemukan", "BKU Tidak Ditemukan"],
+                                  ["perusahaanBaru", "BKU Baru"],
+                                  ["perusahaanDitemukanBaru", "BKU Ditemukan + Baru"],
+                                  ["keluargaDitemukan", "Keluarga Ditemukan"],
+                                  ["keluargaTutup", "Keluarga Tutup"],
+                                  ["keluargaGanda", "Keluarga Ganda"],
+                                  ["keluargaTidakDitemukan", "Keluarga Tidak Ditemukan"],
+                                  ["keluargaBaru", "Keluarga Baru"],
+                                  ["keluargaDitemukanBaru", "Keluarga Ditemukan + Baru"],
+                                  ["totalTidakDitemukan", "Total Tidak Ditemukan"],
+                                  ["totalUsaha", "Total Usaha"],
+                                  ["surplusDefisit", "Surplus / Defisit"],
+                                ] as const).map(([key, label]) => (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setUsahaKondisiColumns((previous) => ({ ...previous, [key]: !previous[key] }))}
+                                    className={`inline-flex h-7 items-center rounded border px-2 text-xs ${usahaKondisiColumns[key] ? "border-slate-200 bg-white text-slate-600 hover:bg-slate-50" : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"}`}
+                                  >
+                                    {usahaKondisiColumns[key] ? <ChevronDown className="mr-1 h-3.5 w-3.5" /> : <ChevronRight className="mr-1 h-3.5 w-3.5" />} {label}
+                                  </button>
+                                ))}
+                              </div>
                               <Table>
                                 <TableHeader>
                                 <TableRow className="bg-slate-50 hover:bg-slate-50">
@@ -3643,53 +3882,63 @@ export default function MonitoringLapanganDash() {
                             </div>
                           ) : (
                             <div className="overflow-x-auto">
+                              <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2">
+                                <span className="text-sm font-medium text-slate-600">Kolom:</span>
+                                <button type="button" onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, true])) as typeof usahaKondisiColumns)} className="inline-flex h-8 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-100"><ChevronDown className="mr-1 h-4 w-4" /> Buka Semua</button>
+                                <button type="button" onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, false])) as typeof usahaKondisiColumns)} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-medium text-slate-700 hover:bg-slate-200"><ChevronRight className="mr-1 h-4 w-4" /> Tutup Semua</button>
+                                {([
+                                  ["prelistAwal", "Prelist Awal"], ["prelistUsaha", "Jml Prelist Usaha"], ["didata", "Didata"],
+                                  ["perusahaanDitemukan", "BKU Ditemukan"], ["perusahaanTutup", "BKU Tutup"], ["perusahaanGanda", "BKU Ganda"], ["perusahaanTidakDitemukan", "BKU Tidak Ditemukan"], ["perusahaanBaru", "BKU Baru"], ["perusahaanDitemukanBaru", "BKU Ditemukan + Baru"],
+                                  ["keluargaDitemukan", "Keluarga Ditemukan"], ["keluargaTutup", "Keluarga Tutup"], ["keluargaGanda", "Keluarga Ganda"], ["keluargaTidakDitemukan", "Keluarga Tidak Ditemukan"], ["keluargaBaru", "Keluarga Baru"], ["keluargaDitemukanBaru", "Keluarga Ditemukan + Baru"],
+                                  ["totalTidakDitemukan", "Total Tidak Ditemukan"], ["totalUsaha", "Total Usaha"], ["surplusDefisit", "Surplus / Defisit"],
+                                ] as const).filter(([key]) => !usahaKondisiColumns[key]).map(([key, label]) => <button key={key} type="button" onClick={() => setUsahaKondisiColumns((previous) => ({ ...previous, [key]: true }))} className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2 text-xs text-slate-600 hover:bg-slate-50"><ChevronRight className="mr-1 h-3.5 w-3.5" /> {label}</button>)}
+                              </div>
                               <Table>
                                 <TableHeader>
                                   <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-2 border-slate-300">
-                                    <TableHead rowSpan={2} className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
-                                    <TableHead rowSpan={2} className="text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Nama PPL</TableHead>
-                                    <TableHead rowSpan={2} className="text-slate-700 font-semibold px-4 py-3 whitespace-nowrap min-w-[220px]">Kecamatan</TableHead>
-                                    <TableHead rowSpan={2} className="text-right text-slate-700 font-semibold px-4 py-3">Jml Prelist Usaha</TableHead>
-                                    <TableHead colSpan={6} className="text-center text-slate-700 font-semibold px-4 py-3 border border-slate-300">Bangunan Khusus Usaha (BKU)</TableHead>
-                                    <TableHead colSpan={6} className="text-center text-slate-700 font-semibold px-4 py-3 border border-slate-300">Usaha Keluarga</TableHead>
+                                    <TableHead rowSpan={2} className="sticky left-0 z-30 w-12 min-w-[48px] bg-slate-50 text-center text-slate-700 font-semibold">No</TableHead>
+                                    <TableHead rowSpan={2} onClick={() => toggleMergedUsahaSort("nama_ppl")} className="sticky left-12 z-30 w-[180px] min-w-[180px] max-w-[180px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 whitespace-nowrap cursor-pointer hover:bg-slate-100">Nama PPL</TableHead>
+                                    <TableHead rowSpan={2} onClick={() => toggleMergedUsahaSort("kecamatan")} className="sticky left-[228px] z-30 w-[220px] min-w-[220px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 whitespace-nowrap cursor-pointer hover:bg-slate-100">Kecamatan</TableHead>
+                                    {usahaKondisiColumns.prelistAwal && kondisiSortHead("Prelist Awal", "prelist_awal_baru", "prelistAwal", "text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap", 2)}
+                                    {usahaKondisiColumns.prelistUsaha && kondisiSortHead("Jml Prelist Usaha", "perusahaan_jumlah_prelist_usaha", "prelistUsaha", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
+                                    {usahaKondisiColumns.didata && kondisiSortHead("Didata", "didata", "didata", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
+                                    {Object.values(usahaKondisiColumns).some((value, index) => index >= 3 && index <= 8) && <TableHead colSpan={Object.values(usahaKondisiColumns).slice(3, 9).filter(Boolean).length} onClick={() => setUsahaKondisiColumns((previous) => ({ ...previous, perusahaanDitemukan: false, perusahaanTutup: false, perusahaanGanda: false, perusahaanTidakDitemukan: false, perusahaanBaru: false, perusahaanDitemukanBaru: false }))} className="text-center text-slate-700 font-semibold px-4 py-3 border border-slate-300 cursor-pointer hover:bg-slate-100" title="Sembunyikan kolom BKU">Bangunan Khusus Usaha (BKU)</TableHead>}
+                                    {Object.values(usahaKondisiColumns).some((value, index) => index >= 9 && index <= 14) && <TableHead colSpan={Object.values(usahaKondisiColumns).slice(9, 15).filter(Boolean).length} onClick={() => setUsahaKondisiColumns((previous) => ({ ...previous, keluargaDitemukan: false, keluargaTutup: false, keluargaGanda: false, keluargaTidakDitemukan: false, keluargaBaru: false, keluargaDitemukanBaru: false }))} className="text-center text-slate-700 font-semibold px-4 py-3 border border-slate-300 cursor-pointer hover:bg-slate-100" title="Sembunyikan kolom Usaha Keluarga">Usaha Keluarga</TableHead>}
+                                    {usahaKondisiColumns.totalTidakDitemukan && kondisiSortHead("Total Usaha Tidak Ditemukan (BKU + Keluarga)", "total_tidak_ditemukan", "totalTidakDitemukan", "w-[88px] min-w-[88px] max-w-[88px] text-right text-[10px] leading-tight break-words text-rose-800 font-semibold px-1 py-1 bg-rose-50", 2)}
+                                    {usahaKondisiColumns.totalUsaha && kondisiSortHead("Total Usaha (Ditemukan + Baru)", "total_usaha", "totalUsaha", "w-[88px] min-w-[88px] max-w-[88px] text-right text-[10px] leading-tight break-words text-sky-700 font-semibold px-1 py-1 bg-cyan-50", 2)}
+                                    {usahaKondisiColumns.surplusDefisit && kondisiSortHead("Surplus / Defisit (Total Usaha - Tidak Ditemukan)", "surplus_defisit", "surplusDefisit", "w-[88px] min-w-[88px] max-w-[88px] text-right text-[10px] leading-tight break-words text-slate-700 font-semibold px-1 py-1", 2)}
                                   </TableRow>
                                   <TableRow className="bg-slate-50 hover:bg-slate-50">
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3 bg-slate-100">Ditemukan</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3 bg-slate-50">Tutup</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3 bg-slate-100">Ganda</TableHead>
-                                    <TableHead className="text-right text-rose-800 font-semibold px-2 py-3 w-14 whitespace-normal break-words border-r-2 border-slate-300 bg-rose-50">
-                                      <span className="block">Tidak</span>
-                                      <span className="block">Ditemukan</span>
-                                    </TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-3 py-3 bg-amber-50">Baru</TableHead>
-                                    <TableHead className="text-right font-semibold px-2 py-3 w-14 whitespace-normal break-words border-r-2 border-slate-300 bg-cyan-50 text-sky-700">
-                                      <span className="block">Ditemukan+</span>
-                                      <span className="block">Baru</span>
-                                    </TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3 bg-slate-100">Ditemukan</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3 bg-slate-50">Tutup</TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-4 py-3 bg-slate-100">Ganda</TableHead>
-                                    <TableHead className="text-right text-rose-800 font-semibold px-2 py-3 w-14 whitespace-normal break-words bg-rose-50">
-                                      <span className="block">Tidak</span>
-                                      <span className="block">Ditemukan</span>
-                                    </TableHead>
-                                    <TableHead className="text-right text-slate-700 font-semibold px-3 py-3 bg-amber-50">Baru</TableHead>
-                                    <TableHead className="text-right font-semibold px-2 py-3 w-14 whitespace-normal break-words bg-cyan-50 text-sky-700">
-                                      <span className="block">Ditemukan+</span>
-                                      <span className="block">Baru</span>
-                                    </TableHead>
+                                    {usahaKondisiColumns.perusahaanDitemukan && kondisiSortHead("Ditemukan", "perusahaan_ditemukan", "perusahaanDitemukan", "text-right text-slate-700 font-semibold px-4 py-3 bg-slate-100")}
+                                    {usahaKondisiColumns.perusahaanTutup && kondisiSortHead("Tutup", "perusahaan_tutup", "perusahaanTutup", "text-right text-slate-700 font-semibold px-4 py-3 bg-slate-50")}
+                                    {usahaKondisiColumns.perusahaanGanda && kondisiSortHead("Ganda", "perusahaan_ganda", "perusahaanGanda", "text-right text-slate-700 font-semibold px-4 py-3 bg-slate-100")}
+                                    {usahaKondisiColumns.perusahaanTidakDitemukan && kondisiSortHead(<><span className="block">Tidak</span><span className="block">Ditemukan</span></>, "perusahaan_tidak_ditemukan", "perusahaanTidakDitemukan", "text-right text-rose-800 font-semibold px-2 py-3 w-14 whitespace-normal break-words border-r-2 border-slate-300 bg-rose-50")}
+                                    {usahaKondisiColumns.perusahaanBaru && kondisiSortHead("Baru", "perusahaan_baru", "perusahaanBaru", "text-right text-slate-700 font-semibold px-3 py-3 bg-amber-50")}
+                                    {usahaKondisiColumns.perusahaanDitemukanBaru && kondisiSortHead(<><span className="block">Ditemukan+</span><span className="block">Baru</span></>, "perusahaan_ditemukan_plus_baru", "perusahaanDitemukanBaru", "text-right font-semibold px-2 py-3 w-14 whitespace-normal break-words border-r-2 border-slate-300 bg-cyan-50 text-sky-700")}
+                                    {usahaKondisiColumns.keluargaDitemukan && kondisiSortHead("Ditemukan", "keluarga_ditemukan", "keluargaDitemukan", "text-right text-slate-700 font-semibold px-4 py-3 bg-slate-100")}
+                                    {usahaKondisiColumns.keluargaTutup && kondisiSortHead("Tutup", "keluarga_tutup", "keluargaTutup", "text-right text-slate-700 font-semibold px-4 py-3 bg-slate-50")}
+                                    {usahaKondisiColumns.keluargaGanda && kondisiSortHead("Ganda", "keluarga_ganda", "keluargaGanda", "text-right text-slate-700 font-semibold px-4 py-3 bg-slate-100")}
+                                    {usahaKondisiColumns.keluargaTidakDitemukan && kondisiSortHead(<><span className="block">Tidak</span><span className="block">Ditemukan</span></>, "keluarga_tidak_ditemukan", "keluargaTidakDitemukan", "text-right text-rose-800 font-semibold px-2 py-3 w-14 whitespace-normal break-words bg-rose-50")}
+                                    {usahaKondisiColumns.keluargaBaru && kondisiSortHead("Baru", "keluarga_baru", "keluargaBaru", "text-right text-slate-700 font-semibold px-3 py-3 bg-amber-50")}
+                                    {usahaKondisiColumns.keluargaDitemukanBaru && kondisiSortHead(<><span className="block">Ditemukan+</span><span className="block">Baru</span></>, "keluarga_ditemukan_plus_baru", "keluargaDitemukanBaru", "text-right font-semibold px-2 py-3 w-14 whitespace-normal break-words bg-cyan-50 text-sky-700")}
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                   {usahaMergedPaginatedRows.map((row, index) => {
                                     const rowNumber = (usahaKondisiMergedCurrentPage - 1) * usahaItemsPerPage + index + 1;
                                     const isExpanded = expandedMergedUsaha.has(row.id);
+                                    const totalTidakDitemukan = parseNumericValue(row.perusahaan_tidak_ditemukan) + parseNumericValue(row.keluarga_tidak_ditemukan);
+                                    const totalUsaha = parseNumericValue(row.perusahaan_ditemukan) + parseNumericValue(row.perusahaan_baru) + parseNumericValue(row.keluarga_ditemukan) + parseNumericValue(row.keluarga_baru);
+                                    const surplusDefisit = totalUsaha - totalTidakDitemukan;
+                                    const jmlPrelistUsaha = parseNumericValue(row.perusahaan_jumlah_prelist_usaha);
+                                    const persentaseTidakDitemukan = jmlPrelistUsaha > 0 ? (totalTidakDitemukan / jmlPrelistUsaha) * 100 : 0;
+                                    const persentaseTotalUsaha = jmlPrelistUsaha > 0 ? (totalUsaha / jmlPrelistUsaha) * 100 : 0;
                                     return (
                                       <React.Fragment key={row.id}>
                                         <TableRow className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                                          <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
+                                          <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-white text-center text-slate-600 font-medium">{rowNumber}</TableCell>
                                           <TableCell
-                                            className="text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2 whitespace-nowrap"
+                                            className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-white text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2 whitespace-nowrap"
                                             onClick={() => {
                                               setExpandedMergedUsaha((prev) => {
                                                 const next = new Set(prev);
@@ -3706,44 +3955,56 @@ export default function MonitoringLapanganDash() {
                                             )}
                                             <span>{row.nama_ppl}</span>
                                           </TableCell>
-                                          <TableCell className="text-slate-900 px-4 py-3 whitespace-nowrap min-w-[220px]">{row.kecamatan}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.perusahaan_jumlah_prelist_usaha).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.perusahaan_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-50">{parseNumericValue(row.perusahaan_tutup).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.perusahaan_ganda).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-rose-800 px-2 py-3 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(row.perusahaan_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-3 py-3 bg-amber-50">{parseNumericValue(row.perusahaan_baru).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold px-2 py-3 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(row.perusahaan_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.keluarga_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-50">{parseNumericValue(row.keluarga_tutup).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.keluarga_ganda).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-rose-800 px-2 py-3 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(row.keluarga_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-3 py-3 bg-amber-50">{parseNumericValue(row.keluarga_baru).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold px-2 py-3 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(row.keluarga_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-white text-slate-900 px-4 py-3 whitespace-nowrap">{row.kecamatan}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.prelistAwal} className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.prelist_awal_baru).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.prelistUsaha} className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.perusahaan_jumlah_prelist_usaha).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.didata} className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.didata).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.perusahaanDitemukan} className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.perusahaan_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.perusahaanTutup} className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-50">{parseNumericValue(row.perusahaan_tutup).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.perusahaanGanda} className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.perusahaan_ganda).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.perusahaanTidakDitemukan} className="text-right font-semibold text-rose-800 px-2 py-3 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(row.perusahaan_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.perusahaanBaru} className="text-right font-semibold text-slate-900 px-3 py-3 bg-amber-50">{parseNumericValue(row.perusahaan_baru).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.perusahaanDitemukanBaru} className="text-right font-semibold px-2 py-3 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(row.perusahaan_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.keluargaDitemukan} className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.keluarga_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.keluargaTutup} className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-50">{parseNumericValue(row.keluarga_tutup).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.keluargaGanda} className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.keluarga_ganda).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.keluargaTidakDitemukan} className="text-right font-semibold text-rose-800 px-2 py-3 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(row.keluarga_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.keluargaBaru} className="text-right font-semibold text-slate-900 px-3 py-3 bg-amber-50">{parseNumericValue(row.keluarga_baru).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.keluargaDitemukanBaru} className="text-right font-semibold px-2 py-3 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(row.keluarga_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.totalTidakDitemukan} className="text-right font-semibold text-rose-800 px-4 py-3 bg-rose-50"><div>{totalTidakDitemukan.toLocaleString("id-ID")}</div><div className="text-xs font-medium text-rose-700">{persentaseTidakDitemukan.toFixed(2).replace(".", ",")}%</div></TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.totalUsaha} className="text-right font-semibold text-sky-700 px-4 py-3 bg-cyan-50"><div>{totalUsaha.toLocaleString("id-ID")}</div><div className="text-xs font-medium text-sky-700">{persentaseTotalUsaha.toFixed(2).replace(".", ",")}%</div></TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.surplusDefisit} className={`text-right font-semibold px-4 py-3 ${surplusDefisit < 0 ? "text-rose-800" : "text-emerald-700"}`}>{surplusDefisit.toLocaleString("id-ID")}</TableCell>
                                         </TableRow>
                                         {isExpanded && row.details.map((detail) => (
                                           <TableRow key={detail.id} className="border-b border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
-                                            <TableCell className="px-4 py-2" />
-                                            <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8">{detail.sls_code}</TableCell>
-                                            <TableCell className="text-sm text-slate-600 px-4 py-2">{detail.sls_rt}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.perusahaan_jumlah_prelist_usaha).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.perusahaan_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-50">{parseNumericValue(detail.perusahaan_tutup).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.perusahaan_ganda).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-rose-800 px-2 py-2 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(detail.perusahaan_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-3 py-2 bg-amber-50">{parseNumericValue(detail.perusahaan_baru).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold px-2 py-2 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(detail.perusahaan_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.keluarga_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-50">{parseNumericValue(detail.keluarga_tutup).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.keluarga_ganda).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-rose-800 px-2 py-2 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(detail.keluarga_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold text-slate-900 px-3 py-2 bg-amber-50">{parseNumericValue(detail.keluarga_baru).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell className="text-right font-semibold px-2 py-2 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(detail.keluarga_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-slate-50 px-4 py-2" />
+                                            <TableCell className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-slate-50 text-sm text-slate-700 px-4 py-2 italic pl-8">{detail.sls_code}</TableCell>
+                                            <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-slate-50 text-sm text-slate-600 px-4 py-2">{detail.sls_rt}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.prelistAwal} className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.prelist_awal_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.prelistUsaha} className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.perusahaan_jumlah_prelist_usaha).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.didata} className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.didata).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.perusahaanDitemukan} className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.perusahaan_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.perusahaanTutup} className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-50">{parseNumericValue(detail.perusahaan_tutup).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.perusahaanGanda} className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.perusahaan_ganda).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.perusahaanTidakDitemukan} className="text-right font-semibold text-rose-800 px-2 py-2 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(detail.perusahaan_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.perusahaanBaru} className="text-right font-semibold text-slate-900 px-3 py-2 bg-amber-50">{parseNumericValue(detail.perusahaan_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.perusahaanDitemukanBaru} className="text-right font-semibold px-2 py-2 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(detail.perusahaan_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.keluargaDitemukan} className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.keluarga_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.keluargaTutup} className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-50">{parseNumericValue(detail.keluarga_tutup).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.keluargaGanda} className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.keluarga_ganda).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.keluargaTidakDitemukan} className="text-right font-semibold text-rose-800 px-2 py-2 w-14 whitespace-nowrap bg-rose-50">{parseNumericValue(detail.keluarga_tidak_ditemukan).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.keluargaBaru} className="text-right font-semibold text-slate-900 px-3 py-2 bg-amber-50">{parseNumericValue(detail.keluarga_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.keluargaDitemukanBaru} className="text-right font-semibold px-2 py-2 w-14 whitespace-nowrap bg-cyan-50 text-sky-700">{parseNumericValue(detail.keluarga_ditemukan_plus_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.totalTidakDitemukan} className="text-right font-semibold text-rose-800 px-4 py-2 bg-rose-50">{(() => { const prelist = parseNumericValue(detail.perusahaan_jumlah_prelist_usaha); const total = parseNumericValue(detail.perusahaan_tidak_ditemukan) + parseNumericValue(detail.keluarga_tidak_ditemukan); return <><div>{total.toLocaleString("id-ID")}</div><div className="text-xs font-medium text-rose-700">{(prelist > 0 ? (total / prelist) * 100 : 0).toFixed(2).replace(".", ",")}%</div></>; })()}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.totalUsaha} className="text-right font-semibold text-sky-700 px-4 py-2 bg-cyan-50">{(() => { const prelist = parseNumericValue(detail.perusahaan_jumlah_prelist_usaha); const total = parseNumericValue(detail.perusahaan_ditemukan) + parseNumericValue(detail.perusahaan_baru) + parseNumericValue(detail.keluarga_ditemukan) + parseNumericValue(detail.keluarga_baru); return <><div>{total.toLocaleString("id-ID")}</div><div className="text-xs font-medium text-sky-700">{(prelist > 0 ? (total / prelist) * 100 : 0).toFixed(2).replace(".", ",")} %</div></>; })()}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.surplusDefisit} className="text-right font-semibold text-slate-700 px-4 py-2">{(parseNumericValue(detail.perusahaan_ditemukan) + parseNumericValue(detail.perusahaan_baru) + parseNumericValue(detail.keluarga_ditemukan) + parseNumericValue(detail.keluarga_baru) - parseNumericValue(detail.perusahaan_tidak_ditemukan) - parseNumericValue(detail.keluarga_tidak_ditemukan)).toLocaleString("id-ID")}</TableCell>
                                           </TableRow>
                                         ))}
                                       </React.Fragment>
                                     );
                                   })}
+                                  {renderMergedUsahaSummaryRow("Jumlah sesuai tampilan pagination", paginatedMergedUsahaSummary)}
+                                  {renderMergedUsahaSummaryRow("Jumlah total keseluruhan", totalMergedUsahaSummary)}
                                 </TableBody>
                               </Table>
                               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
