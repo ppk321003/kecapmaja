@@ -473,6 +473,20 @@ interface UsahaProporsiDetailRow {
   keluarga_baru_non_pertanian: string;
 }
 
+type UsahaProporsiNumericField =
+  | "prelist_awal"
+  | "prelist_usaha"
+  | "utp_subsektor_st2023"
+  | "didata"
+  | "bku_ditemukan_pertanian"
+  | "bku_ditemukan_non_pertanian"
+  | "bku_baru_pertanian"
+  | "bku_baru_non_pertanian"
+  | "keluarga_ditemukan_pertanian"
+  | "keluarga_ditemukan_non_pertanian"
+  | "keluarga_baru_pertanian"
+  | "keluarga_baru_non_pertanian";
+
 interface MergedUsahaDetailRow {
   id: string;
   sourceType: "Perusahaan" | "Keluarga" | "Gabungan";
@@ -699,7 +713,7 @@ export default function MonitoringLapanganDash() {
   const [editDialogRow, setEditDialogRow] = useState<number | null>(null);
   const [editDialogValue, setEditDialogValue] = useState<string>("");
   const [editSaving, setEditSaving] = useState(false);
-  const debugRef = React.useRef<{ sizes: any; zeroEntries: any[]; zeroCount: number }>({ sizes: {}, zeroEntries: [], zeroCount: 0 });
+  const debugRef = React.useRef<{ sizes: any; zeroEntries: any[]; zeroCount: number; unmatched?: any[]; unmatchedDetails?: any[] }>({ sizes: {}, zeroEntries: [], zeroCount: 0 });
 
   useEffect(() => {
     console.debug("editDialogOpen changed", { editDialogOpen, editDialogField, editDialogRow });
@@ -1946,7 +1960,7 @@ export default function MonitoringLapanganDash() {
   });
 
   const paginatedMergedUsahaSummary = summarizeMergedUsahaRows(usahaMergedPaginatedRows);
-  const totalMergedUsahaSummary = summarizeMergedUsahaRows(filteredMergedUsahaRows);
+  const totalMergedUsahaSummary = summarizeMergedUsahaRows(mergedUsahaRows);
 
   const renderMergedUsahaSummaryRow = (label: string, summary: typeof paginatedMergedUsahaSummary) => {
     const totalTidakDitemukan = summary.perusahaan_tidak_ditemukan + summary.keluarga_tidak_ditemukan;
@@ -2293,7 +2307,7 @@ export default function MonitoringLapanganDash() {
       };
     };
 
-    const numericFields: Array<keyof UsahaProporsiRow> = [
+    const numericFields: UsahaProporsiNumericField[] = [
       "prelist_awal",
       "prelist_usaha",
       "utp_subsektor_st2023",
