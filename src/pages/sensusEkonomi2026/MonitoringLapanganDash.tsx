@@ -610,6 +610,22 @@ export default function MonitoringLapanganDash() {
   const [expandedUsahaPerusahaan, setExpandedUsahaPerusahaan] = useState<Set<string>>(new Set());
   const [expandedUsahaKeluarga, setExpandedUsahaKeluarga] = useState<Set<string>>(new Set());
   const [expandedUsahaProporsi, setExpandedUsahaProporsi] = useState<Set<string>>(new Set());
+  const [proporsiColumnGroups, setProporsiColumnGroups] = useState({
+    dasar: true,
+    prelistAwal: true,
+    prelistUsaha: true,
+    utpSt2023: true,
+    didata: true,
+    bkuDitemukanPertanian: true,
+    bkuDitemukanNonPertanian: true,
+    bkuBaruPertanian: true,
+    bkuBaruNonPertanian: true,
+    keluargaDitemukanPertanian: true,
+    keluargaDitemukanNonPertanian: true,
+    keluargaBaruPertanian: true,
+    keluargaBaruNonPertanian: true,
+    ringkasan: true,
+  });
 
   // Ngibar Disdik tab: safe incremental implementation
   const NGIBAR_SPREADSHEET_ID = "1EyrssWtjEGd64SYelUMON3nnLpj6KU5INCMeD-Amjto";
@@ -1928,7 +1944,7 @@ export default function MonitoringLapanganDash() {
     setUsahaProporsiCurrentPage(1);
   };
 
-  const proporsiSortHead = (label: string, field: string, className = "", rowSpan = 1) => (
+  const proporsiSortHead = (label: string, field: string, className = "", rowSpan = 1, visibilityKey?: keyof typeof proporsiColumnGroups) => (
     <TableHead
       rowSpan={rowSpan > 1 ? rowSpan : undefined}
       className={`${className} cursor-pointer hover:bg-slate-100`}
@@ -1937,6 +1953,19 @@ export default function MonitoringLapanganDash() {
       <div className={`flex items-center gap-2 ${className.includes("text-right") ? "justify-end" : ""}`}>
         {label}
         <ArrowUpDown className="h-4 w-4 flex-shrink-0" />
+        {visibilityKey && (
+          <button
+            type="button"
+            aria-label={`Sembunyikan ${label}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              setProporsiColumnGroups((previous) => ({ ...previous, [visibilityKey]: false }));
+            }}
+            className="rounded p-0.5 text-slate-500 hover:bg-white hover:text-slate-900"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     </TableHead>
   );
@@ -3822,30 +3851,90 @@ export default function MonitoringLapanganDash() {
                           </div>
                         ) : (
                           <div className="overflow-x-auto">
+                            <div className="flex items-center gap-2 border-b px-4 py-2">
+                              <span className="text-sm font-medium text-slate-600">Kolom:</span>
+                              <button
+                                type="button"
+                                onClick={() => setProporsiColumnGroups({ dasar: true, prelistAwal: true, prelistUsaha: true, utpSt2023: true, didata: true, bkuDitemukanPertanian: true, bkuDitemukanNonPertanian: true, bkuBaruPertanian: true, bkuBaruNonPertanian: true, keluargaDitemukanPertanian: true, keluargaDitemukanNonPertanian: true, keluargaBaruPertanian: true, keluargaBaruNonPertanian: true, ringkasan: true })}
+                                className="inline-flex h-8 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                              >
+                                <ChevronDown className="mr-1 h-4 w-4" /> Buka Semua
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setProporsiColumnGroups({ dasar: true, prelistAwal: false, prelistUsaha: false, utpSt2023: false, didata: false, bkuDitemukanPertanian: false, bkuDitemukanNonPertanian: false, bkuBaruPertanian: false, bkuBaruNonPertanian: false, keluargaDitemukanPertanian: false, keluargaDitemukanNonPertanian: false, keluargaBaruPertanian: false, keluargaBaruNonPertanian: false, ringkasan: false })}
+                                className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                              >
+                                <ChevronRight className="mr-1 h-4 w-4" /> Tutup Semua
+                              </button>
+                              <div className="flex flex-wrap items-center gap-1">
+                                {([
+                                  ["bkuDitemukanPertanian", "Ditemukan Pertanian (BKU)"],
+                                  ["bkuDitemukanNonPertanian", "Ditemukan Non Pertanian (BKU)"],
+                                  ["bkuBaruPertanian", "Baru Pertanian (BKU)"],
+                                  ["bkuBaruNonPertanian", "Baru Non Pertanian (BKU)"],
+                                  ["keluargaDitemukanPertanian", "Ditemukan Pertanian (Keluarga)"],
+                                  ["keluargaDitemukanNonPertanian", "Ditemukan Non Pertanian (Keluarga)"],
+                                  ["keluargaBaruPertanian", "Baru Pertanian (Keluarga)"],
+                                  ["keluargaBaruNonPertanian", "Baru Non Pertanian (Keluarga)"],
+                                  ["prelistAwal", "Prelist Awal"],
+                                  ["prelistUsaha", "Prelist Usaha"],
+                                  ["utpSt2023", "UTP ST2023"],
+                                  ["didata", "Didata"],
+                                ] as const).filter(([key]) => !proporsiColumnGroups[key]).map(([key, label]) => (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setProporsiColumnGroups((previous) => ({ ...previous, [key]: true }))}
+                                    className="inline-flex h-7 items-center rounded border border-slate-300 bg-white px-2 text-xs text-slate-600 hover:bg-slate-50"
+                                  >
+                                    <ChevronRight className="mr-1 h-3.5 w-3.5" /> {label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                             <Table>
                               <TableHeader>
                                 <TableRow className="bg-slate-50 hover:bg-slate-50">
                                   <TableHead rowSpan={2} className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
-                                  {proporsiSortHead("Nama PPL", "nama_ppl", "text-slate-700 font-semibold px-4 py-3", 2)}
-                                  {proporsiSortHead("Kecamatan", "kecamatan", "text-slate-700 font-semibold px-4 py-3", 2)}
-                                  {proporsiSortHead("Prelist Awal", "prelist_awal", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
-                                  {proporsiSortHead("Prelist Usaha", "prelist_usaha", "text-right text-blue-700 font-bold px-4 py-3", 2)}
-                                  {proporsiSortHead("UTP ST2023", "utp_subsektor_st2023", "text-green-700 font-bold px-4 py-3", 2)}
-                                  {proporsiSortHead("Didata", "didata", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
-                                  <TableHead colSpan={4} className="text-center text-slate-700 font-semibold px-4 py-3 border-l-2 border-slate-300">Usaha BKU</TableHead>
-                                  <TableHead colSpan={4} className="text-center text-slate-700 font-semibold px-4 py-3 border-l-2 border-slate-300">Usaha Dalam Keluarga</TableHead>
-                                  {proporsiSortHead("Jumlah Usaha", "jumlah_usaha", "text-center text-slate-700 font-semibold px-4 py-3 border-l-2 border-slate-300", 2)}
-                                  {proporsiSortHead("Jumlah Usaha Pertanian", "jumlah_usaha_pertanian", "text-center text-slate-700 font-semibold px-4 py-3 border-l-2 border-slate-300", 2)}
+                                  <TableHead colSpan={2 + [proporsiColumnGroups.prelistAwal, proporsiColumnGroups.prelistUsaha, proporsiColumnGroups.utpSt2023, proporsiColumnGroups.didata].filter(Boolean).length} className="text-center font-bold border bg-slate-200 text-slate-700">
+                                    <div className="flex items-center justify-center py-1 px-2">Identitas & Dasar</div>
+                                  </TableHead>
+                                  <TableHead colSpan={[proporsiColumnGroups.bkuDitemukanPertanian, proporsiColumnGroups.bkuDitemukanNonPertanian, proporsiColumnGroups.bkuBaruPertanian, proporsiColumnGroups.bkuBaruNonPertanian].filter(Boolean).length} className="text-center font-bold border bg-orange-200 text-orange-800">
+                                    <div className="flex items-center justify-center gap-2 py-1 px-2">Usaha BKU</div>
+                                  </TableHead>
+                                  <TableHead colSpan={[proporsiColumnGroups.keluargaDitemukanPertanian, proporsiColumnGroups.keluargaDitemukanNonPertanian, proporsiColumnGroups.keluargaBaruPertanian, proporsiColumnGroups.keluargaBaruNonPertanian].filter(Boolean).length} className="text-center font-bold border bg-blue-200 text-blue-800">
+                                    <div className="flex items-center justify-center gap-2 py-1 px-2">Usaha Dalam Keluarga</div>
+                                  </TableHead>
+                                  <TableHead colSpan={proporsiColumnGroups.ringkasan ? 2 : 0} className={`text-center font-bold border bg-emerald-200 text-emerald-800 cursor-pointer select-none transition-all hover:shadow-md hover:opacity-90 ${proporsiColumnGroups.ringkasan ? "" : "hidden"}`} onClick={() => setProporsiColumnGroups((previous) => ({ ...previous, ringkasan: !previous.ringkasan }))} title={`Klik untuk ${proporsiColumnGroups.ringkasan ? "tutup" : "buka"} kolom ringkasan`}>
+                                    <div className="flex items-center justify-center gap-2 py-1 px-2">Ringkasan<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${proporsiColumnGroups.ringkasan ? "" : "-rotate-90"}`} /></div>
+                                  </TableHead>
                                 </TableRow>
                                 <TableRow className="bg-slate-50 hover:bg-slate-50">
-                                  {proporsiSortHead("Ditemukan Pertanian", "bku_ditemukan_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3 border-l-2 border-slate-300")}
-                                  {proporsiSortHead("Ditemukan Non Pertanian", "bku_ditemukan_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3")}
-                                  {proporsiSortHead("Baru Pertanian", "bku_baru_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3")}
-                                  {proporsiSortHead("Baru Non Pertanian", "bku_baru_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3")}
-                                  {proporsiSortHead("Ditemukan Pertanian", "keluarga_ditemukan_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3 border-l-2 border-slate-300")}
-                                  {proporsiSortHead("Ditemukan Non Pertanian", "keluarga_ditemukan_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3")}
-                                  {proporsiSortHead("Baru Pertanian", "keluarga_baru_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3")}
-                                  {proporsiSortHead("Baru Non Pertanian", "keluarga_baru_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3")}
+                                  {proporsiColumnGroups.dasar && <>
+                                    {proporsiSortHead("Nama PPL", "nama_ppl", "text-slate-700 font-semibold px-4 py-3")}
+                                    {proporsiSortHead("Kecamatan", "kecamatan", "text-slate-700 font-semibold px-4 py-3")}
+                                    {proporsiColumnGroups.prelistAwal && proporsiSortHead("Prelist Awal", "prelist_awal", "text-right text-slate-700 font-semibold px-4 py-3", 1, "prelistAwal")}
+                                    {proporsiColumnGroups.prelistUsaha && proporsiSortHead("Prelist Usaha", "prelist_usaha", "text-right text-blue-700 font-bold px-4 py-3", 1, "prelistUsaha")}
+                                    {proporsiColumnGroups.utpSt2023 && proporsiSortHead("UTP ST2023", "utp_subsektor_st2023", "text-green-700 font-bold px-4 py-3", 1, "utpSt2023")}
+                                    {proporsiColumnGroups.didata && proporsiSortHead("Didata", "didata", "text-right text-orange-800 font-bold px-4 py-3", 1, "didata")}
+                                    </>}
+                                  <>
+                                    {proporsiColumnGroups.bkuDitemukanPertanian && proporsiSortHead("Ditemukan Pertanian", "bku_ditemukan_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3 border-l-2 border-slate-300", 1, "bkuDitemukanPertanian")}
+                                    {proporsiColumnGroups.bkuDitemukanNonPertanian && proporsiSortHead("Ditemukan Non Pertanian", "bku_ditemukan_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3", 1, "bkuDitemukanNonPertanian")}
+                                    {proporsiColumnGroups.bkuBaruPertanian && proporsiSortHead("Baru Pertanian", "bku_baru_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3", 1, "bkuBaruPertanian")}
+                                    {proporsiColumnGroups.bkuBaruNonPertanian && proporsiSortHead("Baru Non Pertanian", "bku_baru_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3", 1, "bkuBaruNonPertanian")}
+                                    </>
+                                  <>
+                                    {proporsiColumnGroups.keluargaDitemukanPertanian && proporsiSortHead("Ditemukan Pertanian", "keluarga_ditemukan_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3 border-l-2 border-slate-300", 1, "keluargaDitemukanPertanian")}
+                                    {proporsiColumnGroups.keluargaDitemukanNonPertanian && proporsiSortHead("Ditemukan Non Pertanian", "keluarga_ditemukan_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3", 1, "keluargaDitemukanNonPertanian")}
+                                    {proporsiColumnGroups.keluargaBaruPertanian && proporsiSortHead("Baru Pertanian", "keluarga_baru_pertanian", "text-right text-emerald-600 font-semibold px-4 py-3", 1, "keluargaBaruPertanian")}
+                                    {proporsiColumnGroups.keluargaBaruNonPertanian && proporsiSortHead("Baru Non Pertanian", "keluarga_baru_non_pertanian", "text-right text-blue-600 font-semibold px-4 py-3", 1, "keluargaBaruNonPertanian")}
+                                    </>
+                                  {proporsiColumnGroups.ringkasan && <>
+                                    {proporsiSortHead("Jumlah Usaha", "jumlah_usaha", "text-right font-semibold px-4 py-3 border-l-2 border-slate-300")}
+                                    {proporsiSortHead("Jumlah Usaha Pertanian", "jumlah_usaha_pertanian", "text-right font-semibold px-4 py-3 border-l-2 border-slate-300")}
+                                  </>}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -3882,19 +3971,26 @@ export default function MonitoringLapanganDash() {
                                           {isExpanded ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
                                           <span>{row.nama_ppl}</span>
                                         </TableCell>
-                                        <TableCell className="text-slate-900 px-4 py-3 whitespace-nowrap">{row.kecamatan}</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.prelist_awal).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-bold text-blue-700 px-4 py-3">{parseNumericValue(row.prelist_usaha).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-left font-bold text-green-700 px-4 py-3">{row.utp_subsektor_st2023}</TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.didata).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3 border-l-2 border-slate-300">{parseNumericValue(row.bku_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.bku_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3">{parseNumericValue(row.bku_baru_pertanian).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.bku_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3 border-l-2 border-slate-300">{parseNumericValue(row.keluarga_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.keluarga_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3">{parseNumericValue(row.keluarga_baru_pertanian).toLocaleString("id-ID")}</TableCell>
-                                      <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.keluarga_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                        {proporsiColumnGroups.dasar && <>
+                                          <TableCell className="text-slate-900 px-4 py-3 whitespace-nowrap">{row.kecamatan}</TableCell>
+                                          {proporsiColumnGroups.prelistAwal && <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.prelist_awal).toLocaleString("id-ID")}</TableCell>}
+                                          {proporsiColumnGroups.prelistUsaha && <TableCell className="text-right font-bold text-blue-700 px-4 py-3">{parseNumericValue(row.prelist_usaha).toLocaleString("id-ID")}</TableCell>}
+                                          {proporsiColumnGroups.utpSt2023 && <TableCell className="text-left font-bold text-green-700 px-4 py-3">{row.utp_subsektor_st2023}</TableCell>}
+                                          {proporsiColumnGroups.didata && <TableCell className="text-right font-bold text-orange-800 px-4 py-3">{parseNumericValue(row.didata).toLocaleString("id-ID")}</TableCell>}
+                                        </>}
+                                        <>
+                                          {proporsiColumnGroups.bkuDitemukanPertanian && <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3 border-l-2 border-slate-300">{parseNumericValue(row.bku_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                          {proporsiColumnGroups.bkuDitemukanNonPertanian && <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.bku_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                          {proporsiColumnGroups.bkuBaruPertanian && <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3">{parseNumericValue(row.bku_baru_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                          {proporsiColumnGroups.bkuBaruNonPertanian && <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.bku_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                        </>
+                                        <>
+                                          {proporsiColumnGroups.keluargaDitemukanPertanian && <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3 border-l-2 border-slate-300">{parseNumericValue(row.keluarga_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                          {proporsiColumnGroups.keluargaDitemukanNonPertanian && <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.keluarga_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                          {proporsiColumnGroups.keluargaBaruPertanian && <TableCell className="text-right font-semibold text-emerald-600 px-4 py-3">{parseNumericValue(row.keluarga_baru_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                          {proporsiColumnGroups.keluargaBaruNonPertanian && <TableCell className="text-right font-semibold text-blue-600 px-4 py-3">{parseNumericValue(row.keluarga_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                        </>
+                                        {proporsiColumnGroups.ringkasan && <>
                                       <TableCell className="text-right px-4 py-3 border-l-2 border-slate-300">
                                         <div className="font-semibold text-slate-900">{jumlahUsaha.toLocaleString("id-ID")}</div>
                                         <div className={`text-xs font-medium ${getProporsiPercentageClass(jumlahUsaha, parseNumericValue(row.prelist_usaha))}`}>{formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.prelist_usaha))}</div>
@@ -3903,24 +3999,32 @@ export default function MonitoringLapanganDash() {
                                         <div className="font-semibold text-slate-900">{jumlahUsahaPertanian.toLocaleString("id-ID")}</div>
                                         <div className={`text-xs font-medium ${getProporsiPercentageClass(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}`}>{formatProporsiPercentage(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}</div>
                                       </TableCell>
+                                        </>}
                                       </TableRow>
                                       {isExpanded && row.children.map((detail) => (
                                         <TableRow key={detail.id} className="border-b border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
                                           <TableCell className="px-4 py-2" />
                                           <TableCell className="text-sm text-slate-700 px-4 py-2 italic pl-8">{detail.kode}</TableCell>
-                                          <TableCell className="text-sm text-slate-600 px-4 py-2">{detail.sls_rt}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.prelist_awal).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-bold text-blue-700 px-4 py-2">{parseNumericValue(detail.prelist_usaha).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-left font-bold text-green-700 px-4 py-2">{detail.utp_subsektor_st2023}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.didata).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2 border-l-2 border-slate-300">{parseNumericValue(detail.bku_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.bku_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2">{parseNumericValue(detail.bku_baru_pertanian).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.bku_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2 border-l-2 border-slate-300">{parseNumericValue(detail.keluarga_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.keluarga_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2">{parseNumericValue(detail.keluarga_baru_pertanian).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.keluarga_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>
+                                          {proporsiColumnGroups.dasar && <>
+                                            <TableCell className="text-sm text-slate-600 px-4 py-2">{detail.sls_rt}</TableCell>
+                                            {proporsiColumnGroups.prelistAwal && <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.prelist_awal).toLocaleString("id-ID")}</TableCell>}
+                                            {proporsiColumnGroups.prelistUsaha && <TableCell className="text-right font-bold text-blue-700 px-4 py-2">{parseNumericValue(detail.prelist_usaha).toLocaleString("id-ID")}</TableCell>}
+                                            {proporsiColumnGroups.utpSt2023 && <TableCell className="text-left font-bold text-green-700 px-4 py-2">{detail.utp_subsektor_st2023}</TableCell>}
+                                            {proporsiColumnGroups.didata && <TableCell className="text-right font-bold text-orange-800 px-4 py-2">{parseNumericValue(detail.didata).toLocaleString("id-ID")}</TableCell>}
+                                          </>}
+                                          <>
+                                            {proporsiColumnGroups.bkuDitemukanPertanian && <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2 border-l-2 border-slate-300">{parseNumericValue(detail.bku_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                            {proporsiColumnGroups.bkuDitemukanNonPertanian && <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.bku_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                            {proporsiColumnGroups.bkuBaruPertanian && <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2">{parseNumericValue(detail.bku_baru_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                            {proporsiColumnGroups.bkuBaruNonPertanian && <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.bku_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                          </>
+                                          <>
+                                            {proporsiColumnGroups.keluargaDitemukanPertanian && <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2 border-l-2 border-slate-300">{parseNumericValue(detail.keluarga_ditemukan_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                            {proporsiColumnGroups.keluargaDitemukanNonPertanian && <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.keluarga_ditemukan_non_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                            {proporsiColumnGroups.keluargaBaruPertanian && <TableCell className="text-right font-semibold text-emerald-600 px-4 py-2">{parseNumericValue(detail.keluarga_baru_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                            {proporsiColumnGroups.keluargaBaruNonPertanian && <TableCell className="text-right font-semibold text-blue-600 px-4 py-2">{parseNumericValue(detail.keluarga_baru_non_pertanian).toLocaleString("id-ID")}</TableCell>}
+                                            </>
+                                          {proporsiColumnGroups.ringkasan && <>
                                           <TableCell className="text-right px-4 py-2 border-l-2 border-slate-300">
                                             <div className="font-semibold text-slate-900">{[
                                               detail.bku_ditemukan_non_pertanian,
@@ -3951,6 +4055,7 @@ export default function MonitoringLapanganDash() {
                                               parseNumericValue(detail.utp_subsektor_st2023)
                                             )}</div>
                                           </TableCell>
+                                            </>}
                                         </TableRow>
                                       ))}
                                     </React.Fragment>
@@ -3960,20 +4065,27 @@ export default function MonitoringLapanganDash() {
                               <TableFooter>
                                 <TableRow className="border-t-2 border-slate-300 bg-slate-100 font-bold">
                                   <TableCell className="text-center">-</TableCell>
-                                  <TableCell className="text-slate-900">Jumlah ({usahaProporsiPaginatedRows.length.toLocaleString("id-ID")} PPL)</TableCell>
-                                  <TableCell className="text-slate-900">Semua Kecamatan</TableCell>
-                                  <TableCell className="text-right">{usahaProporsiTotals.prelistAwal.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-700">{usahaProporsiTotals.prelistUsaha.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-green-700">{usahaProporsiTotals.utpSt2023.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right">{usahaProporsiTotals.didata.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiTotals.bkuDitemukanPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600">{usahaProporsiTotals.bkuDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-emerald-600">{usahaProporsiTotals.bkuBaruPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600">{usahaProporsiTotals.bkuBaruNonPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiTotals.keluargaDitemukanPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600">{usahaProporsiTotals.keluargaDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-emerald-600">{usahaProporsiTotals.keluargaBaruPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600">{usahaProporsiTotals.keluargaBaruNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  {proporsiColumnGroups.dasar && <>
+                                    <TableCell className="text-slate-900">Jumlah ({usahaProporsiPaginatedRows.length.toLocaleString("id-ID")} PPL)</TableCell>
+                                    <TableCell className="text-slate-900">Semua Kecamatan</TableCell>
+                                    {proporsiColumnGroups.prelistAwal && <TableCell className="text-right">{usahaProporsiTotals.prelistAwal.toLocaleString("id-ID")}</TableCell>}
+                                    {proporsiColumnGroups.prelistUsaha && <TableCell className="text-right text-blue-700">{usahaProporsiTotals.prelistUsaha.toLocaleString("id-ID")}</TableCell>}
+                                    {proporsiColumnGroups.utpSt2023 && <TableCell className="text-right text-green-700">{usahaProporsiTotals.utpSt2023.toLocaleString("id-ID")}</TableCell>}
+                                    {proporsiColumnGroups.didata && <TableCell className="text-right font-bold text-orange-800">{usahaProporsiTotals.didata.toLocaleString("id-ID")}</TableCell>}
+                                      </>}
+                                  <>
+                                  {proporsiColumnGroups.bkuDitemukanPertanian && <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiTotals.bkuDitemukanPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.bkuDitemukanNonPertanian && <TableCell className="text-right text-blue-600">{usahaProporsiTotals.bkuDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.bkuBaruPertanian && <TableCell className="text-right text-emerald-600">{usahaProporsiTotals.bkuBaruPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.bkuBaruNonPertanian && <TableCell className="text-right text-blue-600">{usahaProporsiTotals.bkuBaruNonPertanian.toLocaleString("id-ID")}</TableCell>}
+                                    </>
+                                  <>
+                                  {proporsiColumnGroups.keluargaDitemukanPertanian && <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiTotals.keluargaDitemukanPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.keluargaDitemukanNonPertanian && <TableCell className="text-right text-blue-600">{usahaProporsiTotals.keluargaDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.keluargaBaruPertanian && <TableCell className="text-right text-emerald-600">{usahaProporsiTotals.keluargaBaruPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.keluargaBaruNonPertanian && <TableCell className="text-right text-blue-600">{usahaProporsiTotals.keluargaBaruNonPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  </>
+                                  {proporsiColumnGroups.ringkasan && <>
                                   <TableCell className="text-right border-l-2 border-slate-300">
                                     <div>{totalJumlahUsaha.toLocaleString("id-ID")}</div>
                                     <div className={`text-xs ${getProporsiPercentageClass(totalJumlahUsaha, usahaProporsiTotals.prelistUsaha)}`}>{formatProporsiPercentage(totalJumlahUsaha, usahaProporsiTotals.prelistUsaha)}</div>
@@ -3982,23 +4094,31 @@ export default function MonitoringLapanganDash() {
                                     <div>{totalJumlahUsahaPertanian.toLocaleString("id-ID")}</div>
                                     <div className={`text-xs ${getProporsiPercentageClass(totalJumlahUsahaPertanian, usahaProporsiTotals.utpSt2023)}`}>{formatProporsiPercentage(totalJumlahUsahaPertanian, usahaProporsiTotals.utpSt2023)}</div>
                                   </TableCell>
+                                  </>}
                                 </TableRow>
                                 <TableRow className="border-t border-slate-300 bg-white font-bold">
                                   <TableCell className="text-center">-</TableCell>
-                                  <TableCell className="text-slate-900">Jumlah Keseluruhan ({usahaProporsiRows.length.toLocaleString("id-ID")} PPL)</TableCell>
-                                  <TableCell className="text-slate-900">Semua Kecamatan</TableCell>
-                                  <TableCell className="text-right">{usahaProporsiOverallTotals.prelistAwal.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-700">{usahaProporsiOverallTotals.prelistUsaha.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-green-700">{usahaProporsiOverallTotals.utpSt2023.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right">{usahaProporsiOverallTotals.didata.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiOverallTotals.bkuDitemukanPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.bkuDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-emerald-600">{usahaProporsiOverallTotals.bkuBaruPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.bkuBaruNonPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiOverallTotals.keluargaDitemukanPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.keluargaDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-emerald-600">{usahaProporsiOverallTotals.keluargaBaruPertanian.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.keluargaBaruNonPertanian.toLocaleString("id-ID")}</TableCell>
+                                  {proporsiColumnGroups.dasar && <>
+                                    <TableCell className="text-slate-900">Jumlah Keseluruhan ({usahaProporsiRows.length.toLocaleString("id-ID")} PPL)</TableCell>
+                                    <TableCell className="text-slate-900">Semua Kecamatan</TableCell>
+                                    {proporsiColumnGroups.prelistAwal && <TableCell className="text-right">{usahaProporsiOverallTotals.prelistAwal.toLocaleString("id-ID")}</TableCell>}
+                                    {proporsiColumnGroups.prelistUsaha && <TableCell className="text-right text-blue-700">{usahaProporsiOverallTotals.prelistUsaha.toLocaleString("id-ID")}</TableCell>}
+                                    {proporsiColumnGroups.utpSt2023 && <TableCell className="text-right text-green-700">{usahaProporsiOverallTotals.utpSt2023.toLocaleString("id-ID")}</TableCell>}
+                                    {proporsiColumnGroups.didata && <TableCell className="text-right font-bold text-orange-800">{usahaProporsiOverallTotals.didata.toLocaleString("id-ID")}</TableCell>}
+                                    </>}
+                                  <>
+                                  {proporsiColumnGroups.bkuDitemukanPertanian && <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiOverallTotals.bkuDitemukanPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.bkuDitemukanNonPertanian && <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.bkuDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.bkuBaruPertanian && <TableCell className="text-right text-emerald-600">{usahaProporsiOverallTotals.bkuBaruPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.bkuBaruNonPertanian && <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.bkuBaruNonPertanian.toLocaleString("id-ID")}</TableCell>}
+                                    </>
+                                  <>
+                                  {proporsiColumnGroups.keluargaDitemukanPertanian && <TableCell className="text-right text-emerald-600 border-l-2 border-slate-300">{usahaProporsiOverallTotals.keluargaDitemukanPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.keluargaDitemukanNonPertanian && <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.keluargaDitemukanNonPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.keluargaBaruPertanian && <TableCell className="text-right text-emerald-600">{usahaProporsiOverallTotals.keluargaBaruPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  {proporsiColumnGroups.keluargaBaruNonPertanian && <TableCell className="text-right text-blue-600">{usahaProporsiOverallTotals.keluargaBaruNonPertanian.toLocaleString("id-ID")}</TableCell>}
+                                  </>
+                                  {proporsiColumnGroups.ringkasan && <>
                                   <TableCell className="text-right border-l-2 border-slate-300">
                                     <div>{overallJumlahUsaha.toLocaleString("id-ID")}</div>
                                     <div className={`text-xs ${getProporsiPercentageClass(overallJumlahUsaha, usahaProporsiOverallTotals.prelistUsaha)}`}>{formatProporsiPercentage(overallJumlahUsaha, usahaProporsiOverallTotals.prelistUsaha)}</div>
@@ -4007,6 +4127,7 @@ export default function MonitoringLapanganDash() {
                                     <div>{overallJumlahUsahaPertanian.toLocaleString("id-ID")}</div>
                                     <div className={`text-xs ${getProporsiPercentageClass(overallJumlahUsahaPertanian, usahaProporsiOverallTotals.utpSt2023)}`}>{formatProporsiPercentage(overallJumlahUsahaPertanian, usahaProporsiOverallTotals.utpSt2023)}</div>
                                   </TableCell>
+                                  </>}
                                 </TableRow>
                               </TableFooter>
                             </Table>
