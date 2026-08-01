@@ -3849,22 +3849,6 @@ export default function MonitoringLapanganDash() {
                     <div className="grid gap-4 md:grid-cols-1">
                       <Card className="border-0 shadow-sm">
                         <CardContent className="p-0">
-                          <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
-                            <div className="relative max-w-md">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                              <Input
-                                placeholder="Cari Nama PPL, Kecamatan, atau kode..."
-                                value={usahaSearchTerm}
-                                onChange={(e) => {
-                                  setUsahaSearchTerm(e.target.value);
-                                  setUsahaKondisiPerusahaanCurrentPage(1);
-                                  setUsahaKondisiKeluargaCurrentPage(1);
-                                  setUsahaProporsiCurrentPage(1);
-                                }}
-                                className="pl-10 h-10 w-full"
-                              />
-                            </div>
-                          </div>
                           {usahaLoading ? (
                             <div className="flex items-center justify-center py-12">
                               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
@@ -3882,7 +3866,21 @@ export default function MonitoringLapanganDash() {
                             </div>
                           ) : (
                             <div className="overflow-x-auto">
-                              <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2">
+                              <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
+                                <div className="relative w-full max-w-md flex-1">
+                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                  <Input
+                                    placeholder="Cari Nama PPL, Kecamatan, atau kode..."
+                                    value={usahaSearchTerm}
+                                    onChange={(e) => {
+                                      setUsahaSearchTerm(e.target.value);
+                                      setUsahaKondisiPerusahaanCurrentPage(1);
+                                      setUsahaKondisiKeluargaCurrentPage(1);
+                                      setUsahaProporsiCurrentPage(1);
+                                    }}
+                                    className="pl-10 h-10 w-full"
+                                  />
+                                </div>
                                 <span className="text-sm font-medium text-slate-600">Kolom:</span>
                                 <button type="button" onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, true])) as typeof usahaKondisiColumns)} className="inline-flex h-8 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-100"><ChevronDown className="mr-1 h-4 w-4" /> Buka Semua</button>
                                 <button type="button" onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, false])) as typeof usahaKondisiColumns)} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-medium text-slate-700 hover:bg-slate-200"><ChevronRight className="mr-1 h-4 w-4" /> Tutup Semua</button>
@@ -4052,49 +4050,7 @@ export default function MonitoringLapanganDash() {
 
                   <TabsContent value="proporsi" className="space-y-6 mt-6">
                     <Card className="border-0 shadow-sm">
-                      <CardHeader className="border-b bg-slate-50 sm:flex sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <CardTitle className="text-sm font-semibold">Proporsi Usaha</CardTitle>
-                          <CardDescription>Data proporsi usaha pertanian dan non pertanian.</CardDescription>
-                        </div>
-                        {isPpk && (
-                          <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-0 sm:justify-end">
-                            <select
-                              aria-label="Tingkat rekap ekspor Excel"
-                              value={proporsiExportMode}
-                              onChange={(event) => setProporsiExportMode(event.target.value as ProporsiExportMode)}
-                              className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm font-medium text-slate-700"
-                            >
-                              <option value="kecamatan">Kecamatan</option>
-                              <option value="ppl">PPL</option>
-                              <option value="sls">SLS</option>
-                            </select>
-                            <button
-                              type="button"
-                              onClick={handleDownloadProporsiExcel}
-                              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
-                            >
-                              <Download className="h-4 w-4" />
-                              Download Excel
-                            </button>
-                          </div>
-                        )}
-                      </CardHeader>
                       <CardContent className="p-0">
-                        <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
-                          <div className="relative max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input
-                              placeholder="Cari Nama PPL atau Kecamatan..."
-                              value={usahaSearchTerm}
-                              onChange={(event) => {
-                                setUsahaSearchTerm(event.target.value);
-                                setUsahaProporsiCurrentPage(1);
-                              }}
-                              className="pl-10 h-10 w-full"
-                            />
-                          </div>
-                        </div>
                         {usahaLoading ? (
                           <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
@@ -4112,7 +4068,19 @@ export default function MonitoringLapanganDash() {
                           </div>
                         ) : (
                           <div className="overflow-x-auto">
-                            <div className="flex items-center gap-2 border-b px-4 py-2">
+                            <div className="flex flex-wrap items-center gap-3 border-b bg-slate-50 px-4 py-3">
+                              <div className="relative w-full max-w-md flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input
+                                  placeholder="Cari Nama PPL atau Kecamatan..."
+                                  value={usahaSearchTerm}
+                                  onChange={(event) => {
+                                    setUsahaSearchTerm(event.target.value);
+                                    setUsahaProporsiCurrentPage(1);
+                                  }}
+                                  className="pl-10 h-10 w-full"
+                                />
+                              </div>
                               <span className="text-sm font-medium text-slate-600">Kolom:</span>
                               <button
                                 type="button"
@@ -4153,6 +4121,28 @@ export default function MonitoringLapanganDash() {
                                   </button>
                                 ))}
                               </div>
+                              {isPpk && (
+                                <div className="ml-auto flex flex-wrap items-center gap-2">
+                                  <select
+                                    aria-label="Tingkat rekap ekspor Excel"
+                                    value={proporsiExportMode}
+                                    onChange={(event) => setProporsiExportMode(event.target.value as ProporsiExportMode)}
+                                    className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm font-medium text-slate-700"
+                                  >
+                                    <option value="kecamatan">Kecamatan</option>
+                                    <option value="ppl">PPL</option>
+                                    <option value="sls">SLS</option>
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={handleDownloadProporsiExcel}
+                                    className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                    Download Excel
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             <Table className="text-xs [&_th]:whitespace-normal [&_th]:break-words [&_th]:leading-tight [&_th]:px-2 [&_th]:py-2 [&_td]:px-2 [&_td]:py-2">
                               <TableHeader>
