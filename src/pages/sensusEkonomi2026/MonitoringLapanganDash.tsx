@@ -447,6 +447,8 @@ interface UsahaProporsiRow {
   children: UsahaProporsiDetailRow[];
 }
 
+type ProporsiExportMode = "kecamatan" | "ppl" | "sls";
+
 interface UsahaProporsiDetailRow {
   id: string;
   kode: string;
@@ -604,6 +606,7 @@ export default function MonitoringLapanganDash() {
   const [usahaKeluargaSortOrder, setUsahaKeluargaSortOrder] = useState<"asc" | "desc">("asc");
   const [usahaProporsiSortBy, setUsahaProporsiSortBy] = useState<string>("nama_ppl");
   const [usahaProporsiSortOrder, setUsahaProporsiSortOrder] = useState<"asc" | "desc">("asc");
+  const [proporsiExportMode, setProporsiExportMode] = useState<ProporsiExportMode>("sls");
   const [expandedUsahaPerusahaan, setExpandedUsahaPerusahaan] = useState<Set<string>>(new Set());
   const [expandedUsahaKeluarga, setExpandedUsahaKeluarga] = useState<Set<string>>(new Set());
   const [expandedUsahaProporsi, setExpandedUsahaProporsi] = useState<Set<string>>(new Set());
@@ -2057,17 +2060,64 @@ export default function MonitoringLapanganDash() {
       };
     };
 
-    const exportRows = filteredUsahaProporsiRows.flatMap((row) => [
-      toExportRow(row, row.nama_ppl, row.kecamatan, "PPL"),
-      ...row.children.map((detail) => toExportRow(detail, detail.kode, detail.sls_rt, "Detail")),
-    ]);
+    const numericFields: Array<keyof UsahaProporsiRow> = [
+      "prelist_awal",
+      "prelist_usaha",
+      "utp_subsektor_st2023",
+      "didata",
+      "bku_ditemukan_pertanian",
+      "bku_ditemukan_non_pertanian",
+      "bku_baru_pertanian",
+      "bku_baru_non_pertanian",
+      "keluarga_ditemukan_pertanian",
+      "keluarga_ditemukan_non_pertanian",
+      "keluarga_baru_pertanian",
+      "keluarga_baru_non_pertanian",
+    ];
+    const aggregateRows = (groupBy: (row: UsahaProporsiRow) => string, labelFor: (rows: UsahaProporsiRow[]) => string) => Array.from(
+      filteredUsahaProporsiRows.reduce((groups, row) => {
+        const groupKey = groupBy(row);
+        const existing = groups.get(groupKey);
+        if (!existing) {
+          groups.set(groupKey, {
+            ...row,
+            id: `proporsi-kecamatan-${groupKey}`,
+            nama_ppl: labelFor([row]),
+            children: [],
+          });
+          return groups;
+        }
+        existing.kecamatan = labelFor([...filteredUsahaProporsiRows.filter((candidate) => groupBy(candidate) === groupKey)]);
+        numericFields.forEach((field) => {
+          existing[field] = (parseNumericValue(existing[field]) + parseNumericValue(row[field])).toString();
+        });
+        return groups;
+      }, new Map<string, UsahaProporsiRow>()).values()
+    );
+    const kecamatanRows = aggregateRows(
+      (row) => normalizeKecamatanKey(row.kecamatan),
+      (rows) => rows[0].kecamatan
+    );
+    const pplRows = aggregateRows(
+      (row) => normalizePersonKey(row.nama_ppl),
+      (rows) => rows[0].nama_ppl
+    );
+    const exportRows = proporsiExportMode === "kecamatan"
+      ? kecamatanRows.map((row) => toExportRow(row, "Semua PPL", row.kecamatan, "Kecamatan"))
+      : proporsiExportMode === "ppl"
+        ? pplRows.map((row) => toExportRow(row, row.nama_ppl, row.kecamatan, "PPL"))
+        : filteredUsahaProporsiRows.flatMap((row) => [
+          toExportRow(row, row.nama_ppl, row.kecamatan, "PPL"),
+          ...row.children.map((detail) => toExportRow(detail, detail.kode, detail.sls_rt, "Detail")),
+        ]);
+    if (exportRows.length === 0) return;
     const worksheet = XLSX.utils.json_to_sheet(exportRows);
     worksheet["!cols"] = Object.keys(exportRows[0] || {}).map((key) => ({
       wch: Math.min(Math.max(key.length + 2, 12), 32),
     }));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Proporsi Usaha");
-    XLSX.writeFile(workbook, `proporsi-usaha-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(workbook, `proporsi-usaha-${proporsiExportMode}-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const usahaKondisiSummary = useMemo(() => {
@@ -3718,14 +3768,26 @@ export default function MonitoringLapanganDash() {
                           <CardDescription>Data proporsi usaha pertanian dan non pertanian.</CardDescription>
                         </div>
                         {isPpk && (
-                          <button
-                            type="button"
-                            onClick={handleDownloadProporsiExcel}
-                            className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 sm:mt-0"
-                          >
-                            <Download className="h-4 w-4" />
-                            Download Excel
-                          </button>
+                          <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-0 sm:justify-end">
+                            <select
+                              aria-label="Tingkat rekap ekspor Excel"
+                              value={proporsiExportMode}
+                              onChange={(event) => setProporsiExportMode(event.target.value as ProporsiExportMode)}
+                              className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm font-medium text-slate-700"
+                            >
+                              <option value="kecamatan">Kecamatan</option>
+                              <option value="ppl">PPL</option>
+                              <option value="sls">SLS</option>
+                            </select>
+                            <button
+                              type="button"
+                              onClick={handleDownloadProporsiExcel}
+                              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                            >
+                              <Download className="h-4 w-4" />
+                              Download Excel
+                            </button>
+                          </div>
                         )}
                       </CardHeader>
                       <CardContent className="p-0">
