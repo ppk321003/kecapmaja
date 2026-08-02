@@ -4291,7 +4291,7 @@ export default function MonitoringLapanganDash() {
                               <TableHeader>
                                 <TableRow className="bg-slate-50 hover:bg-slate-50">
                                   <TableHead rowSpan={2} className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
-                                  <TableHead colSpan={2 + [proporsiColumnGroups.prelistAwal, proporsiColumnGroups.prelistUsaha, proporsiColumnGroups.utpSt2023, proporsiColumnGroups.didata].filter(Boolean).length} className="text-center font-bold border bg-slate-200 text-slate-700">
+                                  <TableHead colSpan={2 + [proporsiColumnGroups.prelistAwal, proporsiColumnGroups.prelistUsaha, proporsiColumnGroups.utpSt2023, proporsiColumnGroups.bkuUsahaWilkerstat, proporsiColumnGroups.didata].filter(Boolean).length} className="text-center font-bold border bg-slate-200 text-slate-700">
                                     <div className="flex items-center justify-center py-1 px-2">Identitas & Dasar</div>
                                   </TableHead>
                                   <TableHead colSpan={[proporsiColumnGroups.bkuDitemukanPertanian, proporsiColumnGroups.bkuDitemukanNonPertanian, proporsiColumnGroups.bkuBaruPertanian, proporsiColumnGroups.bkuBaruNonPertanian].filter(Boolean).length} className="text-center font-bold border bg-orange-200 text-orange-800">
