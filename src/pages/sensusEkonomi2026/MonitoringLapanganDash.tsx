@@ -15,7 +15,7 @@ import * as XLSX from "xlsx";
 
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
-const PROGRES_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
+const PROGRES_SPREADSHEET_ID = STACKING_SPREADSHEET_ID;
 const PROGRES_SHEET = "PROGRES PENDATAAN";
 const MONITORING_LAPANGAN_SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
 const SHEET_ANOMALI_USAHA = "Mikro Anomali Usaha";
@@ -441,6 +441,7 @@ interface UsahaProporsiRow {
   prelist_awal: string;
   prelist_usaha: string;
   utp_subsektor_st2023: string;
+  bku_usaha_wilkerstat_baru: string;
   didata: string;
   bku_ditemukan_pertanian: string;
   bku_ditemukan_non_pertanian: string;
@@ -462,6 +463,7 @@ interface UsahaProporsiDetailRow {
   prelist_awal: string;
   prelist_usaha: string;
   utp_subsektor_st2023: string;
+  bku_usaha_wilkerstat_baru: string;
   didata: string;
   bku_ditemukan_pertanian: string;
   bku_ditemukan_non_pertanian: string;
@@ -478,6 +480,7 @@ type UsahaProporsiNumericField =
   | "prelist_usaha"
   | "utp_subsektor_st2023"
   | "didata"
+  | "bku_usaha_wilkerstat_baru"
   | "bku_ditemukan_pertanian"
   | "bku_ditemukan_non_pertanian"
   | "bku_baru_pertanian"
@@ -645,6 +648,7 @@ export default function MonitoringLapanganDash() {
     prelistAwal: true,
     prelistUsaha: true,
     utpSt2023: true,
+    bkuUsahaWilkerstat: true,
     didata: true,
     bkuDitemukanPertanian: true,
     bkuDitemukanNonPertanian: true,
@@ -1474,6 +1478,17 @@ export default function MonitoringLapanganDash() {
     return lookup;
   }, [stackingData]);
 
+  const stackingWilkerstatByKey = useMemo(() => {
+    const lookup = new Map<string, number>();
+    (stackingData || []).forEach((row: any) => {
+      const key = getStackingKey(row);
+      if (key.length !== 16) return;
+      const value = getStackingWilkerstatValue(row);
+      lookup.set(key, value);
+    });
+    return lookup;
+  }, [stackingData]);
+
   const didataByKey = useMemo(() => {
     const lookup = new Map<string, number>();
     (pplRows || []).forEach((ppl) => {
@@ -1501,6 +1516,7 @@ export default function MonitoringLapanganDash() {
     const numericFields: Array<keyof Omit<UsahaProporsiDetailRow, "id" | "kode" | "sls_rt" | "utp_subsektor_st2023">> = [
       "prelist_usaha",
       "prelist_awal",
+      "bku_usaha_wilkerstat_baru",
       "bku_ditemukan_pertanian",
       "bku_ditemukan_non_pertanian",
       "bku_baru_pertanian",
@@ -1533,6 +1549,12 @@ export default function MonitoringLapanganDash() {
           bku_ditemukan_non_pertanian: getRawColumnText(row, 7, "0"),
           bku_baru_pertanian: getRawColumnText(row, 8, "0"),
           bku_baru_non_pertanian: getRawColumnText(row, 10, "0"),
+          bku_usaha_wilkerstat_baru: (() => {
+            const stackingVal = rowId ? stackingWilkerstatByKey.get(rowId) : undefined;
+            if (typeof stackingVal === "number") return stackingVal.toString();
+            const fallback = parseNumericValue(getRawColumnText(row, 22, "")) + parseNumericValue(getRawColumnText(row, 23, ""));
+            return fallback.toString();
+          })(),
           keluarga_ditemukan_pertanian: getRawColumnText(row, 11, "0"),
           keluarga_ditemukan_non_pertanian: getRawColumnText(row, 13, "0"),
           keluarga_baru_pertanian: getRawColumnText(row, 14, "0"),
@@ -1553,6 +1575,7 @@ export default function MonitoringLapanganDash() {
             bku_ditemukan_non_pertanian: detail.bku_ditemukan_non_pertanian,
             bku_baru_pertanian: detail.bku_baru_pertanian,
             bku_baru_non_pertanian: detail.bku_baru_non_pertanian,
+            bku_usaha_wilkerstat_baru: detail.bku_usaha_wilkerstat_baru,
             keluarga_ditemukan_pertanian: detail.keluarga_ditemukan_pertanian,
             keluarga_ditemukan_non_pertanian: detail.keluarga_ditemukan_non_pertanian,
             keluarga_baru_pertanian: detail.keluarga_baru_pertanian,
@@ -1998,7 +2021,7 @@ export default function MonitoringLapanganDash() {
         <TableCell hidden={!usahaKondisiColumns.prelistAwal} className="text-right font-bold text-slate-900 px-4 py-3">{number(summary.prelist_awal_baru)}</TableCell>
         <TableCell hidden={!usahaKondisiColumns.prelistUsaha} className="text-right font-bold text-slate-900 px-4 py-3">{number(summary.perusahaan_jumlah_prelist_usaha)}</TableCell>
         <TableCell hidden={!usahaKondisiColumns.didata} className="text-right font-bold text-slate-900 px-4 py-3">{number(summary.didata)}</TableCell>
-        <TableCell hidden={!usahaKondisiColumns.bkuUsahaWilkerstatBaru} className="w-[96px] min-w-[96px] max-w-[96px] text-right font-bold text-slate-900 px-2 py-3 whitespace-normal break-words leading-tight">{number(summary.bku_usaha_wilkerstat_baru)}</TableCell>
+        <TableCell hidden={!usahaKondisiColumns.bkuUsahaWilkerstatBaru} className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold text-slate-900 px-2 py-3 whitespace-normal break-words leading-tight">{number(summary.bku_usaha_wilkerstat_baru)}</TableCell>
         <TableCell hidden={!usahaKondisiColumns.perusahaanDitemukan} className="text-right font-bold text-slate-900 px-4 py-3 bg-slate-100">{number(summary.perusahaan_ditemukan)}</TableCell>
         <TableCell hidden={!usahaKondisiColumns.perusahaanTutup} className="text-right font-bold text-slate-900 px-4 py-3 bg-slate-50">{number(summary.perusahaan_tutup)}</TableCell>
         <TableCell hidden={!usahaKondisiColumns.perusahaanGanda} className="text-right font-bold text-slate-900 px-4 py-3 bg-slate-100">{number(summary.perusahaan_ganda)}</TableCell>
@@ -2130,6 +2153,7 @@ export default function MonitoringLapanganDash() {
         prelist_awal: parseNumericValue(row.prelist_awal),
         prelist_usaha: parseNumericValue(row.prelist_usaha),
         utp_subsektor_st2023: parseNumericValue(row.utp_subsektor_st2023),
+        bku_usaha_wilkerstat_baru: parseNumericValue(row.bku_usaha_wilkerstat_baru),
         didata: parseNumericValue(row.didata),
         bku_ditemukan_pertanian: parseNumericValue(row.bku_ditemukan_pertanian),
         bku_ditemukan_non_pertanian: parseNumericValue(row.bku_ditemukan_non_pertanian),
@@ -2258,6 +2282,7 @@ export default function MonitoringLapanganDash() {
       prelistAwal: total("prelist_awal"),
       prelistUsaha: total("prelist_usaha"),
       utpSt2023: total("utp_subsektor_st2023"),
+      bkuUsahaWilkerstat: total("bku_usaha_wilkerstat_baru"),
       didata: total("didata"),
       bkuDitemukanPertanian: total("bku_ditemukan_pertanian"),
       bkuDitemukanNonPertanian: total("bku_ditemukan_non_pertanian"),
@@ -2279,6 +2304,7 @@ export default function MonitoringLapanganDash() {
       prelistAwal: total("prelist_awal"),
       prelistUsaha: total("prelist_usaha"),
       utpSt2023: total("utp_subsektor_st2023"),
+      bkuUsahaWilkerstat: total("bku_usaha_wilkerstat_baru"),
       didata: total("didata"),
       bkuDitemukanPertanian: total("bku_ditemukan_pertanian"),
       bkuDitemukanNonPertanian: total("bku_ditemukan_non_pertanian"),
@@ -2333,6 +2359,7 @@ export default function MonitoringLapanganDash() {
         "Prelist Awal": parseNumericValue(row.prelist_awal),
         "Prelist Usaha": parseNumericValue(row.prelist_usaha),
         "UTP ST2023": parseNumericValue(row.utp_subsektor_st2023),
+        "BKU+ Usaha Wilkerstat": parseNumericValue(row.bku_usaha_wilkerstat_baru),
         Didata: parseNumericValue(row.didata),
         "BKU Ditemukan Pertanian": parseNumericValue(row.bku_ditemukan_pertanian),
         "BKU Ditemukan Non Pertanian": parseNumericValue(row.bku_ditemukan_non_pertanian),
@@ -2353,6 +2380,7 @@ export default function MonitoringLapanganDash() {
       "prelist_awal",
       "prelist_usaha",
       "utp_subsektor_st2023",
+      "bku_usaha_wilkerstat_baru",
       "didata",
       "bku_ditemukan_pertanian",
       "bku_ditemukan_non_pertanian",
@@ -3998,7 +4026,7 @@ export default function MonitoringLapanganDash() {
                                     {usahaKondisiColumns.prelistAwal && kondisiSortHead("Prelist Awal", "prelist_awal_baru", "prelistAwal", "text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap", 2)}
                                     {usahaKondisiColumns.prelistUsaha && kondisiSortHead("Jml Prelist Usaha", "perusahaan_jumlah_prelist_usaha", "prelistUsaha", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
                                     {usahaKondisiColumns.didata && kondisiSortHead("Didata", "didata", "didata", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
-                                    {usahaKondisiColumns.bkuUsahaWilkerstatBaru && kondisiSortHead("BKU+ Usaha Wilkerstat", "bku_usaha_wilkerstat_baru", "bkuUsahaWilkerstatBaru", "w-[96px] min-w-[96px] max-w-[96px] text-right text-slate-700 font-semibold px-2 py-3 whitespace-normal break-words leading-tight", 2)}
+                                    {usahaKondisiColumns.bkuUsahaWilkerstatBaru && kondisiSortHead("BKU+ Usaha Wilkerstat", "bku_usaha_wilkerstat_baru", "bkuUsahaWilkerstatBaru", "w-[72px] min-w-[72px] max-w-[72px] text-right text-slate-700 font-semibold px-2 py-3 whitespace-normal break-words leading-tight", 2)}
                                     {bkuColumnKeys.some((key) => usahaKondisiColumns[key]) && <TableHead colSpan={bkuColumnKeys.filter((key) => usahaKondisiColumns[key]).length} onClick={() => setUsahaKondisiColumns((previous) => ({ ...previous, ...Object.fromEntries(bkuColumnKeys.map((key) => [key, false])) }))} className="text-center text-slate-700 font-semibold px-4 py-3 border border-slate-300 cursor-pointer hover:bg-slate-100" title="Sembunyikan kolom BKU">Bangunan Khusus Usaha (BKU)</TableHead>}
                                     {keluargaColumnKeys.some((key) => usahaKondisiColumns[key]) && <TableHead colSpan={keluargaColumnKeys.filter((key) => usahaKondisiColumns[key]).length} onClick={() => setUsahaKondisiColumns((previous) => ({ ...previous, ...Object.fromEntries(keluargaColumnKeys.map((key) => [key, false])) }))} className="text-center text-slate-700 font-semibold px-4 py-3 border border-slate-300 cursor-pointer hover:bg-slate-100" title="Sembunyikan kolom Usaha Keluarga">Usaha Keluarga</TableHead>}
                                     {usahaKondisiColumns.totalTidakDitemukan && kondisiSortHead("Total Usaha Tidak Ditemukan (BKU + Keluarga)", "total_tidak_ditemukan", "totalTidakDitemukan", "w-[88px] min-w-[88px] max-w-[88px] text-right text-[10px] leading-tight break-words text-rose-800 font-semibold px-1 py-1 bg-rose-50", 2)}
@@ -4056,7 +4084,7 @@ export default function MonitoringLapanganDash() {
                                           <TableCell hidden={!usahaKondisiColumns.prelistAwal} className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.prelist_awal_baru).toLocaleString("id-ID")}</TableCell>
                                           <TableCell hidden={!usahaKondisiColumns.prelistUsaha} className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.perusahaan_jumlah_prelist_usaha).toLocaleString("id-ID")}</TableCell>
                                           <TableCell hidden={!usahaKondisiColumns.didata} className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.didata).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell hidden={!usahaKondisiColumns.bkuUsahaWilkerstatBaru} className="w-[96px] min-w-[96px] max-w-[96px] text-right font-semibold text-slate-900 px-2 py-3 whitespace-normal break-words leading-tight">{parseNumericValue(row.bku_usaha_wilkerstat_baru).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell hidden={!usahaKondisiColumns.bkuUsahaWilkerstatBaru} className="w-[72px] min-w-[72px] max-w-[72px] text-right font-semibold text-slate-900 px-2 py-3 whitespace-normal break-words leading-tight">{parseNumericValue(row.bku_usaha_wilkerstat_baru).toLocaleString("id-ID")}</TableCell>
                                           <TableCell hidden={!usahaKondisiColumns.perusahaanDitemukan} className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.perusahaan_ditemukan).toLocaleString("id-ID")}</TableCell>
                                           <TableCell hidden={!usahaKondisiColumns.perusahaanTutup} className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-50">{parseNumericValue(row.perusahaan_tutup).toLocaleString("id-ID")}</TableCell>
                                           <TableCell hidden={!usahaKondisiColumns.perusahaanGanda} className="text-right font-semibold text-slate-900 px-4 py-3 bg-slate-100">{parseNumericValue(row.perusahaan_ganda).toLocaleString("id-ID")}</TableCell>
@@ -4081,7 +4109,7 @@ export default function MonitoringLapanganDash() {
                                             <TableCell hidden={!usahaKondisiColumns.prelistAwal} className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.prelist_awal_baru).toLocaleString("id-ID")}</TableCell>
                                             <TableCell hidden={!usahaKondisiColumns.prelistUsaha} className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.perusahaan_jumlah_prelist_usaha).toLocaleString("id-ID")}</TableCell>
                                             <TableCell hidden={!usahaKondisiColumns.didata} className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.didata).toLocaleString("id-ID")}</TableCell>
-                                            <TableCell hidden={!usahaKondisiColumns.bkuUsahaWilkerstatBaru} className="w-[96px] min-w-[96px] max-w-[96px] text-right font-semibold text-slate-900 px-2 py-2 whitespace-normal break-words leading-tight">{parseNumericValue(detail.bku_usaha_wilkerstat_baru).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell hidden={!usahaKondisiColumns.bkuUsahaWilkerstatBaru} className="w-[72px] min-w-[72px] max-w-[72px] text-right font-semibold text-slate-900 px-2 py-2 whitespace-normal break-words leading-tight">{parseNumericValue(detail.bku_usaha_wilkerstat_baru).toLocaleString("id-ID")}</TableCell>
                                             <TableCell hidden={!usahaKondisiColumns.perusahaanDitemukan} className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.perusahaan_ditemukan).toLocaleString("id-ID")}</TableCell>
                                             <TableCell hidden={!usahaKondisiColumns.perusahaanTutup} className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-50">{parseNumericValue(detail.perusahaan_tutup).toLocaleString("id-ID")}</TableCell>
                                             <TableCell hidden={!usahaKondisiColumns.perusahaanGanda} className="text-right font-semibold text-slate-900 px-4 py-2 bg-slate-100">{parseNumericValue(detail.perusahaan_ganda).toLocaleString("id-ID")}</TableCell>
@@ -4199,14 +4227,14 @@ export default function MonitoringLapanganDash() {
                               <span className="text-sm font-medium text-slate-600">Kolom:</span>
                               <button
                                 type="button"
-                                onClick={() => setProporsiColumnGroups({ dasar: true, prelistAwal: true, prelistUsaha: true, utpSt2023: true, didata: true, bkuDitemukanPertanian: true, bkuDitemukanNonPertanian: true, bkuBaruPertanian: true, bkuBaruNonPertanian: true, keluargaDitemukanPertanian: true, keluargaDitemukanNonPertanian: true, keluargaBaruPertanian: true, keluargaBaruNonPertanian: true, ringkasan: true })}
+                                onClick={() => setProporsiColumnGroups({ dasar: true, prelistAwal: true, prelistUsaha: true, utpSt2023: true, bkuUsahaWilkerstat: true, didata: true, bkuDitemukanPertanian: true, bkuDitemukanNonPertanian: true, bkuBaruPertanian: true, bkuBaruNonPertanian: true, keluargaDitemukanPertanian: true, keluargaDitemukanNonPertanian: true, keluargaBaruPertanian: true, keluargaBaruNonPertanian: true, ringkasan: true })}
                                 className="inline-flex h-8 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
                               >
                                 <ChevronDown className="mr-1 h-4 w-4" /> Buka Semua
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setProporsiColumnGroups({ dasar: true, prelistAwal: false, prelistUsaha: false, utpSt2023: false, didata: false, bkuDitemukanPertanian: false, bkuDitemukanNonPertanian: false, bkuBaruPertanian: false, bkuBaruNonPertanian: false, keluargaDitemukanPertanian: false, keluargaDitemukanNonPertanian: false, keluargaBaruPertanian: false, keluargaBaruNonPertanian: false, ringkasan: false })}
+                                onClick={() => setProporsiColumnGroups({ dasar: true, prelistAwal: false, prelistUsaha: false, utpSt2023: false, bkuUsahaWilkerstat: false, didata: false, bkuDitemukanPertanian: false, bkuDitemukanNonPertanian: false, bkuBaruPertanian: false, bkuBaruNonPertanian: false, keluargaDitemukanPertanian: false, keluargaDitemukanNonPertanian: false, keluargaBaruPertanian: false, keluargaBaruNonPertanian: false, ringkasan: false })}
                                 className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-medium text-slate-700 hover:bg-slate-200"
                               >
                                 <ChevronRight className="mr-1 h-4 w-4" /> Tutup Semua
@@ -4283,6 +4311,7 @@ export default function MonitoringLapanganDash() {
                                     {proporsiColumnGroups.prelistAwal && proporsiSortHead("Prelist Awal", "prelist_awal", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-slate-700 font-semibold px-1 py-2", 1, "prelistAwal")}
                                     {proporsiColumnGroups.prelistUsaha && proporsiSortHead("Prelist Usaha", "prelist_usaha", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-blue-700 font-bold px-1 py-2", 1, "prelistUsaha")}
                                     {proporsiColumnGroups.utpSt2023 && proporsiSortHead("UTP ST2023", "utp_subsektor_st2023", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-green-700 font-bold px-1 py-2", 1, "utpSt2023")}
+                                    {proporsiColumnGroups.bkuUsahaWilkerstat && proporsiSortHead("BKU+ Usaha Wilkerstat", "bku_usaha_wilkerstat_baru", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-bold px-1 py-2", 1, "bkuUsahaWilkerstat")}
                                     {proporsiColumnGroups.didata && proporsiSortHead("Didata", "didata", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-orange-800 font-bold px-1 py-2", 1, "didata")}
                                     </>}
                                   <>
@@ -4342,6 +4371,7 @@ export default function MonitoringLapanganDash() {
                                           {proporsiColumnGroups.prelistAwal && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-semibold text-slate-900 px-1 py-2">{parseNumericValue(row.prelist_awal).toLocaleString("id-ID")}</TableCell>}
                                           {proporsiColumnGroups.prelistUsaha && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold text-blue-700 px-1 py-2">{parseNumericValue(row.prelist_usaha).toLocaleString("id-ID")}</TableCell>}
                                           {proporsiColumnGroups.utpSt2023 && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold text-green-700 px-1 py-2">{parseNumericValue(row.utp_subsektor_st2023).toLocaleString("id-ID")}</TableCell>}
+                                          {proporsiColumnGroups.bkuUsahaWilkerstat && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold px-1 py-2">{parseNumericValue(row.bku_usaha_wilkerstat_baru).toLocaleString("id-ID")}</TableCell>}
                                           {proporsiColumnGroups.didata && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold text-orange-800 px-1 py-2">{parseNumericValue(row.didata).toLocaleString("id-ID")}</TableCell>}
                                         </>}
                                         <>
@@ -4376,6 +4406,7 @@ export default function MonitoringLapanganDash() {
                                             {proporsiColumnGroups.prelistAwal && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-semibold text-slate-900 px-1 py-2">{parseNumericValue(detail.prelist_awal).toLocaleString("id-ID")}</TableCell>}
                                             {proporsiColumnGroups.prelistUsaha && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold text-blue-700 px-1 py-2">{parseNumericValue(detail.prelist_usaha).toLocaleString("id-ID")}</TableCell>}
                                             {proporsiColumnGroups.utpSt2023 && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold text-green-700 px-1 py-2">{parseNumericValue(detail.utp_subsektor_st2023).toLocaleString("id-ID")}</TableCell>}
+                                            {proporsiColumnGroups.bkuUsahaWilkerstat && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold px-1 py-2">{parseNumericValue(detail.bku_usaha_wilkerstat_baru).toLocaleString("id-ID")}</TableCell>}
                                             {proporsiColumnGroups.didata && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold text-orange-800 px-1 py-2">{parseNumericValue(detail.didata).toLocaleString("id-ID")}</TableCell>}
                                           </>}
                                           <>
@@ -4437,6 +4468,7 @@ export default function MonitoringLapanganDash() {
                                     {proporsiColumnGroups.prelistAwal && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2">{usahaProporsiTotals.prelistAwal.toLocaleString("id-ID")}</TableCell>}
                                     {proporsiColumnGroups.prelistUsaha && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right text-blue-700 px-1 py-2">{usahaProporsiTotals.prelistUsaha.toLocaleString("id-ID")}</TableCell>}
                                     {proporsiColumnGroups.utpSt2023 && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right text-green-700 px-1 py-2">{usahaProporsiTotals.utpSt2023.toLocaleString("id-ID")}</TableCell>}
+                                    {proporsiColumnGroups.bkuUsahaWilkerstat && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2">{usahaProporsiTotals.bkuUsahaWilkerstat.toLocaleString("id-ID")}</TableCell>}
                                     {proporsiColumnGroups.didata && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold text-orange-800 px-1 py-2">{usahaProporsiTotals.didata.toLocaleString("id-ID")}</TableCell>}
                                       </>}
                                   <>
@@ -4470,6 +4502,7 @@ export default function MonitoringLapanganDash() {
                                     {proporsiColumnGroups.prelistAwal && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2">{usahaProporsiOverallTotals.prelistAwal.toLocaleString("id-ID")}</TableCell>}
                                     {proporsiColumnGroups.prelistUsaha && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right text-blue-700 px-1 py-2">{usahaProporsiOverallTotals.prelistUsaha.toLocaleString("id-ID")}</TableCell>}
                                     {proporsiColumnGroups.utpSt2023 && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right text-green-700 px-1 py-2">{usahaProporsiOverallTotals.utpSt2023.toLocaleString("id-ID")}</TableCell>}
+                                    {proporsiColumnGroups.bkuUsahaWilkerstat && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2">{usahaProporsiOverallTotals.bkuUsahaWilkerstat.toLocaleString("id-ID")}</TableCell>}
                                     {proporsiColumnGroups.didata && <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right font-bold text-orange-800 px-1 py-2">{usahaProporsiOverallTotals.didata.toLocaleString("id-ID")}</TableCell>}
                                     </>}
                                   <>
