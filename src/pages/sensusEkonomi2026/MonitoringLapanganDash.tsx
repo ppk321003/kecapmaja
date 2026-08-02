@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import * as XLSX from "xlsx";
+import IdentifikasiUTTTab from "./IdentifikasiUTTTab";
 
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
@@ -2993,6 +2994,7 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="capaian-kinerja" className="rounded-xl py-2 text-sm font-semibold">Ter-1 &gt; Saat Ini</TabsTrigger>
               <TabsTrigger value="umkm-sosek" className="rounded-xl py-2 text-sm font-semibold">UMKM dan Sosek</TabsTrigger>
               <TabsTrigger value="pendataan-usaha" className="rounded-xl py-2 text-sm font-semibold">Pendataan Usaha</TabsTrigger>
+              <TabsTrigger value="identifikasi-utt" className="rounded-xl py-2 text-sm font-semibold">Identifikasi UTT</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
               <TabsTrigger value="anomali" className="rounded-xl py-2 text-sm font-semibold">Anomali</TabsTrigger>
             </TabsList>
@@ -4573,6 +4575,9 @@ export default function MonitoringLapanganDash() {
                   </TabsContent>
                 </Tabs>
               </div>
+            </TabsContent>
+            <TabsContent value="identifikasi-utt" className="space-y-6 mt-6">
+              <IdentifikasiUTTTab />
             </TabsContent>
             <TabsContent value="ngibar" className="space-y-6 mt-6">
               <div className="space-y-6">
