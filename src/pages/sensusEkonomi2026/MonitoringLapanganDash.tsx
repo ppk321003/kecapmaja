@@ -4575,6 +4575,9 @@ export default function MonitoringLapanganDash() {
                 </Tabs>
               </div>
             </TabsContent>
+            <TabsContent value="identifikasi-utt" className="space-y-6 mt-6">
+              <IdentifikasiUTTTab />
+            </TabsContent>
             <TabsContent value="ngibar" className="space-y-6 mt-6">
               <div className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
