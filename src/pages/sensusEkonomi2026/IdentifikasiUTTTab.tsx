@@ -155,7 +155,7 @@ export default function IdentifikasiUTTTab() {
   const headerCell = (label: string, key: SortKey, className = "") => (
     <TableHead
       onClick={() => toggleSort(key)}
-      className={`cursor-pointer select-none whitespace-nowrap text-xs font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-sky-700 ${className}`}
+      className={`cursor-pointer select-none whitespace-nowrap py-4 text-xs font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-sky-700 ${className}`}
     >
       <span className="inline-flex items-center gap-1">
         {label}
@@ -245,7 +245,7 @@ export default function IdentifikasiUTTTab() {
                     {headerCell("Deskripsi Usaha", "deskripsi")}
                     {headerCell("Lokasi Ditemukan", "lokasi")}
                     {headerCell("Status", "status")}
-                    <TableHead className="w-24 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    <TableHead className="w-24 text-center py-4 text-xs font-semibold uppercase tracking-wide text-slate-600">
                       Aksi
                     </TableHead>
                   </TableRow>
