@@ -155,9 +155,14 @@ export default function IdentifikasiUTTTab() {
   const headerCell = (label: string, key: SortKey, className = "") => (
     <TableHead
       onClick={() => toggleSort(key)}
-      className={`cursor-pointer select-none whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 ${className}`}
+      className={`cursor-pointer select-none whitespace-nowrap text-xs font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-sky-700 ${className}`}
     >
-      {label}
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <span className={`text-[10px] ${sortKey === key ? "text-sky-600" : "text-slate-300"}`}>
+          {sortKey === key ? (sortAsc ? "▲" : "▼") : "↕"}
+        </span>
+      </span>
     </TableHead>
   );
 
