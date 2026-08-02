@@ -155,9 +155,14 @@ export default function IdentifikasiUTTTab() {
   const headerCell = (label: string, key: SortKey, className = "") => (
     <TableHead
       onClick={() => toggleSort(key)}
-      className={`cursor-pointer select-none whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 ${className}`}
+      className={`cursor-pointer select-none whitespace-nowrap text-xs font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-sky-700 ${className}`}
     >
-      {label}
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <span className={`text-[10px] ${sortKey === key ? "text-sky-600" : "text-slate-300"}`}>
+          {sortKey === key ? (sortAsc ? "▲" : "▼") : "↕"}
+        </span>
+      </span>
     </TableHead>
   );
 
@@ -228,11 +233,11 @@ export default function IdentifikasiUTTTab() {
               <AlertCircle className="h-5 w-5" /> {String(error)}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm ring-1 ring-slate-900/5">
               <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50 hover:bg-slate-50">
-                    {headerCell("No", "no", "w-14")}
+                <TableHeader className="sticky top-0 z-10">
+                  <TableRow className="bg-gradient-to-r from-sky-100/80 via-sky-50 to-white hover:bg-sky-100/60">
+                    {headerCell("No", "no", "w-14 text-center")}
                     {headerCell("Kecamatan", "kecamatan")}
                     {headerCell("Desa", "desa")}
                     {headerCell("Alamat", "alamat")}
@@ -253,19 +258,25 @@ export default function IdentifikasiUTTTab() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paged.map((row: any) => {
+                    paged.map((row: any, idx: number) => {
                       const meta = statusMeta(row.status);
+                      const rowNo = (currentPage - 1) * pageSize + idx + 1;
                       return (
-                        <TableRow key={row.__rowNumber} className="align-top hover:bg-sky-50/40">
-                          <TableCell className="text-sm text-slate-500">{row.no}</TableCell>
-                          <TableCell className="whitespace-nowrap text-sm font-medium text-slate-800">
+                        <TableRow
+                          key={row.__rowNumber}
+                          className="group border-b border-slate-100 align-top transition-colors odd:bg-white even:bg-slate-50/60 hover:bg-sky-50"
+                        >
+                          <TableCell className="text-center text-sm font-semibold tabular-nums text-slate-400 group-hover:text-sky-600">
+                            {rowNo}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap border-l-2 border-transparent text-sm font-semibold text-slate-800 group-hover:border-sky-400">
                             {row.kecamatan || "-"}
                           </TableCell>
                           <TableCell className="whitespace-nowrap text-sm text-slate-700">{row.desa || "-"}</TableCell>
-                          <TableCell className="max-w-[220px] text-sm text-slate-600">{row.alamat || "-"}</TableCell>
+                          <TableCell className="max-w-[220px] text-sm leading-relaxed text-slate-600">{row.alamat || "-"}</TableCell>
                           <TableCell className="text-sm font-medium text-slate-900">{row.nama || "-"}</TableCell>
-                          <TableCell className="max-w-[260px] text-sm text-slate-600">{row.deskripsi || "-"}</TableCell>
-                          <TableCell className="max-w-[200px] text-sm text-slate-600">{row.lokasi || "-"}</TableCell>
+                          <TableCell className="max-w-[260px] text-sm leading-relaxed text-slate-600">{row.deskripsi || "-"}</TableCell>
+                          <TableCell className="max-w-[200px] text-sm leading-relaxed text-slate-500">{row.lokasi || "-"}</TableCell>
                           <TableCell className="text-sm">
                             {row.status ? (
                               <div className="space-y-1">
