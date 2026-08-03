@@ -617,6 +617,7 @@ export default function MonitoringLapanganDash() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [pmlItemsPerPage, setPmlItemsPerPage] = useState(20);
   const [capaianSearchTerm, setCapaianSearchTerm] = useState("");
+  const [capaianKecamatanFilter, setCapaianKecamatanFilter] = useState("all");
   const [capaianSortBy, setCapaianSortBy] = useState<"nama_ppl" | "kecamatan" | "prelist_awal" | "delta" | "totalStatus" | "didata" | "status">("nama_ppl");
   const [capaianSortOrder, setCapaianSortOrder] = useState<"asc" | "desc">("asc");
   const [capaianCurrentPage, setCapaianCurrentPage] = useState(1);
@@ -2895,6 +2896,16 @@ export default function MonitoringLapanganDash() {
     return result;
   }, [transitionRows, monitoringProgressMap, monitoringProgressByName]);
 
+  const capaianKecamatanOptions = useMemo(() => {
+    const values = new Set<string>();
+    capaianRows.forEach((row) => {
+      const rawKec = String(row.kecamatan || "").trim();
+      if (!rawKec) return;
+      rawKec.split(/,|\n/).map((part) => part.trim()).filter(Boolean).forEach((value) => values.add(value));
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, "id"));
+  }, [capaianRows]);
+
   const capaianFilteredRows = useMemo(() => {
     const normalizedSearch = capaianSearchTerm.trim().toLowerCase();
     let rows = capaianRows;
@@ -2904,6 +2915,17 @@ export default function MonitoringLapanganDash() {
         row.nama_ppl.toLowerCase().includes(normalizedSearch) ||
         row.kecamatan.toLowerCase().includes(normalizedSearch)
       );
+    }
+
+    if (capaianKecamatanFilter !== "all") {
+      const selected = capaianKecamatanFilter.toLowerCase();
+      rows = rows.filter((row) => {
+        const values = String(row.kecamatan || "")
+          .split(/,|\n/)
+          .map((part) => part.trim().toLowerCase())
+          .filter(Boolean);
+        return values.includes(selected);
+      });
     }
 
     const compareValue = (a: any, b: any) => {
@@ -2934,7 +2956,7 @@ export default function MonitoringLapanganDash() {
     };
 
     return [...rows].sort(compareValue);
-  }, [capaianRows, capaianSearchTerm, capaianSortBy, capaianSortOrder]);
+  }, [capaianRows, capaianSearchTerm, capaianKecamatanFilter, capaianSortBy, capaianSortOrder]);
 
   const capaianTotalPages = Math.max(1, Math.ceil(capaianFilteredRows.length / capaianItemsPerPage));
   const capaianPaginatedRows = useMemo(() => {
@@ -3206,7 +3228,7 @@ export default function MonitoringLapanganDash() {
                       <CardTitle className="text-base">Capaian dari Termin-1 sampai dengan kondisi sekarang</CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-4 md:grid-cols-3">
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                           <Input
@@ -3219,7 +3241,21 @@ export default function MonitoringLapanganDash() {
                             className="pl-10 h-10"
                           />
                         </div>
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <select
+                          aria-label="Filter kecamatan Ter-1 > Saat Ini"
+                          value={capaianKecamatanFilter}
+                          onChange={(e) => {
+                            setCapaianKecamatanFilter(e.target.value);
+                            setCapaianCurrentPage(1);
+                          }}
+                          className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="all">Semua Kecamatan</option>
+                          {capaianKecamatanOptions.map((kecamatan) => (
+                            <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                          ))}
+                        </select>
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
                           <span>Per halaman:</span>
                           <select
                             value={capaianItemsPerPage}
