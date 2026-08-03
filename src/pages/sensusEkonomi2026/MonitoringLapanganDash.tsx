@@ -1310,7 +1310,8 @@ export default function MonitoringLapanganDash() {
       const kecamatan = toProperCase(getRawColumnText(row, 1, "-"));
       const key = `${namaPpl}|${kecamatan}`;
       const prelistAwal = getRawColumnNumber(row, 2, 0);
-      const jumlahPrelistUsaha = getRawColumnNumber(row, 3, 0);
+      // Kolom C = prelist / jumlah prelist usaha (kolom D sudah dipakai untuk Ditemukan)
+      const jumlahPrelistUsaha = getRawColumnNumber(row, 2, 0);
       // Mapping kolom sheet USAHA PERUSAHAAN (A=0):
       // Ditemukan = D+F+P, Tutup = H+J+R, Ganda = L+T,
       // Tidak Ditemukan = N+V, Baru = X, Ditemukan+Baru = Z
@@ -1721,18 +1722,22 @@ export default function MonitoringLapanganDash() {
       const perusahaanJumlahPrelistUsaha = sourceType === "Perusahaan" ? getRawColumnText(row, 2, "0") : "0";
       const bkuUsahaWilkerstatBaru = (wilkerstatByKey.get(id) ?? 0).toString();
       const sumRawColumns = (...columns: number[]) => columns.reduce((sum, column) => sum + getRawColumnNumber(row, column, 0), 0).toString();
-      const perusahaanDitemukan = sourceType === "Perusahaan" ? sumRawColumns(3, 4, 9) : "0";
-      const perusahaanTutup = sourceType === "Perusahaan" ? sumRawColumns(5, 6, 11) : "0";
-      const perusahaanGanda = sourceType === "Perusahaan" ? sumRawColumns(7, 13) : "0";
-      const perusahaanTidakDitemukan = sourceType === "Perusahaan" ? sumRawColumns(8, 15) : "0";
-      const perusahaanBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 17, "0") : "0";
-      const perusahaanDitemukanPlusBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 19, "0") : "0";
-      const keluargaDitemukan = sourceType === "Keluarga" ? getRawColumnText(row, 2, "0") : "0";
-      const keluargaTutup = sourceType === "Keluarga" ? getRawColumnText(row, 3, "0") : "0";
-      const keluargaGanda = sourceType === "Keluarga" ? getRawColumnText(row, 4, "0") : "0";
-      const keluargaTidakDitemukan = sourceType === "Keluarga" ? getRawColumnText(row, 5, "0") : "0";
-      const keluargaBaru = sourceType === "Keluarga" ? getRawColumnText(row, 6, "0") : "0";
-      const keluargaDitemukanPlusBaru = sourceType === "Keluarga" ? getRawColumnText(row, 7, "0") : "0";
+      // USAHA PERUSAHAAN (A=0): Ditemukan = D+F+P, Tutup = H+J+R, Ganda = L+T,
+      // Tidak Ditemukan = N+V, Baru = X, Ditemukan+Baru = Z
+      const perusahaanDitemukan = sourceType === "Perusahaan" ? sumRawColumns(3, 5, 15) : "0";
+      const perusahaanTutup = sourceType === "Perusahaan" ? sumRawColumns(7, 9, 17) : "0";
+      const perusahaanGanda = sourceType === "Perusahaan" ? sumRawColumns(11, 19) : "0";
+      const perusahaanTidakDitemukan = sourceType === "Perusahaan" ? sumRawColumns(13, 21) : "0";
+      const perusahaanBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 23, "0") : "0";
+      const perusahaanDitemukanPlusBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 25, "0") : "0";
+      // USAHA KELUARGA (A=0): Ditemukan = D, Tutup = F, Ganda = H,
+      // Tidak Ditemukan = J, Baru = L, Ditemukan+Baru = N
+      const keluargaDitemukan = sourceType === "Keluarga" ? getRawColumnText(row, 3, "0") : "0";
+      const keluargaTutup = sourceType === "Keluarga" ? getRawColumnText(row, 5, "0") : "0";
+      const keluargaGanda = sourceType === "Keluarga" ? getRawColumnText(row, 7, "0") : "0";
+      const keluargaTidakDitemukan = sourceType === "Keluarga" ? getRawColumnText(row, 9, "0") : "0";
+      const keluargaBaru = sourceType === "Keluarga" ? getRawColumnText(row, 11, "0") : "0";
+      const keluargaDitemukanPlusBaru = sourceType === "Keluarga" ? getRawColumnText(row, 13, "0") : "0";
 
       if (existingDetail) {
         existingDetail.perusahaan_prelist_awal = (parseNumericValue(existingDetail.perusahaan_prelist_awal) + parseNumericValue(perusahaanPrelistAwal)).toString();
@@ -1803,11 +1808,11 @@ export default function MonitoringLapanganDash() {
       const entry = upsert(groupKey, namaPpl);
       if (kecamatan) entry.kecamatanSet.add(kecamatan);
       entry.keluarga_ditemukan += getRawColumnNumber(row, 3, 0);
-      entry.keluarga_tutup += getRawColumnNumber(row, 4, 0);
-      entry.keluarga_ganda += getRawColumnNumber(row, 5, 0);
-      entry.keluarga_tidak_ditemukan += getRawColumnNumber(row, 6, 0);
-      entry.keluarga_baru += getRawColumnNumber(row, 7, 0);
-      entry.keluarga_ditemukan_plus_baru += getRawColumnNumber(row, 8, 0);
+      entry.keluarga_tutup += getRawColumnNumber(row, 5, 0);
+      entry.keluarga_ganda += getRawColumnNumber(row, 7, 0);
+      entry.keluarga_tidak_ditemukan += getRawColumnNumber(row, 9, 0);
+      entry.keluarga_baru += getRawColumnNumber(row, 11, 0);
+      entry.keluarga_ditemukan_plus_baru += getRawColumnNumber(row, 13, 0);
       addDetail(entry, row, id, "Keluarga");
     });
 
