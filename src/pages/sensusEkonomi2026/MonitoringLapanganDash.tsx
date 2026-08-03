@@ -4020,7 +4020,7 @@ export default function MonitoringLapanganDash() {
                                         <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{pml.persentase_draft}%</TableCell>
                                         <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.responden_didata).toLocaleString("id-ID")}</TableCell>
                                         <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>{pml.persentase_responden_didata}%</TableCell>
-                                        <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{pml.persentase_wilkerstat}%</TableCell>
+                                        <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(pml.persentase_wilkerstat)) }}>{pml.persentase_wilkerstat}%</TableCell>
                                       </TableRow>
                                       {isExpanded && pml.children.map((child, childIndex) => (
                                         <TableRow key={`${pml.id}-child-${childIndex}`} className="bg-slate-50 border-b hover:bg-slate-100 transition-colors">
@@ -4033,10 +4033,31 @@ export default function MonitoringLapanganDash() {
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{child.persentase_draft}%</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(child.responden_didata).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_responden_didata)) }}>{child.persentase_responden_didata}%</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{child.persentase_wilkerstat}%</TableCell>
+                                          <TableCell className="text-right font-semibold px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_wilkerstat)) }}>{child.persentase_wilkerstat}%</TableCell>
                                         </TableRow>
                                       ))}
                                       </React.Fragment>
+                                    );
+                                  })}
+                                  {/* Total Rows: sesuai filter & keseluruhan */}
+                                  {([
+                                    ["TOTAL (Sesuai Filter)", filteredPmlRows, "bg-emerald-50"],
+                                    ["TOTAL KESELURUHAN", pmlRows, "bg-slate-100"],
+                                  ] as const).map(([label, rows, bgClass]) => {
+                                    const t = sumPplTotals(rows);
+                                    return (
+                                      <TableRow key={label} className={`${bgClass} border-b font-semibold`}>
+                                        <TableCell className="text-center text-slate-700 w-12 px-4 py-3" />
+                                        <TableCell className="text-slate-900 px-4 py-3">{label}</TableCell>
+                                        <TableCell className="text-slate-900 px-4 py-3" />
+                                        <TableCell className="text-right text-blue-900 px-4 py-3">{t.wilkerstat.toLocaleString("id-ID")}</TableCell>
+                                        <TableCell className="text-right text-slate-900 px-4 py-3">{t.prelist.toLocaleString("id-ID")}</TableCell>
+                                        <TableCell className="text-right text-slate-900 px-4 py-3">{t.draft.toLocaleString("id-ID")}</TableCell>
+                                        <TableCell className="text-right text-blue-600 px-4 py-3">{t.pctDraft}%</TableCell>
+                                        <TableCell className="text-right text-slate-900 px-4 py-3">{t.responden.toLocaleString("id-ID")}</TableCell>
+                                        <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(t.pctResponden)) }}>{t.pctResponden}%</TableCell>
+                                        <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(t.pctWilkerstat)) }}>{t.pctWilkerstat}%</TableCell>
+                                      </TableRow>
                                     );
                                   })}
                                 </TableBody>
