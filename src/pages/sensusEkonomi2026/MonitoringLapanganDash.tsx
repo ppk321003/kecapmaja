@@ -321,6 +321,26 @@ const getStackingKecamatan = (row: any): string => toProperCase(
 );
 
 const getStackingWilkerstatValue = (row: any): number => {
+  return getStackingWilkerstatValueImpl(row);
+};
+
+const sumPplTotals = (rows: any[]) => {
+  const prelist = rows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
+  const wilkerstat = rows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0);
+  const responden = rows.reduce((sum, row) => sum + parseNumericValue(row.responden_didata), 0);
+  const draft = rows.reduce((sum, row) => sum + parseNumericValue(row.draft), 0);
+  return {
+    prelist,
+    wilkerstat,
+    responden,
+    draft,
+    pctResponden: prelist > 0 ? ((responden / prelist) * 100).toFixed(2) : "0.00",
+    pctDraft: prelist > 0 ? ((draft / prelist) * 100).toFixed(2) : "0.00",
+    pctWilkerstat: wilkerstat > 0 ? ((responden / wilkerstat) * 100).toFixed(2) : "0.00",
+  };
+};
+
+const getStackingWilkerstatValueImpl = (row: any): number => {
   const columnW = parseNumericValue(getRawColumnText(row, 22, ""));
   const columnX = parseNumericValue(getRawColumnText(row, 23, ""));
   return columnW + columnX;
