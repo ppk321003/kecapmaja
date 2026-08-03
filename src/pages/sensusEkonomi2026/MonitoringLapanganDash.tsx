@@ -1311,12 +1311,17 @@ export default function MonitoringLapanganDash() {
       const key = `${namaPpl}|${kecamatan}`;
       const prelistAwal = getRawColumnNumber(row, 2, 0);
       const jumlahPrelistUsaha = getRawColumnNumber(row, 3, 0);
-      const ditemukan = getRawColumnNumber(row, 4, 0);
-      const tutup = getRawColumnNumber(row, 5, 0);
-      const ganda = getRawColumnNumber(row, 6, 0);
-      const tidakDitemukan = getRawColumnNumber(row, 7, 0);
-      const baru = getRawColumnNumber(row, 8, 0);
-      const ditemukanPlusBaru = getRawColumnNumber(row, 9, 0);
+      // Mapping kolom sheet USAHA PERUSAHAAN (A=0):
+      // Ditemukan = D+F+P, Tutup = H+J+R, Ganda = L+T,
+      // Tidak Ditemukan = N+V, Baru = X, Ditemukan+Baru = Z
+      const ditemukan =
+        getRawColumnNumber(row, 3, 0) + getRawColumnNumber(row, 5, 0) + getRawColumnNumber(row, 15, 0);
+      const tutup =
+        getRawColumnNumber(row, 7, 0) + getRawColumnNumber(row, 9, 0) + getRawColumnNumber(row, 17, 0);
+      const ganda = getRawColumnNumber(row, 11, 0) + getRawColumnNumber(row, 19, 0);
+      const tidakDitemukan = getRawColumnNumber(row, 13, 0) + getRawColumnNumber(row, 21, 0);
+      const baru = getRawColumnNumber(row, 23, 0);
+      const ditemukanPlusBaru = getRawColumnNumber(row, 25, 0);
 
       const child: UsahaChildRow = {
         id: `${key}-child-${index}`,
@@ -1397,12 +1402,14 @@ export default function MonitoringLapanganDash() {
       const kecamatan = toProperCase(getRawColumnText(row, 1, getRowValue(row, "kecamatan", ["kecamatan", "nama_kecamatan"], "-")));
       const key = `${namaPpl}|${kecamatan}`;
       const prelistAwal = getRawColumnNumber(row, 2, getRowNumeric(row, "prelist_awal", ["prelist_awal", "prelist"], 0));
+      // Mapping kolom sheet USAHA KELUARGA (A=0):
+      // Ditemukan = D, Tutup = F, Ganda = H, Tidak Ditemukan = J, Baru = L, Ditemukan+Baru = N
       const ditemukan = getRawColumnNumber(row, 3, getRowNumeric(row, "ditemukan", ["ditemukan"], 0));
-      const tutup = getRawColumnNumber(row, 4, getRowNumeric(row, "tutup", ["tutup"], 0));
-      const ganda = getRawColumnNumber(row, 5, getRowNumeric(row, "ganda", ["ganda"], 0));
-      const tidakDitemukan = getRawColumnNumber(row, 6, getRowNumeric(row, "tidak_ditemukan", ["tidak ditemukan", "tidak_ditemukan"], 0));
-      const baru = getRawColumnNumber(row, 7, getRowNumeric(row, "baru", ["baru"], 0));
-      const ditemukanPlusBaru = getRawColumnNumber(row, 8, getRowNumeric(row, "ditemukan_plus_baru", ["ditemukan_plus_baru", "ditemukan + baru", "ditemukan dan baru", "total_ditemukan"], 0));
+      const tutup = getRawColumnNumber(row, 5, getRowNumeric(row, "tutup", ["tutup"], 0));
+      const ganda = getRawColumnNumber(row, 7, getRowNumeric(row, "ganda", ["ganda"], 0));
+      const tidakDitemukan = getRawColumnNumber(row, 9, getRowNumeric(row, "tidak_ditemukan", ["tidak ditemukan", "tidak_ditemukan"], 0));
+      const baru = getRawColumnNumber(row, 11, getRowNumeric(row, "baru", ["baru"], 0));
+      const ditemukanPlusBaru = getRawColumnNumber(row, 13, getRowNumeric(row, "ditemukan_plus_baru", ["ditemukan_plus_baru", "ditemukan + baru", "ditemukan dan baru", "total_ditemukan"], 0));
 
       const child: UsahaChildRow = {
         id: `${key}-child-${index}`,
