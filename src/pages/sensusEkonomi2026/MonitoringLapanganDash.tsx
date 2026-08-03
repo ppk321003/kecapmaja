@@ -3717,7 +3717,7 @@ export default function MonitoringLapanganDash() {
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>
                                       {row.persentase_responden_didata}%
                                     </TableCell>
-                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
+                                    <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(row.persentase_wilkerstat)) }}>
                                       {row.persentase_wilkerstat}%
                                     </TableCell>
                                     <TableCell className="max-w-[240px] px-4 py-3">
@@ -3739,7 +3739,7 @@ export default function MonitoringLapanganDash() {
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_responden_didata)) }}>
                                         {detail.persentase_responden_didata}%
                                       </TableCell>
-                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">
+                                      <TableCell className="text-right font-semibold px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_wilkerstat)) }}>
                                         {detail.persentase_wilkerstat}%
                                       </TableCell>
                                       <TableCell className="max-w-[240px] px-4 py-2">
@@ -3750,34 +3750,31 @@ export default function MonitoringLapanganDash() {
                                 </React.Fragment>
                               );
                             })}
-                            {/* Total Row */}
-                            {(() => {
-                              const totalPrelist = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
-                              const totalWilkerstat = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0);
-                              const totalResponden = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.responden_didata), 0);
-                              const totalDraft = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.draft), 0);
-                              const totalPctResponden = totalPrelist > 0 ? ((totalResponden / totalPrelist) * 100).toFixed(2) : "0.00";
-                              const totalPctDraft = totalPrelist > 0 ? ((totalDraft / totalPrelist) * 100).toFixed(2) : "0.00";
-                              const totalPctWilkerstat = totalWilkerstat > 0 ? ((totalResponden / totalWilkerstat) * 100).toFixed(2) : "0.00";
+                            {/* Total Rows: sesuai filter & keseluruhan */}
+                            {([
+                              ["TOTAL (Sesuai Filter)", filteredRows, "bg-emerald-50"],
+                              ["TOTAL KESELURUHAN", pplRows, "bg-slate-100"],
+                            ] as const).map(([label, rows, bgClass]) => {
+                              const t = sumPplTotals(rows);
                               return (
-                                <TableRow className="bg-emerald-50 border-b font-semibold">
+                                <TableRow key={label} className={`${bgClass} border-b font-semibold`}>
                                   <TableCell className="text-center text-slate-700 w-12 px-4 py-3" />
-                                  <TableCell className="text-slate-900 px-4 py-3">TOTAL</TableCell>
+                                  <TableCell className="text-slate-900 px-4 py-3">{label}</TableCell>
                                   <TableCell className="text-slate-900 px-4 py-3" />
-                                  <TableCell className="text-right text-blue-900 px-4 py-3">{totalWilkerstat.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalPrelist.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalDraft.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right text-blue-600 px-4 py-3">{totalPctDraft}%</TableCell>
-                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalResponden.toLocaleString("id-ID")}</TableCell>
-                                  <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctResponden)) }}>
-                                    {totalPctResponden}%
+                                  <TableCell className="text-right text-blue-900 px-4 py-3">{t.wilkerstat.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-slate-900 px-4 py-3">{t.prelist.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-slate-900 px-4 py-3">{t.draft.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right text-blue-600 px-4 py-3">{t.pctDraft}%</TableCell>
+                                  <TableCell className="text-right text-slate-900 px-4 py-3">{t.responden.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(t.pctResponden)) }}>
+                                    {t.pctResponden}%
                                   </TableCell>
-                                  <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctWilkerstat)) }}>
-                                    {totalPctWilkerstat}%
+                                  <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(t.pctWilkerstat)) }}>
+                                    {t.pctWilkerstat}%
                                   </TableCell>
                                 </TableRow>
                               );
-                            })()}
+                            })}
                           </TableBody>
                         </Table>
                         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
