@@ -1310,7 +1310,8 @@ export default function MonitoringLapanganDash() {
       const kecamatan = toProperCase(getRawColumnText(row, 1, "-"));
       const key = `${namaPpl}|${kecamatan}`;
       const prelistAwal = getRawColumnNumber(row, 2, 0);
-      const jumlahPrelistUsaha = getRawColumnNumber(row, 3, 0);
+      // Kolom C = prelist / jumlah prelist usaha (kolom D sudah dipakai untuk Ditemukan)
+      const jumlahPrelistUsaha = getRawColumnNumber(row, 2, 0);
       // Mapping kolom sheet USAHA PERUSAHAAN (A=0):
       // Ditemukan = D+F+P, Tutup = H+J+R, Ganda = L+T,
       // Tidak Ditemukan = N+V, Baru = X, Ditemukan+Baru = Z
