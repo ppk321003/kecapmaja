@@ -13,6 +13,7 @@ import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import * as XLSX from "xlsx";
 import IdentifikasiUTTTab from "./IdentifikasiUTTTab";
+import SkalaUsahaTab from "./SkalaUsahaTab";
 
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
@@ -1900,6 +1901,26 @@ export default function MonitoringLapanganDash() {
     });
   }, [usahaPerusahaanData, usahaKeluargaData, namaPplByKey, usahaProporsiRows]);
 
+  const prelistUsahaByGroupKey = useMemo(() => {
+    const lookup = new Map<string, number>();
+    (mergedUsahaRows || []).forEach((row) => {
+      const groupKey = `${normalizePersonKey(row.nama_ppl)}||${normalizeKecamatanKey(row.kecamatan)}`;
+      lookup.set(groupKey, parseNumericValue(row.perusahaan_jumlah_prelist_usaha));
+    });
+    return lookup;
+  }, [mergedUsahaRows]);
+
+  const prelistUsahaByRowKey = useMemo(() => {
+    const lookup = new Map<string, number>();
+    (usahaProporsiRows || []).forEach((row) => {
+      row.children.forEach((detail) => {
+        const key = normalizeSheetKey(detail.kode);
+        if (key) lookup.set(key, parseNumericValue(detail.prelist_usaha));
+      });
+    });
+    return lookup;
+  }, [usahaProporsiRows]);
+
   const mergedUsahaKecamatanOptions = useMemo(() => {
     const values = new Set<string>();
     mergedUsahaRows.forEach((row) => {
@@ -3068,6 +3089,7 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="capaian-kinerja" className="rounded-xl py-2 text-sm font-semibold">Ter-1 &gt; Saat Ini</TabsTrigger>
               <TabsTrigger value="umkm-sosek" className="rounded-xl py-2 text-sm font-semibold">UMKM dan Sosek</TabsTrigger>
               <TabsTrigger value="pendataan-usaha" className="rounded-xl py-2 text-sm font-semibold">Pendataan Usaha</TabsTrigger>
+              <TabsTrigger value="skala-usaha" className="rounded-xl py-2 text-sm font-semibold">Skala Usaha</TabsTrigger>
               <TabsTrigger value="identifikasi-utt" className="rounded-xl py-2 text-sm font-semibold">Identifikasi UTT</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
               <TabsTrigger value="anomali" className="rounded-xl py-2 text-sm font-semibold">Anomali</TabsTrigger>
@@ -4691,6 +4713,17 @@ export default function MonitoringLapanganDash() {
                   </TabsContent>
                 </Tabs>
               </div>
+            </TabsContent>
+            <TabsContent value="skala-usaha" className="space-y-6 mt-6">
+              <SkalaUsahaTab
+                namaPplByKey={namaPplByKey}
+                kecamatanByKey={kecamatanByKey}
+                prelistAwalByKey={prelistAwalByKey}
+                prelistUsahaByGroupKey={prelistUsahaByGroupKey}
+                prelistUsahaByRowKey={prelistUsahaByRowKey}
+                didataByKey={didataByKey}
+                stackingWilkerstatByKey={stackingWilkerstatByKey}
+              />
             </TabsContent>
             <TabsContent value="identifikasi-utt" className="space-y-6 mt-6">
               <IdentifikasiUTTTab />
