@@ -625,6 +625,7 @@ export default function MonitoringLapanganDash() {
   const [umkmSubTab, setUmkmSubTab] = useState<string>("ppl");
   const [usahaSubTab, setUsahaSubTab] = useState<string>("kondisi");
   const [usahaSearchTerm, setUsahaSearchTerm] = useState("");
+  const [umkmKecamatanFilter, setUmkmKecamatanFilter] = useState("all");
   const [usahaKecamatanFilter, setUsahaKecamatanFilter] = useState("all");
   const [proporsiKecamatanFilter, setProporsiKecamatanFilter] = useState("all");
   const [usahaItemsPerPage, setUsahaItemsPerPage] = useState(20);
@@ -2468,6 +2469,16 @@ export default function MonitoringLapanganDash() {
     setUsahaProporsiCurrentPage(1);
   }, [filteredUsahaProporsiRows.length, usahaItemsPerPage]);
 
+  const umkmKecamatanOptions = useMemo(() => {
+    const values = new Set<string>();
+    [...pplRows, ...pmlRows].forEach((row) => {
+      const rawKec = String(row.kecamatan || "").trim();
+      if (!rawKec) return;
+      rawKec.split(/,|\n/).map((part) => part.trim()).filter(Boolean).forEach((value) => values.add(value));
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, "id"));
+  }, [pplRows, pmlRows]);
+
   const filteredRows = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
     let rows = pplRows;
@@ -2477,6 +2488,16 @@ export default function MonitoringLapanganDash() {
         row.kecamatan.toLowerCase().includes(normalizedSearch) ||
         row.matchingKeys.toLowerCase().includes(normalizedSearch)
       );
+    }
+    if (umkmKecamatanFilter !== "all") {
+      const selected = umkmKecamatanFilter.toLowerCase();
+      rows = rows.filter((row) => {
+        const values = String(row.kecamatan || "")
+          .split(/,|\n/)
+          .map((part) => part.trim().toLowerCase())
+          .filter(Boolean);
+        return values.includes(selected);
+      });
     }
 
     const compareValue = (a: PPLRow, b: PPLRow) => {
@@ -2513,7 +2534,7 @@ export default function MonitoringLapanganDash() {
     };
 
     return [...rows].sort(compareValue);
-  }, [pplRows, searchTerm, sortBy, sortOrder]);
+  }, [pplRows, searchTerm, sortBy, sortOrder, umkmKecamatanFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
   const paginatedRows = useMemo(() => {
@@ -2544,6 +2565,16 @@ export default function MonitoringLapanganDash() {
         row.nama_pml.toLowerCase().includes(normalizedSearch) ||
         row.kecamatan.toLowerCase().includes(normalizedSearch)
       );
+    }
+    if (umkmKecamatanFilter !== "all") {
+      const selected = umkmKecamatanFilter.toLowerCase();
+      rows = rows.filter((row) => {
+        const values = String(row.kecamatan || "")
+          .split(/,|\n/)
+          .map((part) => part.trim().toLowerCase())
+          .filter(Boolean);
+        return values.includes(selected);
+      });
     }
 
     const compareValue = (a: PMLRow, b: PMLRow) => {
@@ -2579,7 +2610,7 @@ export default function MonitoringLapanganDash() {
     };
 
     return [...rows].sort(compareValue);
-  }, [pmlRows, searchTerm, pmlSortBy, pmlSortOrder]);
+  }, [pmlRows, searchTerm, pmlSortBy, pmlSortOrder, umkmKecamatanFilter]);
 
   const pmlTotalPages = Math.max(1, Math.ceil(filteredPmlRows.length / pmlItemsPerPage));
   const pmlPaginatedRows = useMemo(() => {
@@ -2734,29 +2765,23 @@ export default function MonitoringLapanganDash() {
       const { daysElapsed } = calculateDayProgress();
       const { daysElapsed: daysElapsedTer1 } = calculateDayProgress(new Date(2026, 6, 15));
       const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
-      const MIN_DAILY_DELTA = 10; // minimal expected increase threshold
+      const averagePerDay = daysElapsedTer1 > 0 ? absChange / daysElapsedTer1 : 0;
 
-      // Richer status logic using percent points relative to prelist and target
+      // Status logic based on average daily activity after termin-1
       let status = "Tidak Ada Data";
       if (prelist <= 0) {
         status = "Tanpa Prelist";
+      } else if (averagePerDay > 7) {
+        status = "Meningkat Tajam";
+      } else if (averagePerDay >= 4) {
+        status = "Meningkat";
       } else {
-        if (absChange === 0) {
-          status = "Perlu Perhatian"; // tidak ada kenaikan dari Termin-1
-        } else if (absChange > 0 && absChange < MIN_DAILY_DELTA) {
-          status = "Perlu Perhatian"; // kenaikan tapi di bawah target minimal per hari
-        } else if (pctChange <= -5) status = "Menurun Tajam";
-        else if (pctChange < 0) status = "Menurun";
-        else if (Math.abs(pctChange) < 0.0001) {
-          status = nowPct >= minPercentageTarget ? "Stabil (Cukup)" : "Stabil (Risiko)";
-        } else if (pctChange >= 5) status = "Meningkat Tajam";
-        else status = "Meningkat";
+        status = "Perlu Perhatian";
       }
 
-      const averagePerDay = daysElapsedTer1 > 0 ? absChange / daysElapsedTer1 : 0;
       const statusDetail = prelist <= 0
         ? "Tanpa prelist tersedia"
-        : `Δ ${absChange >= 0 ? "+" : ""}${absChange.toLocaleString("id-ID")} dari Termin-1 • Rata-rata aktivitas setelah termin-1 s.d. hari ke-${daysElapsedTer1} • ${averagePerDay >= 0 ? "+" : ""}${averagePerDay.toFixed(1)}/hari`;
+        : `Rata-rata aktivitas setelah termin-1 s.d. hari ke-${daysElapsedTer1} • ${averagePerDay >= 0 ? "+" : ""}${averagePerDay.toFixed(1)}/hari`;
       const statusLabel = status;
 
       const out = {
@@ -3409,6 +3434,20 @@ export default function MonitoringLapanganDash() {
                         className="pl-10 h-10 w-full"
                       />
                     </div>
+                    <select
+                      aria-label="Filter kecamatan UMKM dan Sosek"
+                      value={umkmKecamatanFilter}
+                      onChange={(event) => {
+                        setUmkmKecamatanFilter(event.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                    >
+                      <option value="all">Semua Kecamatan</option>
+                      {umkmKecamatanOptions.map((kecamatan) => (
+                        <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                      ))}
+                    </select>
                     <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-r from-emerald-50 via-white to-slate-50 p-4 shadow-sm">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex flex-wrap items-center gap-2">
@@ -3734,6 +3773,20 @@ export default function MonitoringLapanganDash() {
                               className="pl-10 h-10 w-full"
                             />
                           </div>
+                          <select
+                            aria-label="Filter kecamatan UMKM dan Sosek"
+                            value={umkmKecamatanFilter}
+                            onChange={(event) => {
+                              setUmkmKecamatanFilter(event.target.value);
+                              setPmlCurrentPage(1);
+                            }}
+                            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                          >
+                            <option value="all">Semua Kecamatan</option>
+                            {umkmKecamatanOptions.map((kecamatan) => (
+                              <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                            ))}
+                          </select>
                           <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-r from-emerald-50 via-white to-slate-50 p-4 shadow-sm">
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                               <div className="flex flex-wrap items-center gap-2">
