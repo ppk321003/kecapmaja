@@ -1311,12 +1311,17 @@ export default function MonitoringLapanganDash() {
       const key = `${namaPpl}|${kecamatan}`;
       const prelistAwal = getRawColumnNumber(row, 2, 0);
       const jumlahPrelistUsaha = getRawColumnNumber(row, 3, 0);
-      const ditemukan = getRawColumnNumber(row, 4, 0);
-      const tutup = getRawColumnNumber(row, 5, 0);
-      const ganda = getRawColumnNumber(row, 6, 0);
-      const tidakDitemukan = getRawColumnNumber(row, 7, 0);
-      const baru = getRawColumnNumber(row, 8, 0);
-      const ditemukanPlusBaru = getRawColumnNumber(row, 9, 0);
+      // Mapping kolom sheet USAHA PERUSAHAAN (A=0):
+      // Ditemukan = D+F+P, Tutup = H+J+R, Ganda = L+T,
+      // Tidak Ditemukan = N+V, Baru = X, Ditemukan+Baru = Z
+      const ditemukan =
+        getRawColumnNumber(row, 3, 0) + getRawColumnNumber(row, 5, 0) + getRawColumnNumber(row, 15, 0);
+      const tutup =
+        getRawColumnNumber(row, 7, 0) + getRawColumnNumber(row, 9, 0) + getRawColumnNumber(row, 17, 0);
+      const ganda = getRawColumnNumber(row, 11, 0) + getRawColumnNumber(row, 19, 0);
+      const tidakDitemukan = getRawColumnNumber(row, 13, 0) + getRawColumnNumber(row, 21, 0);
+      const baru = getRawColumnNumber(row, 23, 0);
+      const ditemukanPlusBaru = getRawColumnNumber(row, 25, 0);
 
       const child: UsahaChildRow = {
         id: `${key}-child-${index}`,
