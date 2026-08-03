@@ -1068,11 +1068,18 @@ export default function MonitoringLapanganDash() {
       const kecamatan = String(getRowValue(row, "regioncode", ["regioncode", "regionCode", "region", "kecamatan"], "")).trim();
       const namaPpl = String(getRowValue(row, "nama_ppl", ["nama_ppl", "nama ppl", "nama pencacah", "nama"], "")).trim();
       if (!kecamatan || !namaPpl) return;
+
+      const submit = parseInt(String(getRowValue(row, "submitted_by_pencacah", ["submitted_by_pencacah", "submitted", "submit", "submitted_by"], "0")), 10) || 0;
+      const approve = getApprovedTotalFromRow(row) || 0;
+      const reject = parseInt(String(getRowValue(row, "rejected_by_pengawas", ["rejected_by_pengawas", "rejected", "reject"], "0")), 10) || 0;
       const revoke = parseRevokedFromUserRow(row);
-      if (!revoke) return;
+      if (!submit && !approve && !reject && !revoke) return;
 
       const key = `${normalizeKecamatanKey(kecamatan)}|${normalizePersonKey(namaPpl)}`;
       const existing = map.get(key) || { draft: 0, submit: 0, approve: 0, reject: 0, revoke: 0, totalStatus: 0 };
+      existing.submit += submit;
+      existing.approve += approve;
+      existing.reject += reject;
       existing.revoke += revoke;
       existing.totalStatus = existing.submit + existing.approve + existing.reject + existing.revoke;
       map.set(key, existing);
@@ -1119,10 +1126,18 @@ export default function MonitoringLapanganDash() {
       const kecamatan = String(getRowValue(row, "regioncode", ["regioncode", "regionCode", "region", "kecamatan"], "")).trim().toLowerCase();
       const namaPpl = String(getRowValue(row, "nama_ppl", ["nama_ppl", "nama ppl", "nama pencacah", "nama"], "")).trim().toLowerCase();
       if (!kecamatan || !namaPpl) return;
+
+      const submit = parseInt(String(getRowValue(row, "submitted_by_pencacah", ["submitted_by_pencacah", "submitted", "submit", "submitted_by"], "0")), 10) || 0;
+      const approve = getApprovedTotalFromRow(row) || 0;
+      const reject = parseInt(String(getRowValue(row, "rejected_by_pengawas", ["rejected_by_pengawas", "rejected", "reject"], "0")), 10) || 0;
       const revoke = parseRevokedFromUserRow(row);
-      if (!revoke) return;
+      if (!submit && !approve && !reject && !revoke) return;
+
       const key = `${kecamatan}|${namaPpl}`;
       const existing = map.get(key) || { draft: 0, submit: 0, approve: 0, reject: 0, revoke: 0, totalStatus: 0 };
+      existing.submit += submit;
+      existing.approve += approve;
+      existing.reject += reject;
       existing.revoke += revoke;
       existing.totalStatus = existing.submit + existing.approve + existing.reject + existing.revoke;
       map.set(key, existing);
