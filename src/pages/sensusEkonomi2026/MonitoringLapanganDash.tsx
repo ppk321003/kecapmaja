@@ -3016,6 +3016,11 @@ export default function MonitoringLapanganDash() {
     setCapaianCurrentPage(1);
   }, [capaianFilteredRows.length, capaianItemsPerPage]);
 
+  // Chart display controls
+  const [chartKecamatanFilter, setChartKecamatanFilter] = useState<string>("all");
+  const [chartSortOrder, setChartSortOrder] = useState<"asc" | "desc">("desc");
+  const [chartFontSize, setChartFontSize] = useState<number>(12);
+
   // Kecamatan data for chart
   const kecamatanStats = useMemo(() => {
     const kecamatanMap = new Map<string, { prelist: number; responden: number }>();
@@ -3037,6 +3042,63 @@ export default function MonitoringLapanganDash() {
       }))
       .sort((a, b) => b.persentase - a.persentase);
   }, [pmlRows]);
+
+  // Desa/Kelurahan level data for chart drill-down
+  const desaStats = useMemo(() => {
+    const progressTotals = new Map<string, { prelist: number; responden: number }>();
+    (progresData || []).forEach((row: any) => {
+      const key = normalizeSheetKey(getSheetCellText(row, 0));
+      if (!key) return;
+      const existing = progressTotals.get(key) || { prelist: 0, responden: 0 };
+      existing.prelist += parseNumericValue(getSheetCellText(row, 2));
+      existing.responden += parseNumericValue(getSheetCellText(row, 3));
+      progressTotals.set(key, existing);
+    });
+
+    const seenKeys = new Set<string>();
+    const desaMap = new Map<string, { kecamatan: string; desa: string; prelist: number; responden: number }>();
+
+    (stackingData || []).forEach((row: any) => {
+      const key = normalizeSheetKey(getSheetCellText(row, 3));
+      if (!key || seenKeys.has(key)) return;
+      seenKeys.add(key);
+      const kecamatan = toProperCase(getSheetCellText(row, 12));
+      const desa = toProperCase(getSheetCellText(row, 14)) || "-";
+      if (!kecamatan) return;
+      const totals = progressTotals.get(key) || { prelist: 0, responden: 0 };
+      const mapKey = `${kecamatan}||${desa}`;
+      const existing = desaMap.get(mapKey) || { kecamatan, desa, prelist: 0, responden: 0 };
+      existing.prelist += totals.prelist;
+      existing.responden += totals.responden;
+      desaMap.set(mapKey, existing);
+    });
+
+    return Array.from(desaMap.values()).map((item) => ({
+      kecamatan: item.kecamatan,
+      desa: item.desa,
+      prelistAwal: item.prelist,
+      respondenDidata: item.responden,
+      persentase: item.prelist > 0 ? parseFloat(((item.responden / item.prelist) * 100).toFixed(2)) : 0,
+    }));
+  }, [stackingData, progresData]);
+
+  const chartKecamatanOptions = useMemo(
+    () => Array.from(new Set(kecamatanStats.map((item) => item.kecamatan))).sort((a, b) => a.localeCompare(b, "id")),
+    [kecamatanStats]
+  );
+
+  const wilayahChartData = useMemo(() => {
+    const rows =
+      chartKecamatanFilter === "all"
+        ? kecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
+        : desaStats
+            .filter((item) => item.kecamatan === chartKecamatanFilter)
+            .map((item) => ({ label: item.desa, ...item }));
+
+    return [...rows].sort((a, b) =>
+      chartSortOrder === "asc" ? a.persentase - b.persentase : b.persentase - a.persentase
+    );
+  }, [chartKecamatanFilter, chartSortOrder, kecamatanStats, desaStats]);
 
   // Global edit dialog (rendered outside TabsContent so it is available on all tabs)
   // Uses same state variables: editDialogOpen, editDialogField, editDialogValue, editSaving
@@ -3066,6 +3128,9 @@ export default function MonitoringLapanganDash() {
   const error = stackingError || progresError || progresHeaderError;
   const avgKecamatanPercentage = kecamatanStats.length > 0
     ? kecamatanStats.reduce((sum, item) => sum + item.persentase, 0) / kecamatanStats.length
+    : 0;
+  const avgWilayahPercentage = wilayahChartData.length > 0
+    ? wilayahChartData.reduce((sum, item) => sum + item.persentase, 0) / wilayahChartData.length
     : 0;
 
   return (
@@ -3187,32 +3252,85 @@ export default function MonitoringLapanganDash() {
               {/* Kecamatan Chart */}
               <Card className="border-0 shadow-sm">
                 <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-slate-50">
-                  <CardTitle className="text-base">Persentase Responden per Kecamatan</CardTitle>
-                  <CardDescription>Responden Didata / Prelist Awal per Kecamatan (Diurutkan Descending)</CardDescription>
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                      <CardTitle className="text-base">
+                        Persentase Responden per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                      </CardTitle>
+                      <CardDescription>
+                        Responden Didata / Prelist Awal
+                        {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
+                        {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-kecamatan" className="text-xs font-semibold text-slate-600">Kecamatan</label>
+                        <select
+                          id="chart-kecamatan"
+                          value={chartKecamatanFilter}
+                          onChange={(e) => setChartKecamatanFilter(e.target.value)}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="all">Semua Kecamatan</option>
+                          {chartKecamatanOptions.map((kecamatan) => (
+                            <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-sort" className="text-xs font-semibold text-slate-600">Urutan</label>
+                        <select
+                          id="chart-sort"
+                          value={chartSortOrder}
+                          onChange={(e) => setChartSortOrder(e.target.value as "asc" | "desc")}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="desc">Tertinggi → Terendah</option>
+                          <option value="asc">Terendah → Tertinggi</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-font" className="text-xs font-semibold text-slate-600">Ukuran Font ({chartFontSize}px)</label>
+                        <input
+                          id="chart-font"
+                          type="range"
+                          min={8}
+                          max={20}
+                          step={1}
+                          value={chartFontSize}
+                          onChange={(e) => setChartFontSize(Number(e.target.value))}
+                          className="h-9 w-36 accent-blue-600"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-6">
-                  {kecamatanStats.length === 0 ? (
-                    <div className="text-center py-12 text-slate-500">Tidak ada data kecamatan</div>
+                  {wilayahChartData.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">Tidak ada data {chartKecamatanFilter === "all" ? "kecamatan" : "desa/kelurahan"}</div>
                   ) : (
                     <ResponsiveContainer width="100%" height={660}>
-                      <BarChart data={kecamatanStats} margin={{ top: 20, right: 30, left: 0, bottom: 110 }}>
+                      <BarChart data={wilayahChartData} margin={{ top: 20, right: 30, left: 0, bottom: 110 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
-                          dataKey="kecamatan"
+                          dataKey="label"
                           angle={-45}
                           textAnchor="end"
                           height={120}
-                          tick={{ fontSize: 12 }}
+                          tick={{ fontSize: chartFontSize }}
                         />
                         <YAxis
                           label={{ value: "Persentase (%)", angle: -90, position: "insideLeft" }}
                           domain={[0, 100]}
+                          tick={{ fontSize: chartFontSize }}
                         />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: "#fff",
                             border: "1px solid #cbd5e1",
                             borderRadius: "8px",
+                            fontSize: chartFontSize,
                           }}
                           formatter={(value: any, name: string) => {
                             if (name === "persentase") {
@@ -3220,22 +3338,22 @@ export default function MonitoringLapanganDash() {
                             }
                             return [value.toLocaleString("id-ID"), name === "prelistAwal" ? "Prelist Awal" : "Responden Didata"];
                           }}
-                          labelFormatter={(label) => `Kecamatan: ${label}`}
+                          labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
                         />
                         <ReferenceLine
-                          y={avgKecamatanPercentage}
+                          y={avgWilayahPercentage}
                           stroke="#8b5cf6"
                           strokeWidth={2}
                           strokeDasharray="5 5"
-                          label={{ value: `Rata-rata: ${avgKecamatanPercentage.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: 12 }}
+                          label={{ value: `Rata-rata: ${avgWilayahPercentage.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: chartFontSize }}
                         />
                         <ReferenceLine
                           y={minPercentageTarget}
                           stroke="#3b82f6"
                           strokeWidth={2}
-                          label={{ value: `Target minimal hari ke-${daysElapsed}: ${minPercentageTarget.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: 11 }}
+                          label={{ value: `Target minimal hari ke-${daysElapsed}: ${minPercentageTarget.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: chartFontSize }}
                         />
-                        <Legend />
+                        <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                         <Bar
                           dataKey="persentase"
                           name="Persentase Responden"
@@ -3243,13 +3361,13 @@ export default function MonitoringLapanganDash() {
                           label={{
                             position: "top",
                             fill: "#1f2937",
-                            fontSize: 11,
+                            fontSize: chartFontSize,
                             fontWeight: 600,
                             formatter: (value: number) => `${value.toFixed(2)}%`,
                           }}
                         >
-                          {kecamatanStats.map((entry, index) => (
-                            <Cell key={`cell-${entry.kecamatan}-${index}`} fill={getColorForPercentage(entry.persentase)} />
+                          {wilayahChartData.map((entry, index) => (
+                            <Cell key={`cell-${entry.label}-${index}`} fill={getColorForPercentage(entry.persentase)} />
                           ))}
                         </Bar>
                       </BarChart>
