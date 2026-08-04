@@ -3016,6 +3016,11 @@ export default function MonitoringLapanganDash() {
     setCapaianCurrentPage(1);
   }, [capaianFilteredRows.length, capaianItemsPerPage]);
 
+  // Chart display controls
+  const [chartKecamatanFilter, setChartKecamatanFilter] = useState<string>("all");
+  const [chartSortOrder, setChartSortOrder] = useState<"asc" | "desc">("desc");
+  const [chartFontSize, setChartFontSize] = useState<number>(12);
+
   // Kecamatan data for chart
   const kecamatanStats = useMemo(() => {
     const kecamatanMap = new Map<string, { prelist: number; responden: number }>();
