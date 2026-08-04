@@ -353,7 +353,8 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    console.log('Request body:', JSON.stringify(body));
+    const { operation: opForLog, spreadsheetId: ssForLog, range: rangeForLog } = body || {};
+    console.log('Request:', JSON.stringify({ operation: opForLog, spreadsheetId: ssForLog, range: rangeForLog }));
     
     const { spreadsheetId, operation, range, values, rowIndex, sheetName }: SheetOperation = body;
     
@@ -407,9 +408,12 @@ serve(async (req: Request) => {
       const response = await fetch(`${baseUrl}/values/${range || 'Sheet1'}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await response.json();
-      console.log('Read response:', JSON.stringify(data));
-      return new Response(JSON.stringify(data), {
+      // Stream the upstream JSON straight through: avoids parsing + re-serializing
+      // (and logging) very large payloads, which was the main latency bottleneck.
+      const text = await response.text();
+      console.log(`Read response for ${range || 'Sheet1'}: ${text.length} bytes`);
+      return new Response(text, {
+        status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
