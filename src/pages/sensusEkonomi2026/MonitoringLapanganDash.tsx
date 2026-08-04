@@ -705,6 +705,7 @@ export default function MonitoringLapanganDash() {
   const { data: ngibarData, loading: ngibarLoading, error: ngibarError } = useGoogleSheetsData({
     spreadsheetId: NGIBAR_SPREADSHEET_ID,
     sheetName: NGIBAR_SHEET,
+    enabled: tabVisited("ngibar"),
   });
   const [ngibarSearch, setNgibarSearch] = useState("");
   const [ngibarSortField, setNgibarSortField] = useState<string | null>(null);
