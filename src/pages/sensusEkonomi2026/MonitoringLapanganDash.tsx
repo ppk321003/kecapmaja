@@ -3038,6 +3038,63 @@ export default function MonitoringLapanganDash() {
       .sort((a, b) => b.persentase - a.persentase);
   }, [pmlRows]);
 
+  // Desa/Kelurahan level data for chart drill-down
+  const desaStats = useMemo(() => {
+    const progressTotals = new Map<string, { prelist: number; responden: number }>();
+    (progresData || []).forEach((row: any) => {
+      const key = normalizeSheetKey(getSheetCellText(row, 0));
+      if (!key) return;
+      const existing = progressTotals.get(key) || { prelist: 0, responden: 0 };
+      existing.prelist += parseNumericValue(getSheetCellText(row, 2));
+      existing.responden += parseNumericValue(getSheetCellText(row, 3));
+      progressTotals.set(key, existing);
+    });
+
+    const seenKeys = new Set<string>();
+    const desaMap = new Map<string, { kecamatan: string; desa: string; prelist: number; responden: number }>();
+
+    (stackingData || []).forEach((row: any) => {
+      const key = normalizeSheetKey(getSheetCellText(row, 3));
+      if (!key || seenKeys.has(key)) return;
+      seenKeys.add(key);
+      const kecamatan = toProperCase(getSheetCellText(row, 12));
+      const desa = toProperCase(getSheetCellText(row, 14)) || "-";
+      if (!kecamatan) return;
+      const totals = progressTotals.get(key) || { prelist: 0, responden: 0 };
+      const mapKey = `${kecamatan}||${desa}`;
+      const existing = desaMap.get(mapKey) || { kecamatan, desa, prelist: 0, responden: 0 };
+      existing.prelist += totals.prelist;
+      existing.responden += totals.responden;
+      desaMap.set(mapKey, existing);
+    });
+
+    return Array.from(desaMap.values()).map((item) => ({
+      kecamatan: item.kecamatan,
+      desa: item.desa,
+      prelistAwal: item.prelist,
+      respondenDidata: item.responden,
+      persentase: item.prelist > 0 ? parseFloat(((item.responden / item.prelist) * 100).toFixed(2)) : 0,
+    }));
+  }, [stackingData, progresData]);
+
+  const chartKecamatanOptions = useMemo(
+    () => Array.from(new Set(kecamatanStats.map((item) => item.kecamatan))).sort((a, b) => a.localeCompare(b, "id")),
+    [kecamatanStats]
+  );
+
+  const wilayahChartData = useMemo(() => {
+    const rows =
+      chartKecamatanFilter === "all"
+        ? kecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
+        : desaStats
+            .filter((item) => item.kecamatan === chartKecamatanFilter)
+            .map((item) => ({ label: item.desa, ...item }));
+
+    return [...rows].sort((a, b) =>
+      chartSortOrder === "asc" ? a.persentase - b.persentase : b.persentase - a.persentase
+    );
+  }, [chartKecamatanFilter, chartSortOrder, kecamatanStats, desaStats]);
+
   // Global edit dialog (rendered outside TabsContent so it is available on all tabs)
   // Uses same state variables: editDialogOpen, editDialogField, editDialogValue, editSaving
   const GlobalEditDialog = (
