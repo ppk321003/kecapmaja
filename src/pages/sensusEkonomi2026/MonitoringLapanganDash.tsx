@@ -543,6 +543,15 @@ interface MergedUsahaRow {
 }
 
 export default function MonitoringLapanganDash() {
+  // Tab yang sudah pernah dibuka -> data hanya di-fetch saat dibutuhkan (lazy),
+  // lalu tetap tersimpan di cache react-query.
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set(["dashboard"]));
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
+  }, [activeTab]);
+  const tabVisited = (tab: string) => visitedTabs.has(tab);
+
   const { data: stackingData, loading: stackingLoading, error: stackingError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
     sheetName: STACKING_SHEET,
@@ -561,22 +570,26 @@ export default function MonitoringLapanganDash() {
   const { data: anomaliUsahaData, loading: anomaliUsahaLoading, error: anomaliUsahaError } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: SHEET_ANOMALI_USAHA,
+    enabled: tabVisited("anomali"),
   });
   const { data: anomaliKeluargaData, loading: anomaliKeluargaLoading, error: anomaliKeluargaError } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: SHEET_ANOMALI_KELUARGA,
+    enabled: tabVisited("anomali"),
   });
   const { data: anomaliUsahaInfoData } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: SHEET_ANOMALI_USAHA,
     range: `${SHEET_ANOMALI_USAHA}!A2`,
     mode: "single-cell",
+    enabled: tabVisited("anomali"),
   });
   const { data: anomaliKeluargaInfoData } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: SHEET_ANOMALI_KELUARGA,
     range: `${SHEET_ANOMALI_KELUARGA}!A2`,
     mode: "single-cell",
+    enabled: tabVisited("anomali"),
   });
   const { data: monitoringSheetData, loading: monitoringSheetLoading, error: monitoringSheetError } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
@@ -599,6 +612,7 @@ export default function MonitoringLapanganDash() {
   const { data: usahaProporsiData, loading: usahaProporsiLoading, error: usahaProporsiError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
     sheetName: SHEET_PROPORSI_USAHA,
+    enabled: tabVisited("pendataan-usaha"),
   });
 
   const { user } = useAuth();
@@ -623,7 +637,6 @@ export default function MonitoringLapanganDash() {
   const [capaianSortOrder, setCapaianSortOrder] = useState<"asc" | "desc">("asc");
   const [capaianCurrentPage, setCapaianCurrentPage] = useState(1);
   const [capaianItemsPerPage, setCapaianItemsPerPage] = useState(20);
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [umkmSubTab, setUmkmSubTab] = useState<string>("ppl");
   const [usahaSubTab, setUsahaSubTab] = useState<string>("kondisi");
   const [usahaSearchTerm, setUsahaSearchTerm] = useState("");
@@ -692,6 +705,7 @@ export default function MonitoringLapanganDash() {
   const { data: ngibarData, loading: ngibarLoading, error: ngibarError } = useGoogleSheetsData({
     spreadsheetId: NGIBAR_SPREADSHEET_ID,
     sheetName: NGIBAR_SHEET,
+    enabled: tabVisited("ngibar"),
   });
   const [ngibarSearch, setNgibarSearch] = useState("");
   const [ngibarSortField, setNgibarSortField] = useState<string | null>(null);

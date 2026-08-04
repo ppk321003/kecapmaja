@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UseGoogleSheetsDataProps {
@@ -7,17 +7,19 @@ interface UseGoogleSheetsDataProps {
   range?: string;
   mode?: "rows" | "single-cell";
   refreshKey?: any;
+  /** When false, the fetch is deferred (useful for lazy tab loading) */
+  enabled?: boolean;
 }
 
-export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "rows", refreshKey }: UseGoogleSheetsDataProps) => {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "rows", refreshKey, enabled = true }: UseGoogleSheetsDataProps) => {
+  const query = useQuery({
+    queryKey: ['google-sheets-data', spreadsheetId, sheetName, range ?? null, mode, refreshKey ?? null],
+    enabled: enabled && !!spreadsheetId && !!sheetName,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    queryFn: async (): Promise<any[]> => {
         const { data: response, error } = await supabase.functions.invoke("google-sheets", {
           body: {
             spreadsheetId: spreadsheetId,
@@ -26,26 +28,16 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
           }
         });
 
-        // debug: log raw response and any function-level error
-        try {
-          console.debug(`[useGoogleSheetsData] raw response for ${sheetName}`, response);
-        } catch (e) {
-          /* ignore */
-        }
-
         if (error) {
           console.error(`[useGoogleSheetsData] error invoking google-sheets for ${sheetName}`, error);
           throw error;
         }
 
         const rows = response?.values || [];
-        // debug: show fetched row count for this sheet
-        console.debug(`[useGoogleSheetsData] fetched sheet ${sheetName}`, { rowCount: rows.length });
 
         if (mode === "single-cell") {
           const firstCell = Array.isArray(rows[0]) ? rows[0][0] : rows[0];
-          setData(firstCell !== undefined && firstCell !== null && firstCell !== "" ? [String(firstCell)] : []);
-          return;
+          return firstCell !== undefined && firstCell !== null && firstCell !== "" ? [String(firstCell)] : [];
         }
 
         const isHeaderRow = (row: any[]): boolean => {
@@ -81,12 +73,6 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
 
         if (rows.length > headerRowIndex + 1) {
           let headers = rows[headerRowIndex];
-          // debug: header detection preview
-          try {
-            console.debug(`[useGoogleSheetsData] headerRowIndex for ${sheetName}`, { headerRowIndex, headersPreview: Array.isArray(headers) ? headers.slice(0, 10) : headers });
-          } catch (e) {
-            /* ignore */
-          }
           // Default: use the row immediately after the detected header as data start.
           // Some sheets include an extra sub-header/notes row after the header (e.g. Mikro Anomali Usaha/Keluarga),
           // so allow per-sheet extra-skip here.
@@ -133,20 +119,16 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, range, mode = "r
             obj.__rawRow = row;
             return obj;
           });
-          // debug: parsed data rows count
-          console.debug(`[useGoogleSheetsData] parsed dataRows for ${sheetName}`, { dataStartIndex, dataRowsCount: dataRows.length });
-          setData(dataRows);
+          return dataRows;
         }
-      } catch (err: any) {
-        console.error(`Error fetching ${sheetName}:`, err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchData();
-  }, [spreadsheetId, sheetName, range, refreshKey]);
+        return [];
+    },
+  });
 
-  return { data, loading, error };
+  return {
+    data: (query.data ?? []) as any[],
+    loading: query.isPending && query.fetchStatus !== 'idle',
+    error: query.error ? ((query.error as any).message ?? String(query.error)) : null,
+  };
 };
