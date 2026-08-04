@@ -637,7 +637,6 @@ export default function MonitoringLapanganDash() {
   const [capaianSortOrder, setCapaianSortOrder] = useState<"asc" | "desc">("asc");
   const [capaianCurrentPage, setCapaianCurrentPage] = useState(1);
   const [capaianItemsPerPage, setCapaianItemsPerPage] = useState(20);
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [umkmSubTab, setUmkmSubTab] = useState<string>("ppl");
   const [usahaSubTab, setUsahaSubTab] = useState<string>("kondisi");
   const [usahaSearchTerm, setUsahaSearchTerm] = useState("");
