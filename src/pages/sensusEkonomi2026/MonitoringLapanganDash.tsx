@@ -3129,6 +3129,9 @@ export default function MonitoringLapanganDash() {
   const avgKecamatanPercentage = kecamatanStats.length > 0
     ? kecamatanStats.reduce((sum, item) => sum + item.persentase, 0) / kecamatanStats.length
     : 0;
+  const avgWilayahPercentage = wilayahChartData.length > 0
+    ? wilayahChartData.reduce((sum, item) => sum + item.persentase, 0) / wilayahChartData.length
+    : 0;
 
   return (
     <div className="space-y-6 py-6">
