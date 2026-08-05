@@ -2250,6 +2250,11 @@ export default function MonitoringLapanganDash() {
           ? numericValues.jumlah_usaha_pertanian / numericValues.utp_subsektor_st2023
           : 0;
       }
+      if (usahaProporsiSortBy === "persen_non_pertanian_wilkerstat") {
+        return numericValues.bku_usaha_wilkerstat_baru > 0
+          ? numericValues.jumlah_usaha / numericValues.bku_usaha_wilkerstat_baru
+          : 0;
+      }
       if (usahaProporsiSortBy in numericValues) return numericValues[usahaProporsiSortBy];
       return String(row[usahaProporsiSortBy as keyof UsahaProporsiRow] || "").toLowerCase();
     };
