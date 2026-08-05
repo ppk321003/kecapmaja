@@ -297,6 +297,12 @@ const getColorForPercentage = (percentage: number): string => {
   return "#dc2626";
 };
 
+const getColorForProporsiChart = (percentage: number): string => {
+  if (percentage > 100) return "#15803d";
+  if (percentage >= 50) return "#f97316";
+  return "#dc2626";
+};
+
 const getRowNumeric = (row: any, primary: string, fallbackNames: string[] = [], defaultValue = 0): number => {
   const value = getRowValue(row, primary, fallbackNames, "");
   return parseNumericValue(value);
@@ -3632,7 +3638,7 @@ export default function MonitoringLapanganDash() {
                           }}
                         >
                           {wilayahProporsiNonPertanianChartData.map((entry, index) => (
-                            <Cell key={`cell-non-${entry.label}-${index}`} fill={getColorForPercentage(entry.persenNonPertanianPrelist)} />
+                            <Cell key={`cell-non-${entry.label}-${index}`} fill={getColorForProporsiChart(entry.persenNonPertanianPrelist)} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -3752,7 +3758,7 @@ export default function MonitoringLapanganDash() {
                           }}
                         >
                           {wilayahProporsiPertanianChartData.map((entry, index) => (
-                            <Cell key={`cell-pertanian-${entry.label}-${index}`} fill={getColorForPercentage(entry.persenPertanianUtp)} />
+                            <Cell key={`cell-pertanian-${entry.label}-${index}`} fill={getColorForProporsiChart(entry.persenPertanianUtp)} />
                           ))}
                         </Bar>
                       </BarChart>
