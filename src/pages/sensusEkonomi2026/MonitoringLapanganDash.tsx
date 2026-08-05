@@ -594,20 +594,24 @@ export default function MonitoringLapanganDash() {
   const { data: monitoringSheetData, loading: monitoringSheetLoading, error: monitoringSheetError } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: "REKAP_SCRP",
+    enabled: tabVisited("capaian-kinerja"),
   });
   const { data: monitoringUsersData, loading: monitoringUsersLoading, error: monitoringUsersError } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: "Semua Users",
+    enabled: tabVisited("capaian-kinerja"),
   });
   const monitoringLoading = monitoringSheetLoading || monitoringUsersLoading;
   const monitoringError = monitoringSheetError || monitoringUsersError;
   const { data: usahaPerusahaanData, loading: usahaPerusahaanLoading, error: usahaPerusahaanError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
     sheetName: SHEET_USAHA_PERUSAHAAN,
+    enabled: tabVisited("pendataan-usaha"),
   });
   const { data: usahaKeluargaData, loading: usahaKeluargaLoading, error: usahaKeluargaError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
     sheetName: SHEET_USAHA_KELUARGA,
+    enabled: tabVisited("pendataan-usaha"),
   });
   const { data: usahaProporsiData, loading: usahaProporsiLoading, error: usahaProporsiError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
