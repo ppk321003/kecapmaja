@@ -171,7 +171,7 @@ const SkalaUsahaTab = ({
         prelist_awal: prelistAwalByKey.get(rowId) ?? parseNumericValue(getRawColumnText(row, 2, "0")),
         prelist_usaha: prelistUsahaByRowKey.get(rowId) ?? parseNumericValue(getRawColumnText(row, 3, "0")),
         didata: didataByKey.get(rowId) ?? parseNumericValue(getRawColumnText(row, 4, "0")),
-        bku_usaha_wilkerstat: stackingWilkerstatByKey.get(rowId) ?? parseNumericValue(getRawColumnText(row, 5, "0")),
+        bku_usaha_wilkerstat: stackingWilkerstatByKey.get(rowId) ?? parseNumericValue(getRawColumnText(row, 23, "0")),
         prelist_ub: parseNumericValue(getRawColumnText(row, 2, "0")),
         prelist_um: parseNumericValue(getRawColumnText(row, 3, "0")),
         prelist_umk: parseNumericValue(getRawColumnText(row, 4, "0")),
@@ -345,7 +345,7 @@ const SkalaUsahaTab = ({
                     <TableHead onClick={() => toggleSort("prelist_awal")} className="w-[88px] min-w-[88px] text-right text-slate-700 font-semibold px-3 py-2 border border-slate-300 cursor-pointer hover:bg-slate-100">Prelist Awal</TableHead>
                     <TableHead onClick={() => toggleSort("prelist_usaha")} className="w-[88px] min-w-[88px] text-right text-slate-700 font-semibold px-3 py-2 border border-slate-300 cursor-pointer hover:bg-slate-100">Jml Prelist Usaha</TableHead>
                     <TableHead onClick={() => toggleSort("didata")} className="w-[88px] min-w-[88px] text-right text-slate-700 font-semibold px-3 py-2 border border-slate-300 cursor-pointer hover:bg-slate-100">Didata</TableHead>
-                    <TableHead onClick={() => toggleSort("bku_usaha_wilkerstat")} className="w-[88px] min-w-[88px] text-right text-slate-700 font-semibold px-3 py-2 border border-slate-300 cursor-pointer hover:bg-slate-100">BKU+ Usaha Wilkerstat</TableHead>
+                    <TableHead onClick={() => toggleSort("bku_usaha_wilkerstat")} className="w-[88px] min-w-[88px] text-right text-slate-700 font-semibold px-3 py-2 border border-slate-300 cursor-pointer hover:bg-slate-100">Usaha Wilkerstat</TableHead>
                     <TableHead onClick={() => toggleSort("prelist_ub")} className="w-[72px] min-w-[72px] text-right text-slate-700 font-semibold px-3 py-2 border border-slate-300 cursor-pointer hover:bg-slate-100">UB</TableHead>
                     <TableHead onClick={() => toggleSort("prelist_um")} className="w-[72px] min-w-[72px] text-right text-slate-700 font-semibold px-3 py-2 border border-slate-300 cursor-pointer hover:bg-slate-100">UM</TableHead>
                     <TableHead onClick={() => toggleSort("prelist_umk")} className="w-[72px] min-w-[72px] text-right text-slate-700 font-semibold px-3 py-2 border border-slate-300 cursor-pointer hover:bg-slate-100">UMK</TableHead>

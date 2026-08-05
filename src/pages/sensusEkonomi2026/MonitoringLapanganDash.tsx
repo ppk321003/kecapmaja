@@ -322,9 +322,8 @@ const getStackingKecamatan = (row: any): string => toProperCase(
 );
 
 const getStackingWilkerstatValue = (row: any): number => {
-  const columnW = parseNumericValue(getRawColumnText(row, 22, ""));
-  const columnX = parseNumericValue(getRawColumnText(row, 23, ""));
-  return columnW + columnX;
+  // Kolom X (jumlah_usaha) saja
+  return parseNumericValue(getRawColumnText(row, 23, ""));
 };
 
 const extractProgressHeader = (value: string): string => {
@@ -1597,7 +1596,7 @@ export default function MonitoringLapanganDash() {
           bku_usaha_wilkerstat_baru: (() => {
             const stackingVal = rowId ? stackingWilkerstatByKey.get(rowId) : undefined;
             if (typeof stackingVal === "number") return stackingVal.toString();
-            const fallback = parseNumericValue(getRawColumnText(row, 22, "")) + parseNumericValue(getRawColumnText(row, 23, ""));
+            const fallback = parseNumericValue(getRawColumnText(row, 23, ""));
             return fallback.toString();
           })(),
           keluarga_ditemukan_pertanian: getRawColumnText(row, 11, "0"),
@@ -2433,7 +2432,7 @@ export default function MonitoringLapanganDash() {
         "Prelist Awal": parseNumericValue(row.prelist_awal),
         "Prelist Usaha": parseNumericValue(row.prelist_usaha),
         "UTP ST2023": parseNumericValue(row.utp_subsektor_st2023),
-        "BKU+ Usaha Wilkerstat": parseNumericValue(row.bku_usaha_wilkerstat_baru),
+        "Usaha Wilkerstat": parseNumericValue(row.bku_usaha_wilkerstat_baru),
         Didata: parseNumericValue(row.didata),
         "BKU Ditemukan Pertanian": parseNumericValue(row.bku_ditemukan_pertanian),
         "BKU Ditemukan Non Pertanian": parseNumericValue(row.bku_ditemukan_non_pertanian),
@@ -4293,7 +4292,7 @@ export default function MonitoringLapanganDash() {
                                 <button type="button" onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, true])) as typeof usahaKondisiColumns)} className="inline-flex h-8 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-100"><ChevronDown className="mr-1 h-4 w-4" /> Buka Semua</button>
                                 <button type="button" onClick={() => setUsahaKondisiColumns(Object.fromEntries(Object.keys(usahaKondisiColumns).map((key) => [key, false])) as typeof usahaKondisiColumns)} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-slate-100 px-3 text-sm font-medium text-slate-700 hover:bg-slate-200"><ChevronRight className="mr-1 h-4 w-4" /> Tutup Semua</button>
                                 {([
-                                  ["prelistAwal", "Prelist Awal"], ["prelistUsaha", "Jml Prelist Usaha"], ["didata", "Didata"], ["bkuUsahaWilkerstatBaru", "BKU+ Usaha Wilkerstat"],
+                                  ["prelistAwal", "Prelist Awal"], ["prelistUsaha", "Jml Prelist Usaha"], ["didata", "Didata"], ["bkuUsahaWilkerstatBaru", "Usaha Wilkerstat"],
                                   ["perusahaanDitemukan", "BKU Ditemukan"], ["perusahaanTutup", "BKU Tutup"], ["perusahaanGanda", "BKU Ganda"], ["perusahaanTidakDitemukan", "BKU Tidak Ditemukan"], ["perusahaanBaru", "BKU Baru"], ["perusahaanDitemukanBaru", "BKU Ditemukan + Baru"],
                                   ["keluargaDitemukan", "Keluarga Ditemukan"], ["keluargaTutup", "Keluarga Tutup"], ["keluargaGanda", "Keluarga Ganda"], ["keluargaTidakDitemukan", "Keluarga Tidak Ditemukan"], ["keluargaBaru", "Keluarga Baru"], ["keluargaDitemukanBaru", "Keluarga Ditemukan + Baru"],
                                   ["totalTidakDitemukan", "Total Tidak Ditemukan"], ["totalUsaha", "Total Usaha"], ["surplusDefisit", "Surplus / Defisit"],
@@ -4308,7 +4307,7 @@ export default function MonitoringLapanganDash() {
                                     {usahaKondisiColumns.prelistAwal && kondisiSortHead("Prelist Awal", "prelist_awal_baru", "prelistAwal", "text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap", 2)}
                                     {usahaKondisiColumns.prelistUsaha && kondisiSortHead("Jml Prelist Usaha", "perusahaan_jumlah_prelist_usaha", "prelistUsaha", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
                                     {usahaKondisiColumns.didata && kondisiSortHead("Didata", "didata", "didata", "text-right text-slate-700 font-semibold px-4 py-3", 2)}
-                                    {usahaKondisiColumns.bkuUsahaWilkerstatBaru && kondisiSortHead("BKU+ Usaha Wilkerstat", "bku_usaha_wilkerstat_baru", "bkuUsahaWilkerstatBaru", "w-[72px] min-w-[72px] max-w-[72px] text-right text-slate-700 font-semibold px-2 py-3 whitespace-normal break-words leading-tight", 2)}
+                                    {usahaKondisiColumns.bkuUsahaWilkerstatBaru && kondisiSortHead("Usaha Wilkerstat", "bku_usaha_wilkerstat_baru", "bkuUsahaWilkerstatBaru", "w-[72px] min-w-[72px] max-w-[72px] text-right text-slate-700 font-semibold px-2 py-3 whitespace-normal break-words leading-tight", 2)}
                                     {bkuColumnKeys.some((key) => usahaKondisiColumns[key]) && <TableHead colSpan={bkuColumnKeys.filter((key) => usahaKondisiColumns[key]).length} onClick={() => setUsahaKondisiColumns((previous) => ({ ...previous, ...Object.fromEntries(bkuColumnKeys.map((key) => [key, false])) }))} className="text-center text-slate-700 font-semibold px-4 py-3 border border-slate-300 cursor-pointer hover:bg-slate-100" title="Sembunyikan kolom BKU">Bangunan Khusus Usaha (BKU)</TableHead>}
                                     {keluargaColumnKeys.some((key) => usahaKondisiColumns[key]) && <TableHead colSpan={keluargaColumnKeys.filter((key) => usahaKondisiColumns[key]).length} onClick={() => setUsahaKondisiColumns((previous) => ({ ...previous, ...Object.fromEntries(keluargaColumnKeys.map((key) => [key, false])) }))} className="text-center text-slate-700 font-semibold px-4 py-3 border border-slate-300 cursor-pointer hover:bg-slate-100" title="Sembunyikan kolom Usaha Keluarga">Usaha Keluarga</TableHead>}
                                     {usahaKondisiColumns.totalTidakDitemukan && kondisiSortHead("Total Usaha Tidak Ditemukan (BKU + Keluarga)", "total_tidak_ditemukan", "totalTidakDitemukan", "w-[88px] min-w-[88px] max-w-[88px] text-right text-[10px] leading-tight break-words text-rose-800 font-semibold px-1 py-1 bg-rose-50", 2)}
@@ -4593,7 +4592,7 @@ export default function MonitoringLapanganDash() {
                                     {proporsiColumnGroups.prelistAwal && proporsiSortHead("Prelist Awal", "prelist_awal", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-slate-700 font-semibold px-1 py-2", 1, "prelistAwal")}
                                     {proporsiColumnGroups.prelistUsaha && proporsiSortHead("Prelist Usaha", "prelist_usaha", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-blue-700 font-bold px-1 py-2", 1, "prelistUsaha")}
                                     {proporsiColumnGroups.utpSt2023 && proporsiSortHead("UTP ST2023", "utp_subsektor_st2023", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-green-700 font-bold px-1 py-2", 1, "utpSt2023")}
-                                    {proporsiColumnGroups.bkuUsahaWilkerstat && proporsiSortHead("BKU+ Usaha Wilkerstat", "bku_usaha_wilkerstat_baru", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-bold px-1 py-2", 1, "bkuUsahaWilkerstat")}
+                                    {proporsiColumnGroups.bkuUsahaWilkerstat && proporsiSortHead("Usaha Wilkerstat", "bku_usaha_wilkerstat_baru", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-bold px-1 py-2", 1, "bkuUsahaWilkerstat")}
                                     {proporsiColumnGroups.didata && proporsiSortHead("Didata", "didata", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-orange-800 font-bold px-1 py-2", 1, "didata")}
                                     </>}
                                   <>
