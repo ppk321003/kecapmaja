@@ -4674,6 +4674,9 @@ export default function MonitoringLapanganDash() {
                                         <div className={`text-xs font-medium ${getProporsiPercentageClass(jumlahUsaha, parseNumericValue(row.prelist_usaha))}`}>{formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.prelist_usaha))}</div>
                                       </TableCell>
                                       <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
+                                        <div className={`font-semibold ${getProporsiPercentageClass(jumlahUsaha, parseNumericValue(row.bku_usaha_wilkerstat_baru))}`}>{formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.bku_usaha_wilkerstat_baru))}</div>
+                                      </TableCell>
+                                      <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                         <div className="font-semibold text-slate-900">{jumlahUsahaPertanian.toLocaleString("id-ID")}</div>
                                         <div className={`text-xs font-medium ${getProporsiPercentageClass(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}`}>{formatProporsiPercentage(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}</div>
                                       </TableCell>
