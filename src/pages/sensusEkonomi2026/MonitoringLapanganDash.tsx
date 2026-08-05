@@ -57,6 +57,20 @@ const getProporsiPercentageClass = (numerator: number, denominator: number): str
   return "text-red-600";
 };
 
+const getJumlahUsahaNonPertanian = (row: UsahaProporsiRow | UsahaProporsiDetailRow) => [
+  row.bku_ditemukan_non_pertanian,
+  row.bku_baru_non_pertanian,
+  row.keluarga_ditemukan_non_pertanian,
+  row.keluarga_baru_non_pertanian,
+].reduce((total, value) => total + parseNumericValue(value), 0);
+
+const getJumlahUsahaPertanian = (row: UsahaProporsiRow | UsahaProporsiDetailRow) => [
+  row.bku_ditemukan_pertanian,
+  row.bku_baru_pertanian,
+  row.keluarga_ditemukan_pertanian,
+  row.keluarga_baru_pertanian,
+].reduce((total, value) => total + parseNumericValue(value), 0);
+
 const normalizeColumnKey = (key: string): string =>
   String(key || "")
     .trim()
@@ -615,7 +629,7 @@ export default function MonitoringLapanganDash() {
   const { data: usahaProporsiData, loading: usahaProporsiLoading, error: usahaProporsiError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
     sheetName: SHEET_PROPORSI_USAHA,
-    enabled: tabVisited("pendataan-usaha"),
+    enabled: tabVisited("pendataan-usaha") || tabVisited("dashboard"),
   });
 
   const { user } = useAuth();
@@ -3106,6 +3120,113 @@ export default function MonitoringLapanganDash() {
     }));
   }, [stackingData, progresData]);
 
+  const proporsiKeyToDesa = useMemo(() => {
+    const lookup = new Map<string, string>();
+    (stackingData || []).forEach((row: any) => {
+      const key = normalizeSheetKey(getSheetCellText(row, 3));
+      if (!key) return;
+      const desa = toProperCase(getSheetCellText(row, 14)) || "-";
+      if (!lookup.has(key)) lookup.set(key, desa);
+    });
+    return lookup;
+  }, [stackingData]);
+
+  const proporsiKecamatanStats = useMemo(() => {
+    const groups = new Map<string, { kecamatan: string; prelist: number; nonPertanian: number; pertanian: number; utp: number }>();
+
+    (usahaProporsiRows || []).forEach((row) => {
+      const kecamatan = row.kecamatan || "-";
+      const existing = groups.get(kecamatan) || { kecamatan, prelist: 0, nonPertanian: 0, pertanian: 0, utp: 0 };
+      existing.prelist += parseNumericValue(row.prelist_usaha);
+      existing.nonPertanian += getJumlahUsahaNonPertanian(row);
+      existing.pertanian += getJumlahUsahaPertanian(row);
+      existing.utp += parseNumericValue(row.utp_subsektor_st2023);
+      groups.set(kecamatan, existing);
+    });
+
+    return Array.from(groups.values()).map((item) => ({
+      kecamatan: item.kecamatan,
+      desa: "-",
+      prelistUsaha: item.prelist,
+      nonPertanian: item.nonPertanian,
+      pertanian: item.pertanian,
+      utpSt2023: item.utp,
+      persenNonPertanianPrelist: item.prelist > 0 ? parseFloat(((item.nonPertanian / item.prelist) * 100).toFixed(2)) : 0,
+      persenPertanianUtp: item.utp > 0 ? parseFloat(((item.pertanian / item.utp) * 100).toFixed(2)) : 0,
+      label: item.kecamatan,
+    }));
+  }, [usahaProporsiRows]);
+
+  const proporsiDesaStats = useMemo(() => {
+    const groups = new Map<string, { kecamatan: string; desa: string; prelist: number; nonPertanian: number; pertanian: number; utp: number }>();
+
+    (usahaProporsiRows || []).forEach((row) => {
+      row.children.forEach((detail) => {
+        const key = normalizeSheetKey(detail.kode);
+        if (!key) return;
+        const desa = proporsiKeyToDesa.get(key) || "-";
+        const kecamatan = row.kecamatan || "-";
+        const mapKey = `${kecamatan}||${desa}`;
+        const existing = groups.get(mapKey) || { kecamatan, desa, prelist: 0, nonPertanian: 0, pertanian: 0, utp: 0 };
+        existing.prelist += parseNumericValue(detail.prelist_usaha);
+        existing.nonPertanian += getJumlahUsahaNonPertanian(detail);
+        existing.pertanian += getJumlahUsahaPertanian(detail);
+        existing.utp += parseNumericValue(detail.utp_subsektor_st2023);
+        groups.set(mapKey, existing);
+      });
+    });
+
+    return Array.from(groups.values()).map((item) => ({
+      kecamatan: item.kecamatan,
+      desa: item.desa,
+      prelistUsaha: item.prelist,
+      nonPertanian: item.nonPertanian,
+      pertanian: item.pertanian,
+      utpSt2023: item.utp,
+      persenNonPertanianPrelist: item.prelist > 0 ? parseFloat(((item.nonPertanian / item.prelist) * 100).toFixed(2)) : 0,
+      persenPertanianUtp: item.utp > 0 ? parseFloat(((item.pertanian / item.utp) * 100).toFixed(2)) : 0,
+      label: item.desa,
+    }));
+  }, [usahaProporsiRows, proporsiKeyToDesa]);
+
+  const wilayahProporsiNonPertanianChartData = useMemo(() => {
+    const rows =
+      chartKecamatanFilter === "all"
+        ? proporsiKecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
+        : proporsiDesaStats
+            .filter((item) => item.kecamatan === chartKecamatanFilter)
+            .map((item) => ({ label: item.desa, ...item }));
+
+    return [...rows].sort((a, b) =>
+      chartSortOrder === "asc"
+        ? a.persenNonPertanianPrelist - b.persenNonPertanianPrelist
+        : b.persenNonPertanianPrelist - a.persenNonPertanianPrelist
+    );
+  }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats]);
+
+  const wilayahProporsiPertanianChartData = useMemo(() => {
+    const rows =
+      chartKecamatanFilter === "all"
+        ? proporsiKecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
+        : proporsiDesaStats
+            .filter((item) => item.kecamatan === chartKecamatanFilter)
+            .map((item) => ({ label: item.desa, ...item }));
+
+    return [...rows].sort((a, b) =>
+      chartSortOrder === "asc"
+        ? a.persenPertanianUtp - b.persenPertanianUtp
+        : b.persenPertanianUtp - a.persenPertanianUtp
+    );
+  }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats]);
+
+  const avgWilayahProporsiNonPertanian = wilayahProporsiNonPertanianChartData.length > 0
+    ? wilayahProporsiNonPertanianChartData.reduce((sum, item) => sum + item.persenNonPertanianPrelist, 0) / wilayahProporsiNonPertanianChartData.length
+    : 0;
+
+  const avgWilayahProporsiPertanian = wilayahProporsiPertanianChartData.length > 0
+    ? wilayahProporsiPertanianChartData.reduce((sum, item) => sum + item.persenPertanianUtp, 0) / wilayahProporsiPertanianChartData.length
+    : 0;
+
   const chartKecamatanOptions = useMemo(
     () => Array.from(new Set(kecamatanStats.map((item) => item.kecamatan))).sort((a, b) => a.localeCompare(b, "id")),
     [kecamatanStats]
@@ -3392,6 +3513,246 @@ export default function MonitoringLapanganDash() {
                         >
                           {wilayahChartData.map((entry, index) => (
                             <Cell key={`cell-${entry.label}-${index}`} fill={getColorForPercentage(entry.persentase)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-50">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                      <CardTitle className="text-base">
+                        Persentase Usaha Non Pertanian terhadap Prelist Usaha per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                      </CardTitle>
+                      <CardDescription>
+                        Jumlah usaha non pertanian dibagi Prelist Usaha
+                        {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
+                        {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-kecamatan-non" className="text-xs font-semibold text-slate-600">Kecamatan</label>
+                        <select
+                          id="chart-kecamatan-non"
+                          value={chartKecamatanFilter}
+                          onChange={(e) => setChartKecamatanFilter(e.target.value)}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="all">Semua Kecamatan</option>
+                          {chartKecamatanOptions.map((kecamatan) => (
+                            <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-sort-non" className="text-xs font-semibold text-slate-600">Urutan</label>
+                        <select
+                          id="chart-sort-non"
+                          value={chartSortOrder}
+                          onChange={(e) => setChartSortOrder(e.target.value as "asc" | "desc")}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="desc">Tertinggi → Terendah</option>
+                          <option value="asc">Terendah → Tertinggi</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-font-non" className="text-xs font-semibold text-slate-600">Ukuran Font ({chartFontSize}px)</label>
+                        <input
+                          id="chart-font-non"
+                          type="range"
+                          min={8}
+                          max={20}
+                          step={1}
+                          value={chartFontSize}
+                          onChange={(e) => setChartFontSize(Number(e.target.value))}
+                          className="h-9 w-36 accent-blue-600"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {wilayahProporsiNonPertanianChartData.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">Tidak ada data {chartKecamatanFilter === "all" ? "kecamatan" : "desa/kelurahan"}</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={660}>
+                      <BarChart data={wilayahProporsiNonPertanianChartData} margin={{ top: 20, right: 30, left: 0, bottom: 110 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis
+                          dataKey="label"
+                          angle={-45}
+                          textAnchor="end"
+                          height={120}
+                          tick={{ fontSize: chartFontSize }}
+                        />
+                        <YAxis
+                          label={{ value: "Persentase (%)", angle: -90, position: "insideLeft" }}
+                          domain={[0, 100]}
+                          tick={{ fontSize: chartFontSize }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#fff",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "8px",
+                            fontSize: chartFontSize,
+                          }}
+                          formatter={(value: any, name: string) => {
+                            if (name === "persenNonPertanianPrelist") {
+                              return [value.toFixed(2) + "%", "Persentase Non Pertanian"];
+                            }
+                            return [value.toFixed(2) + "%", "Persentase"];
+                          }}
+                          labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
+                        />
+                        <ReferenceLine
+                          y={avgWilayahProporsiNonPertanian}
+                          stroke="#8b5cf6"
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          label={{ value: `Rata-rata: ${avgWilayahProporsiNonPertanian.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: chartFontSize }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: chartFontSize }} />
+                        <Bar
+                          dataKey="persenNonPertanianPrelist"
+                          name="Non Pertanian / Prelist"
+                          radius={[8, 8, 0, 0]}
+                          label={{
+                            position: "top",
+                            fill: "#1f2937",
+                            fontSize: chartFontSize,
+                            fontWeight: 600,
+                            formatter: (value: number) => `${value.toFixed(2)}%`,
+                          }}
+                        >
+                          {wilayahProporsiNonPertanianChartData.map((entry, index) => (
+                            <Cell key={`cell-non-${entry.label}-${index}`} fill={getColorForPercentage(entry.persenNonPertanianPrelist)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-slate-50">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                      <CardTitle className="text-base">
+                        Persentase Usaha Pertanian ke UTP ST2023 per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                      </CardTitle>
+                      <CardDescription>
+                        Jumlah usaha pertanian dibagi UTP ST2023
+                        {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
+                        {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-kecamatan-pertanian" className="text-xs font-semibold text-slate-600">Kecamatan</label>
+                        <select
+                          id="chart-kecamatan-pertanian"
+                          value={chartKecamatanFilter}
+                          onChange={(e) => setChartKecamatanFilter(e.target.value)}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="all">Semua Kecamatan</option>
+                          {chartKecamatanOptions.map((kecamatan) => (
+                            <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-sort-pertanian" className="text-xs font-semibold text-slate-600">Urutan</label>
+                        <select
+                          id="chart-sort-pertanian"
+                          value={chartSortOrder}
+                          onChange={(e) => setChartSortOrder(e.target.value as "asc" | "desc")}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="desc">Tertinggi → Terendah</option>
+                          <option value="asc">Terendah → Tertinggi</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-font-pertanian" className="text-xs font-semibold text-slate-600">Ukuran Font ({chartFontSize}px)</label>
+                        <input
+                          id="chart-font-pertanian"
+                          type="range"
+                          min={8}
+                          max={20}
+                          step={1}
+                          value={chartFontSize}
+                          onChange={(e) => setChartFontSize(Number(e.target.value))}
+                          className="h-9 w-36 accent-blue-600"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {wilayahProporsiPertanianChartData.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">Tidak ada data {chartKecamatanFilter === "all" ? "kecamatan" : "desa/kelurahan"}</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={660}>
+                      <BarChart data={wilayahProporsiPertanianChartData} margin={{ top: 20, right: 30, left: 0, bottom: 110 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis
+                          dataKey="label"
+                          angle={-45}
+                          textAnchor="end"
+                          height={120}
+                          tick={{ fontSize: chartFontSize }}
+                        />
+                        <YAxis
+                          label={{ value: "Persentase (%)", angle: -90, position: "insideLeft" }}
+                          domain={[0, 100]}
+                          tick={{ fontSize: chartFontSize }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#fff",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "8px",
+                            fontSize: chartFontSize,
+                          }}
+                          formatter={(value: any, name: string) => {
+                            if (name === "persenPertanianUtp") {
+                              return [value.toFixed(2) + "%", "Persentase Pertanian"];
+                            }
+                            return [value.toFixed(2) + "%", "Persentase"];
+                          }}
+                          labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
+                        />
+                        <ReferenceLine
+                          y={avgWilayahProporsiPertanian}
+                          stroke="#16a34a"
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          label={{ value: `Rata-rata: ${avgWilayahProporsiPertanian.toFixed(2)}%`, position: "right", fill: "#16a34a", fontSize: chartFontSize }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: chartFontSize }} />
+                        <Bar
+                          dataKey="persenPertanianUtp"
+                          name="Pertanian / UTP ST2023"
+                          radius={[8, 8, 0, 0]}
+                          label={{
+                            position: "top",
+                            fill: "#1f2937",
+                            fontSize: chartFontSize,
+                            fontWeight: 600,
+                            formatter: (value: number) => `${value.toFixed(2)}%`,
+                          }}
+                        >
+                          {wilayahProporsiPertanianChartData.map((entry, index) => (
+                            <Cell key={`cell-pertanian-${entry.label}-${index}`} fill={getColorForPercentage(entry.persenPertanianUtp)} />
                           ))}
                         </Bar>
                       </BarChart>
