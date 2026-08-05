@@ -2240,14 +2240,15 @@ export default function MonitoringLapanganDash() {
         "bku_ditemukan_pertanian", "bku_baru_pertanian", "keluarga_ditemukan_pertanian", "keluarga_baru_pertanian",
       ].reduce((sum, field) => sum + numericValues[field], 0);
       if (usahaProporsiSortBy === "jumlah_usaha") {
+        return numericValues.jumlah_usaha;
+      }
+      if (usahaProporsiSortBy === "persen_non_pertanian_prelist") {
         return numericValues.prelist_usaha > 0
           ? numericValues.jumlah_usaha / numericValues.prelist_usaha
           : 0;
       }
       if (usahaProporsiSortBy === "jumlah_usaha_pertanian") {
-        return numericValues.utp_subsektor_st2023 > 0
-          ? numericValues.jumlah_usaha_pertanian / numericValues.utp_subsektor_st2023
-          : 0;
+        return numericValues.jumlah_usaha_pertanian;
       }
       if (usahaProporsiSortBy === "persen_non_pertanian_wilkerstat") {
         return numericValues.bku_usaha_wilkerstat_baru > 0
@@ -4581,7 +4582,7 @@ export default function MonitoringLapanganDash() {
                                   <TableHead colSpan={[proporsiColumnGroups.keluargaDitemukanPertanian, proporsiColumnGroups.keluargaDitemukanNonPertanian, proporsiColumnGroups.keluargaBaruPertanian, proporsiColumnGroups.keluargaBaruNonPertanian].filter(Boolean).length} className="text-center font-bold border bg-blue-200 text-blue-800">
                                     <div className="flex items-center justify-center gap-2 py-1 px-2">Usaha Dalam Keluarga</div>
                                   </TableHead>
-                                  <TableHead colSpan={proporsiColumnGroups.ringkasan ? 3 : 0} className={`text-center font-bold border bg-emerald-200 text-emerald-800 cursor-pointer select-none transition-all hover:shadow-md hover:opacity-90 ${proporsiColumnGroups.ringkasan ? "" : "hidden"}`} onClick={() => setProporsiColumnGroups((previous) => ({ ...previous, ringkasan: !previous.ringkasan }))} title={`Klik untuk ${proporsiColumnGroups.ringkasan ? "tutup" : "buka"} kolom ringkasan`}>
+                                  <TableHead colSpan={proporsiColumnGroups.ringkasan ? 4 : 0} className={`text-center font-bold border bg-emerald-200 text-emerald-800 cursor-pointer select-none transition-all hover:shadow-md hover:opacity-90 ${proporsiColumnGroups.ringkasan ? "" : "hidden"}`} onClick={() => setProporsiColumnGroups((previous) => ({ ...previous, ringkasan: !previous.ringkasan }))} title={`Klik untuk ${proporsiColumnGroups.ringkasan ? "tutup" : "buka"} kolom ringkasan`}>
                                     <div className="flex items-center justify-center gap-2 py-1 px-2">Ringkasan<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${proporsiColumnGroups.ringkasan ? "" : "-rotate-90"}`} /></div>
                                   </TableHead>
                                 </TableRow>
@@ -4609,6 +4610,7 @@ export default function MonitoringLapanganDash() {
                                     </>
                                   {proporsiColumnGroups.ringkasan && <>
                                     {proporsiSortHead("Jumlah Usaha Non Pertanian", "jumlah_usaha", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
+                                    {proporsiSortHead("% Non Pertanian - Prelist Usaha", "persen_non_pertanian_prelist", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
                                     {proporsiSortHead("% Non Pertanian - Wilkerstat", "persen_non_pertanian_wilkerstat", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
                                     {proporsiSortHead("Jumlah Usaha Pertanian", "jumlah_usaha_pertanian", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
                                   </>}
@@ -4671,14 +4673,18 @@ export default function MonitoringLapanganDash() {
                                         {proporsiColumnGroups.ringkasan && <>
                                       <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                         <div className="font-semibold text-slate-900">{jumlahUsaha.toLocaleString("id-ID")}</div>
-                                        <div className={`text-xs font-medium ${getProporsiPercentageClass(jumlahUsaha, parseNumericValue(row.prelist_usaha))}`}>{formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.prelist_usaha))}</div>
+                                      </TableCell>
+                                      <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
+                                        <div className={`font-semibold ${getProporsiPercentageClass(jumlahUsaha, parseNumericValue(row.prelist_usaha))}`}>{formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.prelist_usaha))}</div>
                                       </TableCell>
                                       <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                         <div className={`font-semibold ${getProporsiPercentageClass(jumlahUsaha, parseNumericValue(row.bku_usaha_wilkerstat_baru))}`}>{formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.bku_usaha_wilkerstat_baru))}</div>
                                       </TableCell>
                                       <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                         <div className="font-semibold text-slate-900">{jumlahUsahaPertanian.toLocaleString("id-ID")}</div>
-                                        <div className={`text-xs font-medium ${getProporsiPercentageClass(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}`}>{formatProporsiPercentage(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}</div>
+                                        <div className={`text-xs font-medium ${getProporsiPercentageClass(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}`}>
+                                          {formatProporsiPercentage(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023))}
+                                        </div>
                                       </TableCell>
                                         </>}
                                       </TableRow>
@@ -4714,7 +4720,9 @@ export default function MonitoringLapanganDash() {
                                               detail.keluarga_ditemukan_non_pertanian,
                                               detail.keluarga_baru_non_pertanian,
                                             ].reduce((total, value) => total + parseNumericValue(value), 0).toLocaleString("id-ID")}</div>
-                                            <div className={`text-xs font-medium ${getProporsiPercentageClass(
+                                          </TableCell>
+                                          <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
+                                            <div className={`font-semibold ${getProporsiPercentageClass(
                                               [detail.bku_ditemukan_non_pertanian, detail.bku_baru_non_pertanian, detail.keluarga_ditemukan_non_pertanian, detail.keluarga_baru_non_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
                                               parseNumericValue(detail.prelist_usaha)
                                             )}`}>{formatProporsiPercentage(
@@ -4741,10 +4749,12 @@ export default function MonitoringLapanganDash() {
                                             <div className={`text-xs font-medium ${getProporsiPercentageClass(
                                               [detail.bku_ditemukan_pertanian, detail.bku_baru_pertanian, detail.keluarga_ditemukan_pertanian, detail.keluarga_baru_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
                                               parseNumericValue(detail.utp_subsektor_st2023)
-                                            )}`}>{formatProporsiPercentage(
-                                              [detail.bku_ditemukan_pertanian, detail.bku_baru_pertanian, detail.keluarga_ditemukan_pertanian, detail.keluarga_baru_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
-                                              parseNumericValue(detail.utp_subsektor_st2023)
-                                            )}</div>
+                                            )}`}>
+                                              {formatProporsiPercentage(
+                                                [detail.bku_ditemukan_pertanian, detail.bku_baru_pertanian, detail.keluarga_ditemukan_pertanian, detail.keluarga_baru_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
+                                                parseNumericValue(detail.utp_subsektor_st2023)
+                                              )}
+                                            </div>
                                           </TableCell>
                                             </>}
                                         </TableRow>
@@ -4780,6 +4790,8 @@ export default function MonitoringLapanganDash() {
                                   {proporsiColumnGroups.ringkasan && <>
                                   <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                     <div>{totalJumlahUsaha.toLocaleString("id-ID")}</div>
+                                  </TableCell>
+                                  <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                     <div className={`text-xs ${getProporsiPercentageClass(totalJumlahUsaha, usahaProporsiTotals.prelistUsaha)}`}>{formatProporsiPercentage(totalJumlahUsaha, usahaProporsiTotals.prelistUsaha)}</div>
                                   </TableCell>
                                   <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
@@ -4817,6 +4829,8 @@ export default function MonitoringLapanganDash() {
                                   {proporsiColumnGroups.ringkasan && <>
                                   <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                     <div>{overallJumlahUsaha.toLocaleString("id-ID")}</div>
+                                  </TableCell>
+                                  <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                     <div className={`text-xs ${getProporsiPercentageClass(overallJumlahUsaha, usahaProporsiOverallTotals.prelistUsaha)}`}>{formatProporsiPercentage(overallJumlahUsaha, usahaProporsiOverallTotals.prelistUsaha)}</div>
                                   </TableCell>
                                   <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
