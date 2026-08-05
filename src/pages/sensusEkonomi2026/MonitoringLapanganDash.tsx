@@ -2445,6 +2445,7 @@ export default function MonitoringLapanganDash() {
         "Keluarga Baru Non Pertanian": parseNumericValue(row.keluarga_baru_non_pertanian),
         "Jumlah Usaha": jumlahUsaha,
         "% Usaha": formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.prelist_usaha)),
+        "% Non Pertanian - Wilkerstat": formatProporsiPercentage(jumlahUsaha, parseNumericValue(row.bku_usaha_wilkerstat_baru)),
         "Jumlah Usaha Pertanian": jumlahUsahaPertanian,
         "% Usaha Pertanian": formatProporsiPercentage(jumlahUsahaPertanian, parseNumericValue(row.utp_subsektor_st2023)),
       };
