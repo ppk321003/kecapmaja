@@ -4581,7 +4581,7 @@ export default function MonitoringLapanganDash() {
                                   <TableHead colSpan={[proporsiColumnGroups.keluargaDitemukanPertanian, proporsiColumnGroups.keluargaDitemukanNonPertanian, proporsiColumnGroups.keluargaBaruPertanian, proporsiColumnGroups.keluargaBaruNonPertanian].filter(Boolean).length} className="text-center font-bold border bg-blue-200 text-blue-800">
                                     <div className="flex items-center justify-center gap-2 py-1 px-2">Usaha Dalam Keluarga</div>
                                   </TableHead>
-                                  <TableHead colSpan={proporsiColumnGroups.ringkasan ? 2 : 0} className={`text-center font-bold border bg-emerald-200 text-emerald-800 cursor-pointer select-none transition-all hover:shadow-md hover:opacity-90 ${proporsiColumnGroups.ringkasan ? "" : "hidden"}`} onClick={() => setProporsiColumnGroups((previous) => ({ ...previous, ringkasan: !previous.ringkasan }))} title={`Klik untuk ${proporsiColumnGroups.ringkasan ? "tutup" : "buka"} kolom ringkasan`}>
+                                  <TableHead colSpan={proporsiColumnGroups.ringkasan ? 3 : 0} className={`text-center font-bold border bg-emerald-200 text-emerald-800 cursor-pointer select-none transition-all hover:shadow-md hover:opacity-90 ${proporsiColumnGroups.ringkasan ? "" : "hidden"}`} onClick={() => setProporsiColumnGroups((previous) => ({ ...previous, ringkasan: !previous.ringkasan }))} title={`Klik untuk ${proporsiColumnGroups.ringkasan ? "tutup" : "buka"} kolom ringkasan`}>
                                     <div className="flex items-center justify-center gap-2 py-1 px-2">Ringkasan<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${proporsiColumnGroups.ringkasan ? "" : "-rotate-90"}`} /></div>
                                   </TableHead>
                                 </TableRow>
@@ -4609,6 +4609,7 @@ export default function MonitoringLapanganDash() {
                                     </>
                                   {proporsiColumnGroups.ringkasan && <>
                                     {proporsiSortHead("Jumlah Usaha Non Pertanian", "jumlah_usaha", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
+                                    {proporsiSortHead("% Non Pertanian - Wilkerstat", "persen_non_pertanian_wilkerstat", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
                                     {proporsiSortHead("Jumlah Usaha Pertanian", "jumlah_usaha_pertanian", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right font-semibold px-1 py-2 border-l-2 border-slate-300")}
                                   </>}
                                 </TableRow>
