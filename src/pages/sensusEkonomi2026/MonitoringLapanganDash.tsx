@@ -4723,6 +4723,15 @@ export default function MonitoringLapanganDash() {
                                             )}</div>
                                           </TableCell>
                                           <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
+                                            <div className={`font-semibold ${getProporsiPercentageClass(
+                                              [detail.bku_ditemukan_non_pertanian, detail.bku_baru_non_pertanian, detail.keluarga_ditemukan_non_pertanian, detail.keluarga_baru_non_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
+                                              parseNumericValue(detail.bku_usaha_wilkerstat_baru)
+                                            )}`}>{formatProporsiPercentage(
+                                              [detail.bku_ditemukan_non_pertanian, detail.bku_baru_non_pertanian, detail.keluarga_ditemukan_non_pertanian, detail.keluarga_baru_non_pertanian].reduce((total, value) => total + parseNumericValue(value), 0),
+                                              parseNumericValue(detail.bku_usaha_wilkerstat_baru)
+                                            )}</div>
+                                          </TableCell>
+                                          <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                             <div className="font-semibold text-slate-900">{[
                                               detail.bku_ditemukan_pertanian,
                                               detail.bku_baru_pertanian,
@@ -4774,6 +4783,9 @@ export default function MonitoringLapanganDash() {
                                     <div className={`text-xs ${getProporsiPercentageClass(totalJumlahUsaha, usahaProporsiTotals.prelistUsaha)}`}>{formatProporsiPercentage(totalJumlahUsaha, usahaProporsiTotals.prelistUsaha)}</div>
                                   </TableCell>
                                   <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
+                                    <div className={getProporsiPercentageClass(totalJumlahUsaha, usahaProporsiTotals.bkuUsahaWilkerstat)}>{formatProporsiPercentage(totalJumlahUsaha, usahaProporsiTotals.bkuUsahaWilkerstat)}</div>
+                                  </TableCell>
+                                  <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                     <div>{totalJumlahUsahaPertanian.toLocaleString("id-ID")}</div>
                                     <div className={`text-xs ${getProporsiPercentageClass(totalJumlahUsahaPertanian, usahaProporsiTotals.utpSt2023)}`}>{formatProporsiPercentage(totalJumlahUsahaPertanian, usahaProporsiTotals.utpSt2023)}</div>
                                   </TableCell>
@@ -4806,6 +4818,9 @@ export default function MonitoringLapanganDash() {
                                   <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                     <div>{overallJumlahUsaha.toLocaleString("id-ID")}</div>
                                     <div className={`text-xs ${getProporsiPercentageClass(overallJumlahUsaha, usahaProporsiOverallTotals.prelistUsaha)}`}>{formatProporsiPercentage(overallJumlahUsaha, usahaProporsiOverallTotals.prelistUsaha)}</div>
+                                  </TableCell>
+                                  <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
+                                    <div className={getProporsiPercentageClass(overallJumlahUsaha, usahaProporsiOverallTotals.bkuUsahaWilkerstat)}>{formatProporsiPercentage(overallJumlahUsaha, usahaProporsiOverallTotals.bkuUsahaWilkerstat)}</div>
                                   </TableCell>
                                   <TableCell className="w-[72px] min-w-[72px] max-w-[72px] text-right px-1 py-2 border-l-2 border-slate-300">
                                     <div>{overallJumlahUsahaPertanian.toLocaleString("id-ID")}</div>
