@@ -5244,12 +5244,104 @@ export default function MonitoringLapanganDash() {
                                   <TableHead colSpan={2 + [proporsiColumnGroups.prelistAwal, proporsiColumnGroups.prelistUsaha, proporsiColumnGroups.utpSt2023, proporsiColumnGroups.bkuUsahaWilkerstat, proporsiColumnGroups.didata].filter(Boolean).length} className="text-center font-bold border bg-slate-200 text-slate-700">
                                     <div className="flex items-center justify-center py-1 px-2">Identitas & Dasar</div>
                                   </TableHead>
-                                  <TableHead colSpan={[proporsiColumnGroups.bkuDitemukanPertanian, proporsiColumnGroups.bkuDitemukanNonPertanian, proporsiColumnGroups.bkuBaruPertanian, proporsiColumnGroups.bkuBaruNonPertanian].filter(Boolean).length} className="text-center font-bold border bg-orange-200 text-orange-800">
-                                    <div className="flex items-center justify-center gap-2 py-1 px-2">Usaha BKU</div>
-                                  </TableHead>
-                                  <TableHead colSpan={[proporsiColumnGroups.keluargaDitemukanPertanian, proporsiColumnGroups.keluargaDitemukanNonPertanian, proporsiColumnGroups.keluargaBaruPertanian, proporsiColumnGroups.keluargaBaruNonPertanian].filter(Boolean).length} className="text-center font-bold border bg-blue-200 text-blue-800">
-                                    <div className="flex items-center justify-center gap-2 py-1 px-2">Usaha Dalam Keluarga</div>
-                                  </TableHead>
+                                  {[
+                                    proporsiColumnGroups.bkuDitemukanPertanian,
+                                    proporsiColumnGroups.bkuDitemukanNonPertanian,
+                                    proporsiColumnGroups.bkuBaruPertanian,
+                                    proporsiColumnGroups.bkuBaruNonPertanian,
+                                  ].filter(Boolean).length > 0 && (
+                                    <TableHead
+                                      colSpan={[
+                                        proporsiColumnGroups.bkuDitemukanPertanian,
+                                        proporsiColumnGroups.bkuDitemukanNonPertanian,
+                                        proporsiColumnGroups.bkuBaruPertanian,
+                                        proporsiColumnGroups.bkuBaruNonPertanian,
+                                      ].filter(Boolean).length}
+                                      className="text-center font-bold border bg-orange-200 text-orange-800 cursor-pointer select-none transition-all hover:shadow-md hover:opacity-90"
+                                      onClick={() => {
+                                        const allVisible = [
+                                          proporsiColumnGroups.bkuDitemukanPertanian,
+                                          proporsiColumnGroups.bkuDitemukanNonPertanian,
+                                          proporsiColumnGroups.bkuBaruPertanian,
+                                          proporsiColumnGroups.bkuBaruNonPertanian,
+                                        ].every(Boolean);
+                                        setProporsiColumnGroups((previous) => ({
+                                          ...previous,
+                                          bkuDitemukanPertanian: !allVisible,
+                                          bkuDitemukanNonPertanian: !allVisible,
+                                          bkuBaruPertanian: !allVisible,
+                                          bkuBaruNonPertanian: !allVisible,
+                                        }));
+                                      }}
+                                      title={`Klik untuk ${[
+                                        proporsiColumnGroups.bkuDitemukanPertanian,
+                                        proporsiColumnGroups.bkuDitemukanNonPertanian,
+                                        proporsiColumnGroups.bkuBaruPertanian,
+                                        proporsiColumnGroups.bkuBaruNonPertanian,
+                                      ].every(Boolean)
+                                        ? "tutup"
+                                        : "buka"} kolom Usaha BKU`}
+                                    >
+                                      <div className="flex items-center justify-center gap-2 py-1 px-2">
+                                        Usaha BKU
+                                        <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${[
+                                          proporsiColumnGroups.bkuDitemukanPertanian,
+                                          proporsiColumnGroups.bkuDitemukanNonPertanian,
+                                          proporsiColumnGroups.bkuBaruPertanian,
+                                          proporsiColumnGroups.bkuBaruNonPertanian,
+                                        ].every(Boolean) ? "" : "-rotate-90"}`} />
+                                      </div>
+                                    </TableHead>
+                                  )}
+                                  {[
+                                    proporsiColumnGroups.keluargaDitemukanPertanian,
+                                    proporsiColumnGroups.keluargaDitemukanNonPertanian,
+                                    proporsiColumnGroups.keluargaBaruPertanian,
+                                    proporsiColumnGroups.keluargaBaruNonPertanian,
+                                  ].filter(Boolean).length > 0 && (
+                                    <TableHead
+                                      colSpan={[
+                                        proporsiColumnGroups.keluargaDitemukanPertanian,
+                                        proporsiColumnGroups.keluargaDitemukanNonPertanian,
+                                        proporsiColumnGroups.keluargaBaruPertanian,
+                                        proporsiColumnGroups.keluargaBaruNonPertanian,
+                                      ].filter(Boolean).length}
+                                      className="text-center font-bold border bg-blue-200 text-blue-800 cursor-pointer select-none transition-all hover:shadow-md hover:opacity-90"
+                                      onClick={() => {
+                                        const allVisible = [
+                                          proporsiColumnGroups.keluargaDitemukanPertanian,
+                                          proporsiColumnGroups.keluargaDitemukanNonPertanian,
+                                          proporsiColumnGroups.keluargaBaruPertanian,
+                                          proporsiColumnGroups.keluargaBaruNonPertanian,
+                                        ].every(Boolean);
+                                        setProporsiColumnGroups((previous) => ({
+                                          ...previous,
+                                          keluargaDitemukanPertanian: !allVisible,
+                                          keluargaDitemukanNonPertanian: !allVisible,
+                                          keluargaBaruPertanian: !allVisible,
+                                          keluargaBaruNonPertanian: !allVisible,
+                                        }));
+                                      }}
+                                      title={`Klik untuk ${[
+                                        proporsiColumnGroups.keluargaDitemukanPertanian,
+                                        proporsiColumnGroups.keluargaDitemukanNonPertanian,
+                                        proporsiColumnGroups.keluargaBaruPertanian,
+                                        proporsiColumnGroups.keluargaBaruNonPertanian,
+                                      ].every(Boolean)
+                                        ? "tutup"
+                                        : "buka"} kolom Usaha Dalam Keluarga`}
+                                    >
+                                      <div className="flex items-center justify-center gap-2 py-1 px-2">
+                                        Usaha Dalam Keluarga
+                                        <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${[
+                                          proporsiColumnGroups.keluargaDitemukanPertanian,
+                                          proporsiColumnGroups.keluargaDitemukanNonPertanian,
+                                          proporsiColumnGroups.keluargaBaruPertanian,
+                                          proporsiColumnGroups.keluargaBaruNonPertanian,
+                                        ].every(Boolean) ? "" : "-rotate-90"}`} />
+                                      </div>
+                                    </TableHead>
+                                  )}
                                   <TableHead colSpan={proporsiColumnGroups.ringkasan ? 4 : 0} className={`text-center font-bold border bg-emerald-200 text-emerald-800 cursor-pointer select-none transition-all hover:shadow-md hover:opacity-90 ${proporsiColumnGroups.ringkasan ? "" : "hidden"}`} onClick={() => setProporsiColumnGroups((previous) => ({ ...previous, ringkasan: !previous.ringkasan }))} title={`Klik untuk ${proporsiColumnGroups.ringkasan ? "tutup" : "buka"} kolom ringkasan`}>
                                     <div className="flex items-center justify-center gap-2 py-1 px-2">Ringkasan<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${proporsiColumnGroups.ringkasan ? "" : "-rotate-90"}`} /></div>
                                   </TableHead>
