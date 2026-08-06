@@ -1351,16 +1351,16 @@ export default function MonitoringLapanganDash() {
       // Kolom C = prelist / jumlah prelist usaha (kolom D sudah dipakai untuk Ditemukan)
       const jumlahPrelistUsaha = getRawColumnNumber(row, 2, 0);
       // Mapping kolom sheet USAHA PERUSAHAAN (A=0):
-      // Ditemukan = D+F+P, Tutup = H+J+R, Ganda = L+T,
-      // Tidak Ditemukan = N+V, Baru = X, Ditemukan+Baru = Z
+      // Ditemukan = D+F+T, Tutup = H+J+V, Ganda = L+X,
+      // Tidak Ditemukan = N+Z, Baru = AB, Ditemukan+Baru = AH
       const ditemukan =
-        getRawColumnNumber(row, 3, 0) + getRawColumnNumber(row, 5, 0) + getRawColumnNumber(row, 15, 0);
+        getRawColumnNumber(row, 3, 0) + getRawColumnNumber(row, 5, 0) + getRawColumnNumber(row, 19, 0);
       const tutup =
-        getRawColumnNumber(row, 7, 0) + getRawColumnNumber(row, 9, 0) + getRawColumnNumber(row, 17, 0);
-      const ganda = getRawColumnNumber(row, 11, 0) + getRawColumnNumber(row, 19, 0);
-      const tidakDitemukan = getRawColumnNumber(row, 13, 0) + getRawColumnNumber(row, 21, 0);
-      const baru = getRawColumnNumber(row, 23, 0);
-      const ditemukanPlusBaru = getRawColumnNumber(row, 25, 0);
+        getRawColumnNumber(row, 7, 0) + getRawColumnNumber(row, 9, 0) + getRawColumnNumber(row, 21, 0);
+      const ganda = getRawColumnNumber(row, 11, 0) + getRawColumnNumber(row, 23, 0);
+      const tidakDitemukan = getRawColumnNumber(row, 13, 0) + getRawColumnNumber(row, 25, 0);
+      const baru = getRawColumnNumber(row, 27, 0);
+      const ditemukanPlusBaru = getRawColumnNumber(row, 33, 0);
 
       const child: UsahaChildRow = {
         id: `${key}-child-${index}`,
@@ -1760,14 +1760,14 @@ export default function MonitoringLapanganDash() {
       const perusahaanJumlahPrelistUsaha = sourceType === "Perusahaan" ? getRawColumnText(row, 2, "0") : "0";
       const bkuUsahaWilkerstatBaru = (wilkerstatByKey.get(id) ?? 0).toString();
       const sumRawColumns = (...columns: number[]) => columns.reduce((sum, column) => sum + getRawColumnNumber(row, column, 0), 0).toString();
-      // USAHA PERUSAHAAN (A=0): Ditemukan = D+F+R, Tutup = H+J+T, Ganda = L+V,
-      // Tidak Ditemukan = N+X, Baru = Z, Ditemukan+Baru = AD
-      const perusahaanDitemukan = sourceType === "Perusahaan" ? sumRawColumns(3, 5, 17) : "0";
-      const perusahaanTutup = sourceType === "Perusahaan" ? sumRawColumns(7, 9, 19) : "0";
-      const perusahaanGanda = sourceType === "Perusahaan" ? sumRawColumns(11, 21) : "0";
-      const perusahaanTidakDitemukan = sourceType === "Perusahaan" ? sumRawColumns(13, 23) : "0";
-      const perusahaanBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 25, "0") : "0";
-      const perusahaanDitemukanPlusBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 29, "0") : "0";
+      // USAHA PERUSAHAAN (A=0): Ditemukan = D+F+T, Tutup = H+J+V, Ganda = L+X,
+      // Tidak Ditemukan = N+Z, Baru = AB, Ditemukan+Baru = AH
+      const perusahaanDitemukan = sourceType === "Perusahaan" ? sumRawColumns(3, 5, 19) : "0";
+      const perusahaanTutup = sourceType === "Perusahaan" ? sumRawColumns(7, 9, 21) : "0";
+      const perusahaanGanda = sourceType === "Perusahaan" ? sumRawColumns(11, 23) : "0";
+      const perusahaanTidakDitemukan = sourceType === "Perusahaan" ? sumRawColumns(13, 25) : "0";
+      const perusahaanBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 27, "0") : "0";
+      const perusahaanDitemukanPlusBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 33, "0") : "0";
       // USAHA KELUARGA (A=0): Ditemukan = D, Tutup = F, Ganda = H,
       // Tidak Ditemukan = J, Baru = L, Ditemukan+Baru = N
       const keluargaDitemukan = sourceType === "Keluarga" ? getRawColumnText(row, 3, "0") : "0";
