@@ -2523,12 +2523,313 @@ export default function MonitoringLapanganDash() {
           ...row.children.map((detail) => toExportRow(detail, detail.kode, detail.sls_rt, "Detail")),
         ]);
     if (exportRows.length === 0) return;
-    const worksheet = XLSX.utils.json_to_sheet(exportRows);
-    worksheet["!cols"] = Object.keys(exportRows[0] || {}).map((key) => ({
-      wch: Math.min(Math.max(key.length + 2, 12), 32),
-    }));
+
+    const autoCols = (rows: Record<string, any>[]) =>
+      Object.keys(rows[0] || {}).map((key) => ({ wch: Math.min(Math.max(key.length + 2, 12), 34) }));
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Proporsi Usaha");
+
+    // ---------- Sheet 1: Detail (sesuai tampilan UI) ----------
+    const detailSheet = XLSX.utils.json_to_sheet(exportRows);
+    detailSheet["!cols"] = autoCols(exportRows);
+    XLSX.utils.book_append_sheet(workbook, detailSheet, "Detail");
+
+    // ---------- Rekap Kecamatan - Desa ----------
+    type WilayahAgg = {
+      kecamatan: string;
+      desa: string;
+      prelistAwal: number;
+      prelistUsaha: number;
+      utp: number;
+      wilkerstat: number;
+      didata: number;
+      nonPertanian: number;
+      pertanian: number;
+      jumlahSls: number;
+    };
+    const wilayahMap = new Map<string, WilayahAgg>();
+    filteredUsahaProporsiRows.forEach((row) => {
+      const kecamatan = row.kecamatan || "-";
+      row.children.forEach((detail) => {
+        const desa = proporsiKeyToDesa.get(normalizeSheetKey(detail.kode)) || "-";
+        const mapKey = `${kecamatan}||${desa}`;
+        const existing = wilayahMap.get(mapKey) || {
+          kecamatan,
+          desa,
+          prelistAwal: 0,
+          prelistUsaha: 0,
+          utp: 0,
+          wilkerstat: 0,
+          didata: 0,
+          nonPertanian: 0,
+          pertanian: 0,
+          jumlahSls: 0,
+        };
+        existing.prelistAwal += parseNumericValue(detail.prelist_awal);
+        existing.prelistUsaha += parseNumericValue(detail.prelist_usaha);
+        existing.utp += parseNumericValue(detail.utp_subsektor_st2023);
+        existing.wilkerstat += parseNumericValue(detail.bku_usaha_wilkerstat_baru);
+        existing.didata += parseNumericValue(detail.didata);
+        existing.nonPertanian += getJumlahUsahaNonPertanian(detail);
+        existing.pertanian += getJumlahUsahaPertanian(detail);
+        existing.jumlahSls += 1;
+        wilayahMap.set(mapKey, existing);
+      });
+    });
+    const wilayahRows = Array.from(wilayahMap.values()).sort((a, b) =>
+      a.kecamatan === b.kecamatan ? a.desa.localeCompare(b.desa, "id-ID") : a.kecamatan.localeCompare(b.kecamatan, "id-ID")
+    );
+
+    const pct = (numerator: number, denominator: number) =>
+      denominator > 0 ? parseFloat(((numerator / denominator) * 100).toFixed(2)) : 0;
+    const statusOf = (numerator: number, denominator: number) => {
+      if (denominator <= 0) return "Tanpa Pembanding";
+      const ratio = (numerator / denominator) * 100;
+      if (ratio >= 100) return "LEBIH / Terpenuhi";
+      if (ratio >= 90) return "Mendekati Target";
+      if (ratio >= 70) return "KURANG";
+      return "SANGAT KURANG";
+    };
+
+    const sumBy = (selector: (row: WilayahAgg) => number) => wilayahRows.reduce((total, row) => total + selector(row), 0);
+    const totalPrelistAwal = sumBy((row) => row.prelistAwal);
+    const totalPrelistUsaha = sumBy((row) => row.prelistUsaha);
+    const totalUtp = sumBy((row) => row.utp);
+    const totalWilkerstat = sumBy((row) => row.wilkerstat);
+    const totalDidata = sumBy((row) => row.didata);
+    const totalNonPertanian = sumBy((row) => row.nonPertanian);
+    const totalPertanian = sumBy((row) => row.pertanian);
+
+    // ---------- Sheet 2: Non Pertanian ----------
+    const nonPertanianRows = wilayahRows.map((row, index) => ({
+      No: index + 1,
+      Kecamatan: row.kecamatan,
+      "Desa/Kelurahan": row.desa,
+      "Jumlah SLS/RT": row.jumlahSls,
+      "Prelist Awal": row.prelistAwal,
+      "Prelist Usaha": row.prelistUsaha,
+      "Usaha Wilkerstat": row.wilkerstat,
+      Didata: row.didata,
+      "Jumlah Usaha Non Pertanian": row.nonPertanian,
+      "% Non Pertanian - Prelist Usaha": pct(row.nonPertanian, row.prelistUsaha),
+      "Status vs Prelist Usaha": statusOf(row.nonPertanian, row.prelistUsaha),
+      "Selisih vs Prelist Usaha": row.nonPertanian - row.prelistUsaha,
+      "% Non Pertanian - Wilkerstat": pct(row.nonPertanian, row.wilkerstat),
+      "Status vs Usaha Wilkerstat": statusOf(row.nonPertanian, row.wilkerstat),
+      "Selisih vs Usaha Wilkerstat": row.nonPertanian - row.wilkerstat,
+      "% Didata - Prelist Awal": pct(row.didata, row.prelistAwal),
+      "% Non Pertanian - Didata": pct(row.nonPertanian, row.didata),
+    }));
+    nonPertanianRows.push({
+      No: "" as any,
+      Kecamatan: "TOTAL",
+      "Desa/Kelurahan": "",
+      "Jumlah SLS/RT": sumBy((row) => row.jumlahSls),
+      "Prelist Awal": totalPrelistAwal,
+      "Prelist Usaha": totalPrelistUsaha,
+      "Usaha Wilkerstat": totalWilkerstat,
+      Didata: totalDidata,
+      "Jumlah Usaha Non Pertanian": totalNonPertanian,
+      "% Non Pertanian - Prelist Usaha": pct(totalNonPertanian, totalPrelistUsaha),
+      "Status vs Prelist Usaha": statusOf(totalNonPertanian, totalPrelistUsaha),
+      "Selisih vs Prelist Usaha": totalNonPertanian - totalPrelistUsaha,
+      "% Non Pertanian - Wilkerstat": pct(totalNonPertanian, totalWilkerstat),
+      "Status vs Usaha Wilkerstat": statusOf(totalNonPertanian, totalWilkerstat),
+      "Selisih vs Usaha Wilkerstat": totalNonPertanian - totalWilkerstat,
+      "% Didata - Prelist Awal": pct(totalDidata, totalPrelistAwal),
+      "% Non Pertanian - Didata": pct(totalNonPertanian, totalDidata),
+    });
+    const nonPertanianSheet = XLSX.utils.json_to_sheet(nonPertanianRows);
+    nonPertanianSheet["!cols"] = autoCols(nonPertanianRows);
+    XLSX.utils.book_append_sheet(workbook, nonPertanianSheet, "Non Pertanian");
+
+    // ---------- Sheet 3: Pertanian ----------
+    const pertanianRows = wilayahRows.map((row, index) => ({
+      No: index + 1,
+      Kecamatan: row.kecamatan,
+      "Desa/Kelurahan": row.desa,
+      "Jumlah SLS/RT": row.jumlahSls,
+      "Prelist Awal": row.prelistAwal,
+      "Prelist Usaha": row.prelistUsaha,
+      "UTP ST2023": row.utp,
+      Didata: row.didata,
+      "Jumlah Usaha Pertanian": row.pertanian,
+      "% Usaha Pertanian - UTP ST2023": pct(row.pertanian, row.utp),
+      "Status vs UTP ST2023": statusOf(row.pertanian, row.utp),
+      "Selisih vs UTP ST2023": row.pertanian - row.utp,
+      "% Pertanian - Didata": pct(row.pertanian, row.didata),
+      "% Didata - Prelist Awal": pct(row.didata, row.prelistAwal),
+    }));
+    pertanianRows.push({
+      No: "" as any,
+      Kecamatan: "TOTAL",
+      "Desa/Kelurahan": "",
+      "Jumlah SLS/RT": sumBy((row) => row.jumlahSls),
+      "Prelist Awal": totalPrelistAwal,
+      "Prelist Usaha": totalPrelistUsaha,
+      "UTP ST2023": totalUtp,
+      Didata: totalDidata,
+      "Jumlah Usaha Pertanian": totalPertanian,
+      "% Usaha Pertanian - UTP ST2023": pct(totalPertanian, totalUtp),
+      "Status vs UTP ST2023": statusOf(totalPertanian, totalUtp),
+      "Selisih vs UTP ST2023": totalPertanian - totalUtp,
+      "% Pertanian - Didata": pct(totalPertanian, totalDidata),
+      "% Didata - Prelist Awal": pct(totalDidata, totalPrelistAwal),
+    });
+    const pertanianSheet = XLSX.utils.json_to_sheet(pertanianRows);
+    pertanianSheet["!cols"] = autoCols(pertanianRows);
+    XLSX.utils.book_append_sheet(workbook, pertanianSheet, "Pertanian");
+
+    // ---------- Sheet 4: Grafik + analisis ----------
+    const kecamatanMap = new Map<string, WilayahAgg>();
+    wilayahRows.forEach((row) => {
+      const existing = kecamatanMap.get(row.kecamatan) || {
+        ...row,
+        desa: "-",
+        prelistAwal: 0,
+        prelistUsaha: 0,
+        utp: 0,
+        wilkerstat: 0,
+        didata: 0,
+        nonPertanian: 0,
+        pertanian: 0,
+        jumlahSls: 0,
+      };
+      existing.prelistAwal += row.prelistAwal;
+      existing.prelistUsaha += row.prelistUsaha;
+      existing.utp += row.utp;
+      existing.wilkerstat += row.wilkerstat;
+      existing.didata += row.didata;
+      existing.nonPertanian += row.nonPertanian;
+      existing.pertanian += row.pertanian;
+      existing.jumlahSls += row.jumlahSls;
+      kecamatanMap.set(row.kecamatan, existing);
+    });
+    const kecamatanAgg = Array.from(kecamatanMap.values());
+    const bar = (value: number, max: number, width = 30) =>
+      max > 0 ? "█".repeat(Math.max(0, Math.round((value / max) * width))) : "";
+
+    const grafikAoa: any[][] = [];
+    grafikAoa.push(["GRAFIK & ANALISIS PROPORSI PERTANIAN / NON PERTANIAN"]);
+    grafikAoa.push([`Tanggal unduh: ${new Date().toLocaleString("id-ID")}`, `Mode data: ${proporsiExportMode}`]);
+    grafikAoa.push([]);
+    grafikAoa.push(["RINGKASAN AGREGAT"]);
+    grafikAoa.push(["Indikator", "Nilai", "Persentase", "Status"]);
+    grafikAoa.push(["Prelist Awal", totalPrelistAwal, "", ""]);
+    grafikAoa.push(["Prelist Usaha", totalPrelistUsaha, pct(totalPrelistUsaha, totalPrelistAwal), "% dari Prelist Awal"]);
+    grafikAoa.push(["Usaha Wilkerstat", totalWilkerstat, "", ""]);
+    grafikAoa.push(["UTP ST2023", totalUtp, "", ""]);
+    grafikAoa.push(["Didata", totalDidata, pct(totalDidata, totalPrelistAwal), statusOf(totalDidata, totalPrelistAwal)]);
+    grafikAoa.push([
+      "Jumlah Usaha Non Pertanian",
+      totalNonPertanian,
+      pct(totalNonPertanian, totalPrelistUsaha),
+      statusOf(totalNonPertanian, totalPrelistUsaha),
+    ]);
+    grafikAoa.push([
+      "Jumlah Usaha Pertanian",
+      totalPertanian,
+      pct(totalPertanian, totalUtp),
+      statusOf(totalPertanian, totalUtp),
+    ]);
+    grafikAoa.push([
+      "Komposisi Non Pertanian : Pertanian",
+      `${pct(totalNonPertanian, totalNonPertanian + totalPertanian)}% : ${pct(totalPertanian, totalNonPertanian + totalPertanian)}%`,
+    ]);
+    grafikAoa.push([]);
+
+    const maxNon = Math.max(...kecamatanAgg.map((row) => row.nonPertanian), 0);
+    grafikAoa.push(["GRAFIK 1 - JUMLAH USAHA NON PERTANIAN PER KECAMATAN (terbesar ke terkecil)"]);
+    grafikAoa.push(["Kecamatan", "Jumlah Non Pertanian", "Grafik", "% vs Prelist Usaha", "% vs Wilkerstat", "Status"]);
+    [...kecamatanAgg]
+      .sort((a, b) => b.nonPertanian - a.nonPertanian)
+      .forEach((row) => {
+        grafikAoa.push([
+          row.kecamatan,
+          row.nonPertanian,
+          bar(row.nonPertanian, maxNon),
+          pct(row.nonPertanian, row.prelistUsaha),
+          pct(row.nonPertanian, row.wilkerstat),
+          statusOf(row.nonPertanian, row.prelistUsaha),
+        ]);
+      });
+    grafikAoa.push([]);
+
+    const maxTani = Math.max(...kecamatanAgg.map((row) => row.pertanian), 0);
+    grafikAoa.push(["GRAFIK 2 - JUMLAH USAHA PERTANIAN PER KECAMATAN (terbesar ke terkecil)"]);
+    grafikAoa.push(["Kecamatan", "Jumlah Pertanian", "Grafik", "UTP ST2023", "% vs UTP ST2023", "Status"]);
+    [...kecamatanAgg]
+      .sort((a, b) => b.pertanian - a.pertanian)
+      .forEach((row) => {
+        grafikAoa.push([
+          row.kecamatan,
+          row.pertanian,
+          bar(row.pertanian, maxTani),
+          row.utp,
+          pct(row.pertanian, row.utp),
+          statusOf(row.pertanian, row.utp),
+        ]);
+      });
+    grafikAoa.push([]);
+
+    grafikAoa.push(["GRAFIK 3 - KOMPOSISI NON PERTANIAN VS PERTANIAN PER KECAMATAN"]);
+    grafikAoa.push(["Kecamatan", "Non Pertanian", "Pertanian", "Total", "% Non Pertanian", "% Pertanian", "Grafik Non Pertanian"]);
+    [...kecamatanAgg]
+      .sort((a, b) => b.nonPertanian + b.pertanian - (a.nonPertanian + a.pertanian))
+      .forEach((row) => {
+        const total = row.nonPertanian + row.pertanian;
+        grafikAoa.push([
+          row.kecamatan,
+          row.nonPertanian,
+          row.pertanian,
+          total,
+          pct(row.nonPertanian, total),
+          pct(row.pertanian, total),
+          bar(row.nonPertanian, total, 20),
+        ]);
+      });
+    grafikAoa.push([]);
+
+    const kurangNon = kecamatanAgg.filter((row) => row.prelistUsaha > 0 && row.nonPertanian < row.prelistUsaha);
+    const kurangTani = kecamatanAgg.filter((row) => row.utp > 0 && row.pertanian < row.utp);
+    const topNon = [...kecamatanAgg].sort((a, b) => pct(b.nonPertanian, b.prelistUsaha) - pct(a.nonPertanian, a.prelistUsaha))[0];
+    const bottomNon = [...kecamatanAgg]
+      .filter((row) => row.prelistUsaha > 0)
+      .sort((a, b) => pct(a.nonPertanian, a.prelistUsaha) - pct(b.nonPertanian, b.prelistUsaha))[0];
+    const topTani = [...kecamatanAgg].sort((a, b) => pct(b.pertanian, b.utp) - pct(a.pertanian, a.utp))[0];
+    const bottomTani = [...kecamatanAgg]
+      .filter((row) => row.utp > 0)
+      .sort((a, b) => pct(a.pertanian, a.utp) - pct(b.pertanian, b.utp))[0];
+
+    grafikAoa.push(["ANALISIS"]);
+    grafikAoa.push([
+      `1. Cakupan pendataan: ${totalDidata.toLocaleString("id-ID")} dari ${totalPrelistAwal.toLocaleString("id-ID")} Prelist Awal (${pct(totalDidata, totalPrelistAwal)}%) - ${statusOf(totalDidata, totalPrelistAwal)}.`,
+    ]);
+    grafikAoa.push([
+      `2. Usaha Non Pertanian tercatat ${totalNonPertanian.toLocaleString("id-ID")}, setara ${pct(totalNonPertanian, totalPrelistUsaha)}% Prelist Usaha dan ${pct(totalNonPertanian, totalWilkerstat)}% Usaha Wilkerstat.`,
+    ]);
+    grafikAoa.push([
+      `3. Usaha Pertanian tercatat ${totalPertanian.toLocaleString("id-ID")}, setara ${pct(totalPertanian, totalUtp)}% UTP ST2023 (selisih ${(totalPertanian - totalUtp).toLocaleString("id-ID")}).`,
+    ]);
+    grafikAoa.push([
+      `4. Komposisi hasil pendataan: ${pct(totalNonPertanian, totalNonPertanian + totalPertanian)}% non pertanian dan ${pct(totalPertanian, totalNonPertanian + totalPertanian)}% pertanian.`,
+    ]);
+    grafikAoa.push([
+      `5. Kecamatan capaian non pertanian tertinggi: ${topNon ? `${topNon.kecamatan} (${pct(topNon.nonPertanian, topNon.prelistUsaha)}%)` : "-"}; terendah: ${bottomNon ? `${bottomNon.kecamatan} (${pct(bottomNon.nonPertanian, bottomNon.prelistUsaha)}%)` : "-"}.`,
+    ]);
+    grafikAoa.push([
+      `6. Kecamatan capaian pertanian tertinggi: ${topTani ? `${topTani.kecamatan} (${pct(topTani.pertanian, topTani.utp)}%)` : "-"}; terendah: ${bottomTani ? `${bottomTani.kecamatan} (${pct(bottomTani.pertanian, bottomTani.utp)}%)` : "-"}.`,
+    ]);
+    grafikAoa.push([
+      `7. ${kurangNon.length} kecamatan masih KURANG dibanding Prelist Usaha dan ${kurangTani.length} kecamatan masih KURANG dibanding UTP ST2023 - prioritaskan penyisiran ulang di wilayah tersebut.`,
+    ]);
+    grafikAoa.push([
+      `8. Cakupan wilayah: ${kecamatanAgg.length} kecamatan, ${wilayahRows.length} desa/kelurahan, ${sumBy((row) => row.jumlahSls).toLocaleString("id-ID")} SLS/RT.`,
+    ]);
+
+    const grafikSheet = XLSX.utils.aoa_to_sheet(grafikAoa);
+    grafikSheet["!cols"] = [{ wch: 46 }, { wch: 20 }, { wch: 34 }, { wch: 20 }, { wch: 20 }, { wch: 22 }, { wch: 24 }];
+    XLSX.utils.book_append_sheet(workbook, grafikSheet, "Grafik");
+
     XLSX.writeFile(workbook, `proporsi-usaha-${proporsiExportMode}-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
