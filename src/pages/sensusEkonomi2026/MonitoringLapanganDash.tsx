@@ -1442,13 +1442,13 @@ export default function MonitoringLapanganDash() {
       const key = `${namaPpl}|${kecamatan}`;
       const prelistAwal = getRawColumnNumber(row, 2, getRowNumeric(row, "prelist_awal", ["prelist_awal", "prelist"], 0));
       // Mapping kolom sheet USAHA KELUARGA (A=0):
-      // Ditemukan = D, Tutup = F, Ganda = H, Tidak Ditemukan = J, Baru = L, Ditemukan+Baru = N
+      // Ditemukan = D, Tutup = F, Ganda = H, Tidak Ditemukan = J, Baru = L, Ditemukan+Baru = P
       const ditemukan = getRawColumnNumber(row, 3, getRowNumeric(row, "ditemukan", ["ditemukan"], 0));
       const tutup = getRawColumnNumber(row, 5, getRowNumeric(row, "tutup", ["tutup"], 0));
       const ganda = getRawColumnNumber(row, 7, getRowNumeric(row, "ganda", ["ganda"], 0));
       const tidakDitemukan = getRawColumnNumber(row, 9, getRowNumeric(row, "tidak_ditemukan", ["tidak ditemukan", "tidak_ditemukan"], 0));
       const baru = getRawColumnNumber(row, 11, getRowNumeric(row, "baru", ["baru"], 0));
-      const ditemukanPlusBaru = getRawColumnNumber(row, 13, getRowNumeric(row, "ditemukan_plus_baru", ["ditemukan_plus_baru", "ditemukan + baru", "ditemukan dan baru", "total_ditemukan"], 0));
+      const ditemukanPlusBaru = getRawColumnNumber(row, 15, getRowNumeric(row, "ditemukan_plus_baru", ["ditemukan_plus_baru", "ditemukan + baru", "ditemukan dan baru", "total_ditemukan"], 0));
 
       const child: UsahaChildRow = {
         id: `${key}-child-${index}`,
@@ -1769,13 +1769,13 @@ export default function MonitoringLapanganDash() {
       const perusahaanBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 27, "0") : "0";
       const perusahaanDitemukanPlusBaru = sourceType === "Perusahaan" ? getRawColumnText(row, 33, "0") : "0";
       // USAHA KELUARGA (A=0): Ditemukan = D, Tutup = F, Ganda = H,
-      // Tidak Ditemukan = J, Baru = L, Ditemukan+Baru = N
+      // Tidak Ditemukan = J, Baru = L, Ditemukan+Baru = P
       const keluargaDitemukan = sourceType === "Keluarga" ? getRawColumnText(row, 3, "0") : "0";
       const keluargaTutup = sourceType === "Keluarga" ? getRawColumnText(row, 5, "0") : "0";
       const keluargaGanda = sourceType === "Keluarga" ? getRawColumnText(row, 7, "0") : "0";
       const keluargaTidakDitemukan = sourceType === "Keluarga" ? getRawColumnText(row, 9, "0") : "0";
       const keluargaBaru = sourceType === "Keluarga" ? getRawColumnText(row, 11, "0") : "0";
-      const keluargaDitemukanPlusBaru = sourceType === "Keluarga" ? getRawColumnText(row, 13, "0") : "0";
+      const keluargaDitemukanPlusBaru = sourceType === "Keluarga" ? getRawColumnText(row, 15, "0") : "0";
 
       if (existingDetail) {
         existingDetail.perusahaan_prelist_awal = (parseNumericValue(existingDetail.perusahaan_prelist_awal) + parseNumericValue(perusahaanPrelistAwal)).toString();
