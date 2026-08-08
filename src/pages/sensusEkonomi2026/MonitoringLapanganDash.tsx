@@ -33,7 +33,61 @@ const normalizeSheetKey = (value: unknown) => {
   return digits.length >= 16 ? digits.slice(-16) : "";
 };
 
+type ChartRatioTooltipProps = {
+  active?: boolean;
+  payload?: any[];
+  label?: any;
+  labelPrefix: string;
+  pctKey: string;
+  pctLabel: string;
+  valueKey: string;
+  valueLabel: string;
+  targetKey: string;
+  targetLabel: string;
+  fontSize: number;
+};
+
+const ChartRatioTooltip = ({
+  active,
+  payload,
+  label,
+  labelPrefix,
+  pctKey,
+  pctLabel,
+  valueKey,
+  valueLabel,
+  targetKey,
+  targetLabel,
+  fontSize,
+}: ChartRatioTooltipProps) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0]?.payload || {};
+  const pct = Number(data[pctKey]) || 0;
+  const value = Number(data[valueKey]) || 0;
+  const target = Number(data[targetKey]) || 0;
+  const fmt = (n: number) => n.toLocaleString("id-ID");
+
+  return (
+    <div
+      className="rounded-lg border border-slate-300 bg-white px-3 py-2 shadow-md"
+      style={{ fontSize }}
+    >
+      <p className="font-semibold text-slate-800">{`${labelPrefix}: ${label}`}</p>
+      <p className="mt-1 text-slate-700">
+        {pctLabel}: <span className="font-semibold">{pct.toFixed(2)}%</span>
+      </p>
+      <p className="text-slate-600">
+        {valueLabel}: <span className="font-semibold">{fmt(value)}</span>
+      </p>
+      <p className="text-slate-600">
+        {targetLabel}: <span className="font-semibold">{fmt(target)}</span>
+      </p>
+    </div>
+  );
+};
+
 const getSheetCellText = (row: any, index: number) => {
+  // (helper untuk membaca sel mentah)
   const rawRow = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
   if (rawRow[index] !== undefined && rawRow[index] !== null) {
     return String(rawRow[index]).trim();
@@ -3420,7 +3474,8 @@ export default function MonitoringLapanganDash() {
       const existing = desaMap.get(mapKey) || { kecamatan, desa, prelist: 0, responden: 0, wilkerstat: 0 };
       existing.prelist += totals.prelist;
       existing.responden += totals.responden;
-      existing.wilkerstat += getStackingWilkerstatValue(row);
+      // Wilkerstat pada grafik responden mengikuti kolom "Wilkerstat" tabel UMKM dan Sosek (jumlah muatan)
+      existing.wilkerstat += parseNumericValue(getSheetCellText(row, 24));
       desaMap.set(mapKey, existing);
     });
 
@@ -3815,19 +3870,18 @@ export default function MonitoringLapanganDash() {
                           tick={{ fontSize: chartFontSize }}
                         />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#fff",
-                            border: "1px solid #cbd5e1",
-                            borderRadius: "8px",
-                            fontSize: chartFontSize,
-                          }}
-                          formatter={(value: any, name: string) => {
-                            if (name === "persentaseAktif") {
-                              return [value.toFixed(2) + "%", chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"];
-                            }
-                            return [value.toLocaleString("id-ID"), name === "prelistAwal" ? "Prelist Awal" : name === "wilkerstat" ? "Wilkerstat" : "Responden Didata"];
-                          }}
-                          labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
+                          content={
+                            <ChartRatioTooltip
+                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                              pctKey="persentaseAktif"
+                              pctLabel={chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"}
+                              valueKey="respondenDidata"
+                              valueLabel="Responden Didata"
+                              targetKey={chartRespondenDivisor === "wilkerstat" ? "wilkerstat" : "prelistAwal"}
+                              targetLabel={chartRespondenDivisor === "wilkerstat" ? "Target (Wilkerstat)" : "Target (Prelist Awal)"}
+                              fontSize={chartFontSize}
+                            />
+                          }
                         />
                         <ReferenceLine
                           y={avgWilayahPercentage}
@@ -3953,19 +4007,18 @@ export default function MonitoringLapanganDash() {
                           tick={{ fontSize: chartFontSize }}
                         />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#fff",
-                            border: "1px solid #cbd5e1",
-                            borderRadius: "8px",
-                            fontSize: chartFontSize,
-                          }}
-                          formatter={(value: any, name: string) => {
-                            if (name === "persenNonPertanianAktif") {
-                              return [value.toFixed(2) + "%", chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"];
-                            }
-                            return [value.toFixed(2) + "%", "Persentase"];
-                          }}
-                          labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
+                          content={
+                            <ChartRatioTooltip
+                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                              pctKey="persenNonPertanianAktif"
+                              pctLabel={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
+                              valueKey="nonPertanian"
+                              valueLabel="Jumlah Usaha Non Pertanian"
+                              targetKey={chartNonPertanianDivisor === "wilkerstat" ? "usahaWilkerstat" : "prelistUsaha"}
+                              targetLabel={chartNonPertanianDivisor === "wilkerstat" ? "Target (Usaha Wilkerstat)" : "Target (Prelist Usaha)"}
+                              fontSize={chartFontSize}
+                            />
+                          }
                         />
                         <ReferenceLine
                           y={avgWilayahProporsiNonPertanian}
@@ -4073,19 +4126,18 @@ export default function MonitoringLapanganDash() {
                           tick={{ fontSize: chartFontSize }}
                         />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#fff",
-                            border: "1px solid #cbd5e1",
-                            borderRadius: "8px",
-                            fontSize: chartFontSize,
-                          }}
-                          formatter={(value: any, name: string) => {
-                            if (name === "persenPertanianUtp") {
-                              return [value.toFixed(2) + "%", "Persentase Pertanian"];
-                            }
-                            return [value.toFixed(2) + "%", "Persentase"];
-                          }}
-                          labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
+                          content={
+                            <ChartRatioTooltip
+                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                              pctKey="persenPertanianUtp"
+                              pctLabel="Pertanian / UTP ST2023"
+                              valueKey="pertanian"
+                              valueLabel="Jumlah Usaha Pertanian"
+                              targetKey="utpSt2023"
+                              targetLabel="Target (UTP ST2023)"
+                              fontSize={chartFontSize}
+                            />
+                          }
                         />
                         <ReferenceLine
                           y={avgWilayahProporsiPertanian}
