@@ -34,6 +34,7 @@ const normalizeSheetKey = (value: unknown) => {
 };
 
 const getSheetCellText = (row: any, index: number) => {
+  // (helper untuk membaca sel mentah)
   const rawRow = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
   if (rawRow[index] !== undefined && rawRow[index] !== null) {
     return String(rawRow[index]).trim();
