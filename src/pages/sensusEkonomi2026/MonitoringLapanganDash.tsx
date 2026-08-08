@@ -3870,15 +3870,27 @@ export default function MonitoringLapanganDash() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                       <CardTitle className="text-base">
-                        Persentase Usaha Non Pertanian terhadap Prelist Usaha per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                        Persentase Usaha Non Pertanian terhadap {chartNonPertanianDivisor === "wilkerstat" ? "Usaha Wilkerstat" : "Prelist Usaha"} per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                       </CardTitle>
                       <CardDescription>
-                        Jumlah usaha non pertanian dibagi Prelist Usaha
+                        Jumlah usaha non pertanian dibagi {chartNonPertanianDivisor === "wilkerstat" ? "Usaha Wilkerstat" : "Prelist Usaha"}
                         {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
                         {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
                       </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-end gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-divisor-non" className="text-xs font-semibold text-slate-600">Pembagi</label>
+                        <select
+                          id="chart-divisor-non"
+                          value={chartNonPertanianDivisor}
+                          onChange={(e) => setChartNonPertanianDivisor(e.target.value as "prelist" | "wilkerstat")}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="prelist">Prelist Usaha</option>
+                          <option value="wilkerstat">Usaha Wilkerstat</option>
+                        </select>
+                      </div>
                       <div className="flex flex-col gap-1">
                         <label htmlFor="chart-kecamatan-non" className="text-xs font-semibold text-slate-600">Kecamatan</label>
                         <select
@@ -3948,8 +3960,8 @@ export default function MonitoringLapanganDash() {
                             fontSize: chartFontSize,
                           }}
                           formatter={(value: any, name: string) => {
-                            if (name === "persenNonPertanianPrelist") {
-                              return [value.toFixed(2) + "%", "Persentase Non Pertanian"];
+                            if (name === "persenNonPertanianAktif") {
+                              return [value.toFixed(2) + "%", chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"];
                             }
                             return [value.toFixed(2) + "%", "Persentase"];
                           }}
@@ -3964,8 +3976,8 @@ export default function MonitoringLapanganDash() {
                         />
                         <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                         <Bar
-                          dataKey="persenNonPertanianPrelist"
-                          name="Non Pertanian / Prelist"
+                          dataKey="persenNonPertanianAktif"
+                          name={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
                           radius={[8, 8, 0, 0]}
                           label={{
                             position: "top",
@@ -3976,7 +3988,7 @@ export default function MonitoringLapanganDash() {
                           }}
                         >
                           {wilayahProporsiNonPertanianChartData.map((entry, index) => (
-                            <Cell key={`cell-non-${entry.label}-${index}`} fill={getColorForProporsiChart(entry.persenNonPertanianPrelist)} />
+                            <Cell key={`cell-non-${entry.label}-${index}`} fill={getColorForProporsiChart(entry.persenNonPertanianAktif)} />
                           ))}
                         </Bar>
                       </BarChart>
