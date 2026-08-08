@@ -3518,12 +3518,18 @@ export default function MonitoringLapanganDash() {
             .filter((item) => item.kecamatan === chartKecamatanFilter)
             .map((item) => ({ label: item.desa, ...item }));
 
-    return [...rows].sort((a, b) =>
+    const withValue = rows.map((item) => ({
+      ...item,
+      persenNonPertanianAktif:
+        chartNonPertanianDivisor === "wilkerstat" ? item.persenNonPertanianWilkerstat : item.persenNonPertanianPrelist,
+    }));
+
+    return withValue.sort((a, b) =>
       chartSortOrder === "asc"
-        ? a.persenNonPertanianPrelist - b.persenNonPertanianPrelist
-        : b.persenNonPertanianPrelist - a.persenNonPertanianPrelist
+        ? a.persenNonPertanianAktif - b.persenNonPertanianAktif
+        : b.persenNonPertanianAktif - a.persenNonPertanianAktif
     );
-  }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats]);
+  }, [chartKecamatanFilter, chartSortOrder, chartNonPertanianDivisor, proporsiKecamatanStats, proporsiDesaStats]);
 
   const wilayahProporsiPertanianChartData = useMemo(() => {
     const rows =
@@ -3541,7 +3547,7 @@ export default function MonitoringLapanganDash() {
   }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats]);
 
   const avgWilayahProporsiNonPertanian = wilayahProporsiNonPertanianChartData.length > 0
-    ? wilayahProporsiNonPertanianChartData.reduce((sum, item) => sum + item.persenNonPertanianPrelist, 0) / wilayahProporsiNonPertanianChartData.length
+    ? wilayahProporsiNonPertanianChartData.reduce((sum, item) => sum + item.persenNonPertanianAktif, 0) / wilayahProporsiNonPertanianChartData.length
     : 0;
 
   const avgWilayahProporsiPertanian = wilayahProporsiPertanianChartData.length > 0
@@ -3561,10 +3567,15 @@ export default function MonitoringLapanganDash() {
             .filter((item) => item.kecamatan === chartKecamatanFilter)
             .map((item) => ({ label: item.desa, ...item }));
 
-    return [...rows].sort((a, b) =>
-      chartSortOrder === "asc" ? a.persentase - b.persentase : b.persentase - a.persentase
+    const withValue = rows.map((item) => ({
+      ...item,
+      persentaseAktif: chartRespondenDivisor === "wilkerstat" ? item.persentaseWilkerstat : item.persentase,
+    }));
+
+    return withValue.sort((a, b) =>
+      chartSortOrder === "asc" ? a.persentaseAktif - b.persentaseAktif : b.persentaseAktif - a.persentaseAktif
     );
-  }, [chartKecamatanFilter, chartSortOrder, kecamatanStats, desaStats]);
+  }, [chartKecamatanFilter, chartSortOrder, chartRespondenDivisor, kecamatanStats, desaStats]);
 
   // Global edit dialog (rendered outside TabsContent so it is available on all tabs)
   // Uses same state variables: editDialogOpen, editDialogField, editDialogValue, editSaving
