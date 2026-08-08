@@ -3406,7 +3406,7 @@ export default function MonitoringLapanganDash() {
     });
 
     const seenKeys = new Set<string>();
-    const desaMap = new Map<string, { kecamatan: string; desa: string; prelist: number; responden: number }>();
+    const desaMap = new Map<string, { kecamatan: string; desa: string; prelist: number; responden: number; wilkerstat: number }>();
 
     (stackingData || []).forEach((row: any) => {
       const key = normalizeSheetKey(getSheetCellText(row, 3));
@@ -3417,9 +3417,10 @@ export default function MonitoringLapanganDash() {
       if (!kecamatan) return;
       const totals = progressTotals.get(key) || { prelist: 0, responden: 0 };
       const mapKey = `${kecamatan}||${desa}`;
-      const existing = desaMap.get(mapKey) || { kecamatan, desa, prelist: 0, responden: 0 };
+      const existing = desaMap.get(mapKey) || { kecamatan, desa, prelist: 0, responden: 0, wilkerstat: 0 };
       existing.prelist += totals.prelist;
       existing.responden += totals.responden;
+      existing.wilkerstat += getStackingWilkerstatValue(row);
       desaMap.set(mapKey, existing);
     });
 
@@ -3428,7 +3429,9 @@ export default function MonitoringLapanganDash() {
       desa: item.desa,
       prelistAwal: item.prelist,
       respondenDidata: item.responden,
+      wilkerstat: item.wilkerstat,
       persentase: item.prelist > 0 ? parseFloat(((item.responden / item.prelist) * 100).toFixed(2)) : 0,
+      persentaseWilkerstat: item.wilkerstat > 0 ? parseFloat(((item.responden / item.wilkerstat) * 100).toFixed(2)) : 0,
     }));
   }, [stackingData, progresData]);
 
@@ -3444,15 +3447,16 @@ export default function MonitoringLapanganDash() {
   }, [stackingData]);
 
   const proporsiKecamatanStats = useMemo(() => {
-    const groups = new Map<string, { kecamatan: string; prelist: number; nonPertanian: number; pertanian: number; utp: number }>();
+    const groups = new Map<string, { kecamatan: string; prelist: number; nonPertanian: number; pertanian: number; utp: number; usahaWilkerstat: number }>();
 
     (usahaProporsiRows || []).forEach((row) => {
       const kecamatan = row.kecamatan || "-";
-      const existing = groups.get(kecamatan) || { kecamatan, prelist: 0, nonPertanian: 0, pertanian: 0, utp: 0 };
+      const existing = groups.get(kecamatan) || { kecamatan, prelist: 0, nonPertanian: 0, pertanian: 0, utp: 0, usahaWilkerstat: 0 };
       existing.prelist += parseNumericValue(row.prelist_usaha);
       existing.nonPertanian += getJumlahUsahaNonPertanian(row);
       existing.pertanian += getJumlahUsahaPertanian(row);
       existing.utp += parseNumericValue(row.utp_subsektor_st2023);
+      existing.usahaWilkerstat += parseNumericValue(row.bku_usaha_wilkerstat_baru);
       groups.set(kecamatan, existing);
     });
 
@@ -3463,14 +3467,16 @@ export default function MonitoringLapanganDash() {
       nonPertanian: item.nonPertanian,
       pertanian: item.pertanian,
       utpSt2023: item.utp,
+      usahaWilkerstat: item.usahaWilkerstat,
       persenNonPertanianPrelist: item.prelist > 0 ? parseFloat(((item.nonPertanian / item.prelist) * 100).toFixed(2)) : 0,
+      persenNonPertanianWilkerstat: item.usahaWilkerstat > 0 ? parseFloat(((item.nonPertanian / item.usahaWilkerstat) * 100).toFixed(2)) : 0,
       persenPertanianUtp: item.utp > 0 ? parseFloat(((item.pertanian / item.utp) * 100).toFixed(2)) : 0,
       label: item.kecamatan,
     }));
   }, [usahaProporsiRows]);
 
   const proporsiDesaStats = useMemo(() => {
-    const groups = new Map<string, { kecamatan: string; desa: string; prelist: number; nonPertanian: number; pertanian: number; utp: number }>();
+    const groups = new Map<string, { kecamatan: string; desa: string; prelist: number; nonPertanian: number; pertanian: number; utp: number; usahaWilkerstat: number }>();
 
     (usahaProporsiRows || []).forEach((row) => {
       row.children.forEach((detail) => {
@@ -3479,11 +3485,12 @@ export default function MonitoringLapanganDash() {
         const desa = proporsiKeyToDesa.get(key) || "-";
         const kecamatan = row.kecamatan || "-";
         const mapKey = `${kecamatan}||${desa}`;
-        const existing = groups.get(mapKey) || { kecamatan, desa, prelist: 0, nonPertanian: 0, pertanian: 0, utp: 0 };
+        const existing = groups.get(mapKey) || { kecamatan, desa, prelist: 0, nonPertanian: 0, pertanian: 0, utp: 0, usahaWilkerstat: 0 };
         existing.prelist += parseNumericValue(detail.prelist_usaha);
         existing.nonPertanian += getJumlahUsahaNonPertanian(detail);
         existing.pertanian += getJumlahUsahaPertanian(detail);
         existing.utp += parseNumericValue(detail.utp_subsektor_st2023);
+        existing.usahaWilkerstat += parseNumericValue(detail.bku_usaha_wilkerstat_baru);
         groups.set(mapKey, existing);
       });
     });
@@ -3495,7 +3502,9 @@ export default function MonitoringLapanganDash() {
       nonPertanian: item.nonPertanian,
       pertanian: item.pertanian,
       utpSt2023: item.utp,
+      usahaWilkerstat: item.usahaWilkerstat,
       persenNonPertanianPrelist: item.prelist > 0 ? parseFloat(((item.nonPertanian / item.prelist) * 100).toFixed(2)) : 0,
+      persenNonPertanianWilkerstat: item.usahaWilkerstat > 0 ? parseFloat(((item.nonPertanian / item.usahaWilkerstat) * 100).toFixed(2)) : 0,
       persenPertanianUtp: item.utp > 0 ? parseFloat(((item.pertanian / item.utp) * 100).toFixed(2)) : 0,
       label: item.desa,
     }));
