@@ -3365,16 +3365,19 @@ export default function MonitoringLapanganDash() {
   const [chartKecamatanFilter, setChartKecamatanFilter] = useState<string>("all");
   const [chartSortOrder, setChartSortOrder] = useState<"asc" | "desc">("desc");
   const [chartFontSize, setChartFontSize] = useState<number>(12);
+  const [chartRespondenDivisor, setChartRespondenDivisor] = useState<"prelist" | "wilkerstat">("prelist");
+  const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat">("prelist");
 
   // Kecamatan data for chart
   const kecamatanStats = useMemo(() => {
-    const kecamatanMap = new Map<string, { prelist: number; responden: number }>();
+    const kecamatanMap = new Map<string, { prelist: number; responden: number; wilkerstat: number }>();
 
     pmlRows.forEach((row) => {
       const kecamatan = row.kecamatan || "Unknown";
-      const existing = kecamatanMap.get(kecamatan) || { prelist: 0, responden: 0 };
+      const existing = kecamatanMap.get(kecamatan) || { prelist: 0, responden: 0, wilkerstat: 0 };
       existing.prelist += parseNumericValue(row.prelist_awal);
       existing.responden += parseNumericValue(row.responden_didata);
+      existing.wilkerstat += parseNumericValue(row.prelist_wilkerstat);
       kecamatanMap.set(kecamatan, existing);
     });
 
@@ -3383,7 +3386,9 @@ export default function MonitoringLapanganDash() {
         kecamatan,
         prelistAwal: data.prelist,
         respondenDidata: data.responden,
+        wilkerstat: data.wilkerstat,
         persentase: data.prelist > 0 ? parseFloat(((data.responden / data.prelist) * 100).toFixed(2)) : 0,
+        persentaseWilkerstat: data.wilkerstat > 0 ? parseFloat(((data.responden / data.wilkerstat) * 100).toFixed(2)) : 0,
       }))
       .sort((a, b) => b.persentase - a.persentase);
   }, [pmlRows]);
