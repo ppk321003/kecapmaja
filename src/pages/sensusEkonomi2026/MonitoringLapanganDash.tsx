@@ -3870,19 +3870,18 @@ export default function MonitoringLapanganDash() {
                           tick={{ fontSize: chartFontSize }}
                         />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#fff",
-                            border: "1px solid #cbd5e1",
-                            borderRadius: "8px",
-                            fontSize: chartFontSize,
-                          }}
-                          formatter={(value: any, name: string) => {
-                            if (name === "persentaseAktif") {
-                              return [value.toFixed(2) + "%", chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"];
-                            }
-                            return [value.toLocaleString("id-ID"), name === "prelistAwal" ? "Prelist Awal" : name === "wilkerstat" ? "Wilkerstat" : "Responden Didata"];
-                          }}
-                          labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
+                          content={
+                            <ChartRatioTooltip
+                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                              pctKey="persentaseAktif"
+                              pctLabel={chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"}
+                              valueKey="respondenDidata"
+                              valueLabel="Responden Didata"
+                              targetKey={chartRespondenDivisor === "wilkerstat" ? "wilkerstat" : "prelistAwal"}
+                              targetLabel={chartRespondenDivisor === "wilkerstat" ? "Target (Wilkerstat)" : "Target (Prelist Awal)"}
+                              fontSize={chartFontSize}
+                            />
+                          }
                         />
                         <ReferenceLine
                           y={avgWilayahPercentage}
@@ -4008,19 +4007,18 @@ export default function MonitoringLapanganDash() {
                           tick={{ fontSize: chartFontSize }}
                         />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#fff",
-                            border: "1px solid #cbd5e1",
-                            borderRadius: "8px",
-                            fontSize: chartFontSize,
-                          }}
-                          formatter={(value: any, name: string) => {
-                            if (name === "persenNonPertanianAktif") {
-                              return [value.toFixed(2) + "%", chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"];
-                            }
-                            return [value.toFixed(2) + "%", "Persentase"];
-                          }}
-                          labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
+                          content={
+                            <ChartRatioTooltip
+                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                              pctKey="persenNonPertanianAktif"
+                              pctLabel={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
+                              valueKey="nonPertanian"
+                              valueLabel="Jumlah Usaha Non Pertanian"
+                              targetKey={chartNonPertanianDivisor === "wilkerstat" ? "usahaWilkerstat" : "prelistUsaha"}
+                              targetLabel={chartNonPertanianDivisor === "wilkerstat" ? "Target (Usaha Wilkerstat)" : "Target (Prelist Usaha)"}
+                              fontSize={chartFontSize}
+                            />
+                          }
                         />
                         <ReferenceLine
                           y={avgWilayahProporsiNonPertanian}
@@ -4128,19 +4126,18 @@ export default function MonitoringLapanganDash() {
                           tick={{ fontSize: chartFontSize }}
                         />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#fff",
-                            border: "1px solid #cbd5e1",
-                            borderRadius: "8px",
-                            fontSize: chartFontSize,
-                          }}
-                          formatter={(value: any, name: string) => {
-                            if (name === "persenPertanianUtp") {
-                              return [value.toFixed(2) + "%", "Persentase Pertanian"];
-                            }
-                            return [value.toFixed(2) + "%", "Persentase"];
-                          }}
-                          labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
+                          content={
+                            <ChartRatioTooltip
+                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                              pctKey="persenPertanianUtp"
+                              pctLabel="Pertanian / UTP ST2023"
+                              valueKey="pertanian"
+                              valueLabel="Jumlah Usaha Pertanian"
+                              targetKey="utpSt2023"
+                              targetLabel="Target (UTP ST2023)"
+                              fontSize={chartFontSize}
+                            />
+                          }
                         />
                         <ReferenceLine
                           y={avgWilayahProporsiPertanian}
