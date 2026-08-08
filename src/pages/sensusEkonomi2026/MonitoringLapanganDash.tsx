@@ -3735,12 +3735,24 @@ export default function MonitoringLapanganDash() {
                         Persentase Responden per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                       </CardTitle>
                       <CardDescription>
-                        Responden Didata / Prelist Awal
+                        {chartRespondenDivisor === "wilkerstat" ? "Responden Didata / Wilkerstat" : "Responden Didata / Prelist Awal"}
                         {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
                         {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
                       </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-end gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-divisor-responden" className="text-xs font-semibold text-slate-600">Pembagi</label>
+                        <select
+                          id="chart-divisor-responden"
+                          value={chartRespondenDivisor}
+                          onChange={(e) => setChartRespondenDivisor(e.target.value as "prelist" | "wilkerstat")}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="prelist">Prelist Awal</option>
+                          <option value="wilkerstat">Wilkerstat</option>
+                        </select>
+                      </div>
                       <div className="flex flex-col gap-1">
                         <label htmlFor="chart-kecamatan" className="text-xs font-semibold text-slate-600">Kecamatan</label>
                         <select
@@ -3810,10 +3822,10 @@ export default function MonitoringLapanganDash() {
                             fontSize: chartFontSize,
                           }}
                           formatter={(value: any, name: string) => {
-                            if (name === "persentase") {
-                              return [value.toFixed(2) + "%", "Persentase Responden"];
+                            if (name === "persentaseAktif") {
+                              return [value.toFixed(2) + "%", chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"];
                             }
-                            return [value.toLocaleString("id-ID"), name === "prelistAwal" ? "Prelist Awal" : "Responden Didata"];
+                            return [value.toLocaleString("id-ID"), name === "prelistAwal" ? "Prelist Awal" : name === "wilkerstat" ? "Wilkerstat" : "Responden Didata"];
                           }}
                           labelFormatter={(label) => `${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}: ${label}`}
                         />
@@ -3832,8 +3844,8 @@ export default function MonitoringLapanganDash() {
                         />
                         <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                         <Bar
-                          dataKey="persentase"
-                          name="Persentase Responden"
+                          dataKey="persentaseAktif"
+                          name={chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"}
                           radius={[8, 8, 0, 0]}
                           label={{
                             position: "top",
@@ -3844,7 +3856,7 @@ export default function MonitoringLapanganDash() {
                           }}
                         >
                           {wilayahChartData.map((entry, index) => (
-                            <Cell key={`cell-${entry.label}-${index}`} fill={getColorForPercentage(entry.persentase)} />
+                            <Cell key={`cell-${entry.label}-${index}`} fill={getColorForPercentage(entry.persentaseAktif)} />
                           ))}
                         </Bar>
                       </BarChart>
