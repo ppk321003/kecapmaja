@@ -3420,7 +3420,8 @@ export default function MonitoringLapanganDash() {
       const existing = desaMap.get(mapKey) || { kecamatan, desa, prelist: 0, responden: 0, wilkerstat: 0 };
       existing.prelist += totals.prelist;
       existing.responden += totals.responden;
-      existing.wilkerstat += getStackingWilkerstatValue(row);
+      // Wilkerstat pada grafik responden mengikuti kolom "Wilkerstat" tabel UMKM dan Sosek (jumlah muatan)
+      existing.wilkerstat += parseNumericValue(getSheetCellText(row, 24));
       desaMap.set(mapKey, existing);
     });
 
