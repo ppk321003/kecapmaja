@@ -33,6 +33,59 @@ const normalizeSheetKey = (value: unknown) => {
   return digits.length >= 16 ? digits.slice(-16) : "";
 };
 
+type ChartRatioTooltipProps = {
+  active?: boolean;
+  payload?: any[];
+  label?: any;
+  labelPrefix: string;
+  pctKey: string;
+  pctLabel: string;
+  valueKey: string;
+  valueLabel: string;
+  targetKey: string;
+  targetLabel: string;
+  fontSize: number;
+};
+
+const ChartRatioTooltip = ({
+  active,
+  payload,
+  label,
+  labelPrefix,
+  pctKey,
+  pctLabel,
+  valueKey,
+  valueLabel,
+  targetKey,
+  targetLabel,
+  fontSize,
+}: ChartRatioTooltipProps) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0]?.payload || {};
+  const pct = Number(data[pctKey]) || 0;
+  const value = Number(data[valueKey]) || 0;
+  const target = Number(data[targetKey]) || 0;
+  const fmt = (n: number) => n.toLocaleString("id-ID");
+
+  return (
+    <div
+      className="rounded-lg border border-slate-300 bg-white px-3 py-2 shadow-md"
+      style={{ fontSize }}
+    >
+      <p className="font-semibold text-slate-800">{`${labelPrefix}: ${label}`}</p>
+      <p className="mt-1 text-slate-700">
+        {pctLabel}: <span className="font-semibold">{pct.toFixed(2)}%</span>
+      </p>
+      <p className="text-slate-600">
+        {valueLabel}: <span className="font-semibold">{fmt(value)}</span>
+      </p>
+      <p className="text-slate-600">
+        {targetLabel}: <span className="font-semibold">{fmt(target)}</span>
+      </p>
+    </div>
+  );
+};
+
 const getSheetCellText = (row: any, index: number) => {
   // (helper untuk membaca sel mentah)
   const rawRow = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
