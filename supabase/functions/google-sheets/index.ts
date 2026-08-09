@@ -403,6 +403,17 @@ serve(async (req: Request) => {
 
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
 
+    if (operation === 'metadata') {
+      const response = await fetch(`${baseUrl}?fields=sheets.properties`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const text = await response.text();
+      return new Response(text, {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (operation === 'read') {
       console.log(`Reading range: ${range || 'Sheet1'}`);
       const response = await fetch(`${baseUrl}/values/${range || 'Sheet1'}`, {
