@@ -14,6 +14,7 @@ import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Resp
 import * as XLSX from "xlsx";
 import IdentifikasiUTTTab from "./IdentifikasiUTTTab";
 import SkalaUsahaTab from "./SkalaUsahaTab";
+import KeluargaTab from "./KeluargaTab";
 
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
