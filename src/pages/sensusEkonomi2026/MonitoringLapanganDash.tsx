@@ -14,6 +14,7 @@ import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Resp
 import * as XLSX from "xlsx";
 import IdentifikasiUTTTab from "./IdentifikasiUTTTab";
 import SkalaUsahaTab from "./SkalaUsahaTab";
+import KeluargaTab from "./KeluargaTab";
 
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
@@ -3687,9 +3688,9 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="umkm-sosek" className="rounded-xl py-2 text-sm font-semibold">UMKM dan Sosek</TabsTrigger>
               <TabsTrigger value="pendataan-usaha" className="rounded-xl py-2 text-sm font-semibold">Pendataan Usaha</TabsTrigger>
               <TabsTrigger value="skala-usaha" className="rounded-xl py-2 text-sm font-semibold">Skala Usaha</TabsTrigger>
+              <TabsTrigger value="keluarga" className="rounded-xl py-2 text-sm font-semibold">Keluarga</TabsTrigger>
               <TabsTrigger value="identifikasi-utt" className="rounded-xl py-2 text-sm font-semibold">Identifikasi UTT</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
-              <TabsTrigger value="anomali" className="rounded-xl py-2 text-sm font-semibold">Anomali</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard" className="space-y-6 mt-6">
               {pmlStats && (
@@ -3787,10 +3788,10 @@ export default function MonitoringLapanganDash() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                       <CardTitle className="text-base">
-                        Persentase Responden per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                        Persentase Assigment per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                       </CardTitle>
                       <CardDescription>
-                        {chartRespondenDivisor === "wilkerstat" ? "Responden Didata / Wilkerstat" : "Responden Didata / Prelist Awal"}
+                        {chartRespondenDivisor === "wilkerstat" ? "Assigment Didata / Wilkerstat" : "Assigment Didata / Prelist Awal"}
                         {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
                         {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
                       </CardDescription>
@@ -3874,9 +3875,9 @@ export default function MonitoringLapanganDash() {
                             <ChartRatioTooltip
                               labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                               pctKey="persentaseAktif"
-                              pctLabel={chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"}
+                              pctLabel={chartRespondenDivisor === "wilkerstat" ? "Assigment / Wilkerstat" : "Assigment / Prelist Awal"}
                               valueKey="respondenDidata"
-                              valueLabel="Responden Didata"
+                              valueLabel="Assigment Didata"
                               targetKey={chartRespondenDivisor === "wilkerstat" ? "wilkerstat" : "prelistAwal"}
                               targetLabel={chartRespondenDivisor === "wilkerstat" ? "Target (Wilkerstat)" : "Target (Prelist Awal)"}
                               fontSize={chartFontSize}
@@ -3899,7 +3900,7 @@ export default function MonitoringLapanganDash() {
                         <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                         <Bar
                           dataKey="persentaseAktif"
-                          name={chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"}
+                          name={chartRespondenDivisor === "wilkerstat" ? "Assigment / Wilkerstat" : "Assigment / Prelist Awal"}
                           radius={[8, 8, 0, 0]}
                           label={{
                             position: "top",
@@ -5759,6 +5760,9 @@ export default function MonitoringLapanganDash() {
                 didataByKey={didataByKey}
                 stackingWilkerstatByKey={stackingWilkerstatByKey}
               />
+            </TabsContent>
+            <TabsContent value="keluarga" className="space-y-6 mt-6">
+              <KeluargaTab />
             </TabsContent>
             <TabsContent value="identifikasi-utt" className="space-y-6 mt-6">
               <IdentifikasiUTTTab />
