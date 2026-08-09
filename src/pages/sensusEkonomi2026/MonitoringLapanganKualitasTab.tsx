@@ -277,6 +277,41 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
     return m;
   }, [allRows]);
 
+  const namaPplByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    const addRow = (row: any) => {
+      const code = String(getRowCode(row)).trim();
+      if (!code) return;
+      const namaPpl = formatPersonNameValue(getColumnValue(row, "nama_ppl", ["nama_ppl", "nama ppl", "ppl"], ""));
+      if (!namaPpl || namaPpl === "-") return;
+      const codes = [code];
+      if (code.length >= 10) codes.push(code.slice(0, 10));
+      if (code.length >= 7) codes.push(code.slice(0, 7));
+      codes.forEach((key) => {
+        if (key && !map.has(key)) {
+          map.set(key, namaPpl);
+        }
+      });
+    };
+    allRows.forEach(addRow);
+    return map;
+  }, [allRows]);
+
+  const getNamaPplFromRow = (row: any) => {
+    const rawNamaPpl = formatPersonNameValue(getColumnValue(row, "nama_ppl", ["nama_ppl", "nama ppl", "ppl"], "-"));
+    if (rawNamaPpl !== "-") return rawNamaPpl;
+    const code = String(getRowCode(row)).trim();
+    if (!code) return "-";
+    const candidates = [code];
+    if (code.length >= 10) candidates.push(code.slice(0, 10));
+    if (code.length >= 7) candidates.push(code.slice(0, 7));
+    for (const candidate of candidates) {
+      const fromLookup = namaPplByCode.get(candidate);
+      if (fromLookup) return fromLookup;
+    }
+    return "-";
+  };
+
   const kecamatanOptions = useMemo(() => {
     const seen = new Set<string>();
     allRows.forEach((r) => {
@@ -675,7 +710,7 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
     const rows = baseRows.map((row: any) => {
       const code = String(getColumnValue(row, "kode", ["kode", "__col_0"], "")).trim();
       const { kecamatan, desa } = getLocationValuesForRow(row);
-      const namaPpl = formatPersonNameValue(getColumnValue(row, "nama_ppl", ["nama_ppl", "nama ppl", "ppl"], "-"));
+      const namaPpl = getNamaPplFromRow(row);
       const namaPml = formatPersonNameValue(getColumnValue(row, "nama_pml", ["nama_pml", "nama pml", "pml"], "-"));
 
       if (tab === "usaha") {
@@ -927,7 +962,7 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
                       </TableCell>
                       {showPplPmlColumns ? (
                         <>
-                          <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_ppl", ["nama_ppl", "nama ppl", "ppl"], "-"))}</TableCell>
+                          <TableCell className="text-center">{getNamaPplFromRow(r)}</TableCell>
                           <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_pml", ["nama_pml", "nama pml", "pml"], "-"))}</TableCell>
                         </>
                       ) : null}
@@ -1104,7 +1139,7 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
                       </TableCell>
                       {showPplPmlColumns ? (
                         <>
-                          <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_ppl", ["nama_ppl", "nama ppl", "ppl"], "-"))}</TableCell>
+                          <TableCell className="text-center">{getNamaPplFromRow(r)}</TableCell>
                           <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_pml", ["nama_pml", "nama pml", "pml"], "-"))}</TableCell>
                         </>
                       ) : null}
@@ -1222,7 +1257,7 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
                     <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "total_anggota_keluarga", ["total anggota keluarga"], "-"))}</TableCell>
                     {showPplPmlColumns ? (
                       <>
-                        <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_ppl", ["nama_ppl", "nama ppl", "ppl"], "-"))}</TableCell>
+                        <TableCell className="text-center">{getNamaPplFromRow(r)}</TableCell>
                         <TableCell className="text-center">{formatPersonNameValue(getColumnValue(r, "nama_pml", ["nama_pml", "nama pml", "pml"], "-"))}</TableCell>
                       </>
                     ) : null}
