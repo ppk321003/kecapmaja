@@ -404,6 +404,7 @@ serve(async (req: Request) => {
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
 
     if (operation === 'read') {
+      // no-op marker
       console.log(`Reading range: ${range || 'Sheet1'}`);
       const response = await fetch(`${baseUrl}/values/${range || 'Sheet1'}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
