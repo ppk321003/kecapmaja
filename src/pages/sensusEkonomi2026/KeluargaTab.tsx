@@ -8,11 +8,22 @@ import { Search, Loader2, AlertCircle, ChevronDown, ChevronRight, ArrowUpDown, U
 import { supabase } from "@/integrations/supabase/client";
 
 export const KELUARGA_SPREADSHEET_ID = "1sRg7Hi7xtBT00dx-61mugWlGL7H1P0gnr3jziaClJsw";
+const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 
 const ITEMS_PER_PAGE = 25;
 
 const normalizeKey = (value: unknown): string =>
   String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const normalizeStackingKey = (value: unknown): string => {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  return digits.length >= 16 ? digits.slice(-16) : "";
+};
+
+const isPercentHeader = (header: string): boolean => {
+  const normalized = normalizeKey(header);
+  return normalized.includes("persen") || normalized.includes("persentase") || normalized.includes("percent") || String(header ?? "").includes("%");
+};
 
 const parseNumericValue = (value: unknown): number => {
   const raw = String(value ?? "").trim();
@@ -23,6 +34,29 @@ const parseNumericValue = (value: unknown): number => {
 };
 
 const isPercentText = (value: unknown): boolean => String(value ?? "").includes("%");
+
+const shortHeaderLabel = (header: string): string => {
+  const normalized = String(header ?? "").trim().toLowerCase();
+  if (!normalized) return "Kolom";
+  if (normalized.includes("sub satuan lingkungan") || normalized.includes("sub-sls") || normalized.includes("sub sls")) return "Sub-SLS";
+  if (normalized.includes("prelist awal")) return "Prelist Awal";
+  if (normalized.includes("ditemukan")) return normalized.includes("persentase") ? "Ditemukan %" : "Ditemukan";
+  if (normalized.includes("keluarga baru")) return normalized.includes("persentase") ? "Keluarga Baru %" : "Keluarga Baru";
+  if (normalized.includes("meninggal")) return normalized.includes("persentase") ? "Meninggal %" : "Meninggal";
+  if (normalized.includes("tidak eligible")) return "Tidak Eligible";
+  if (normalized.includes("tidak dapat ditemui") || normalized.includes("tidak dapat ditemui sampai akhir pendataan")) return "Tidak Dapat Ditemui";
+  if (normalized.includes("tidak ditemukan")) return "Tidak Ditemukan";
+  if (normalized.includes("nonrespon")) return "Nonrespon";
+  if (normalized.includes("total hasil pendataan")) return "Total Didata";
+  if (normalized.includes("tinggal bersama keluarga")) return "Tinggal Bersama";
+  if (normalized.includes("anggota keluarga baru")) return "Anggota Baru";
+  if (normalized.includes("anggota keluarga khusus")) return "Anggota Khusus";
+  if (normalized.includes("pendataan k1")) return "K1 Khusus";
+  if (normalized.includes("bangunan keluarga khusus")) return "Bangunan Khusus";
+  if (normalized.includes("bangunan")) return "Bangunan";
+  if (normalized.includes("jml") || normalized.includes("jumlah")) return "Jumlah";
+  return header.length > 24 ? header.replace(/\s+/g, " ").slice(0, 24) : header;
+};
 
 const looksNumeric = (value: unknown): boolean => {
   const raw = String(value ?? "").trim();
@@ -36,7 +70,7 @@ type SheetTable = {
 };
 
 /** Fetch the list of sheet (tab) names inside the Keluarga spreadsheet. */
-const useKeluargaSheetNames = () =>
+export const useKeluargaSheetNames = () =>
   useQuery({
     queryKey: ["keluarga-sheet-names", KELUARGA_SPREADSHEET_ID],
     staleTime: 1000 * 60 * 30,
@@ -56,7 +90,7 @@ const useKeluargaSheetNames = () =>
   });
 
 /** Fetch one sheet and resolve its header row heuristically. */
-const useKeluargaSheet = (sheetName: string, enabled: boolean) =>
+export const useKeluargaSheet = (sheetName: string, enabled: boolean) =>
   useQuery({
     queryKey: ["keluarga-sheet", KELUARGA_SPREADSHEET_ID, sheetName],
     enabled: enabled && !!sheetName,
@@ -75,18 +109,38 @@ const useKeluargaSheet = (sheetName: string, enabled: boolean) =>
       );
       if (values.length === 0) return { headers: [], rows: [] };
 
-      // Header = the row (within the first 8) with the most non-empty, mostly non-numeric cells.
-      const candidateLimit = Math.min(8, values.length);
-      let headerIndex = 0;
-      let bestScore = -1;
-      for (let i = 0; i < candidateLimit; i += 1) {
-        const row = values[i] || [];
-        const filled = row.filter((cell) => String(cell).trim() !== "");
-        const textual = filled.filter((cell) => !looksNumeric(cell));
-        const score = textual.length * 2 + filled.length;
-        if (score > bestScore) {
-          bestScore = score;
-          headerIndex = i;
+      const surveyHeaderNames = [
+        "prelist awal",
+        "ditemukan",
+        "keluarga baru",
+        "meninggal",
+        "tidak eligible",
+        "tidak dapat ditemui",
+        "tidak ditemukan",
+        "nonrespon",
+        "total hasil pendataan",
+        "tinggal bersama keluarga",
+        "anggota keluarga baru",
+        "bangunan keluarga khusus",
+      ];
+
+      const firstHeaderIndex = values.findIndex((row) =>
+        (row || []).some((cell) => surveyHeaderNames.some((token) => String(cell).toLowerCase().includes(token)))
+      );
+
+      let headerIndex = firstHeaderIndex !== -1 ? firstHeaderIndex : 0;
+      if (firstHeaderIndex === -1) {
+        const candidateLimit = Math.min(8, values.length);
+        let bestScore = -1;
+        for (let i = 0; i < candidateLimit; i += 1) {
+          const row = values[i] || [];
+          const filled = row.filter((cell) => String(cell).trim() !== "");
+          const textual = filled.filter((cell) => !looksNumeric(cell));
+          const score = textual.length * 2 + filled.length;
+          if (score > bestScore) {
+            bestScore = score;
+            headerIndex = i;
+          }
         }
       }
 
@@ -123,7 +177,43 @@ const useKeluargaSheet = (sheetName: string, enabled: boolean) =>
     },
   });
 
-const findColumnIndex = (headers: string[], candidates: string[]): number => {
+export const useKeluargaStackingMap = () =>
+  useQuery({
+    queryKey: ["keluarga-stacking-map", STACKING_SPREADSHEET_ID],
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("google-sheets", {
+        body: { spreadsheetId: STACKING_SPREADSHEET_ID, operation: "read", range: "'STACKING'" },
+      });
+      if (error) throw error;
+      const values: string[][] = ((data as any)?.values || []).map((row: any[]) =>
+        (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell)))
+      );
+      const lookup = new Map<string, { namaPpl: string; kecamatan: string }>();
+      if (values.length > 0) {
+        const headerRow = values[0] || [];
+        const idIndex = headerRow.findIndex((cell) => /idsls|id sub sls|id_sls|kode/i.test(cell));
+        const kecIndex = headerRow.findIndex((cell) => /kecamatan|nmkec|wilayah/i.test(cell));
+        const pplIndex = headerRow.findIndex((cell) => /nama ppl|ppl|pengawas|nama_ppl/i.test(cell));
+
+        values.slice(1).forEach((row) => {
+          const rawId = String(row[idIndex] ?? "").replace(/[^0-9]/g, "");
+          if (rawId.length === 16) {
+            lookup.set(rawId, {
+              namaPpl: String(row[pplIndex] ?? "").trim(),
+              kecamatan: String(row[kecIndex] ?? "").trim(),
+            });
+          }
+        });
+      }
+      return lookup;
+    },
+  });
+
+export const findColumnIndex = (headers: string[], candidates: string[]): number => {
   const normalized = headers.map((header) => normalizeKey(header));
   for (const candidate of candidates) {
     const target = normalizeKey(candidate);
@@ -138,6 +228,92 @@ const findColumnIndex = (headers: string[], candidates: string[]): number => {
   return -1;
 };
 
+export const useKeluargaDashboardSummary = (enabled = true) =>
+  useQuery({
+    queryKey: ["keluarga-dashboard-summary", KELUARGA_SPREADSHEET_ID],
+    enabled,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    queryFn: async () => {
+      const metadataResponse = await supabase.functions.invoke("google-sheets", {
+        body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "metadata" },
+      });
+      if (metadataResponse.error) throw metadataResponse.error;
+
+      const sheetNames = ((metadataResponse.data as any)?.sheets || [])
+        .map((sheet: any) => String(sheet?.properties?.title || "").trim())
+        .filter(Boolean);
+
+      if (sheetNames.length === 0) return [];
+
+      const familyReadResults = await Promise.all(
+        sheetNames.map(async (sheetName: string) => {
+          const readResponse = await supabase.functions.invoke("google-sheets", {
+            body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "read", range: `'${sheetName}'` },
+          });
+          if (readResponse.error) throw readResponse.error;
+          const values = ((readResponse.data as any)?.values || []).map((row: any[]) =>
+            (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell)))
+          );
+          return values;
+        })
+      );
+
+      const groups = new Map<string, { kecamatan: string; desa: string; prelist: number; assignment: number }>();
+
+      familyReadResults.forEach((values, sheetIndex) => {
+        if (values.length === 0) return;
+        const headerLimit = Math.min(8, values.length);
+        let headerIndex = 0;
+        let bestScore = -1;
+        for (let i = 0; i < headerLimit; i += 1) {
+          const row = values[i] || [];
+          const filled = row.filter((cell) => String(cell).trim() !== "");
+          const textual = filled.filter((cell) => !/^[-+]?\d[\d.,%\s]*$/.test(String(cell).trim()));
+          const score = textual.length * 2 + filled.length;
+          if (score > bestScore) {
+            bestScore = score;
+            headerIndex = i;
+          }
+        }
+
+        const headers = values[headerIndex] || [];
+        const dataStart = headerIndex + 1;
+        const rows = values.slice(dataStart).filter((row) => (row || []).some((cell) => String(cell).trim() !== ""));
+
+        const kecamatanIndex = findColumnIndex(headers, ["kecamatan", "nama kecamatan", "kec", "wilayah"]);
+        const desaIndex = findColumnIndex(headers, ["desa", "desa kelurahan", "kelurahan", "sls"]);
+        const prelistIndex = findColumnIndex(headers, ["prelist awal", "prelist", "prelistawal", "target", "wilkerstat"]);
+        const assignmentIndex = findColumnIndex(headers, ["assignment", "assignment didata", "responden didata", "didata", "responden"]);
+
+        rows.forEach((row) => {
+          const kecamatan = String(row[kecamatanIndex] ?? "").trim() || "-";
+          const desa = String(row[desaIndex] ?? "").trim() || "-";
+          const prelist = parseNumericValue(row[prelistIndex] ?? "0");
+          const assignment = parseNumericValue(row[assignmentIndex] ?? "0");
+          if (!kecamatan || kecamatan === "-") return;
+          const mapKey = `${kecamatan}||${desa}`;
+          const existing = groups.get(mapKey) || { kecamatan, desa, prelist: 0, assignment: 0 };
+          existing.prelist += prelist;
+          existing.assignment += assignment;
+          groups.set(mapKey, existing);
+        });
+      });
+
+      return Array.from(groups.values()).map((item) => ({
+        label: item.desa === "-" ? item.kecamatan : item.desa,
+        kecamatan: item.kecamatan,
+        desa: item.desa,
+        prelistAwal: item.prelist,
+        assignmentDidata: item.assignment,
+        persentasePemutakhiran: item.prelist > 0 ? Number(((item.assignment / item.prelist) * 100).toFixed(2)) : 0,
+      }));
+    },
+  });
+
+
 type GroupedRow = {
   key: string;
   label: string;
@@ -147,6 +323,7 @@ type GroupedRow = {
 };
 
 const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: boolean }) => {
+  const { data: stackingMapData, isPending: isStackingPending } = useKeluargaStackingMap();
   const { data, isPending, fetchStatus, error } = useKeluargaSheet(sheetName, active);
   const table = data ?? { headers: [], rows: [] };
 
@@ -157,15 +334,72 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  const { headers, rows } = table;
+  const stackingMap = stackingMapData ?? new Map<string, { namaPpl: string; kecamatan: string }>();
+
+  const baseHeaders = table.headers;
+  const baseRows = table.rows;
+
+  const displayTable = useMemo(() => {
+    const percentIndexes = new Set<number>();
+    baseHeaders.forEach((header, index) => {
+      if (isPercentHeader(String(header ?? ""))) percentIndexes.add(index);
+    });
+
+    const visibleHeaderIndexes = baseHeaders.reduce<number[]>((acc, _header, index) => {
+      if (!percentIndexes.has(index)) acc.push(index);
+      return acc;
+    }, []);
+
+    const headers = visibleHeaderIndexes.map((index) => baseHeaders[index]);
+    const rows = baseRows.map((row) => {
+      const rendered = visibleHeaderIndexes.map((index) => String(row[index] ?? ""));
+      return rendered;
+    });
+
+    const sourceIdHeaderIndex = findColumnIndex(baseHeaders, ["kode", "id sls", "sub sls", "id sub sls", "idsubsls", "kode sls", "idsls"]);
+    const sourceIdIndex = sourceIdHeaderIndex !== -1 ? sourceIdHeaderIndex : 0;
+
+    const hasKecamatan = findColumnIndex(headers, ["kecamatan", "nama kecamatan", "nmkec"]) !== -1;
+    const hasPpl = findColumnIndex(headers, ["nama ppl", "ppl", "nama petugas", "pendata", "nama_ppl", "nama ppp"]) !== -1;
+
+    const headersWithOverlay = [...headers];
+    const rowsWithOverlay = rows.map((row, rowIndex) => {
+      const tuple = [...row];
+      const sourceRow = baseRows[rowIndex] || [];
+      const rawId = normalizeStackingKey(sourceRow[sourceIdIndex] ?? "");
+      const lookup = stackingMap.get(rawId || "") || undefined;
+
+      if (!hasKecamatan) {
+        tuple.push(lookup?.kecamatan || "-");
+      }
+      if (!hasPpl) {
+        tuple.push(lookup?.namaPpl || "-");
+      }
+
+      return tuple;
+    });
+
+    if (!hasKecamatan) {
+      headersWithOverlay.push("Kecamatan");
+    }
+    if (!hasPpl) {
+      headersWithOverlay.push("Nama PPL");
+    }
+
+    return { headers: headersWithOverlay, rows: rowsWithOverlay };
+  }, [baseHeaders, baseRows, stackingMap]);
+
+  const { headers, rows } = displayTable;
+
+  const idslsIndex = useMemo(() => findColumnIndex(headers, ["kode", "id sls", "sub sls", "id sub sls", "idsubsls", "kode sls", "idsls"]), [headers]);
 
   const pplIndex = useMemo(
-    () => findColumnIndex(headers, ["nama ppl", "ppl", "nama petugas", "pendata"]),
+    () => findColumnIndex(headers, ["nama ppl", "ppl", "nama petugas", "pendata", "nama_ppl", "nama ppp" ]),
     [headers]
   );
   const pmlIndex = useMemo(() => findColumnIndex(headers, ["nama pml", "pml", "pengawas", "ppm"]), [headers]);
-  const kecamatanIndex = useMemo(() => findColumnIndex(headers, ["kecamatan"]), [headers]);
-  const groupIndex = pplIndex !== -1 ? pplIndex : pmlIndex !== -1 ? pmlIndex : 0;
+  const kecamatanIndex = useMemo(() => findColumnIndex(headers, ["kecamatan", "nama kecamatan", "nmkec"]), [headers]);
+  const groupIndex = pplIndex !== -1 ? pplIndex : pmlIndex !== -1 ? pmlIndex : -1;
 
   // Columns that hold numbers (used for aggregation + right alignment).
   const numericColumns = useMemo(() => {
@@ -195,9 +429,20 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
   }, [headers, rows, numericColumns]);
 
   const groupedRows = useMemo<GroupedRow[]>(() => {
+    const groupByIndex = groupIndex !== -1 ? groupIndex : idslsIndex;
+    if (groupByIndex === -1) {
+      return rows.map((row, rowIndex) => ({
+        key: `flat-${rowIndex}-${row.map((cell) => String(cell ?? "")).join("|")}`,
+        label: String(row[0] ?? "Data"),
+        cells: [...row],
+        numeric: headers.map((_, index) => (numericColumns[index] ? parseNumericValue(row[index]) : 0)),
+        children: [row],
+      }));
+    }
+
     const map = new Map<string, GroupedRow>();
     rows.forEach((row) => {
-      const label = row[groupIndex] || "(Tanpa Nama)";
+      const label = row[groupByIndex] || "(Tanpa Nama)";
       const key = normalizeKey(label) || `row-${map.size}`;
       const existing = map.get(key);
       if (!existing) {
@@ -229,7 +474,7 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
       });
       return { ...group, cells };
     });
-  }, [rows, headers, groupIndex, numericColumns, percentColumns]);
+  }, [rows, headers, groupIndex, idslsIndex, numericColumns, percentColumns]);
 
   const kecamatanOptions = useMemo(() => {
     if (kecamatanIndex === -1) return [] as string[];
@@ -378,12 +623,12 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                 <TableHead
                   key={`${header}-${index}`}
                   onClick={() => toggleSort(index)}
-                  className={`cursor-pointer select-none whitespace-nowrap px-4 py-3 font-semibold text-slate-700 hover:bg-slate-200/70 ${
+                  className={`cursor-pointer select-none whitespace-normal px-4 py-3 font-semibold text-slate-700 hover:bg-slate-200/70 ${
                     numericColumns[index] ? "text-right" : "text-left"
                   } ${index === groupIndex ? "sticky left-12 z-30 min-w-[200px] bg-slate-100" : ""}`}
                 >
                   <span className="inline-flex items-center gap-1">
-                    {header}
+                    <span className="leading-tight text-center">{shortHeaderLabel(header)}</span>
                     <ArrowUpDown className={`h-3 w-3 ${sortKey === index ? "text-blue-600" : "text-slate-400"}`} />
                   </span>
                 </TableHead>
@@ -455,6 +700,16 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                           return (
                             <TableCell key={`child-group-${index}`} className="sticky left-12 z-20 bg-inherit px-4 py-2 pl-10 text-sm italic text-slate-600">
                               Detail {childIndex + 1}
+                            </TableCell>
+                          );
+                        }
+                        const rawId = normalizeKey(child[idslsIndex] ?? "");
+                        const enriched = stackingMap.get(rawId || "") || undefined;
+                        if (index === idslsIndex && enriched) {
+                          return (
+                            <TableCell key={`child-cell-${index}`} className="px-4 py-2 text-sm text-slate-700">
+                              <span className="font-semibold">{child[index] || "-"}</span>
+                              <span className="ml-2 text-slate-500">{enriched.namaPpl || "-"}</span>
                             </TableCell>
                           );
                         }

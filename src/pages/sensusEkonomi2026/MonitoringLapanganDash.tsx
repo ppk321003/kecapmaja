@@ -14,7 +14,7 @@ import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Resp
 import * as XLSX from "xlsx";
 import IdentifikasiUTTTab from "./IdentifikasiUTTTab";
 import SkalaUsahaTab from "./SkalaUsahaTab";
-import KeluargaTab from "./KeluargaTab";
+import KeluargaTab, { KELUARGA_SPREADSHEET_ID, useKeluargaDashboardSummary } from "./KeluargaTab";
 
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
@@ -26,8 +26,6 @@ const SHEET_ANOMALI_KELUARGA = "Mikro Anomali Keluarga";
 const SHEET_USAHA_PERUSAHAAN = "USAHA PERUSAHAAN";
 const SHEET_USAHA_KELUARGA = "USAHA KELUARGA";
 const SHEET_PROPORSI_USAHA = "PROPORSI PERTANIAN NON PERTANIAN";
-
-const MonitoringLapanganAnomaliTab = React.lazy(() => import("./MonitoringLapanganAnomaliTab"));
 
 const normalizeSheetKey = (value: unknown) => {
   const digits = String(value ?? "").replace(/\D/g, "");
@@ -641,30 +639,6 @@ export default function MonitoringLapanganDash() {
     mode: "single-cell",
   });
 
-  const { data: anomaliUsahaData, loading: anomaliUsahaLoading, error: anomaliUsahaError } = useGoogleSheetsData({
-    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
-    sheetName: SHEET_ANOMALI_USAHA,
-    enabled: tabVisited("anomali"),
-  });
-  const { data: anomaliKeluargaData, loading: anomaliKeluargaLoading, error: anomaliKeluargaError } = useGoogleSheetsData({
-    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
-    sheetName: SHEET_ANOMALI_KELUARGA,
-    enabled: tabVisited("anomali"),
-  });
-  const { data: anomaliUsahaInfoData } = useGoogleSheetsData({
-    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
-    sheetName: SHEET_ANOMALI_USAHA,
-    range: `${SHEET_ANOMALI_USAHA}!A2`,
-    mode: "single-cell",
-    enabled: tabVisited("anomali"),
-  });
-  const { data: anomaliKeluargaInfoData } = useGoogleSheetsData({
-    spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
-    sheetName: SHEET_ANOMALI_KELUARGA,
-    range: `${SHEET_ANOMALI_KELUARGA}!A2`,
-    mode: "single-cell",
-    enabled: tabVisited("anomali"),
-  });
   const { data: monitoringSheetData, loading: monitoringSheetLoading, error: monitoringSheetError } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: "REKAP_SCRP",
@@ -696,6 +670,12 @@ export default function MonitoringLapanganDash() {
   const { user } = useAuth();
   const isLoggedIn = !!user?.username;
   const isPpk = user?.role === "Pejabat Pembuat Komitmen";
+
+  useEffect(() => {
+    if (!isPpk && activeTab === "keluarga") {
+      setActiveTab("dashboard");
+    }
+  }, [activeTab, isPpk]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
@@ -3423,6 +3403,33 @@ export default function MonitoringLapanganDash() {
   const [chartRespondenDivisor, setChartRespondenDivisor] = useState<"prelist" | "wilkerstat">("prelist");
   const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat">("prelist");
 
+  const { data: keluargaDashboardSummary = [] } = useKeluargaDashboardSummary(tabVisited("dashboard"));
+
+  const keluargaDashboardData = useMemo(() => {
+    const rows = chartKecamatanFilter === "all"
+      ? keluargaDashboardSummary
+      : keluargaDashboardSummary.filter((row: any) => row.kecamatan === chartKecamatanFilter);
+
+    return [...rows]
+      .map((row: any) => ({
+        label: row.label,
+        kecamatan: row.kecamatan,
+        desa: row.desa,
+        prelistAwal: row.prelistAwal,
+        assignmentDidata: row.assignmentDidata,
+        persentasePemutakhiran: row.persentasePemutakhiran,
+      }))
+      .sort((a: any, b: any) =>
+        chartSortOrder === "asc"
+          ? a.persentasePemutakhiran - b.persentasePemutakhiran
+          : b.persentasePemutakhiran - a.persentasePemutakhiran
+      );
+  }, [chartKecamatanFilter, chartSortOrder, keluargaDashboardSummary]);
+
+  const keluargaDashboardAverage = keluargaDashboardData.length > 0
+    ? keluargaDashboardData.reduce((total, row: any) => total + row.persentasePemutakhiran, 0) / keluargaDashboardData.length
+    : 0;
+
   // Kecamatan data for chart
   const kecamatanStats = useMemo(() => {
     const kecamatanMap = new Map<string, { prelist: number; responden: number; wilkerstat: number }>();
@@ -3688,7 +3695,7 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="umkm-sosek" className="rounded-xl py-2 text-sm font-semibold">UMKM dan Sosek</TabsTrigger>
               <TabsTrigger value="pendataan-usaha" className="rounded-xl py-2 text-sm font-semibold">Pendataan Usaha</TabsTrigger>
               <TabsTrigger value="skala-usaha" className="rounded-xl py-2 text-sm font-semibold">Skala Usaha</TabsTrigger>
-              <TabsTrigger value="keluarga" className="rounded-xl py-2 text-sm font-semibold">Keluarga</TabsTrigger>
+              {isPpk && <TabsTrigger value="keluarga" className="rounded-xl py-2 text-sm font-semibold">Keluarga</TabsTrigger>}
               <TabsTrigger value="identifikasi-utt" className="rounded-xl py-2 text-sm font-semibold">Identifikasi UTT</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
             </TabsList>
@@ -3788,10 +3795,10 @@ export default function MonitoringLapanganDash() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                       <CardTitle className="text-base">
-                        Persentase Assigment per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                        Persentase Assignment per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                       </CardTitle>
                       <CardDescription>
-                        {chartRespondenDivisor === "wilkerstat" ? "Assigment Didata / Wilkerstat" : "Assigment Didata / Prelist Awal"}
+                        {chartRespondenDivisor === "wilkerstat" ? "Assignment Didata / Wilkerstat" : "Assignment Didata / Prelist Awal"}
                         {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
                         {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
                       </CardDescription>
@@ -3875,9 +3882,9 @@ export default function MonitoringLapanganDash() {
                             <ChartRatioTooltip
                               labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                               pctKey="persentaseAktif"
-                              pctLabel={chartRespondenDivisor === "wilkerstat" ? "Assigment / Wilkerstat" : "Assigment / Prelist Awal"}
+                              pctLabel={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : "Assignment / Prelist Awal"}
                               valueKey="respondenDidata"
-                              valueLabel="Assigment Didata"
+                              valueLabel="Assignment Didata"
                               targetKey={chartRespondenDivisor === "wilkerstat" ? "wilkerstat" : "prelistAwal"}
                               targetLabel={chartRespondenDivisor === "wilkerstat" ? "Target (Wilkerstat)" : "Target (Prelist Awal)"}
                               fontSize={chartFontSize}
@@ -3900,7 +3907,7 @@ export default function MonitoringLapanganDash() {
                         <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                         <Bar
                           dataKey="persentaseAktif"
-                          name={chartRespondenDivisor === "wilkerstat" ? "Assigment / Wilkerstat" : "Assigment / Prelist Awal"}
+                          name={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : "Assignment / Prelist Awal"}
                           radius={[8, 8, 0, 0]}
                           label={{
                             position: "top",
@@ -4169,6 +4176,83 @@ export default function MonitoringLapanganDash() {
                   )}
                 </CardContent>
               </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="border-b bg-gradient-to-r from-violet-50 to-slate-50">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                      <CardTitle className="text-base">Persentase Pemutakhiran Keluarga</CardTitle>
+                      <CardDescription>
+                        Pemutakhiran keluarga dari spreadsheet Keluarga per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                        {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-keluarga-kecamatan" className="text-xs font-semibold text-slate-600">Kecamatan</label>
+                        <select
+                          id="chart-keluarga-kecamatan"
+                          value={chartKecamatanFilter}
+                          onChange={(e) => setChartKecamatanFilter(e.target.value)}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="all">Semua Kecamatan</option>
+                          {chartKecamatanOptions.map((kecamatan) => (
+                            <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="chart-keluarga-sort" className="text-xs font-semibold text-slate-600">Urutan</label>
+                        <select
+                          id="chart-keluarga-sort"
+                          value={chartSortOrder}
+                          onChange={(e) => setChartSortOrder(e.target.value as "asc" | "desc")}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                        >
+                          <option value="desc">Tertinggi → Terendah</option>
+                          <option value="asc">Terendah → Tertinggi</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {keluargaDashboardData.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">Tidak ada data keluarga untuk ditampilkan.</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={440}>
+                      <BarChart data={keluargaDashboardData} margin={{ top: 20, right: 30, left: 0, bottom: 90 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="label" angle={-35} textAnchor="end" height={90} tick={{ fontSize: chartFontSize }} />
+                        <YAxis label={{ value: "Persentase (%)", angle: -90, position: "insideLeft" }} domain={[0, 100]} tick={{ fontSize: chartFontSize }} />
+                        <Tooltip
+                          content={
+                            <ChartRatioTooltip
+                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                              pctKey="persentasePemutakhiran"
+                              pctLabel="Pemutakhiran Keluarga"
+                              valueKey="assignmentDidata"
+                              valueLabel="Assignment Didata"
+                              targetKey="prelistAwal"
+                              targetLabel="Target (Prelist Awal)"
+                              fontSize={chartFontSize}
+                            />
+                          }
+                        />
+                        <ReferenceLine y={keluargaDashboardAverage} stroke="#a78bfa" strokeWidth={2} strokeDasharray="5 5" label={{ value: `Rata-rata: ${keluargaDashboardAverage.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: chartFontSize }} />
+                        <Legend wrapperStyle={{ fontSize: chartFontSize }} />
+                        <Bar dataKey="persentasePemutakhiran" name="Pemutakhiran Keluarga" radius={[8, 8, 0, 0]} label={{ position: "top", fill: "#1f2937", fontSize: chartFontSize, fontWeight: 600, formatter: (value: number) => `${value.toFixed(2)}%` }}>
+                          {keluargaDashboardData.map((entry: any, index: number) => (
+                            <Cell key={`family-cell-${entry.label}-${index}`} fill={getColorForPercentage(entry.persentasePemutakhiran)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
             </TabsContent>
             <TabsContent value="capaian-kinerja" className="space-y-6 mt-6">
               <Card className="border-0 shadow-sm">
@@ -5761,9 +5845,11 @@ export default function MonitoringLapanganDash() {
                 stackingWilkerstatByKey={stackingWilkerstatByKey}
               />
             </TabsContent>
-            <TabsContent value="keluarga" className="space-y-6 mt-6">
-              <KeluargaTab />
-            </TabsContent>
+            {isPpk && (
+              <TabsContent value="keluarga" className="space-y-6 mt-6">
+                <KeluargaTab />
+              </TabsContent>
+            )}
             <TabsContent value="identifikasi-utt" className="space-y-6 mt-6">
               <IdentifikasiUTTTab />
             </TabsContent>
@@ -6082,20 +6168,6 @@ export default function MonitoringLapanganDash() {
                   </CardContent>
                 </Card>
               </div>
-            </TabsContent>
-            <TabsContent value="anomali" className="space-y-6 mt-6">
-              <React.Suspense fallback={<div className="py-12 text-center text-slate-500">Memuat Anomali...</div>}>
-                <MonitoringLapanganAnomaliTab
-                  anomaliUsahaData={anomaliUsahaData || []}
-                  anomaliUsahaLoading={anomaliUsahaLoading}
-                  anomaliKeluargaData={anomaliKeluargaData || []}
-                  anomaliKeluargaLoading={anomaliKeluargaLoading}
-                  anomaliUsahaInfo={anomaliUsahaInfoData?.[0] || "-"}
-                  anomaliKeluargaInfo={anomaliKeluargaInfoData?.[0] || "-"}
-                  isLoggedIn={isLoggedIn}
-                  user={user}
-                />
-              </React.Suspense>
             </TabsContent>
           </Tabs>
         </div>
