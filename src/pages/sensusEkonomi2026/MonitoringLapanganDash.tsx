@@ -3787,10 +3787,10 @@ export default function MonitoringLapanganDash() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                       <CardTitle className="text-base">
-                        Persentase Responden per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                        Persentase Assigment per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                       </CardTitle>
                       <CardDescription>
-                        {chartRespondenDivisor === "wilkerstat" ? "Responden Didata / Wilkerstat" : "Responden Didata / Prelist Awal"}
+                        {chartRespondenDivisor === "wilkerstat" ? "Assigment Didata / Wilkerstat" : "Assigment Didata / Prelist Awal"}
                         {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
                         {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
                       </CardDescription>
@@ -3874,9 +3874,9 @@ export default function MonitoringLapanganDash() {
                             <ChartRatioTooltip
                               labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                               pctKey="persentaseAktif"
-                              pctLabel={chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"}
+                              pctLabel={chartRespondenDivisor === "wilkerstat" ? "Assigment / Wilkerstat" : "Assigment / Prelist Awal"}
                               valueKey="respondenDidata"
-                              valueLabel="Responden Didata"
+                              valueLabel="Assigment Didata"
                               targetKey={chartRespondenDivisor === "wilkerstat" ? "wilkerstat" : "prelistAwal"}
                               targetLabel={chartRespondenDivisor === "wilkerstat" ? "Target (Wilkerstat)" : "Target (Prelist Awal)"}
                               fontSize={chartFontSize}
@@ -3899,7 +3899,7 @@ export default function MonitoringLapanganDash() {
                         <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                         <Bar
                           dataKey="persentaseAktif"
-                          name={chartRespondenDivisor === "wilkerstat" ? "Responden / Wilkerstat" : "Responden / Prelist Awal"}
+                          name={chartRespondenDivisor === "wilkerstat" ? "Assigment / Wilkerstat" : "Assigment / Prelist Awal"}
                           radius={[8, 8, 0, 0]}
                           label={{
                             position: "top",
