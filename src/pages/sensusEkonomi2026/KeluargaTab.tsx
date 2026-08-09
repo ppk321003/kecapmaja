@@ -22,7 +22,7 @@ const isLikelyCodeLikeName = (value: unknown): boolean => {
 };
 
 const normalizeSheetColumnName = (value: unknown): string =>
-  String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9%]/g, "");
 
 const normalizeDisplayText = (value: unknown): string => {
   const text = String(value ?? "").trim();
@@ -87,14 +87,32 @@ const getHeaderValue = (row: string[], headers: string[], aliases: string[], fal
 
 const normalizeStackingKey = (value: unknown): string => {
   const digits = String(value ?? "").replace(/\D/g, "");
-  return digits.length >= 16 ? digits.slice(-16) : "";
+  if (digits.length >= 4) {
+    return digits.length > 16 ? digits.slice(-16) : digits;
+  }
+  return "";
 };
+
+const isFullStackingKey = (value: unknown): boolean => normalizeStackingKey(value).length === 16;
 
 const getRawRowId16 = (row: unknown[]): string => {
   const exact16 = findExact16DigitKey(row);
   if (exact16) return exact16;
   const rawId = row[0] ?? "";
   return normalizeStackingKey(rawId);
+};
+
+const toProperCase = (value: string): string =>
+  String(value || "")
+    .trim()
+    .split(/\s+/)
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1).toLowerCase() : ""))
+    .join(" ");
+
+const formatProperText = (value: string): string => {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed || trimmed === "-") return "-";
+  return toProperCase(trimmed);
 };
 
 const getStackingKey = (row: unknown[]): string => {
@@ -170,9 +188,14 @@ const looksNumeric = (value: unknown): boolean => {
   return /^-?[\d.,\s]+%?$/.test(raw);
 };
 
+type RowRecord = {
+  __rawRow: string[];
+  values: string[];
+};
+
 type SheetTable = {
   headers: string[];
-  rows: string[][];
+  rows: RowRecord[];
 };
 
 /** Fetch the list of sheet (tab) names inside the Keluarga spreadsheet. */
@@ -308,8 +331,24 @@ export const useKeluargaStackingMap = () =>
         const kecIndex = findHeaderIndex(headerRow, ["kecamatan", "nama kecamatan", "nmkec", "wilayah"]);
         const pplIndex = findHeaderIndex(headerRow, ["nama ppl", "nama_ppl", "nama pencacah", "ppl", "nama petugas", "nama_pml"]);
 
+        const findBestStackingId = (row: string[]): string => {
+          const exact16 = findExact16DigitKey(row);
+          if (exact16) return exact16;
+
+          if (idIndex !== -1) {
+            const candidate = normalizeStackingKey(row[idIndex] ?? "");
+            if (candidate) return candidate;
+          }
+
+          const candidates = row
+            .map((cell) => String(cell ?? "").replace(/\D/g, ""))
+            .filter((digits) => digits.length >= 4);
+          if (candidates.length === 0) return "";
+          return candidates.reduce((best, current) => (current.length > best.length ? current : best), "");
+        };
+
         values.slice(1).forEach((row) => {
-          const rawId = normalizeStackingKey(row[idIndex !== -1 ? idIndex : 0] ?? "") || findExact16DigitKey(row);
+          const rawId = findBestStackingId(row) || findExact16DigitKey(row);
           if (!rawId) return;
 
           const namaPpl = String(row[pplIndex !== -1 ? pplIndex : 0] ?? "").trim();
@@ -441,7 +480,7 @@ type GroupedRow = {
   label: string;
   cells: string[];
   numeric: number[];
-  children: string[][];
+  children: RowRecord[];
 };
 
 const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: boolean }) => {
@@ -467,7 +506,9 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
         const kodeFromRow = getRawRowId16(rawRowArray) || getStackingKey(rawRowArray) || findExact16DigitKey(rawRowArray) || findExact16DigitKey(rawRowArray.slice(0, 20));
         const directId = getHeaderValue(row, headers, ["id sls", "id_sub_sls", "id sub sls", "idsubsls", "kode sls", "kode_sls", "kode", "idsls"], 0);
         const matchingKey = findMatchingStackingKey(directId, stackingMap) || findMatchingStackingKey(kodeFromRow, stackingMap) || "";
-        const kode = matchingKey || normalizeStackingKey(directId) || normalizeStackingKey(kodeFromRow) || `row-${rowIndex}`;
+        const candidateCode = matchingKey || normalizeStackingKey(directId) || normalizeStackingKey(kodeFromRow);
+        if (candidateCode.length !== 16) return null;
+        const kode = candidateCode;
         const subSls = getHeaderValue(row, headers, ["sub sls", "sub-sls", "sub_sls", "id sub sls", "idsubsls", "sub satuan lingkungan"], 1);
         const namaPplRaw = getHeaderValue(row, headers, ["nama ppl", "nama_ppl", "nama pencacah", "ppl", "nama petugas", "petugas", "nama_pml"], 0);
         const kecamatanRaw = getHeaderValue(row, headers, ["kecamatan", "nama kecamatan", "nmkec", "wilayah"], 1);
@@ -475,18 +516,14 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
 
         const directNamaPpl = normalizeDisplayText(namaPplRaw);
         const directKecamatan = normalizeDisplayText(kecamatanRaw);
-        const namaPpl = resolveDisplayValue(
-          directNamaPpl,
-          lookup?.namaPpl
-        );
-        const kecamatan = resolveDisplayValue(
-          directKecamatan,
-          lookup?.kecamatan
-        );
+        const lookupNamaPpl = lookup?.namaPpl && lookup.namaPpl !== "-" ? lookup.namaPpl : undefined;
+        const lookupKecamatan = lookup?.kecamatan && lookup.kecamatan !== "-" ? lookup.kecamatan : undefined;
+        const namaPpl = formatProperText(lookupNamaPpl || resolveDisplayValue(directNamaPpl, "-"));
+        const kecamatan = formatProperText(lookupKecamatan || resolveDisplayValue(directKecamatan, "-"));
 
         const item = {
           id: kode,
-          kode: directId || kode,
+          kode: kode,
           sub_sls: subSls,
           nama_ppl: namaPpl,
           kecamatan: kecamatan,
@@ -551,20 +588,13 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
       children: typeof rows;
       prelist_awal: number;
       ditemukan: number;
-      persentase_ditemukan: number;
       keluarga_baru: number;
       meninggal: number;
-      persentase_meninggal: number;
       tidak_eligible: number;
-      persentase_tidak_eligible: number;
       tidak_dapat_ditemui: number;
-      persentase_tidak_dapat_ditemui: number;
       tidak_ditemukan: number;
-      persentase_tidak_ditemukan: number;
       nonrespon: number;
-      persentase_nonrespon: number;
       total_hasil_pendataan: number;
-      persentase_total_hasil_pendataan: number;
     }>();
 
     rows.forEach((row) => {
@@ -578,20 +608,13 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           children: [row],
           prelist_awal: row.prelist_awal,
           ditemukan: row.ditemukan,
-          persentase_ditemukan: row.persentase_ditemukan,
           keluarga_baru: row.keluarga_baru,
           meninggal: row.meninggal,
-          persentase_meninggal: row.persentase_meninggal,
           tidak_eligible: row.tidak_eligible,
-          persentase_tidak_eligible: row.persentase_tidak_eligible,
           tidak_dapat_ditemui: row.tidak_dapat_ditemui,
-          persentase_tidak_dapat_ditemui: row.persentase_tidak_dapat_ditemui,
           tidak_ditemukan: row.tidak_ditemukan,
-          persentase_tidak_ditemukan: row.persentase_tidak_ditemukan,
           nonrespon: row.nonrespon,
-          persentase_nonrespon: row.persentase_nonrespon,
           total_hasil_pendataan: row.total_hasil_pendataan,
-          persentase_total_hasil_pendataan: row.persentase_total_hasil_pendataan,
         });
         return;
       }
@@ -599,23 +622,25 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
       existing.children.push(row);
       existing.prelist_awal += row.prelist_awal;
       existing.ditemukan += row.ditemukan;
-      existing.persentase_ditemukan += row.persentase_ditemukan;
       existing.keluarga_baru += row.keluarga_baru;
       existing.meninggal += row.meninggal;
-      existing.persentase_meninggal += row.persentase_meninggal;
       existing.tidak_eligible += row.tidak_eligible;
-      existing.persentase_tidak_eligible += row.persentase_tidak_eligible;
       existing.tidak_dapat_ditemui += row.tidak_dapat_ditemui;
-      existing.persentase_tidak_dapat_ditemui += row.persentase_tidak_dapat_ditemui;
       existing.tidak_ditemukan += row.tidak_ditemukan;
-      existing.persentase_tidak_ditemukan += row.persentase_tidak_ditemukan;
       existing.nonrespon += row.nonrespon;
-      existing.persentase_nonrespon += row.persentase_nonrespon;
       existing.total_hasil_pendataan += row.total_hasil_pendataan;
-      existing.persentase_total_hasil_pendataan += row.persentase_total_hasil_pendataan;
     });
 
-    return Array.from(map.values());
+    return Array.from(map.values()).map((group) => ({
+      ...group,
+      persentase_ditemukan: group.prelist_awal > 0 ? (group.ditemukan / group.prelist_awal) * 100 : 0,
+      persentase_meninggal: group.prelist_awal > 0 ? (group.meninggal / group.prelist_awal) * 100 : 0,
+      persentase_tidak_eligible: group.prelist_awal > 0 ? (group.tidak_eligible / group.prelist_awal) * 100 : 0,
+      persentase_tidak_dapat_ditemui: group.prelist_awal > 0 ? (group.tidak_dapat_ditemui / group.prelist_awal) * 100 : 0,
+      persentase_tidak_ditemukan: group.prelist_awal > 0 ? (group.tidak_ditemukan / group.prelist_awal) * 100 : 0,
+      persentase_nonrespon: group.prelist_awal > 0 ? (group.nonrespon / group.prelist_awal) * 100 : 0,
+      persentase_total_hasil_pendataan: group.prelist_awal > 0 ? (group.total_hasil_pendataan / group.prelist_awal) * 100 : 0,
+    }));
   }, [rows]);
 
   const kecamatanOptions = useMemo(() => {
@@ -789,7 +814,7 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                     <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-white text-slate-900 px-4 py-3 whitespace-nowrap">{group.kecamatan}</TableCell>
                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.prelist_awal)}</TableCell>
                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.ditemukan)}</TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.persentase_ditemukan / Math.max(group.children.length, 1), true)}</TableCell>
+                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.persentase_ditemukan, true)}</TableCell>
                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.keluarga_baru)}</TableCell>
                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.meninggal)}</TableCell>
                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.tidak_dapat_ditemui)}</TableCell>
@@ -797,7 +822,9 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.total_hasil_pendataan)}</TableCell>
                   </TableRow>
 
-                  {expanded && group.children.map((child, childIndex) => (
+                  {expanded && group.children
+                    .filter((child) => isFullStackingKey(child.kode) || isFullStackingKey(child.id))
+                    .map((child, childIndex) => (
                     <TableRow key={`${group.id}-${child.id}-${childIndex}`} className="border-b border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
                       <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-slate-50 text-center text-slate-600"> </TableCell>
                       <TableCell className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-slate-50 text-sm text-slate-700 px-4 py-2 pl-8 italic">{child.kode}</TableCell>
