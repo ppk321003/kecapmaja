@@ -3687,9 +3687,9 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="umkm-sosek" className="rounded-xl py-2 text-sm font-semibold">UMKM dan Sosek</TabsTrigger>
               <TabsTrigger value="pendataan-usaha" className="rounded-xl py-2 text-sm font-semibold">Pendataan Usaha</TabsTrigger>
               <TabsTrigger value="skala-usaha" className="rounded-xl py-2 text-sm font-semibold">Skala Usaha</TabsTrigger>
+              <TabsTrigger value="keluarga" className="rounded-xl py-2 text-sm font-semibold">Keluarga</TabsTrigger>
               <TabsTrigger value="identifikasi-utt" className="rounded-xl py-2 text-sm font-semibold">Identifikasi UTT</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
-              <TabsTrigger value="anomali" className="rounded-xl py-2 text-sm font-semibold">Anomali</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard" className="space-y-6 mt-6">
               {pmlStats && (
@@ -5759,6 +5759,9 @@ export default function MonitoringLapanganDash() {
                 didataByKey={didataByKey}
                 stackingWilkerstatByKey={stackingWilkerstatByKey}
               />
+            </TabsContent>
+            <TabsContent value="keluarga" className="space-y-6 mt-6">
+              <KeluargaTab />
             </TabsContent>
             <TabsContent value="identifikasi-utt" className="space-y-6 mt-6">
               <IdentifikasiUTTTab />
