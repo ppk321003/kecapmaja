@@ -21,6 +21,8 @@ const STACKING_SHEET = "STACKING";
 const PROGRES_SPREADSHEET_ID = STACKING_SPREADSHEET_ID;
 const PROGRES_SHEET = "PROGRES PENDATAAN";
 const MONITORING_LAPANGAN_SPREADSHEET_ID = "1j1pYuz0lOMjufxtOw2jxD-aPCBNlCi7y0Ymh6k3Sn_o";
+const RECRUITMENT_SPREADSHEET_ID = "1lQPMO70a-uzojaCnMDI7AmZmhL1QOtpFRBA4Z1rET5Y";
+const RECRUITMENT_SHEET_AFIRMASI = "AFIRMASI";
 const SHEET_ANOMALI_USAHA = "Mikro Anomali Usaha";
 const SHEET_ANOMALI_KELUARGA = "Mikro Anomali Keluarga";
 const SHEET_USAHA_PERUSAHAAN = "USAHA PERUSAHAAN";
@@ -31,6 +33,12 @@ const normalizeSheetKey = (value: unknown) => {
   const digits = String(value ?? "").replace(/\D/g, "");
   return digits.length >= 16 ? digits.slice(-16) : "";
 };
+
+const normalizeString = (value: any): string =>
+  String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
 
 type ChartRatioTooltipProps = {
   active?: boolean;
@@ -647,10 +655,115 @@ export default function MonitoringLapanganDash() {
   const { data: monitoringUsersData, loading: monitoringUsersLoading, error: monitoringUsersError } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: "Semua Users",
-    enabled: tabVisited("capaian-kinerja"),
+    enabled: tabVisited("capaian-kinerja") || tabVisited("umkm-sosek"),
   });
+  const { data: afirmasiData, loading: afirmasiLoading, error: afirmasiError } = useGoogleSheetsData({
+    spreadsheetId: RECRUITMENT_SPREADSHEET_ID,
+    sheetName: RECRUITMENT_SHEET_AFIRMASI,
+    enabled: tabVisited("umkm-sosek"),
+  });
+  
   const monitoringLoading = monitoringSheetLoading || monitoringUsersLoading;
   const monitoringError = monitoringSheetError || monitoringUsersError;
+
+  const afirmasiEmailSets = useMemo(() => {
+    if (!afirmasiData || afirmasiData.length === 0) {
+      return {
+        ratih: new Set<string>(),
+        ledya: new Set<string>(),
+      };
+    }
+
+    const allKeys = Object.keys(afirmasiData[0]);
+    const emailRatihKey = allKeys[1] || "";
+    const emailLedyaKey = allKeys[3] || "";
+
+    const ratihEmails = new Set<string>();
+    const ledyaEmails = new Set<string>();
+
+    afirmasiData.forEach((row: any) => {
+      const emailRatih = String(row[emailRatihKey] || "").trim().toLowerCase();
+      const emailLedya = String(row[emailLedyaKey] || "").trim().toLowerCase();
+
+      if (emailRatih && emailRatih !== "-" && emailRatih.includes("@")) {
+        ratihEmails.add(emailRatih);
+      }
+      if (emailLedya && emailLedya !== "-" && emailLedya.includes("@")) {
+        ledyaEmails.add(emailLedya);
+      }
+    });
+
+    return {
+      ratih: ratihEmails,
+      ledya: ledyaEmails,
+    };
+  }, [afirmasiData]);
+
+  const pplEmailByName = useMemo(() => {
+    const map = new Map<string, string>();
+    (monitoringUsersData || []).forEach((row: any) => {
+      const email = String(getRowValue(row, "email", ["email", "Email"], "")).trim().toLowerCase();
+      const namaPpl = String(getRowValue(row, "nama_ppl", ["nama_ppl", "nama ppl", "nama pencacah", "nama"], "")).trim().toLowerCase();
+      const kecamatan = normalizeKecamatanKey(getRowValue(row, "regioncode", ["regioncode", "regionCode", "region", "kecamatan"], ""));
+      if (!email || !namaPpl) return;
+      map.set(`${namaPpl}|${kecamatan}`, email);
+      map.set(namaPpl, email);
+    });
+    return map;
+  }, [monitoringUsersData]);
+
+  // Hardcoded TA name lists (fallback matching by name)
+  const afirmasiNameSets = useMemo(() => {
+    const normalize = (s: string) => normalizeString(String(s || '')).trim().toLowerCase();
+
+    const ratihNames = [
+      'Gita Sumartono',
+      'Nono Julianto',
+      'Purnama',
+      'Widi Permana',
+      'Tia Agustianingsih Mustafa',
+      'Moch. Hamdani Budiman',
+      'Riki Rahmatullah',
+      'Fahmi Miftahul Firdaus',
+      'Fauzi Fajar Nugraha',
+      'Riza Yulfianti',
+      'Nur Alam',
+      'Anggi Muhamad Algifari'
+    ].map(normalize);
+
+    const ledyaNames = [
+      'Mifta Muflihun Nisa',
+      'Tri Hendrawan',
+      'Haris Haryono',
+      'Ade Abdul Muis',
+      'Ratih Kamilia Rahmah',
+      'Rahman Syah',
+      'Muhamad Daffa Arsyad',
+      'Shania Pratiwi Ayuningrum',
+      'Farid Badruzzaman',
+      'Rini Usman',
+      'Edi Junaedi',
+      'Irvan Susanto',
+      'Aghni Wildah Alimatul Ula',
+      'Dewi Sifa Marwati',
+      'Moch. Firdaus Noor Rochman, S.I.Pus.',
+      'Rahma Dita',
+      'Kiki Suryadi Putra',
+      'Rifqi Muhamad Baehaqi',
+      'Ilah Haryati',
+      'Muhammad Gumilar Habibul Ihsan',
+      'Endang Wandar',
+      'Gendra Putra Yasfa',
+      'David Ramadhan',
+      'Imran Saheman'
+    ].map(normalize);
+
+    return {
+      ratih: new Set(ratihNames),
+      ledya: new Set(ledyaNames),
+    };
+  }, []);
+
   const { data: usahaPerusahaanData, loading: usahaPerusahaanLoading, error: usahaPerusahaanError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
     sheetName: SHEET_USAHA_PERUSAHAAN,
@@ -699,6 +812,7 @@ export default function MonitoringLapanganDash() {
   const [usahaSubTab, setUsahaSubTab] = useState<string>("kondisi");
   const [usahaSearchTerm, setUsahaSearchTerm] = useState("");
   const [umkmKecamatanFilter, setUmkmKecamatanFilter] = useState("all");
+  const [umkmAfirmasiFilter, setUmkmAfirmasiFilter] = useState<"all" | "ratih" | "ledya">("all");
   const [usahaKecamatanFilter, setUsahaKecamatanFilter] = useState("all");
   const [proporsiKecamatanFilter, setProporsiKecamatanFilter] = useState("all");
   const [usahaItemsPerPage, setUsahaItemsPerPage] = useState(20);
@@ -2929,6 +3043,16 @@ export default function MonitoringLapanganDash() {
       });
     }
 
+    if (umkmAfirmasiFilter !== "all") {
+      const targetEmails = umkmAfirmasiFilter === "ratih" ? afirmasiEmailSets.ratih : afirmasiEmailSets.ledya;
+      rows = rows.filter((row) => {
+        const email = pplEmailByName.get(String(row.nama_ppl).trim().toLowerCase()) || "";
+        const normalizedName = normalizeString(String(row.nama_ppl || '')).trim().toLowerCase();
+        const nameMatches = umkmAfirmasiFilter === "ratih" ? afirmasiNameSets.ratih.has(normalizedName) : afirmasiNameSets.ledya.has(normalizedName);
+        return (email && targetEmails.has(email)) || nameMatches;
+      });
+    }
+
     const compareValue = (a: PPLRow, b: PPLRow) => {
       const getValue = (row: PPLRow) => {
         switch (sortBy) {
@@ -2963,7 +3087,7 @@ export default function MonitoringLapanganDash() {
     };
 
     return [...rows].sort(compareValue);
-  }, [pplRows, searchTerm, sortBy, sortOrder, umkmKecamatanFilter]);
+  }, [pplRows, searchTerm, sortBy, sortOrder, umkmKecamatanFilter, umkmAfirmasiFilter, afirmasiEmailSets, pplEmailByName]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
   const paginatedRows = useMemo(() => {
@@ -4529,6 +4653,21 @@ export default function MonitoringLapanganDash() {
                         <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
                       ))}
                     </select>
+                    {isLoggedIn ? (
+                      <select
+                        aria-label="Filter TA UMKM dan Sosek"
+                        value={umkmAfirmasiFilter}
+                        onChange={(event) => {
+                          setUmkmAfirmasiFilter(event.target.value as "all" | "ratih" | "ledya");
+                          setCurrentPage(1);
+                        }}
+                        className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                      >
+                        <option value="all">Semua</option>
+                        <option value="ratih">TA - Ratih Megasari</option>
+                        <option value="ledya">TA - Ledya</option>
+                      </select>
+                    ) : null}
                     <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-r from-emerald-50 via-white to-slate-50 p-4 shadow-sm">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex flex-wrap items-center gap-2">
