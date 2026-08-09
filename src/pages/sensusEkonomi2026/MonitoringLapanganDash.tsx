@@ -714,7 +714,16 @@ export default function MonitoringLapanganDash() {
 
   // Hardcoded TA name lists (fallback matching by name)
   const afirmasiNameSets = useMemo(() => {
-    const normalize = (s: string) => normalizeString(String(s || '')).trim().toLowerCase();
+    const normalizeNameKey = (s: string) => {
+      const raw = String(s || "");
+      // strip surrounding quotes and common unicode quote characters
+      const strippedQuotes = raw.replace(/^["'`\u201C\u201D\u2018\u2019]+|["'`\u201C\u201D\u2018\u2019]+$/g, "");
+      return normalizeString(strippedQuotes)
+        .replace(/[^a-z0-9\s]/gi, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+    };
 
     const ratihNames = [
       'Gita Sumartono',
@@ -729,12 +738,13 @@ export default function MonitoringLapanganDash() {
       'Riza Yulfianti',
       'Nur Alam',
       'Anggi Muhamad Algifari'
-    ].map(normalize);
+    ].map(normalizeNameKey);
 
     const ledyaNames = [
       'Mifta Muflihun Nisa',
       'Tri Hendrawan',
       'Haris Haryono',
+      'Haris Haryono"',
       'Ade Abdul Muis',
       'Ratih Kamilia Rahmah',
       'Rahman Syah',
@@ -756,7 +766,7 @@ export default function MonitoringLapanganDash() {
       'Gendra Putra Yasfa',
       'David Ramadhan',
       'Imran Saheman'
-    ].map(normalize);
+    ].map(normalizeNameKey);
 
     return {
       ratih: new Set(ratihNames),
@@ -3047,7 +3057,11 @@ export default function MonitoringLapanganDash() {
       const targetEmails = umkmAfirmasiFilter === "ratih" ? afirmasiEmailSets.ratih : afirmasiEmailSets.ledya;
       rows = rows.filter((row) => {
         const email = pplEmailByName.get(String(row.nama_ppl).trim().toLowerCase()) || "";
-        const normalizedName = normalizeString(String(row.nama_ppl || '')).trim().toLowerCase();
+        const normalizedName = normalizeString(String(row.nama_ppl || ''))
+          .replace(/[^a-z0-9\s]/gi, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
         const nameMatches = umkmAfirmasiFilter === "ratih" ? afirmasiNameSets.ratih.has(normalizedName) : afirmasiNameSets.ledya.has(normalizedName);
         return (email && targetEmails.has(email)) || nameMatches;
       });
