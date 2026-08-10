@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -10,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const KELUARGA_SPREADSHEET_ID = "1sRg7Hi7xtBT00dx-61mugWlGL7H1P0gnr3jziaClJsw";
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 
-const ITEMS_PER_PAGE = 25;
+const DEFAULT_ITEMS_PER_PAGE = 20;
 
 const normalizeKey = (value: unknown): string =>
   String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -116,10 +115,13 @@ const formatProperText = (value: string): string => {
 };
 
 const getStackingKey = (row: unknown[]): string => {
-  const rawKey = row[3] ?? "";
+  const exact16 = findExact16DigitKey(row);
+  if (exact16) return exact16;
+  const rawKey = row[3] ?? row[0] ?? "";
   const normalized = normalizeStackingKey(rawKey);
   if (normalized.length === 16) return normalized;
-  return findExact16DigitKey(row);
+  const joined = String(row.map((cell) => String(cell ?? "")).join(" "));
+  return normalizeStackingKey(joined);
 };
 
 const findExact16DigitKey = (row: unknown[]): string => {
@@ -389,6 +391,57 @@ export const findColumnIndex = (headers: string[], candidates: string[]): number
   return -1;
 };
 
+const findBestKeluargaHeaderRowIndex = (values: string[][]): number => {
+  if (!values || values.length === 0) return 0;
+
+  const candidateGroups = [
+    ["kecamatan", "nama kecamatan", "kec", "wilayah"],
+    ["desa", "desa kelurahan", "kelurahan", "sls", "subsls", "sub satuan lingkungan"],
+    ["prelist awal", "prelist", "prelistawal", "target", "wilkerstat"],
+    ["total hasil pendataan", "total_hasil_pendataan", "total hasil", "totalhasil", "total hasil / prelist awal", "totalhasilprelistawal"],
+    ["assignment", "assignment didata", "responden didata", "didata", "responden"],
+  ];
+
+  const maxRows = Math.min(12, values.length);
+  let bestIndex = 0;
+  let bestScore = -1;
+
+  for (let i = 0; i < maxRows; i += 1) {
+    const row = values[i] || [];
+    const headers = row.map((cell) => String(cell ?? ""));
+    let score = 0;
+
+    candidateGroups.forEach((aliases) => {
+      if (findColumnIndex(headers, aliases) !== -1) score += 3;
+    });
+
+    const filledCount = row.filter((cell) => String(cell).trim() !== "").length;
+    score += Math.min(1, filledCount / 10);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  if (bestScore >= 1) return bestIndex;
+
+  let fallbackIndex = 0;
+  let fallbackScore = -1;
+  for (let i = 0; i < maxRows; i += 1) {
+    const row = values[i] || [];
+    const filled = row.filter((cell) => String(cell).trim() !== "");
+    const textual = filled.filter((cell) => !/^[-+]?\d[\d.,%\s]*$/.test(String(cell).trim()));
+    const score = textual.length * 2 + filled.length;
+    if (score > fallbackScore) {
+      fallbackScore = score;
+      fallbackIndex = i;
+    }
+  }
+
+  return fallbackIndex;
+};
+
 export const useKeluargaDashboardSummary = (enabled = true) =>
   useQuery({
     queryKey: ["keluarga-dashboard-summary", KELUARGA_SPREADSHEET_ID],
@@ -401,64 +454,179 @@ export const useKeluargaDashboardSummary = (enabled = true) =>
       const metadataResponse = await supabase.functions.invoke("google-sheets", {
         body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "metadata" },
       });
+      try {
+        // Debug: log metadata response to help diagnose empty sheet list
+        // eslint-disable-next-line no-console
+        console.debug("useKeluargaDashboardSummary: metadataResponse", metadataResponse);
+      } catch (e) {
+        // ignore
+      }
       if (metadataResponse.error) throw metadataResponse.error;
 
       const sheetNames = ((metadataResponse.data as any)?.sheets || [])
         .map((sheet: any) => String(sheet?.properties?.title || "").trim())
         .filter(Boolean);
 
-      if (sheetNames.length === 0) return [];
+      const keluargaSheetNames = sheetNames.filter((name) => normalizeKey(name) === "keluarga");
+      const effectiveSheetNames = keluargaSheetNames.length > 0
+        ? keluargaSheetNames
+        : sheetNames.length > 0
+          ? sheetNames
+          : ["KELUARGA"];
 
-      const familyReadResults = await Promise.all(
-        sheetNames.map(async (sheetName: string) => {
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("useKeluargaDashboardSummary: sheetNames", effectiveSheetNames);
+      } catch (e) {
+        // ignore
+      }
+
+      const familyReadResults: string[][][] = [];
+      // Read each sheet but tolerate failures per-sheet so one bad sheet doesn't break the whole summary.
+      for (const sheetName of effectiveSheetNames) {
+        try {
           const readResponse = await supabase.functions.invoke("google-sheets", {
             body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "read", range: `'${sheetName}'` },
           });
-          if (readResponse.error) throw readResponse.error;
+          if (readResponse.error) {
+            // eslint-disable-next-line no-console
+            console.debug(`useKeluargaDashboardSummary: read ${sheetName} error`, readResponse.error);
+            familyReadResults.push([]);
+            continue;
+          }
           const values = ((readResponse.data as any)?.values || []).map((row: any[]) =>
             (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell)))
           );
-          return values;
-        })
-      );
+          try {
+            // eslint-disable-next-line no-console
+            console.debug(`useKeluargaDashboardSummary: read ${sheetName} rows`, (values || []).length);
+          } catch (e) {
+            // ignore
+          }
+          familyReadResults.push(values);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.debug(`useKeluargaDashboardSummary: exception reading ${sheetName}`, err);
+          familyReadResults.push([]);
+        }
+      }
 
-      const groups = new Map<string, { kecamatan: string; desa: string; prelist: number; assignment: number }>();
+      const stackingLookup = new Map<string, { kecamatan: string; desa: string }>();
+      const knownKecamatanNames = new Set<string>();
+      const knownDesaNames = new Set<string>();
+      try {
+        const stackingResponse = await supabase.functions.invoke("google-sheets", {
+          body: { spreadsheetId: STACKING_SPREADSHEET_ID, operation: "read", range: "'STACKING'" },
+        });
+        if (!stackingResponse.error) {
+          const stackingValues = ((stackingResponse.data as any)?.values || []).map((row: any[]) =>
+            (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell)))
+          );
+          const stackingHeader = stackingValues[0] || [];
+          const kecIndex = findHeaderIndex(stackingHeader, ["kecamatan", "nama kecamatan", "nmkec", "wilayah"]);
+          const desaIndex = findHeaderIndex(stackingHeader, ["desa", "kelurahan", "desa kelurahan", "desa/kelurahan", "nama desa"]);
+
+          stackingValues.slice(1).forEach((row) => {
+            const key = getStackingKey(row) || findExact16DigitKey(row);
+            if (!key) return;
+            const kecamatan = String(row[kecIndex] ?? "").trim();
+            const desaCell = String(row[desaIndex] ?? "").trim();
+            const fallbackDesaCell = String(row[14] ?? "").trim();
+            const isLikelyDesaCode = (value: string) => /^\d+$/.test(value);
+            const desa = desaCell && !isLikelyDesaCode(desaCell)
+              ? desaCell
+              : fallbackDesaCell && !isLikelyDesaCode(fallbackDesaCell)
+                ? fallbackDesaCell
+                : "";
+            if (!kecamatan && !desa) return;
+            const record = { kecamatan: kecamatan || "-", desa: desa || "-" };
+            if (!stackingLookup.has(key)) stackingLookup.set(key, record);
+            if (kecamatan) knownKecamatanNames.add(normalizeSheetColumnName(kecamatan));
+            if (desa) knownDesaNames.add(normalizeSheetColumnName(desa));
+            for (let length = key.length; length >= 4; length -= 1) {
+              const prefix = key.slice(0, length);
+              if (!stackingLookup.has(prefix)) stackingLookup.set(prefix, record);
+            }
+          });
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.debug("useKeluargaDashboardSummary: exception reading STACKING sheet", err);
+      }
+
+      const findKnownValue = (cells: string[], knownSet: Set<string>) => {
+        for (const cell of cells) {
+          const normalized = normalizeSheetColumnName(cell);
+          if (knownSet.has(normalized)) return String(cell).trim();
+        }
+        return "";
+      };
+
+      const isLikelyRtLabel = (value: string) => {
+        const txt = String(value || "").trim();
+        return /\b(rt|rw)\b\s*\d+/i.test(txt) || /^\d{1,3}\s*(rt|rw)\b/i.test(txt) || /^rt\s*\d+/i.test(txt) || /^rw\s*\d+/i.test(txt);
+      };
+
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("useKeluargaDashboardSummary: familyReadResults lengths", familyReadResults.map((v) => (v || []).length));
+      } catch (e) {
+        // ignore
+      }
+
+      const groups = new Map<string, { kecamatan: string; desa: string; prelist: number; assignment: number; totalHasil: number }>();
 
       familyReadResults.forEach((values, sheetIndex) => {
         if (values.length === 0) return;
-        const headerLimit = Math.min(8, values.length);
-        let headerIndex = 0;
-        let bestScore = -1;
-        for (let i = 0; i < headerLimit; i += 1) {
-          const row = values[i] || [];
-          const filled = row.filter((cell) => String(cell).trim() !== "");
-          const textual = filled.filter((cell) => !/^[-+]?\d[\d.,%\s]*$/.test(String(cell).trim()));
-          const score = textual.length * 2 + filled.length;
-          if (score > bestScore) {
-            bestScore = score;
-            headerIndex = i;
-          }
-        }
-
+        const headerIndex = findBestKeluargaHeaderRowIndex(values);
         const headers = values[headerIndex] || [];
+        try {
+          // eslint-disable-next-line no-console
+          console.debug(`useKeluargaDashboardSummary: sheetIndex=${sheetIndex} headerIndex=${headerIndex} headers`, headers.slice(0, 20));
+        } catch (e) {
+          // ignore
+        }
         const dataStart = headerIndex + 1;
         const rows = values.slice(dataStart).filter((row) => (row || []).some((cell) => String(cell).trim() !== ""));
 
         const kecamatanIndex = findColumnIndex(headers, ["kecamatan", "nama kecamatan", "kec", "wilayah"]);
-        const desaIndex = findColumnIndex(headers, ["desa", "desa kelurahan", "kelurahan", "sls"]);
-        const prelistIndex = findColumnIndex(headers, ["prelist awal", "prelist", "prelistawal", "target", "wilkerstat"]);
+        const desaIndex = findColumnIndex(headers, ["desa", "desa kelurahan", "kelurahan", "nama desa", "desa/kelurahan", "desa kel"]);
+        const prelistIndex = findHeaderIndex(headers, ["prelist awal", "prelist", "prelistawal", "target", "wilkerstat"]);
         const assignmentIndex = findColumnIndex(headers, ["assignment", "assignment didata", "responden didata", "didata", "responden"]);
+        const totalHasilIndex = findHeaderIndex(headers, ["total hasil pendataan", "total_hasil_pendataan", "total hasil", "totalhasil"]);
+
+        try {
+          // eslint-disable-next-line no-console
+          console.debug(`useKeluargaDashboardSummary: sheetIndex=${sheetIndex} indices`, { kecamatanIndex, desaIndex, prelistIndex, assignmentIndex, totalHasilIndex });
+        } catch (e) {
+          // ignore
+        }
+
+        try {
+          // eslint-disable-next-line no-console
+          console.debug(`useKeluargaDashboardSummary: sheetIndex=${sheetIndex} indices`, { kecamatanIndex, desaIndex, prelistIndex, assignmentIndex, totalHasilIndex });
+        } catch (e) {
+          // ignore
+        }
 
         rows.forEach((row) => {
-          const kecamatan = String(row[kecamatanIndex] ?? "").trim() || "-";
-          const desa = String(row[desaIndex] ?? "").trim() || "-";
+          const rawKey = String(row[0] ?? "");
+          const stackingKey = getStackingKey(row) || normalizeStackingKey(rawKey);
+          const resolved = stackingLookup.get(stackingKey);
+          const fallbackKecamatan = String(row[kecamatanIndex] ?? "").trim();
+          const fallbackDesa = String(row[desaIndex] ?? "").trim();
+          const isLikelyDesaCode = /^\d+$/.test(fallbackDesa);
+          const kecamatan = resolved?.kecamatan || (fallbackKecamatan && !isLikelyRtLabel(fallbackKecamatan) ? fallbackKecamatan : "-");
+          const desa = resolved?.desa || (fallbackDesa && !isLikelyRtLabel(fallbackDesa) && !isLikelyDesaCode ? fallbackDesa : "-");
           const prelist = parseNumericValue(row[prelistIndex] ?? "0");
           const assignment = parseNumericValue(row[assignmentIndex] ?? "0");
+          const totalHasil = parseNumericValue(row[totalHasilIndex] ?? "0");
           if (!kecamatan || kecamatan === "-") return;
           const mapKey = `${kecamatan}||${desa}`;
-          const existing = groups.get(mapKey) || { kecamatan, desa, prelist: 0, assignment: 0 };
+          const existing = groups.get(mapKey) || { kecamatan, desa, prelist: 0, assignment: 0, totalHasil: 0 };
           existing.prelist += prelist;
           existing.assignment += assignment;
+          existing.totalHasil += totalHasil;
           groups.set(mapKey, existing);
         });
       });
@@ -469,8 +637,88 @@ export const useKeluargaDashboardSummary = (enabled = true) =>
         desa: item.desa,
         prelistAwal: item.prelist,
         assignmentDidata: item.assignment,
-        persentasePemutakhiran: item.prelist > 0 ? Number(((item.assignment / item.prelist) * 100).toFixed(2)) : 0,
+        totalHasil: item.totalHasil,
+        // persentase berdasarkan Total Hasil / Prelist Awal as requested
+        persentasePemutakhiran: item.prelist > 0 ? Number(((item.totalHasil / item.prelist) * 100).toFixed(2)) : 0,
       }));
+    },
+  });
+
+/**
+ * Hook that returns debug information about the KELUARGA spreadsheet read operations.
+ * Useful for rendering diagnostic UI when the dashboard shows no data.
+ */
+export const useKeluargaDebugInfo = (enabled = true) =>
+  useQuery({
+    queryKey: ["keluarga-debug", KELUARGA_SPREADSHEET_ID],
+    enabled,
+    staleTime: 1000 * 10,
+    refetchOnWindowFocus: false,
+    retry: 0,
+    queryFn: async () => {
+      const out: any = { metadataResponse: null, sheetNames: [], perSheetRows: [], errors: [] };
+      try {
+        const metadataResponse = await supabase.functions.invoke("google-sheets", {
+          body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "metadata" },
+        });
+        out.metadataResponse = metadataResponse;
+        const sheetNames = ((metadataResponse.data as any)?.sheets || []).map((s: any) => String(s?.properties?.title || "").trim()).filter(Boolean);
+        out.sheetNames = sheetNames.length > 0 ? sheetNames : ["KELUARGA"];
+
+        for (const sheetName of out.sheetNames) {
+          try {
+            const readResponse = await supabase.functions.invoke("google-sheets", {
+              body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "read", range: `'${sheetName}'` },
+            });
+            if (readResponse.error) {
+              out.perSheetRows.push({ sheetName, rows: 0, error: readResponse.error });
+              out.errors.push({ sheetName, error: readResponse.error });
+              continue;
+            }
+            const values: string[][] = ((readResponse.data as any)?.values || []).map((row: any[]) => (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell))));
+
+            // Attempt to detect header row and sample headers + column indices for debugging
+            const headerLimit = Math.min(8, values.length);
+            let headerIndex = 0;
+            let bestScore = -1;
+            for (let i = 0; i < headerLimit; i += 1) {
+              const row = values[i] || [];
+              const filled = row.filter((cell) => String(cell).trim() !== "");
+              const textual = filled.filter((cell) => !/^[-+]?\d[\d.,%\s]*$/.test(String(cell).trim()));
+              const score = textual.length * 2 + filled.length;
+              if (score > bestScore) {
+                bestScore = score;
+                headerIndex = i;
+              }
+            }
+
+            const headerRow = values[headerIndex] || [];
+            const columnCount = values.reduce((max, row) => Math.max(max, row.length), headerRow.length);
+            const headers: string[] = [];
+            for (let i = 0; i < columnCount; i += 1) headers.push(String(headerRow[i] || "").trim() || `Kolom ${i + 1}`);
+
+            const kecamatanIndex = findColumnIndex(headers, ["kecamatan", "nama kecamatan", "kec", "wilayah"]);
+            const desaIndex = findColumnIndex(headers, ["desa", "desa kelurahan", "kelurahan", "sls"]);
+            const prelistIndex = findColumnIndex(headers, ["prelist awal", "prelist", "prelistawal", "target", "wilkerstat"]);
+            const assignmentIndex = findColumnIndex(headers, ["assignment", "assignment didata", "responden didata", "didata", "responden"]);
+            const totalHasilIndex = findColumnIndex(headers, ["total hasil pendataan", "total_hasil_pendataan", "total hasil", "totalhasil"]);
+
+            out.perSheetRows.push({
+              sheetName,
+              rows: (values || []).length,
+              headerIndex,
+              headers: headers.slice(0, 20),
+              indices: { kecamatanIndex, desaIndex, prelistIndex, assignmentIndex, totalHasilIndex },
+            });
+          } catch (err) {
+            out.perSheetRows.push({ sheetName, rows: 0, error: String(err) });
+            out.errors.push({ sheetName, error: String(err) });
+          }
+        }
+      } catch (err) {
+        out.errors.push({ global: String(err) });
+      }
+      return out;
     },
   });
 
@@ -491,8 +739,17 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
   const [kecamatanFilter, setKecamatanFilter] = useState("all");
   const [sortKey, setSortKey] = useState<string>("prelist_awal");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [itemsPerPage, setItemsPerPage] = useState<number>(DEFAULT_ITEMS_PER_PAGE);
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
 
   const stackingMap = stackingMapData ?? new Map<string, { namaPpl: string; kecamatan: string }>();
   const rows = useMemo(() => {
@@ -503,10 +760,11 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
       .map((rawRow, rowIndex) => {
         const row = Array.isArray((rawRow as any)?.values) ? (rawRow as any).values : (rawRow as any)?.slice?.() ?? [];
         const rawRowArray = Array.isArray((rawRow as any)?.__rawRow) ? (rawRow as any).__rawRow : row;
-        const kodeFromRow = getRawRowId16(rawRowArray) || getStackingKey(rawRowArray) || findExact16DigitKey(rawRowArray) || findExact16DigitKey(rawRowArray.slice(0, 20));
-        const directId = getHeaderValue(row, headers, ["id sls", "id_sub_sls", "id sub sls", "idsubsls", "kode sls", "kode_sls", "kode", "idsls"], 0);
-        const matchingKey = findMatchingStackingKey(directId, stackingMap) || findMatchingStackingKey(kodeFromRow, stackingMap) || "";
-        const candidateCode = matchingKey || normalizeStackingKey(directId) || normalizeStackingKey(kodeFromRow);
+        const candidateHeaderId = getHeaderValue(row, headers, ["id sls", "id_sub_sls", "id sub sls", "idsubsls", "kode sls", "kode_sls", "kode", "idsls"], 0);
+        const candidateColumnA = String(rawRowArray[0] ?? "");
+        const kodeFromRow = normalizeStackingKey(candidateHeaderId) || normalizeStackingKey(candidateColumnA);
+        const matchingKey = findMatchingStackingKey(candidateHeaderId, stackingMap) || findMatchingStackingKey(kodeFromRow, stackingMap) || "";
+        const candidateCode = matchingKey || normalizeStackingKey(candidateHeaderId) || normalizeStackingKey(candidateColumnA);
         if (candidateCode.length !== 16) return null;
         const kode = candidateCode;
         const subSls = getHeaderValue(row, headers, ["sub sls", "sub-sls", "sub_sls", "id sub sls", "idsubsls", "sub satuan lingkungan"], 1);
@@ -531,6 +789,7 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           ditemukan: parseNumericValue(getHeaderValue(row, headers, ["ditemukan"], 3)),
           persentase_ditemukan: parseNumericValue(getHeaderValue(row, headers, ["persentase ditemukan", "persen ditemukan", "% ditemukan", "ditemukan %", "ditemukanpersen"], 4)),
           keluarga_baru: parseNumericValue(getHeaderValue(row, headers, ["keluarga baru", "keluarga_baru"], 5)),
+          // will compute persentase_keluarga_baru below once prelist_awal and keluarga_baru are available
           meninggal: parseNumericValue(getHeaderValue(row, headers, ["meninggal"], 6)),
           persentase_meninggal: parseNumericValue(getHeaderValue(row, headers, ["persentase meninggal", "% meninggal", "meninggal %"], 7)),
           tidak_eligible: parseNumericValue(getHeaderValue(row, headers, ["tidak eligible", "tidak_eligible", "tidak eligible keluarga"], 8)),
@@ -544,6 +803,9 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           total_hasil_pendataan: parseNumericValue(getHeaderValue(row, headers, ["total hasil pendataan", "total_hasil_pendataan"], 16)),
           persentase_total_hasil_pendataan: parseNumericValue(getHeaderValue(row, headers, ["persentase total hasil pendataan", "% total hasil pendataan", "total hasil pendataan %"], 17)),
         };
+
+        // percentage for keluarga baru (per-row)
+        (item as any).persentase_keluarga_baru = item.prelist_awal > 0 ? (item.keluarga_baru / item.prelist_awal) * 100 : 0;
 
         if (!item.kecamatan || item.kecamatan === "-") {
           item.kecamatan = "-";
@@ -567,6 +829,7 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
         keluarga_baru: number;
         meninggal: number;
         persentase_meninggal: number;
+        persentase_keluarga_baru: number;
         tidak_eligible: number;
         persentase_tidak_eligible: number;
         tidak_dapat_ditemui: number;
@@ -635,6 +898,7 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
       ...group,
       persentase_ditemukan: group.prelist_awal > 0 ? (group.ditemukan / group.prelist_awal) * 100 : 0,
       persentase_meninggal: group.prelist_awal > 0 ? (group.meninggal / group.prelist_awal) * 100 : 0,
+      persentase_keluarga_baru: group.prelist_awal > 0 ? (group.keluarga_baru / group.prelist_awal) * 100 : 0,
       persentase_tidak_eligible: group.prelist_awal > 0 ? (group.tidak_eligible / group.prelist_awal) * 100 : 0,
       persentase_tidak_dapat_ditemui: group.prelist_awal > 0 ? (group.tidak_dapat_ditemui / group.prelist_awal) * 100 : 0,
       persentase_tidak_ditemukan: group.prelist_awal > 0 ? (group.tidak_ditemukan / group.prelist_awal) * 100 : 0,
@@ -662,16 +926,21 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
   const sortedRows = useMemo(() => {
     const rowsToSort = [...filteredRows];
     rowsToSort.sort((a, b) => {
-      const left = Number((a as any)[sortKey] ?? 0);
-      const right = Number((b as any)[sortKey] ?? 0);
-      return sortDir === "asc" ? left - right : right - left;
+      const va = (a as any)[sortKey];
+      const vb = (b as any)[sortKey];
+      const na = Number(va);
+      const nb = Number(vb);
+      let cmp = 0;
+      if (Number.isFinite(na) && Number.isFinite(nb)) cmp = na - nb;
+      else cmp = String(va ?? "").localeCompare(String(vb ?? ""), "id-ID", { numeric: true });
+      return sortDir === "asc" ? cmp : -cmp;
     });
     return rowsToSort;
   }, [filteredRows, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / ITEMS_PER_PAGE));
+    const totalPages = Math.max(1, Math.ceil(sortedRows.length / itemsPerPage));
   const effectivePage = Math.min(currentPage, totalPages);
-  const paginatedRows = sortedRows.slice((effectivePage - 1) * ITEMS_PER_PAGE, effectivePage * ITEMS_PER_PAGE);
+  const paginatedRows = sortedRows.slice((effectivePage - 1) * itemsPerPage, effectivePage * itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -699,6 +968,13 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
   const formatMetric = (value: number, percentMode = false) => {
     if (percentMode) return `${value.toFixed(2).replace(".", ",")}%`;
     return value.toLocaleString("id-ID");
+  };
+
+  const getPercentColorClass = (value: number | string | undefined) => {
+    const numeric = Number(value ?? 0);
+    if (numeric >= 100) return "text-emerald-600";
+    if (numeric >= 50) return "text-orange-600";
+    return "text-rose-600";
   };
 
   const loading = isPending && fetchStatus !== "idle";
@@ -775,27 +1051,44 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           <TableHeader>
             <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-2 border-slate-300">
               <TableHead className="sticky left-0 z-30 w-12 min-w-[48px] bg-slate-50 text-center text-slate-700 font-semibold">No</TableHead>
-              <TableHead className="sticky left-12 z-30 w-[180px] min-w-[180px] max-w-[180px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Nama PPL</TableHead>
-              <TableHead className="sticky left-[228px] z-30 w-[220px] min-w-[220px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Kecamatan</TableHead>
-              <TableHead onClick={() => setSortKey("prelist_awal")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Prelist Awal</TableHead>
-              <TableHead onClick={() => setSortKey("ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Ditemukan</TableHead>
-              <TableHead onClick={() => setSortKey("persentase_ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">% Ditemukan</TableHead>
-              <TableHead onClick={() => setSortKey("keluarga_baru")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Keluarga Baru</TableHead>
-              <TableHead onClick={() => setSortKey("meninggal")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Meninggal</TableHead>
-              <TableHead onClick={() => setSortKey("tidak_dapat_ditemui")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Tidak Dapat Ditemui</TableHead>
-              <TableHead onClick={() => setSortKey("tidak_ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Tidak Ditemukan</TableHead>
-              <TableHead onClick={() => setSortKey("total_hasil_pendataan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Total Hasil</TableHead>
+              <TableHead onClick={() => handleSort("nama_ppl")} className="sticky left-12 z-30 w-[180px] min-w-[180px] max-w-[180px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 whitespace-nowrap cursor-pointer">Nama PPL</TableHead>
+              <TableHead onClick={() => handleSort("kecamatan")} className="sticky left-[228px] z-30 w-[220px] min-w-[220px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 whitespace-nowrap cursor-pointer">Kecamatan</TableHead>
+              <TableHead onClick={() => handleSort("prelist_awal")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Prelist Awal</TableHead>
+              <TableHead onClick={() => handleSort("ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                <div>Ditemukan</div>
+                <div className="text-xs text-slate-500">% Ditemukan</div>
+              </TableHead>
+              <TableHead onClick={() => handleSort("keluarga_baru")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                <div>Keluarga Baru</div>
+                <div className="text-xs text-slate-500">% Keluarga Baru</div>
+              </TableHead>
+              <TableHead onClick={() => handleSort("meninggal")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                <div>Meninggal</div>
+                <div className="text-xs text-slate-500">% Meninggal</div>
+              </TableHead>
+              <TableHead onClick={() => handleSort("tidak_dapat_ditemui")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                <div>Tidak Dapat Ditemui</div>
+                <div className="text-xs text-slate-500">% Tidak Dapat Ditemui</div>
+              </TableHead>
+              <TableHead onClick={() => handleSort("tidak_ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                <div>Tidak Ditemukan</div>
+                <div className="text-xs text-slate-500">% Tidak Ditemukan</div>
+              </TableHead>
+              <TableHead onClick={() => handleSort("total_hasil_pendataan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                <div>Total Hasil</div>
+                <div className="text-xs text-slate-500">% Total Hasil</div>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedRows.map((group, index) => {
-              const rowNumber = (effectivePage - 1) * ITEMS_PER_PAGE + index + 1;
+              const rowNumber = (effectivePage - 1) * itemsPerPage + index + 1;
               const expanded = expandedGroups.has(group.id);
               const totalChildren = group.children.length;
               return (
                 <React.Fragment key={group.id}>
                   <TableRow className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                    <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-white text-center text-slate-600 font-medium">{rowNumber}</TableCell>
+                        <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-white text-center text-slate-600 font-medium">{rowNumber}</TableCell>
                     <TableCell className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-white text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2 whitespace-nowrap" onClick={() => {
                       setExpandedGroups((prev) => {
                         const next = new Set(prev);
@@ -804,22 +1097,35 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                         return next;
                       });
                     }}>
-                      {totalChildren > 1 ? (
-                        expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
-                      ) : (
-                        <span className="h-4 w-4" />
-                      )}
+                      {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                       <span>{group.nama_ppl}</span>
                     </TableCell>
                     <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-white text-slate-900 px-4 py-3 whitespace-nowrap">{group.kecamatan}</TableCell>
                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.prelist_awal)}</TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.ditemukan)}</TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.persentase_ditemukan, true)}</TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.keluarga_baru)}</TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.meninggal)}</TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.tidak_dapat_ditemui)}</TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.tidak_ditemukan)}</TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.total_hasil_pendataan)}</TableCell>
+                    <TableCell className="text-right px-4 py-3">
+                      <div className="font-semibold text-slate-900">{formatMetric(group.ditemukan)}</div>
+                      <div className="text-xs text-slate-600">{formatMetric(group.persentase_ditemukan, true)}</div>
+                    </TableCell>
+                    <TableCell className="text-right px-4 py-3">
+                      <div className="font-semibold text-slate-900">{formatMetric(group.keluarga_baru)}</div>
+                      <div className="text-xs text-slate-600">{formatMetric((group as any).persentase_keluarga_baru ?? 0, true)}</div>
+                    </TableCell>
+                    <TableCell className="text-right px-4 py-3">
+                      <div className="font-semibold text-slate-900">{formatMetric(group.meninggal)}</div>
+                      <div className="text-xs text-slate-600">{formatMetric(group.persentase_meninggal, true)}</div>
+                    </TableCell>
+                    <TableCell className="text-right px-4 py-3">
+                      <div className="font-semibold text-slate-900">{formatMetric(group.tidak_dapat_ditemui)}</div>
+                      <div className="text-xs text-slate-600">{formatMetric(group.persentase_tidak_dapat_ditemui, true)}</div>
+                    </TableCell>
+                    <TableCell className="text-right px-4 py-3">
+                      <div className="font-semibold text-slate-900">{formatMetric(group.tidak_ditemukan)}</div>
+                      <div className="text-xs text-slate-600">{formatMetric(group.persentase_tidak_ditemukan, true)}</div>
+                    </TableCell>
+                    <TableCell className="text-right px-4 py-3">
+                      <div className="font-semibold text-slate-900">{formatMetric(group.total_hasil_pendataan)}</div>
+                      <div className={`text-xs ${getPercentColorClass(group.persentase_total_hasil_pendataan)}`}>{formatMetric(group.persentase_total_hasil_pendataan, true)}</div>
+                    </TableCell>
                   </TableRow>
 
                   {expanded && group.children
@@ -830,18 +1136,135 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                       <TableCell className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-slate-50 text-sm text-slate-700 px-4 py-2 pl-8 italic">{child.kode}</TableCell>
                       <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-slate-50 text-sm text-slate-600 px-4 py-2">{child.sub_sls}</TableCell>
                       <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.prelist_awal)}</TableCell>
-                      <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.ditemukan)}</TableCell>
-                      <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.persentase_ditemukan, true)}</TableCell>
-                      <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.keluarga_baru)}</TableCell>
-                      <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.meninggal)}</TableCell>
-                      <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.tidak_dapat_ditemui)}</TableCell>
-                      <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.tidak_ditemukan)}</TableCell>
-                      <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.total_hasil_pendataan)}</TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-medium text-slate-900">{formatMetric(child.ditemukan)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(child.persentase_ditemukan, true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-medium text-slate-900">{formatMetric(child.keluarga_baru)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric((child as any).persentase_keluarga_baru ?? 0, true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-medium text-slate-900">{formatMetric(child.meninggal)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(child.persentase_meninggal, true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-medium text-slate-900">{formatMetric(child.tidak_dapat_ditemui)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(child.persentase_tidak_dapat_ditemui, true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-medium text-slate-900">{formatMetric(child.tidak_ditemukan)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(child.persentase_tidak_ditemukan, true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-medium text-slate-900">{formatMetric(child.total_hasil_pendataan)}</div>
+                        <div className={`text-xs ${getPercentColorClass(child.persentase_total_hasil_pendataan)}`}>{formatMetric(child.persentase_total_hasil_pendataan, true)}</div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </React.Fragment>
               );
             })}
+          </TableBody>
+          <TableBody>
+            {/* Summary: Jumlah sesuai tampilan (paginated) */}
+            {
+              (() => {
+                const sum = (rows: typeof paginatedRows, key: string) => rows.reduce((s, r) => s + Number((r as any)[key] ?? 0), 0);
+                const p = paginatedRows;
+                const pre = sum(p, "prelist_awal");
+                const ditem = sum(p, "ditemukan");
+                const kb = sum(p, "keluarga_baru");
+                const men = sum(p, "meninggal");
+                const tdt = sum(p, "tidak_dapat_ditemui");
+                const tdn = sum(p, "tidak_ditemukan");
+                const tot = sum(p, "total_hasil_pendataan");
+                const pct = (num: number) => (pre > 0 ? (num / pre) * 100 : 0);
+                return (
+                  <>
+                    <TableRow className="bg-slate-100 border-t border-slate-200">
+                      <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-slate-100 text-center text-slate-700 font-semibold"> </TableCell>
+                      <TableCell className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-slate-100 text-slate-700 px-4 py-2">Jumlah sesuai tampilan</TableCell>
+                      <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-slate-100 text-slate-700 px-4 py-2"> </TableCell>
+                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(pre)}</TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-semibold text-slate-900">{formatMetric(ditem)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(pct(ditem), true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-semibold text-slate-900">{formatMetric(kb)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(pct(kb), true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-semibold text-slate-900">{formatMetric(men)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(pct(men), true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-semibold text-slate-900">{formatMetric(tdt)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(pct(tdt), true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-semibold text-slate-900">{formatMetric(tdn)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(pct(tdn), true)}</div>
+                      </TableCell>
+                      <TableCell className="text-right px-4 py-2">
+                        <div className="font-semibold text-slate-900">{formatMetric(tot)}</div>
+                        <div className="text-xs text-slate-600">{formatMetric(pct(tot), true)}</div>
+                      </TableCell>
+                    </TableRow>
+                    {/* Summary: Jumlah Keseluruhan (filteredRows) */}
+                    <TableRow className="bg-slate-200 border-t border-slate-200">
+                      <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-slate-200 text-center text-slate-700 font-semibold"> </TableCell>
+                      <TableCell className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-slate-200 text-slate-700 px-4 py-2">Jumlah Keseluruhan</TableCell>
+                      <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-slate-200 text-slate-700 px-4 py-2"> </TableCell>
+                      {
+                        (() => {
+                          const sumAll = (rows: typeof filteredRows, key: string) => rows.reduce((s, r) => s + Number((r as any)[key] ?? 0), 0);
+                          const all = filteredRows;
+                          const preAll = sumAll(all, "prelist_awal");
+                          const ditemAll = sumAll(all, "ditemukan");
+                          const kbAll = sumAll(all, "keluarga_baru");
+                          const menAll = sumAll(all, "meninggal");
+                          const tdtAll = sumAll(all, "tidak_dapat_ditemui");
+                          const tdnAll = sumAll(all, "tidak_ditemukan");
+                          const totAll = sumAll(all, "total_hasil_pendataan");
+                          const pctAll = (num: number) => (preAll > 0 ? (num / preAll) * 100 : 0);
+                          return (
+                            <>
+                              <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(preAll)}</TableCell>
+                              <TableCell className="text-right px-4 py-2">
+                                <div className="font-semibold text-slate-900">{formatMetric(ditemAll)}</div>
+                                <div className="text-xs text-slate-600">{formatMetric(pctAll(ditemAll), true)}</div>
+                              </TableCell>
+                              <TableCell className="text-right px-4 py-2">
+                                <div className="font-semibold text-slate-900">{formatMetric(kbAll)}</div>
+                                <div className="text-xs text-slate-600">{formatMetric(pctAll(kbAll), true)}</div>
+                              </TableCell>
+                              <TableCell className="text-right px-4 py-2">
+                                <div className="font-semibold text-slate-900">{formatMetric(menAll)}</div>
+                                <div className="text-xs text-slate-600">{formatMetric(pctAll(menAll), true)}</div>
+                              </TableCell>
+                              <TableCell className="text-right px-4 py-2">
+                                <div className="font-semibold text-slate-900">{formatMetric(tdtAll)}</div>
+                                <div className="text-xs text-slate-600">{formatMetric(pctAll(tdtAll), true)}</div>
+                              </TableCell>
+                              <TableCell className="text-right px-4 py-2">
+                                <div className="font-semibold text-slate-900">{formatMetric(tdnAll)}</div>
+                                <div className="text-xs text-slate-600">{formatMetric(pctAll(tdnAll), true)}</div>
+                              </TableCell>
+                              <TableCell className="text-right px-4 py-2">
+                                <div className="font-semibold text-slate-900">{formatMetric(totAll)}</div>
+                                <div className="text-xs text-slate-600">{formatMetric(pctAll(totAll), true)}</div>
+                              </TableCell>
+                            </>
+                          );
+                        })()
+                      }
+                    </TableRow>
+                  </>
+                );
+              })()
+            }
           </TableBody>
         </Table>
       </div>
@@ -864,6 +1287,19 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           >
             Berikutnya
           </button>
+          <div className="ml-3 flex items-center gap-2">
+            <label className="text-sm text-slate-600">Per halaman</label>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-700"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
         </div>
         <div className="text-sm text-slate-600">Halaman {effectivePage} dari {totalPages}</div>
       </div>
@@ -885,19 +1321,17 @@ const KeluargaTab = () => {
   const loading = isPending && fetchStatus !== "idle";
 
   return (
-    <Card className="border-0 shadow-sm">
-      <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-slate-50">
-        <div className="flex items-center gap-2">
-          <div className="rounded-lg bg-purple-100 p-2 text-purple-700">
-            <Users className="h-4 w-4" />
-          </div>
-          <div>
-            <CardTitle className="text-base">Pemutakhiran Keluarga</CardTitle>
-            <CardDescription>Monitoring pemutakhiran keluarga per petugas dan wilayah</CardDescription>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <div className="rounded-lg bg-purple-100 p-2 text-purple-700">
+          <Users className="h-4 w-4" />
         </div>
-      </CardHeader>
-      <CardContent className="p-6">
+        <div>
+          <h2 className="text-base font-semibold">Pemutakhiran Keluarga</h2>
+          <p className="text-sm text-slate-600">Monitoring pemutakhiran keluarga per petugas dan wilayah</p>
+        </div>
+      </div>
+      <div className="space-y-6">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
@@ -933,8 +1367,8 @@ const KeluargaTab = () => {
             ))}
           </Tabs>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

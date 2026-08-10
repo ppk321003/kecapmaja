@@ -14,7 +14,7 @@ import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Resp
 import * as XLSX from "xlsx";
 import IdentifikasiUTTTab from "./IdentifikasiUTTTab";
 import SkalaUsahaTab from "./SkalaUsahaTab";
-import KeluargaTab, { KELUARGA_SPREADSHEET_ID, useKeluargaDashboardSummary } from "./KeluargaTab";
+import KeluargaTab, { KELUARGA_SPREADSHEET_ID, useKeluargaDashboardSummary, useKeluargaDebugInfo } from "./KeluargaTab";
 
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
@@ -358,6 +358,12 @@ const getColorForPercentage = (percentage: number): string => {
   return "#dc2626";
 };
 
+const getColorForPemutakhiranPercentage = (percentage: number): string => {
+  if (percentage >= 100) return "#15803d";
+  if (percentage >= 50) return "#f97316";
+  return "#dc2626";
+};
+
 const getColorForProporsiChart = (percentage: number): string => {
   if (percentage > 100) return "#15803d";
   if (percentage >= 50) return "#f97316";
@@ -650,12 +656,13 @@ export default function MonitoringLapanganDash() {
   const { data: monitoringSheetData, loading: monitoringSheetLoading, error: monitoringSheetError } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: "REKAP_SCRP",
-    enabled: tabVisited("capaian-kinerja"),
+    // enable when capaian-kinerja tab OR dashboard is visited so mapping is available for dashboard calculations
+    enabled: tabVisited("capaian-kinerja") || tabVisited("dashboard"),
   });
   const { data: monitoringUsersData, loading: monitoringUsersLoading, error: monitoringUsersError } = useGoogleSheetsData({
     spreadsheetId: MONITORING_LAPANGAN_SPREADSHEET_ID,
     sheetName: "Semua Users",
-    enabled: tabVisited("capaian-kinerja") || tabVisited("umkm-sosek"),
+    enabled: tabVisited("capaian-kinerja") || tabVisited("umkm-sosek") || tabVisited("dashboard"),
   });
   const { data: afirmasiData, loading: afirmasiLoading, error: afirmasiError } = useGoogleSheetsData({
     spreadsheetId: RECRUITMENT_SPREADSHEET_ID,
@@ -793,12 +800,6 @@ export default function MonitoringLapanganDash() {
   const { user } = useAuth();
   const isLoggedIn = !!user?.username;
   const isPpk = user?.role === "Pejabat Pembuat Komitmen";
-
-  useEffect(() => {
-    if (!isPpk && activeTab === "keluarga") {
-      setActiveTab("dashboard");
-    }
-  }, [activeTab, isPpk]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedPPL, setExpandedPPL] = useState<Set<string>>(new Set());
@@ -3541,12 +3542,131 @@ export default function MonitoringLapanganDash() {
   const [chartRespondenDivisor, setChartRespondenDivisor] = useState<"prelist" | "wilkerstat">("prelist");
   const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat">("prelist");
 
-  const { data: keluargaDashboardSummary = [] } = useKeluargaDashboardSummary(tabVisited("dashboard"));
+  // Always enable fetching keluarga summary so dashboard chart can render data
+  const { data: keluargaDashboardSummary = [], isLoading: keluargaDashboardLoading } = useKeluargaDashboardSummary(true);
+
+  useEffect(() => {
+    try {
+      // Debug: log when keluarga summary is loaded so developer can inspect in browser console
+      console.debug("keluargaDashboardSummary loaded", {
+        length: Array.isArray(keluargaDashboardSummary) ? keluargaDashboardSummary.length : 0,
+        sample: Array.isArray(keluargaDashboardSummary) && keluargaDashboardSummary.length > 0 ? keluargaDashboardSummary[0] : null,
+      });
+    } catch (e) {
+      // ignore
+    }
+  }, [keluargaDashboardSummary]);
 
   const keluargaDashboardData = useMemo(() => {
+    // Prefer the processed KELUARGA summary (already aggregates and parses Prelist Awal / Total Hasil)
+    if (keluargaDashboardSummary && Array.isArray(keluargaDashboardSummary) && keluargaDashboardSummary.length > 0) {
+      const desaRows = keluargaDashboardSummary.map((row: any) => ({
+        kecamatan: row.kecamatan,
+        desa: row.desa,
+        prelistAwal: Number(row.prelistAwal) || 0,
+        totalHasil: Number(row.totalHasil) || 0,
+        persentasePemutakhiran: Number(row.persentasePemutakhiran) || 0,
+        label: row.desa === "-" ? row.kecamatan : row.desa,
+      }));
+
+      const kecMap = new Map<string, { kecamatan: string; prelist: number; totalHasil: number }>();
+      desaRows.forEach((d: any) => {
+        const existing = kecMap.get(d.kecamatan) || { kecamatan: d.kecamatan, prelist: 0, totalHasil: 0 };
+        existing.prelist += d.prelistAwal;
+        existing.totalHasil += d.totalHasil;
+        kecMap.set(d.kecamatan, existing);
+      });
+
+      const keluargaKecamatanStats = Array.from(kecMap.values()).map((item) => ({
+        kecamatan: item.kecamatan,
+        desa: "-",
+        prelistAwal: item.prelist,
+        totalHasil: item.totalHasil,
+        persentasePemutakhiran: item.prelist > 0 ? parseFloat(((item.totalHasil / item.prelist) * 100).toFixed(2)) : 0,
+        label: item.kecamatan,
+      }));
+
+      const rows = chartKecamatanFilter === "all"
+        ? keluargaKecamatanStats
+        : desaRows.filter((row: any) => String(row.kecamatan ?? "").trim().toLowerCase() === String(chartKecamatanFilter ?? "").trim().toLowerCase());
+
+      return [...rows]
+        .map((row: any) => ({
+          label: row.label,
+          kecamatan: row.kecamatan,
+          desa: row.desa,
+          prelistAwal: row.prelistAwal,
+          totalHasil: row.totalHasil,
+          persentasePemutakhiran: row.persentasePemutakhiran,
+        }))
+        .sort((a: any, b: any) => (chartSortOrder === "asc" ? a.persentasePemutakhiran - b.persentasePemutakhiran : b.persentasePemutakhiran - a.persentasePemutakhiran));
+    }
+
+    // Fallback: attempt to build from progresData + stackingData (legacy)
+    const keluargaDesaStats = (() => {
+      const progressTotals = new Map<string, { prelist: number; totalHasil: number }>();
+      (progresData || []).forEach((row: any) => {
+        const key = normalizeSheetKey(getSheetCellText(row, 0));
+        if (!key) return;
+        const rawPre = getSheetCellText(row, 2);
+        const rawTotal = getSheetCellText(row, 16);
+        const parsedPre = parseNumericValue(rawPre);
+        const parsedTotal = parseNumericValue(rawTotal);
+        const existing = progressTotals.get(key) || { prelist: 0, totalHasil: 0 };
+        existing.prelist += parsedPre;
+        existing.totalHasil += parsedTotal;
+        progressTotals.set(key, existing);
+      });
+
+      const seenKeys = new Set<string>();
+      const desaMap = new Map<string, { kecamatan: string; desa: string; prelist: number; totalHasil: number }>();
+
+      (stackingData || []).forEach((row: any) => {
+        const key = normalizeSheetKey(getSheetCellText(row, 3));
+        if (!key || seenKeys.has(key)) return;
+        seenKeys.add(key);
+        const kecamatan = toProperCase(getSheetCellText(row, 12));
+        const desa = toProperCase(getSheetCellText(row, 14)) || "-";
+        if (!kecamatan) return;
+        const totals = progressTotals.get(key) || { prelist: 0, totalHasil: 0 };
+        const mapKey = `${kecamatan}||${desa}`;
+        const existing = desaMap.get(mapKey) || { kecamatan, desa, prelist: 0, totalHasil: 0 };
+        existing.prelist += totals.prelist;
+        existing.totalHasil += totals.totalHasil;
+        desaMap.set(mapKey, existing);
+      });
+
+      return Array.from(desaMap.values()).map((item) => ({
+        kecamatan: item.kecamatan,
+        desa: item.desa,
+        prelistAwal: item.prelist,
+        totalHasil: item.totalHasil,
+        persentasePemutakhiran: item.prelist > 0 ? parseFloat(((item.totalHasil / item.prelist) * 100).toFixed(2)) : 0,
+        label: item.desa,
+      }));
+    })();
+
+    const keluargaKecamatanStats = (() => {
+      const map = new Map<string, { kecamatan: string; prelist: number; totalHasil: number }>();
+      keluargaDesaStats.forEach((d: any) => {
+        const existing = map.get(d.kecamatan) || { kecamatan: d.kecamatan, prelist: 0, totalHasil: 0 };
+        existing.prelist += d.prelistAwal;
+        existing.totalHasil += d.totalHasil;
+        map.set(d.kecamatan, existing);
+      });
+      return Array.from(map.values()).map((item) => ({
+        kecamatan: item.kecamatan,
+        desa: "-",
+        prelistAwal: item.prelist,
+        totalHasil: item.totalHasil,
+        persentasePemutakhiran: item.prelist > 0 ? parseFloat(((item.totalHasil / item.prelist) * 100).toFixed(2)) : 0,
+        label: item.kecamatan,
+      }));
+    })();
+
     const rows = chartKecamatanFilter === "all"
-      ? keluargaDashboardSummary
-      : keluargaDashboardSummary.filter((row: any) => row.kecamatan === chartKecamatanFilter);
+      ? keluargaKecamatanStats
+      : keluargaDesaStats.filter((row: any) => String(row.kecamatan ?? "").trim().toLowerCase() === String(chartKecamatanFilter ?? "").trim().toLowerCase());
 
     return [...rows]
       .map((row: any) => ({
@@ -3554,15 +3674,11 @@ export default function MonitoringLapanganDash() {
         kecamatan: row.kecamatan,
         desa: row.desa,
         prelistAwal: row.prelistAwal,
-        assignmentDidata: row.assignmentDidata,
+        totalHasil: row.totalHasil,
         persentasePemutakhiran: row.persentasePemutakhiran,
       }))
-      .sort((a: any, b: any) =>
-        chartSortOrder === "asc"
-          ? a.persentasePemutakhiran - b.persentasePemutakhiran
-          : b.persentasePemutakhiran - a.persentasePemutakhiran
-      );
-  }, [chartKecamatanFilter, chartSortOrder, keluargaDashboardSummary]);
+      .sort((a: any, b: any) => (chartSortOrder === "asc" ? a.persentasePemutakhiran - b.persentasePemutakhiran : b.persentasePemutakhiran - a.persentasePemutakhiran));
+  }, [chartKecamatanFilter, chartSortOrder, keluargaDashboardSummary, stackingData, progresData]);
 
   const keluargaDashboardAverage = keluargaDashboardData.length > 0
     ? keluargaDashboardData.reduce((total, row: any) => total + row.persentasePemutakhiran, 0) / keluargaDashboardData.length
@@ -3800,6 +3916,33 @@ export default function MonitoringLapanganDash() {
     </Dialog>
   );
 
+  function KeluargaDebugPanel() {
+    const { data: debug = null, isLoading, error } = useKeluargaDebugInfo(true) as any;
+
+    if (isLoading) return <div className="mt-2 text-xs text-slate-500">Memeriksa spreadsheet Keluarga...</div>;
+    if (error) return <div className="mt-2 text-xs text-rose-600">Error fetching debug info: {String((error as any)?.message || error)}</div>;
+
+    return (
+      <div className="mt-2 text-xs text-slate-700">
+        <div className="font-medium">Metadata response</div>
+        <pre className="mt-1 max-h-32 overflow-auto rounded bg-slate-50 p-2 text-xs">{JSON.stringify(debug?.metadataResponse?.data || debug?.metadataResponse || null, null, 2)}</pre>
+
+        <div className="mt-2 font-medium">Sheets read</div>
+        <ul className="list-disc pl-5">
+          {(debug?.perSheetRows || []).map((entry: any, idx: number) => (
+            <li key={idx}>
+              <span className="font-semibold">{entry.sheetName}</span>: {entry.rows ?? 0} rows {entry.error ? `(error: ${String(entry.error)})` : ""}
+            </li>
+          ))}
+        </ul>
+
+        {debug?.errors && debug.errors.length > 0 && (
+          <div className="mt-2 text-rose-600">Errors: <pre className="mt-1 max-h-24 overflow-auto rounded bg-slate-50 p-2 text-xs">{JSON.stringify(debug.errors, null, 2)}</pre></div>
+        )}
+      </div>
+    );
+  }
+
   const usahaLoading = usahaPerusahaanLoading || usahaKeluargaLoading || usahaProporsiLoading;
   const usahaError = usahaPerusahaanError || usahaKeluargaError || usahaProporsiError;
   const loading = stackingLoading || progresLoading || progresHeaderLoading;
@@ -3833,7 +3976,7 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="umkm-sosek" className="rounded-xl py-2 text-sm font-semibold">UMKM dan Sosek</TabsTrigger>
               <TabsTrigger value="pendataan-usaha" className="rounded-xl py-2 text-sm font-semibold">Pendataan Usaha</TabsTrigger>
               <TabsTrigger value="skala-usaha" className="rounded-xl py-2 text-sm font-semibold">Skala Usaha</TabsTrigger>
-              {isPpk && <TabsTrigger value="keluarga" className="rounded-xl py-2 text-sm font-semibold">Keluarga</TabsTrigger>}
+              <TabsTrigger value="keluarga" className="rounded-xl py-2 text-sm font-semibold">Keluarga</TabsTrigger>
               <TabsTrigger value="identifikasi-utt" className="rounded-xl py-2 text-sm font-semibold">Identifikasi UTT</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
             </TabsList>
@@ -3927,6 +4070,9 @@ export default function MonitoringLapanganDash() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Keluarga debug panel component - shows debug info when keluarga data missing */}
+              
               {/* Kecamatan Chart */}
               <Card className="border-0 shadow-sm">
                 <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-slate-50">
@@ -4349,15 +4495,29 @@ export default function MonitoringLapanganDash() {
                           className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
                         >
                           <option value="desc">Tertinggi → Terendah</option>
-                          <option value="asc">Terendah → Tertinggi</option>
+                          <option value="asc">Terendah → Terendah</option>
                         </select>
                       </div>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-6">
-                  {keluargaDashboardData.length === 0 ? (
-                    <div className="text-center py-12 text-slate-500">Tidak ada data keluarga untuk ditampilkan.</div>
+                  {keluargaDashboardLoading ? (
+                    <div className="text-center py-12 text-slate-500">Memuat data keluarga...</div>
+                  ) : keluargaDashboardData.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">
+                      <div>Tidak ada data keluarga untuk ditampilkan.</div>
+                      <div className="mt-4 text-xs text-slate-600 text-left max-w-3xl mx-auto">
+                        <div className="font-semibold">Debug: keluarga summary</div>
+                        <div>Length: {Array.isArray(keluargaDashboardSummary) ? keluargaDashboardSummary.length : "n/a"}</div>
+                        <pre className="mt-2 max-h-40 overflow-auto rounded bg-slate-50 p-2 text-xs">
+                          {JSON.stringify(Array.isArray(keluargaDashboardSummary) ? (keluargaDashboardSummary as any).slice(0, 5) : keluargaDashboardSummary, null, 2)}
+                        </pre>
+                        <div className="mt-2 font-semibold">Debug: google-sheets fetch</div>
+                        <KeluargaDebugPanel />
+                        <div className="mt-2 text-rose-600">(Hapus debug ini setelah verifikasi)</div>
+                      </div>
+                    </div>
                   ) : (
                     <ResponsiveContainer width="100%" height={440}>
                       <BarChart data={keluargaDashboardData} margin={{ top: 20, right: 30, left: 0, bottom: 90 }}>
@@ -4367,22 +4527,22 @@ export default function MonitoringLapanganDash() {
                         <Tooltip
                           content={
                             <ChartRatioTooltip
-                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
-                              pctKey="persentasePemutakhiran"
-                              pctLabel="Pemutakhiran Keluarga"
-                              valueKey="assignmentDidata"
-                              valueLabel="Assignment Didata"
-                              targetKey="prelistAwal"
-                              targetLabel="Target (Prelist Awal)"
-                              fontSize={chartFontSize}
-                            />
+                                  labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                                  pctKey="persentasePemutakhiran"
+                                  pctLabel="Pemutakhiran Keluarga"
+                                  valueKey="totalHasil"
+                                  valueLabel="Total Hasil"
+                                  targetKey="prelistAwal"
+                                  targetLabel="Target (Prelist Awal)"
+                                  fontSize={chartFontSize}
+                                />
                           }
                         />
                         <ReferenceLine y={keluargaDashboardAverage} stroke="#a78bfa" strokeWidth={2} strokeDasharray="5 5" label={{ value: `Rata-rata: ${keluargaDashboardAverage.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: chartFontSize }} />
                         <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                         <Bar dataKey="persentasePemutakhiran" name="Pemutakhiran Keluarga" radius={[8, 8, 0, 0]} label={{ position: "top", fill: "#1f2937", fontSize: chartFontSize, fontWeight: 600, formatter: (value: number) => `${value.toFixed(2)}%` }}>
                           {keluargaDashboardData.map((entry: any, index: number) => (
-                            <Cell key={`family-cell-${entry.label}-${index}`} fill={getColorForPercentage(entry.persentasePemutakhiran)} />
+                            <Cell key={`family-cell-${entry.label}-${index}`} fill={getColorForPemutakhiranPercentage(entry.persentasePemutakhiran)} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -4390,7 +4550,6 @@ export default function MonitoringLapanganDash() {
                   )}
                 </CardContent>
               </Card>
-
             </TabsContent>
             <TabsContent value="capaian-kinerja" className="space-y-6 mt-6">
               <Card className="border-0 shadow-sm">
@@ -5998,11 +6157,9 @@ export default function MonitoringLapanganDash() {
                 stackingWilkerstatByKey={stackingWilkerstatByKey}
               />
             </TabsContent>
-            {isPpk && (
-              <TabsContent value="keluarga" className="space-y-6 mt-6">
-                <KeluargaTab />
-              </TabsContent>
-            )}
+            <TabsContent value="keluarga" className="space-y-6 mt-6">
+              <KeluargaTab />
+            </TabsContent>
             <TabsContent value="identifikasi-utt" className="space-y-6 mt-6">
               <IdentifikasiUTTTab />
             </TabsContent>
