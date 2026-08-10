@@ -752,6 +752,21 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
   };
 
   const stackingMap = stackingMapData ?? new Map<string, { namaPpl: string; kecamatan: string }>();
+  const isAnggotaKeluargaSheet = normalizeKey(sheetName).includes("anggotakeluarga");
+  const isKeluargaKhususSheet = normalizeKey(sheetName).includes("keluargakhusus");
+  const isSpecialSheet = isAnggotaKeluargaSheet || isKeluargaKhususSheet;
+  const headerWrapClass = isSpecialSheet ? "whitespace-normal break-words leading-tight" : "whitespace-nowrap";
+  useEffect(() => {
+    if (isAnggotaKeluargaSheet) {
+      setSortKey("total_anggota_keluarga");
+    } else if (isKeluargaKhususSheet) {
+      setSortKey("jumlah_bangunan_keluarga_khusus_didata");
+    } else {
+      setSortKey("prelist_awal");
+    }
+    setSortDir("desc");
+  }, [isAnggotaKeluargaSheet, isKeluargaKhususSheet]);
+
   const rows = useMemo(() => {
     const baseRows = data?.rows ?? [];
     const headers = data?.headers ?? [];
@@ -779,17 +794,25 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
         const namaPpl = formatProperText(lookupNamaPpl || resolveDisplayValue(directNamaPpl, "-"));
         const kecamatan = formatProperText(lookupKecamatan || resolveDisplayValue(directKecamatan, "-"));
 
+        const prelistAwal = parseNumericValue(getHeaderValue(row, headers, ["prelist awal", "prelist_awal", "prelistawal", "prelist", "target prelist awal"], 2));
+        const ditemukan = parseNumericValue(getHeaderValue(row, headers, ["ditemukan"], 3));
+        const keluargaBaru = parseNumericValue(getHeaderValue(row, headers, ["keluarga baru", "keluarga_baru"], 5));
+        const totalHasilPendataan = parseNumericValue(getHeaderValue(row, headers, ["total hasil pendataan", "total_hasil_pendataan"], 16));
+        const jumlahBangunanKhususHasilPendataanPpl = parseNumericValue(getHeaderValue(row, headers, ["jumlah bangunan keluarga khusus hasil pendataan ppl", "bangunan keluarga khusus hasil pendataan ppl", "hasil pendataan ppl", "jumlah bangunan keluarga khusus hasil pendataan"], 2));
+        const jumlahBangunanKhususDidata = parseNumericValue(getHeaderValue(row, headers, ["jumlah bangunan keluarga khusus didata", "bangunan keluarga khusus didata", "didata", "jumlah didata"], 3));
+        const persentaseBangunanKhususDidata = parseNumericValue(getHeaderValue(row, headers, ["persentase bangunan keluarga khusus didata", "persentase didata", "persentase", "% didata"], 4));
+
         const item = {
           id: kode,
           kode: kode,
           sub_sls: subSls,
           nama_ppl: namaPpl,
           kecamatan: kecamatan,
-          prelist_awal: parseNumericValue(getHeaderValue(row, headers, ["prelist awal", "prelist_awal", "prelistawal", "prelist", "target prelist awal"], 2)),
-          ditemukan: parseNumericValue(getHeaderValue(row, headers, ["ditemukan"], 3)),
+          prelist_awal: prelistAwal,
+          ditemukan,
           persentase_ditemukan: parseNumericValue(getHeaderValue(row, headers, ["persentase ditemukan", "persen ditemukan", "% ditemukan", "ditemukan %", "ditemukanpersen"], 4)),
-          keluarga_baru: parseNumericValue(getHeaderValue(row, headers, ["keluarga baru", "keluarga_baru"], 5)),
-          // will compute persentase_keluarga_baru below once prelist_awal and keluarga_baru are available
+          keluarga_baru: keluargaBaru,
+          persentase_keluarga_baru: prelistAwal > 0 ? (keluargaBaru / prelistAwal) * 100 : 0,
           meninggal: parseNumericValue(getHeaderValue(row, headers, ["meninggal"], 6)),
           persentase_meninggal: parseNumericValue(getHeaderValue(row, headers, ["persentase meninggal", "% meninggal", "meninggal %"], 7)),
           tidak_eligible: parseNumericValue(getHeaderValue(row, headers, ["tidak eligible", "tidak_eligible", "tidak eligible keluarga"], 8)),
@@ -800,12 +823,18 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           persentase_tidak_ditemukan: parseNumericValue(getHeaderValue(row, headers, ["persentase tidak ditemukan", "% tidak ditemukan", "tidak ditemukan %"], 13)),
           nonrespon: parseNumericValue(getHeaderValue(row, headers, ["nonrespon", "non respon"], 14)),
           persentase_nonrespon: parseNumericValue(getHeaderValue(row, headers, ["persentase nonrespon", "% nonrespon", "nonrespon %"], 15)),
-          total_hasil_pendataan: parseNumericValue(getHeaderValue(row, headers, ["total hasil pendataan", "total_hasil_pendataan"], 16)),
+          total_hasil_pendataan: totalHasilPendataan,
           persentase_total_hasil_pendataan: parseNumericValue(getHeaderValue(row, headers, ["persentase total hasil pendataan", "% total hasil pendataan", "total hasil pendataan %"], 17)),
+          jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl: jumlahBangunanKhususHasilPendataanPpl,
+          jumlah_bangunan_keluarga_khusus_didata: jumlahBangunanKhususDidata,
+          persentase_bangunan_keluarga_khusus_didata: persentaseBangunanKhususDidata,
+          tinggal_bersama_keluarga: parseNumericValue(getHeaderValue(row, headers, ["tinggal bersama keluarga", "tinggal_bersama_keluarga"], 2)),
+          anggota_keluarga_baru: parseNumericValue(getHeaderValue(row, headers, ["anggota keluarga baru", "anggota_keluarga_baru"], 3)),
+          pindah_dalam_negeri: parseNumericValue(getHeaderValue(row, headers, ["pindah dalam negeri", "pindah_dalam_negeri", "dn"], 4)),
+          pindah_luar_negeri: parseNumericValue(getHeaderValue(row, headers, ["pindah luar negeri", "pindah_luar_negeri", "ln"], 5)),
+          anggota_keluarga_khusus: parseNumericValue(getHeaderValue(row, headers, ["anggota keluarga khusus", "anggota_keluarga_khusus"], 7)),
+          total_anggota_keluarga: parseNumericValue(getHeaderValue(row, headers, ["total anggota keluarga", "total_anggota_keluarga"], 8)),
         };
-
-        // percentage for keluarga baru (per-row)
-        (item as any).persentase_keluarga_baru = item.prelist_awal > 0 ? (item.keluarga_baru / item.prelist_awal) * 100 : 0;
 
         if (!item.kecamatan || item.kecamatan === "-") {
           item.kecamatan = "-";
@@ -817,50 +846,13 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
 
         return item;
       })
-      .filter(Boolean) as Array<{
-        id: string;
-        kode: string;
-        sub_sls: string;
-        nama_ppl: string;
-        kecamatan: string;
-        prelist_awal: number;
-        ditemukan: number;
-        persentase_ditemukan: number;
-        keluarga_baru: number;
-        meninggal: number;
-        persentase_meninggal: number;
-        persentase_keluarga_baru: number;
-        tidak_eligible: number;
-        persentase_tidak_eligible: number;
-        tidak_dapat_ditemui: number;
-        persentase_tidak_dapat_ditemui: number;
-        tidak_ditemukan: number;
-        persentase_tidak_ditemukan: number;
-        nonrespon: number;
-        persentase_nonrespon: number;
-        total_hasil_pendataan: number;
-        persentase_total_hasil_pendataan: number;
-      }>;
+      .filter(Boolean) as Array<any>;
   }, [data, stackingMap]);
 
   const groupedRows = useMemo(() => {
-    const map = new Map<string, {
-      id: string;
-      nama_ppl: string;
-      kecamatan: string;
-      children: typeof rows;
-      prelist_awal: number;
-      ditemukan: number;
-      keluarga_baru: number;
-      meninggal: number;
-      tidak_eligible: number;
-      tidak_dapat_ditemui: number;
-      tidak_ditemukan: number;
-      nonrespon: number;
-      total_hasil_pendataan: number;
-    }>();
+    const map = new Map<string, any>();
 
-    rows.forEach((row) => {
+    rows.forEach((row: any) => {
       const key = `${normalizeKey(row.nama_ppl)}|${normalizeKey(row.kecamatan)}`;
       const existing = map.get(key);
       if (!existing) {
@@ -869,32 +861,50 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           nama_ppl: row.nama_ppl,
           kecamatan: row.kecamatan,
           children: [row],
-          prelist_awal: row.prelist_awal,
-          ditemukan: row.ditemukan,
-          keluarga_baru: row.keluarga_baru,
-          meninggal: row.meninggal,
-          tidak_eligible: row.tidak_eligible,
-          tidak_dapat_ditemui: row.tidak_dapat_ditemui,
-          tidak_ditemukan: row.tidak_ditemukan,
-          nonrespon: row.nonrespon,
-          total_hasil_pendataan: row.total_hasil_pendataan,
+          prelist_awal: row.prelist_awal || 0,
+          ditemukan: row.ditemukan || 0,
+          keluarga_baru: row.keluarga_baru || 0,
+          meninggal: row.meninggal || 0,
+          tidak_eligible: row.tidak_eligible || 0,
+          tidak_dapat_ditemui: row.tidak_dapat_ditemui || 0,
+          tidak_ditemukan: row.tidak_ditemukan || 0,
+          nonrespon: row.nonrespon || 0,
+          total_hasil_pendataan: row.total_hasil_pendataan || 0,
+          jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl: row.jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl || 0,
+          jumlah_bangunan_keluarga_khusus_didata: row.jumlah_bangunan_keluarga_khusus_didata || 0,
+          persentase_bangunan_keluarga_khusus_didata: row.persentase_bangunan_keluarga_khusus_didata || 0,
+          tinggal_bersama_keluarga: row.tinggal_bersama_keluarga || 0,
+          anggota_keluarga_baru: row.anggota_keluarga_baru || 0,
+          pindah_dalam_negeri: row.pindah_dalam_negeri || 0,
+          pindah_luar_negeri: row.pindah_luar_negeri || 0,
+          anggota_keluarga_khusus: row.anggota_keluarga_khusus || 0,
+          total_anggota_keluarga: row.total_anggota_keluarga || 0,
         });
         return;
       }
 
       existing.children.push(row);
-      existing.prelist_awal += row.prelist_awal;
-      existing.ditemukan += row.ditemukan;
-      existing.keluarga_baru += row.keluarga_baru;
-      existing.meninggal += row.meninggal;
-      existing.tidak_eligible += row.tidak_eligible;
-      existing.tidak_dapat_ditemui += row.tidak_dapat_ditemui;
-      existing.tidak_ditemukan += row.tidak_ditemukan;
-      existing.nonrespon += row.nonrespon;
-      existing.total_hasil_pendataan += row.total_hasil_pendataan;
+      existing.prelist_awal += row.prelist_awal || 0;
+      existing.ditemukan += row.ditemukan || 0;
+      existing.keluarga_baru += row.keluarga_baru || 0;
+      existing.meninggal += row.meninggal || 0;
+      existing.tidak_eligible += row.tidak_eligible || 0;
+      existing.tidak_dapat_ditemui += row.tidak_dapat_ditemui || 0;
+      existing.tidak_ditemukan += row.tidak_ditemukan || 0;
+      existing.nonrespon += row.nonrespon || 0;
+      existing.total_hasil_pendataan += row.total_hasil_pendataan || 0;
+      existing.jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl += row.jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl || 0;
+      existing.jumlah_bangunan_keluarga_khusus_didata += row.jumlah_bangunan_keluarga_khusus_didata || 0;
+      existing.persentase_bangunan_keluarga_khusus_didata += row.persentase_bangunan_keluarga_khusus_didata || 0;
+      existing.tinggal_bersama_keluarga += row.tinggal_bersama_keluarga || 0;
+      existing.anggota_keluarga_baru += row.anggota_keluarga_baru || 0;
+      existing.pindah_dalam_negeri += row.pindah_dalam_negeri || 0;
+      existing.pindah_luar_negeri += row.pindah_luar_negeri || 0;
+      existing.anggota_keluarga_khusus += row.anggota_keluarga_khusus || 0;
+      existing.total_anggota_keluarga += row.total_anggota_keluarga || 0;
     });
 
-    return Array.from(map.values()).map((group) => ({
+    return Array.from(map.values()).map((group: any) => ({
       ...group,
       persentase_ditemukan: group.prelist_awal > 0 ? (group.ditemukan / group.prelist_awal) * 100 : 0,
       persentase_meninggal: group.prelist_awal > 0 ? (group.meninggal / group.prelist_awal) * 100 : 0,
@@ -904,6 +914,9 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
       persentase_tidak_ditemukan: group.prelist_awal > 0 ? (group.tidak_ditemukan / group.prelist_awal) * 100 : 0,
       persentase_nonrespon: group.prelist_awal > 0 ? (group.nonrespon / group.prelist_awal) * 100 : 0,
       persentase_total_hasil_pendataan: group.prelist_awal > 0 ? (group.total_hasil_pendataan / group.prelist_awal) * 100 : 0,
+      persentase_bangunan_keluarga_khusus_didata: group.jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl > 0
+        ? (group.jumlah_bangunan_keluarga_khusus_didata / group.jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl) * 100
+        : 0,
     }));
   }, [rows]);
 
@@ -947,22 +960,14 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
   }, [sheetName]);
 
   const numericColumns = [
-    "prelist_awal",
-    "ditemukan",
-    "persentase_ditemukan",
-    "keluarga_baru",
+    "tinggal_bersama_keluarga",
+    "anggota_keluarga_baru",
     "meninggal",
-    "persentase_meninggal",
-    "tidak_eligible",
-    "persentase_tidak_eligible",
-    "tidak_dapat_ditemui",
-    "persentase_tidak_dapat_ditemui",
+    "pindah_dalam_negeri",
+    "pindah_luar_negeri",
     "tidak_ditemukan",
-    "persentase_tidak_ditemukan",
-    "nonrespon",
-    "persentase_nonrespon",
-    "total_hasil_pendataan",
-    "persentase_total_hasil_pendataan",
+    "anggota_keluarga_khusus",
+    "total_anggota_keluarga",
   ] as const;
 
   const formatMetric = (value: number, percentMode = false) => {
@@ -1050,34 +1055,77 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-2 border-slate-300">
-              <TableHead className="sticky left-0 z-30 w-12 min-w-[48px] bg-slate-50 text-center text-slate-700 font-semibold">No</TableHead>
-              <TableHead onClick={() => handleSort("nama_ppl")} className="sticky left-12 z-30 w-[180px] min-w-[180px] max-w-[180px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 whitespace-nowrap cursor-pointer">Nama PPL</TableHead>
-              <TableHead onClick={() => handleSort("kecamatan")} className="sticky left-[228px] z-30 w-[220px] min-w-[220px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 whitespace-nowrap cursor-pointer">Kecamatan</TableHead>
-              <TableHead onClick={() => handleSort("prelist_awal")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Prelist Awal</TableHead>
-              <TableHead onClick={() => handleSort("ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
-                <div>Ditemukan</div>
-                <div className="text-xs text-slate-500">% Ditemukan</div>
-              </TableHead>
-              <TableHead onClick={() => handleSort("keluarga_baru")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
-                <div>Keluarga Baru</div>
-                <div className="text-xs text-slate-500">% Keluarga Baru</div>
-              </TableHead>
-              <TableHead onClick={() => handleSort("meninggal")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
-                <div>Meninggal</div>
-                <div className="text-xs text-slate-500">% Meninggal</div>
-              </TableHead>
-              <TableHead onClick={() => handleSort("tidak_dapat_ditemui")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
-                <div>Tidak Dapat Ditemui</div>
-                <div className="text-xs text-slate-500">% Tidak Dapat Ditemui</div>
-              </TableHead>
-              <TableHead onClick={() => handleSort("tidak_ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
-                <div>Tidak Ditemukan</div>
-                <div className="text-xs text-slate-500">% Tidak Ditemukan</div>
-              </TableHead>
-              <TableHead onClick={() => handleSort("total_hasil_pendataan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
-                <div>Total Hasil</div>
-                <div className="text-xs text-slate-500">% Total Hasil</div>
-              </TableHead>
+              <TableHead className={`sticky left-0 z-30 w-12 min-w-[48px] bg-slate-50 text-center text-slate-700 font-semibold ${isSpecialSheet ? "whitespace-normal break-words leading-tight" : "whitespace-nowrap"}`}>No</TableHead>
+              <TableHead onClick={() => handleSort("nama_ppl")} className={`sticky left-12 z-30 w-[180px] min-w-[180px] max-w-[180px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 cursor-pointer ${isSpecialSheet ? "whitespace-normal break-words leading-tight" : "whitespace-nowrap"}`}>Nama PPL</TableHead>
+              <TableHead onClick={() => handleSort("kecamatan")} className={`sticky left-[228px] z-30 w-[220px] min-w-[220px] bg-slate-50 text-slate-700 font-semibold px-4 py-3 cursor-pointer ${isSpecialSheet ? "whitespace-normal break-words leading-tight" : "whitespace-nowrap"}`}>Kecamatan</TableHead>
+              {isAnggotaKeluargaSheet ? (
+                <>
+                  <TableHead onClick={() => handleSort("tinggal_bersama_keluarga")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Tinggal Bersama Keluarga
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("anggota_keluarga_baru")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Anggota Keluarga Baru
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("meninggal")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Meninggal
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("pindah_dalam_negeri")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Pindah Dalam Negeri (DN)
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("pindah_luar_negeri")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Pindah Luar Negeri (LN)
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("tidak_ditemukan")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Tidak Ditemukan
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("anggota_keluarga_khusus")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Anggota Keluarga Khusus
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("total_anggota_keluarga")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Total Anggota Keluarga
+                  </TableHead>
+                </>
+              ) : isKeluargaKhususSheet ? (
+                <>
+                  <TableHead onClick={() => handleSort("jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Jumlah Bangunan Keluarga Khusus Hasil Pendataan PPL
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("jumlah_bangunan_keluarga_khusus_didata")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Jumlah Bangunan Keluarga Khusus Didata
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("persentase_bangunan_keluarga_khusus_didata")} className={`cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 ${headerWrapClass}`}>
+                    Persentase Bangunan Keluarga Khusus Didata
+                  </TableHead>
+                </>
+              ) : (
+                <>
+                  <TableHead onClick={() => handleSort("prelist_awal")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">Prelist Awal</TableHead>
+                  <TableHead onClick={() => handleSort("ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                    <div>Ditemukan</div>
+                    <div className="text-xs text-slate-500">% Ditemukan</div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("keluarga_baru")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                    <div>Keluarga Baru</div>
+                    <div className="text-xs text-slate-500">% Keluarga Baru</div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("meninggal")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                    <div>Meninggal</div>
+                    <div className="text-xs text-slate-500">% Meninggal</div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("tidak_dapat_ditemui")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                    <div>Tidak Dapat Ditemui</div>
+                    <div className="text-xs text-slate-500">% Tidak Dapat Ditemui</div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("tidak_ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                    <div>Tidak Ditemukan</div>
+                    <div className="text-xs text-slate-500">% Tidak Ditemukan</div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("persentase_total_hasil_pendataan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                    <div>Total Hasil</div>
+                    <div className="text-xs text-slate-500">% Total Hasil</div>
+                  </TableHead>
+                </>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1085,11 +1133,13 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
               const rowNumber = (effectivePage - 1) * itemsPerPage + index + 1;
               const expanded = expandedGroups.has(group.id);
               const totalChildren = group.children.length;
+              const canToggle = totalChildren > 0;
               return (
                 <React.Fragment key={group.id}>
                   <TableRow className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
                         <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-white text-center text-slate-600 font-medium">{rowNumber}</TableCell>
-                    <TableCell className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-white text-slate-700 px-4 py-3 cursor-pointer hover:text-blue-600 flex items-center gap-2 whitespace-nowrap" onClick={() => {
+                    <TableCell className={`sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-white text-slate-700 px-4 py-3 flex items-center gap-2 whitespace-nowrap ${canToggle ? "cursor-pointer hover:text-blue-600" : "cursor-default"}`} onClick={() => {
+                      if (!canToggle) return;
                       setExpandedGroups((prev) => {
                         const next = new Set(prev);
                         if (next.has(group.id)) next.delete(group.id);
@@ -1097,35 +1147,74 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                         return next;
                       });
                     }}>
-                      {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
                       <span>{group.nama_ppl}</span>
                     </TableCell>
-                    <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-white text-slate-900 px-4 py-3 whitespace-nowrap">{group.kecamatan}</TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.prelist_awal)}</TableCell>
-                    <TableCell className="text-right px-4 py-3">
-                      <div className="font-semibold text-slate-900">{formatMetric(group.ditemukan)}</div>
-                      <div className="text-xs text-slate-600">{formatMetric(group.persentase_ditemukan, true)}</div>
-                    </TableCell>
-                    <TableCell className="text-right px-4 py-3">
-                      <div className="font-semibold text-slate-900">{formatMetric(group.keluarga_baru)}</div>
-                      <div className="text-xs text-slate-600">{formatMetric((group as any).persentase_keluarga_baru ?? 0, true)}</div>
-                    </TableCell>
-                    <TableCell className="text-right px-4 py-3">
-                      <div className="font-semibold text-slate-900">{formatMetric(group.meninggal)}</div>
-                      <div className="text-xs text-slate-600">{formatMetric(group.persentase_meninggal, true)}</div>
-                    </TableCell>
-                    <TableCell className="text-right px-4 py-3">
-                      <div className="font-semibold text-slate-900">{formatMetric(group.tidak_dapat_ditemui)}</div>
-                      <div className="text-xs text-slate-600">{formatMetric(group.persentase_tidak_dapat_ditemui, true)}</div>
-                    </TableCell>
-                    <TableCell className="text-right px-4 py-3">
-                      <div className="font-semibold text-slate-900">{formatMetric(group.tidak_ditemukan)}</div>
-                      <div className="text-xs text-slate-600">{formatMetric(group.persentase_tidak_ditemukan, true)}</div>
-                    </TableCell>
-                    <TableCell className="text-right px-4 py-3">
-                      <div className="font-semibold text-slate-900">{formatMetric(group.total_hasil_pendataan)}</div>
-                      <div className={`text-xs ${getPercentColorClass(group.persentase_total_hasil_pendataan)}`}>{formatMetric(group.persentase_total_hasil_pendataan, true)}</div>
-                    </TableCell>
+                    <TableCell className={`sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-white text-slate-900 px-4 py-3 ${isSpecialSheet ? "whitespace-normal break-words leading-tight" : "whitespace-nowrap"}`}>{group.kecamatan}</TableCell>
+                    {isAnggotaKeluargaSheet ? (
+                      <>
+                        <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.tinggal_bersama_keluarga)}</TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.anggota_keluarga_baru)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.meninggal)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.pindah_dalam_negeri)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.pindah_luar_negeri)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.tidak_ditemukan)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.anggota_keluarga_khusus)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.total_anggota_keluarga)}</div>
+                        </TableCell>
+                      </>
+                    ) : isKeluargaKhususSheet ? (
+                      <>
+                        <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl)}</TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.jumlah_bangunan_keluarga_khusus_didata)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.persentase_bangunan_keluarga_khusus_didata, true)}</div>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{formatMetric(group.prelist_awal)}</TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.ditemukan)}</div>
+                          <div className="text-xs text-slate-600">{formatMetric(group.persentase_ditemukan, true)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.keluarga_baru)}</div>
+                          <div className="text-xs text-slate-600">{formatMetric(group.persentase_keluarga_baru, true)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.meninggal)}</div>
+                          <div className="text-xs text-slate-600">{formatMetric(group.persentase_meninggal, true)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.tidak_dapat_ditemui)}</div>
+                          <div className="text-xs text-slate-600">{formatMetric(group.persentase_tidak_dapat_ditemui, true)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.tidak_ditemukan)}</div>
+                          <div className="text-xs text-slate-600">{formatMetric(group.persentase_tidak_ditemukan, true)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.total_hasil_pendataan)}</div>
+                          <div className={`text-xs ${getPercentColorClass(group.persentase_total_hasil_pendataan)}`}>{formatMetric(group.persentase_total_hasil_pendataan, true)}</div>
+                        </TableCell>
+                      </>
+                    )}
                   </TableRow>
 
                   {expanded && group.children
@@ -1134,32 +1223,71 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                     <TableRow key={`${group.id}-${child.id}-${childIndex}`} className="border-b border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
                       <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-slate-50 text-center text-slate-600"> </TableCell>
                       <TableCell className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-slate-50 text-sm text-slate-700 px-4 py-2 pl-8 italic">{child.kode}</TableCell>
-                      <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-slate-50 text-sm text-slate-600 px-4 py-2">{child.sub_sls}</TableCell>
-                      <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.prelist_awal)}</TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-medium text-slate-900">{formatMetric(child.ditemukan)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(child.persentase_ditemukan, true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-medium text-slate-900">{formatMetric(child.keluarga_baru)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric((child as any).persentase_keluarga_baru ?? 0, true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-medium text-slate-900">{formatMetric(child.meninggal)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(child.persentase_meninggal, true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-medium text-slate-900">{formatMetric(child.tidak_dapat_ditemui)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(child.persentase_tidak_dapat_ditemui, true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-medium text-slate-900">{formatMetric(child.tidak_ditemukan)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(child.persentase_tidak_ditemukan, true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-medium text-slate-900">{formatMetric(child.total_hasil_pendataan)}</div>
-                        <div className={`text-xs ${getPercentColorClass(child.persentase_total_hasil_pendataan)}`}>{formatMetric(child.persentase_total_hasil_pendataan, true)}</div>
-                      </TableCell>
+                      <TableCell className={`sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-slate-50 text-sm text-slate-600 px-4 py-2 ${isSpecialSheet ? "whitespace-normal break-words leading-tight" : "whitespace-nowrap"}`}>{child.sub_sls}</TableCell>
+                      {isAnggotaKeluargaSheet ? (
+                        <>
+                          <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.tinggal_bersama_keluarga)}</TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.anggota_keluarga_baru)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.meninggal)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.pindah_dalam_negeri)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.pindah_luar_negeri)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.tidak_ditemukan)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.anggota_keluarga_khusus)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.total_anggota_keluarga)}</div>
+                          </TableCell>
+                        </>
+                      ) : isKeluargaKhususSheet ? (
+                        <>
+                          <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl)}</TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.jumlah_bangunan_keluarga_khusus_didata)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.persentase_bangunan_keluarga_khusus_didata, true)}</div>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="text-right text-slate-900 px-4 py-2">{formatMetric(child.prelist_awal)}</TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.ditemukan)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(child.persentase_ditemukan, true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.keluarga_baru)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(child.persentase_keluarga_baru, true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.meninggal)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(child.persentase_meninggal, true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.tidak_dapat_ditemui)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(child.persentase_tidak_dapat_ditemui, true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.tidak_ditemukan)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(child.persentase_tidak_ditemukan, true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.total_hasil_pendataan)}</div>
+                            <div className={`text-xs ${getPercentColorClass(child.persentase_total_hasil_pendataan)}`}>{formatMetric(child.persentase_total_hasil_pendataan, true)}</div>
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))}
                 </React.Fragment>
@@ -1185,32 +1313,71 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                     <TableRow className="bg-slate-100 border-t border-slate-200">
                       <TableCell className="sticky left-0 z-20 w-12 min-w-[48px] bg-slate-100 text-center text-slate-700 font-semibold"> </TableCell>
                       <TableCell className="sticky left-12 z-20 w-[180px] min-w-[180px] max-w-[180px] bg-slate-100 text-slate-700 px-4 py-2">Jumlah sesuai tampilan</TableCell>
-                      <TableCell className="sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-slate-100 text-slate-700 px-4 py-2"> </TableCell>
-                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(pre)}</TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-semibold text-slate-900">{formatMetric(ditem)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(pct(ditem), true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-semibold text-slate-900">{formatMetric(kb)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(pct(kb), true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-semibold text-slate-900">{formatMetric(men)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(pct(men), true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-semibold text-slate-900">{formatMetric(tdt)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(pct(tdt), true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-semibold text-slate-900">{formatMetric(tdn)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(pct(tdn), true)}</div>
-                      </TableCell>
-                      <TableCell className="text-right px-4 py-2">
-                        <div className="font-semibold text-slate-900">{formatMetric(tot)}</div>
-                        <div className="text-xs text-slate-600">{formatMetric(pct(tot), true)}</div>
-                      </TableCell>
+                      <TableCell className={`sticky left-[228px] z-20 w-[220px] min-w-[220px] bg-slate-100 text-slate-700 px-4 py-2 ${isSpecialSheet ? "whitespace-normal break-words leading-tight" : "whitespace-nowrap"}`}> </TableCell>
+                      {isAnggotaKeluargaSheet ? (
+                        <>
+                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(sum(p, "tinggal_bersama_keluarga"))}</TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(sum(p, "anggota_keluarga_baru"))}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(sum(p, "meninggal"))}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(sum(p, "pindah_dalam_negeri"))}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(sum(p, "pindah_luar_negeri"))}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(sum(p, "tidak_ditemukan"))}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(sum(p, "anggota_keluarga_khusus"))}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(sum(p, "total_anggota_keluarga"))}</div>
+                          </TableCell>
+                        </>
+                      ) : isKeluargaKhususSheet ? (
+                        <>
+                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(sum(p, "jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl"))}</TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(sum(p, "jumlah_bangunan_keluarga_khusus_didata"))}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(sum(p, "jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl") > 0 ? (sum(p, "jumlah_bangunan_keluarga_khusus_didata") / sum(p, "jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl")) * 100 : 0, true)}</div>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(pre)}</TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(ditem)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(pct(ditem), true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(kb)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(pct(kb), true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(men)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(pct(men), true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(tdt)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(pct(tdt), true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(tdn)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(pct(tdn), true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(tot)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(pct(tot), true)}</div>
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                     {/* Summary: Jumlah Keseluruhan (filteredRows) */}
                     <TableRow className="bg-slate-200 border-t border-slate-200">
@@ -1221,41 +1388,72 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                         (() => {
                           const sumAll = (rows: typeof filteredRows, key: string) => rows.reduce((s, r) => s + Number((r as any)[key] ?? 0), 0);
                           const all = filteredRows;
-                          const preAll = sumAll(all, "prelist_awal");
-                          const ditemAll = sumAll(all, "ditemukan");
-                          const kbAll = sumAll(all, "keluarga_baru");
-                          const menAll = sumAll(all, "meninggal");
-                          const tdtAll = sumAll(all, "tidak_dapat_ditemui");
-                          const tdnAll = sumAll(all, "tidak_ditemukan");
-                          const totAll = sumAll(all, "total_hasil_pendataan");
-                          const pctAll = (num: number) => (preAll > 0 ? (num / preAll) * 100 : 0);
                           return (
                             <>
-                              <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(preAll)}</TableCell>
-                              <TableCell className="text-right px-4 py-2">
-                                <div className="font-semibold text-slate-900">{formatMetric(ditemAll)}</div>
-                                <div className="text-xs text-slate-600">{formatMetric(pctAll(ditemAll), true)}</div>
-                              </TableCell>
-                              <TableCell className="text-right px-4 py-2">
-                                <div className="font-semibold text-slate-900">{formatMetric(kbAll)}</div>
-                                <div className="text-xs text-slate-600">{formatMetric(pctAll(kbAll), true)}</div>
-                              </TableCell>
-                              <TableCell className="text-right px-4 py-2">
-                                <div className="font-semibold text-slate-900">{formatMetric(menAll)}</div>
-                                <div className="text-xs text-slate-600">{formatMetric(pctAll(menAll), true)}</div>
-                              </TableCell>
-                              <TableCell className="text-right px-4 py-2">
-                                <div className="font-semibold text-slate-900">{formatMetric(tdtAll)}</div>
-                                <div className="text-xs text-slate-600">{formatMetric(pctAll(tdtAll), true)}</div>
-                              </TableCell>
-                              <TableCell className="text-right px-4 py-2">
-                                <div className="font-semibold text-slate-900">{formatMetric(tdnAll)}</div>
-                                <div className="text-xs text-slate-600">{formatMetric(pctAll(tdnAll), true)}</div>
-                              </TableCell>
-                              <TableCell className="text-right px-4 py-2">
-                                <div className="font-semibold text-slate-900">{formatMetric(totAll)}</div>
-                                <div className="text-xs text-slate-600">{formatMetric(pctAll(totAll), true)}</div>
-                              </TableCell>
+                              {isAnggotaKeluargaSheet ? (
+                                <>
+                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(sumAll(all, "tinggal_bersama_keluarga"))}</TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "anggota_keluarga_baru"))}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "meninggal"))}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "pindah_dalam_negeri"))}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "pindah_luar_negeri"))}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "tidak_ditemukan"))}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "anggota_keluarga_khusus"))}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "total_anggota_keluarga"))}</div>
+                                  </TableCell>
+                                </>
+                              ) : isKeluargaKhususSheet ? (
+                                <>
+                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(sumAll(all, "jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl"))}</TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "jumlah_bangunan_keluarga_khusus_didata"))}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl") > 0 ? (sumAll(all, "jumlah_bangunan_keluarga_khusus_didata") / sumAll(all, "jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl")) * 100 : 0, true)}</div>
+                                  </TableCell>
+                                </>
+                              ) : (
+                                <>
+                                  <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{formatMetric(sumAll(all, "prelist_awal"))}</TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "ditemukan"))}</div>
+                                    <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "ditemukan") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "keluarga_baru"))}</div>
+                                    <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "keluarga_baru") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "meninggal"))}</div>
+                                    <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "meninggal") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "tidak_dapat_ditemui"))}</div>
+                                    <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "tidak_dapat_ditemui") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "tidak_ditemukan"))}</div>
+                                    <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "tidak_ditemukan") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "total_hasil_pendataan"))}</div>
+                                    <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "total_hasil_pendataan") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
+                                  </TableCell>
+                                </>
+                              )}
                             </>
                           );
                         })()
