@@ -4644,7 +4644,7 @@ export default function MonitoringLapanganDash() {
                       </div>
                     </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height={440}>
+                    <ResponsiveContainer width="100%" height={660}>
                       <BarChart data={keluargaDashboardData} margin={{ top: 20, right: 30, left: 0, bottom: 90 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis dataKey="label" angle={-35} textAnchor="end" height={90} tick={{ fontSize: chartFontSize }} />
