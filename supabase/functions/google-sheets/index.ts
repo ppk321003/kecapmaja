@@ -416,7 +416,8 @@ serve(async (req: Request) => {
 
     if (operation === 'read') {
       console.log(`Reading range: ${range || 'Sheet1'}`);
-      const response = await fetch(`${baseUrl}/values/${range || 'Sheet1'}`, {
+      const encodedRange = encodeURIComponent(range || 'Sheet1');
+      const response = await fetch(`${baseUrl}/values/${encodedRange}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       // Stream the upstream JSON straight through: avoids parsing + re-serializing
@@ -433,8 +434,9 @@ serve(async (req: Request) => {
       console.log(`Appending to range: ${range || 'Sheet1'}`);
       console.log('Values to append:', JSON.stringify(values));
 
+      const encodedAppendRange = encodeURIComponent(range || 'Sheet1');
       const data = await fetchGoogleSheetsWithRetry(
-        `${baseUrl}/values/${range || 'Sheet1'}:append?valueInputOption=USER_ENTERED`,
+        `${baseUrl}/values/${encodedAppendRange}:append?valueInputOption=USER_ENTERED`,
         {
           method: 'POST',
           headers: {
@@ -465,8 +467,9 @@ serve(async (req: Request) => {
       console.log(`Updating range: ${updateRange}`);
       console.log('Values to update:', JSON.stringify(values));
 
+      const encodedUpdateRange = encodeURIComponent(updateRange);
       const data = await fetchGoogleSheetsWithRetry(
-        `${baseUrl}/values/${updateRange}?valueInputOption=USER_ENTERED`,
+        `${baseUrl}/values/${encodedUpdateRange}?valueInputOption=USER_ENTERED`,
         {
           method: 'PUT',
           headers: {

@@ -882,80 +882,114 @@ export default function MonitoringLapanganDash() {
     surplusDefisit: true,
   });
 
-  // Ngibar Disdik tab: safe incremental implementation
-  const NGIBAR_SPREADSHEET_ID = "1EyrssWtjEGd64SYelUMON3nnLpj6KU5INCMeD-Amjto";
-  const NGIBAR_SHEET = "Sheet4";
-  const { data: ngibarData, loading: ngibarLoading, error: ngibarError } = useGoogleSheetsData({
-    spreadsheetId: NGIBAR_SPREADSHEET_ID,
-    sheetName: NGIBAR_SHEET,
+  // Data Ngibar tab: combine existing data with the new Google Sheets source
+  const NGIBAR_LEGACY_SPREADSHEET_ID = "1EyrssWtjEGd64SYelUMON3nnLpj6KU5INCMeD-Amjto";
+  const NGIBAR_LEGACY_SHEET = "Sheet4";
+  const NGIBAR_NEW_SPREADSHEET_ID = "1pKXf07TfCteNvGRW0hO7mD0A_RY1d1yNbrN_Ee_ZVKc";
+  const NGIBAR_NEW_SHEET = "Form Responses 1";
+  const { data: ngibarData, loading: ngibarLegacyLoading, error: ngibarLegacyError } = useGoogleSheetsData({
+    spreadsheetId: NGIBAR_LEGACY_SPREADSHEET_ID,
+    sheetName: NGIBAR_LEGACY_SHEET,
     enabled: tabVisited("ngibar"),
   });
+  const { data: ngibarNewData, loading: ngibarNewLoading, error: ngibarNewError } = useGoogleSheetsData({
+    spreadsheetId: NGIBAR_NEW_SPREADSHEET_ID,
+    sheetName: NGIBAR_NEW_SHEET,
+    enabled: tabVisited("ngibar"),
+  });
+  const ngibarLoading = ngibarLegacyLoading || ngibarNewLoading;
+  const ngibarError = [ngibarLegacyError, ngibarNewError].filter(Boolean).join(" | ") || null;
   const [ngibarSearch, setNgibarSearch] = useState("");
   const [ngibarSortField, setNgibarSortField] = useState<string | null>(null);
   const [ngibarSortOrder, setNgibarSortOrder] = useState<"asc" | "desc">("asc");
   const [ngibarPage, setNgibarPage] = useState(1);
   const [ngibarItemsPerPage, setNgibarItemsPerPage] = useState(20);
   const { toast } = useToast();
-  const [ngibarOverrides, setNgibarOverrides] = useState<Record<number, Record<string, string>>>({});
+  const [ngibarOverrides, setNgibarOverrides] = useState<Record<string, Record<string, string>>>({});
   const [ngibarJenisFilter, setNgibarJenisFilter] = useState<string | null>(null);
 
-  const columnLetterToField = (col: string) => {
-    switch ((col || "").toUpperCase()) {
-      case "K":
-        return "hasil_pengecekkan";
-      case "L":
-        return "flag_input_fasih";
-      case "M":
-        return "nama_pml";
-      case "N":
-        return "nama_ppl";
+  const getNgibarRowKey = (row: any) => {
+    const source = String(row?.source || "legacy").toLowerCase();
+    const rowNumber = Number(row?.__rowNumber ?? 0);
+    return `${source}:${rowNumber}`;
+  };
+
+  const formatSheetRange = (sheetName: string, columnLetter: string, rowNumber: number | string) => {
+    const safeSheetName = String(sheetName).replace(/'/g, "''");
+    return `'${safeSheetName}'!${columnLetter}${rowNumber}`;
+  };
+
+  const getNgibarTarget = (row: any, field: string) => {
+    const source = String(row?.source || "legacy").toLowerCase();
+    const spreadsheetId = source === "new" ? NGIBAR_NEW_SPREADSHEET_ID : NGIBAR_LEGACY_SPREADSHEET_ID;
+    const sheetName = source === "new" ? NGIBAR_NEW_SHEET : NGIBAR_LEGACY_SHEET;
+
+    let columnLetter: string | undefined;
+    switch (field) {
+      case "hasil_pengecekkan":
+        columnLetter = source === "new" ? "I" : "K";
+        break;
+      case "flag_input_fasih":
+        columnLetter = "L";
+        break;
+      case "nama_pml":
+        columnLetter = "M";
+        break;
+      case "nama_ppl":
+        columnLetter = "N";
+        break;
       default:
-        return null;
+        columnLetter = undefined;
     }
+
+    return columnLetter
+      ? { spreadsheetId, sheetName, columnLetter, range: formatSheetRange(sheetName, columnLetter, row.__rowNumber) }
+      : null;
   };
 
   // Dialog state for editing fields
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editDialogField, setEditDialogField] = useState<string | null>(null);
-  const [editDialogRow, setEditDialogRow] = useState<number | null>(null);
+  const [editDialogRowKey, setEditDialogRowKey] = useState<string | null>(null);
   const [editDialogValue, setEditDialogValue] = useState<string>("");
   const [editSaving, setEditSaving] = useState(false);
   const debugRef = React.useRef<{ sizes: any; zeroEntries: any[]; zeroCount: number; unmatched?: any[]; unmatchedDetails?: any[] }>({ sizes: {}, zeroEntries: [], zeroCount: 0 });
 
   useEffect(() => {
-    console.debug("editDialogOpen changed", { editDialogOpen, editDialogField, editDialogRow });
-  }, [editDialogOpen, editDialogField, editDialogRow]);
+    console.debug("editDialogOpen changed", { editDialogOpen, editDialogField, editDialogRowKey });
+  }, [editDialogOpen, editDialogField, editDialogRowKey]);
 
-  const openEditDialog = (field: string, rowNumber: number | undefined, initialValue: string) => {
-    console.debug("openEditDialog called", { field, rowNumber, initialValue });
-    if (rowNumber == null) {
-      console.warn("openEditDialog skipped because rowNumber is null/undefined", { field, rowNumber, initialValue });
+  const openEditDialog = (field: string, row: any, initialValue: string) => {
+    console.debug("openEditDialog called", { field, row, initialValue });
+    if (!row || row.__rowNumber == null) {
+      console.warn("openEditDialog skipped because row is invalid", { field, row, initialValue });
       return;
     }
-    console.debug("openEditDialog", { field, rowNumber, initialValue });
+    console.debug("openEditDialog", { field, row, initialValue });
     setEditDialogField(field);
-    setEditDialogRow(Number(rowNumber));
+    setEditDialogRowKey(getNgibarRowKey(row));
     setEditDialogValue(initialValue ?? "");
     setEditDialogOpen(true);
   };
 
   const saveEditDialog = async () => {
-    if (editDialogField == null || editDialogRow == null) return;
-    const col = editDialogField === 'hasil_pengecekkan' ? 'K' : editDialogField === 'flag_input_fasih' ? 'L' : editDialogField === 'nama_pml' ? 'M' : editDialogField === 'nama_ppl' ? 'N' : undefined;
-    if (!col) return;
+    if (editDialogField == null || editDialogRowKey == null) return;
+    const targetRow = (ngibarRows || []).find((row: any) => getNgibarRowKey(row) === editDialogRowKey);
+    if (!targetRow) return;
+
     setEditSaving(true);
     // optimistic update
-    setNgibarOverrides((prev) => ({ ...(prev || {}), [Number(editDialogRow)]: { ...(prev?.[Number(editDialogRow)] || {}), [editDialogField]: editDialogValue } }));
+    setNgibarOverrides((prev) => ({ ...(prev || {}), [editDialogRowKey]: { ...(prev?.[editDialogRowKey] || {}), [editDialogField]: editDialogValue } }));
     try {
-      await updateNgibarCell(Number(editDialogRow), col, editDialogValue);
+      await updateNgibarCell(targetRow, editDialogField, editDialogValue);
       setEditDialogOpen(false);
     } catch (err) {
       // rollback
       setNgibarOverrides((prev) => {
         const copy = { ...(prev || {}) };
-        if (copy[Number(editDialogRow)]) {
-          const { [editDialogField]: _removed, ...rest } = copy[Number(editDialogRow)];
-          copy[Number(editDialogRow)] = rest;
+        if (copy[editDialogRowKey]) {
+          const { [editDialogField]: _removed, ...rest } = copy[editDialogRowKey];
+          copy[editDialogRowKey] = rest;
         }
         return copy;
       });
@@ -975,12 +1009,12 @@ export default function MonitoringLapanganDash() {
     const current = String(row.flag_input_fasih || "").trim();
     if (current) {
       // unflag -> write blank
-      setNgibarOverrides((prev) => ({ ...(prev || {}), [row.__rowNumber]: { ...(prev?.[row.__rowNumber] || {}), flag_input_fasih: "" } }));
-      await updateNgibarCell(Number(row.__rowNumber), "L", "");
+      setNgibarOverrides((prev) => ({ ...(prev || {}), [getNgibarRowKey(row)]: { ...(prev?.[getNgibarRowKey(row)] || {}), flag_input_fasih: "" } }));
+      await updateNgibarCell(row, "flag_input_fasih", "");
     } else {
       const val = `Sudah - ${formatIndoNow()}`;
-      setNgibarOverrides((prev) => ({ ...(prev || {}), [row.__rowNumber]: { ...(prev?.[row.__rowNumber] || {}), flag_input_fasih: val } }));
-      await updateNgibarCell(Number(row.__rowNumber), "L", val);
+      setNgibarOverrides((prev) => ({ ...(prev || {}), [getNgibarRowKey(row)]: { ...(prev?.[getNgibarRowKey(row)] || {}), flag_input_fasih: val } }));
+      await updateNgibarCell(row, "flag_input_fasih", val);
     }
   };
 
@@ -991,28 +1025,28 @@ export default function MonitoringLapanganDash() {
     return digits;
   };
 
-  const updateNgibarCell = async (rowNumber: number | undefined, columnLetter: string, value: string) => {
-    if (rowNumber == null) return;
+  const updateNgibarCell = async (row: any | undefined, field: string, value: string) => {
+    if (!row || row.__rowNumber == null) return;
+    const target = getNgibarTarget(row, field);
+    if (!target) return;
+
     try {
       const { error } = await supabase.functions.invoke("google-sheets", {
         body: {
-          spreadsheetId: NGIBAR_SPREADSHEET_ID,
+          spreadsheetId: target.spreadsheetId,
           operation: "update",
-          range: `${NGIBAR_SHEET}!${columnLetter}${rowNumber}`,
+          range: target.range,
           values: [[value]],
         },
       });
       if (error) throw error;
       toast({ title: "Sukses", description: "Perubahan tersimpan." });
-      const field = columnLetterToField(columnLetter);
-      if (field) {
-        setNgibarOverrides((prev) => {
-          const copy = { ...(prev || {}) };
-          const rowKey = Number(rowNumber);
-          copy[rowKey] = { ...(copy[rowKey] || {}), [field]: value };
-          return copy;
-        });
-      }
+      setNgibarOverrides((prev) => {
+        const copy = { ...(prev || {}) };
+        const rowKey = getNgibarRowKey(row);
+        copy[rowKey] = { ...(copy[rowKey] || {}), [field]: value };
+        return copy;
+      });
     } catch (err: any) {
       console.error(err);
       toast({ title: "Gagal", description: err?.message || "Gagal menyimpan ke sheet.", variant: "destructive" });
@@ -1020,33 +1054,65 @@ export default function MonitoringLapanganDash() {
   };
 
   const ngibarRows = useMemo(() => {
-    return (ngibarData || []).map((r: any) => {
-      const row: any = {
-        __rowNumber: r.__rowNumber,
-        timestamp: getSheetCellText(r, 0),
-        nama_lengkap: getSheetCellText(r, 1),
-        nomor_wa: getSheetCellText(r, 2),
-        email: getSheetCellText(r, 3),
-        nama_satuan: getSheetCellText(r, 4),
-        upload_link: getSheetCellText(r, 5),
-        kecamatan: getSheetCellText(r, 6),
-        alamat: getSheetCellText(r, 7),
-        desa: getSheetCellText(r, 8),
-        jenis_satuan: getSheetCellText(r, 9),
-        hasil_pengecekkan: getSheetCellText(r, 10),
-        flag_input_fasih: getSheetCellText(r, 11),
-        nama_pml: getSheetCellText(r, 12),
-        nama_ppl: getSheetCellText(r, 13),
-      };
-      const overrides = ngibarOverrides?.[row.__rowNumber];
+    const applyOverrides = (row: any) => {
+      const overrides = ngibarOverrides?.[getNgibarRowKey(row)];
       if (overrides) {
         Object.keys(overrides).forEach((k) => {
           row[k] = overrides[k];
         });
       }
       return row;
-    });
-  }, [ngibarData, ngibarOverrides]);
+    };
+
+    const mapLegacyRows = (rows: any[] = []) =>
+      rows.map((r: any) => {
+        const row: any = {
+          __rowNumber: r.__rowNumber,
+          source: "legacy",
+          timestamp: getSheetCellText(r, 0),
+          nama_lengkap: getSheetCellText(r, 1),
+          nomor_wa: getSheetCellText(r, 2),
+          email: getSheetCellText(r, 3),
+          nama_satuan: getSheetCellText(r, 4),
+          upload_link: getSheetCellText(r, 5),
+          kecamatan: getSheetCellText(r, 6),
+          alamat: getSheetCellText(r, 7),
+          desa: getSheetCellText(r, 8),
+          jenis_satuan: getSheetCellText(r, 9),
+          hasil_pengecekkan: getSheetCellText(r, 10),
+          flag_input_fasih: getSheetCellText(r, 11),
+          nama_pml: getSheetCellText(r, 12),
+          nama_ppl: getSheetCellText(r, 13),
+        };
+        return applyOverrides(row);
+      });
+
+    const mapNewRows = (rows: any[] = []) =>
+      rows.map((r: any) => {
+        const raw = Array.isArray(r?.__rawRow) ? r.__rawRow : [];
+        const row: any = {
+          __rowNumber: r.__rowNumber,
+          source: "new",
+          timestamp: "",
+          nama_lengkap: String(raw[1] ?? "").trim(),
+          nomor_wa: String(raw[2] ?? "").trim(),
+          email: String(raw[3] ?? "").trim(),
+          nama_satuan: String(raw[4] ?? "").trim(),
+          upload_link: String(raw[5] ?? "").trim(),
+          kecamatan: String(raw[7] ?? "").trim(),
+          alamat: "",
+          desa: String(raw[9] ?? "").trim(),
+          jenis_satuan: String(raw[10] ?? "").trim(),
+          hasil_pengecekkan: String(raw[8] ?? "").trim(),
+          flag_input_fasih: String(raw[11] ?? "").trim(),
+          nama_pml: String(raw[12] ?? "").trim(),
+          nama_ppl: String(raw[13] ?? "").trim(),
+        };
+        return applyOverrides(row);
+      });
+
+    return [...mapLegacyRows(ngibarData || []), ...mapNewRows(ngibarNewData || [])];
+  }, [ngibarData, ngibarNewData, ngibarOverrides]);
 
   const ngibarFilteredSorted = useMemo(() => {
     const q = String(ngibarSearch || "").trim().toLowerCase();
@@ -3978,7 +4044,7 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="skala-usaha" className="rounded-xl py-2 text-sm font-semibold">Skala Usaha</TabsTrigger>
               <TabsTrigger value="keluarga" className="rounded-xl py-2 text-sm font-semibold">Keluarga</TabsTrigger>
               <TabsTrigger value="identifikasi-utt" className="rounded-xl py-2 text-sm font-semibold">Identifikasi UTT</TabsTrigger>
-              <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Ngibar Disdik</TabsTrigger>
+              <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Data Ngibar</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard" className="space-y-6 mt-6">
               {pmlStats && (
@@ -6168,8 +6234,8 @@ export default function MonitoringLapanganDash() {
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                   <div className="space-y-2">
                     <div>
-                      <h2 className="text-lg font-semibold">Ngibar Disdik</h2>
-                      <p className="text-sm text-slate-500">Data pencatatan, status pengecekan, dan penugasan PML/PPL dari sheet Ngibar Disdik.</p>
+                      <h2 className="text-lg font-semibold">Data Ngibar</h2>
+                      <p className="text-sm text-slate-500">Gabungan data lama dengan data baru dari sheet Form Responses 1, termasuk pencatatan, pengecekan, dan penugasan PML/PPL.</p>
                     </div>
                   </div>
                   <div className="w-full md:w-80">
@@ -6374,7 +6440,7 @@ export default function MonitoringLapanganDash() {
                                     <button
                                       type="button"
                                       title={row?.hasil_pengecekkan ? "Edit hasil pengecekkan" : "Tambah hasil pengecekkan"}
-                                      onClick={() => openEditDialog("hasil_pengecekkan", row?.__rowNumber, row?.hasil_pengecekkan ?? "")}
+                                      onClick={() => openEditDialog("hasil_pengecekkan", row, row?.hasil_pengecekkan ?? "")}
                                       className={`rounded p-1 ${String(row?.hasil_pengecekkan || "").trim() ? "bg-emerald-600 text-white" : "bg-slate-100"}`}
                                     >
                                       <Edit3 className="h-4 w-4" />
@@ -6386,7 +6452,7 @@ export default function MonitoringLapanganDash() {
                                     type="button"
                                     title={row?.flag_input_fasih ? "Batal flag" : "Flag sebagai sudah"}
                                     onClick={() => toggleFlag(row)}
-                                    className={`rounded p-1 ${String(row?.flag_input_fasih || "").trim() ? "bg-emerald-600 text-white" : "bg-slate-100"}`}
+                                    className={`rounded p-1 ${String((ngibarOverrides?.[getNgibarRowKey(row)]?.flag_input_fasih ?? row?.flag_input_fasih ?? "") || "").trim() ? "bg-emerald-600 text-white" : "bg-slate-100"}`}
                                   >
                                     <FlagIcon className="h-4 w-4" />
                                   </button>
@@ -6397,7 +6463,7 @@ export default function MonitoringLapanganDash() {
                                     <button
                                       type="button"
                                       title={row?.nama_pml ? "Edit nama PML" : "Tambah nama PML"}
-                                      onClick={() => openEditDialog("nama_pml", row?.__rowNumber, row?.nama_pml ?? "")}
+                                      onClick={() => openEditDialog("nama_pml", row, row?.nama_pml ?? "")}
                                       className={`rounded p-1 ${String(row?.nama_pml || "").trim() ? "bg-emerald-600 text-white" : "bg-slate-100"}`}
                                     >
                                       <Edit3 className="h-4 w-4" />
@@ -6410,7 +6476,7 @@ export default function MonitoringLapanganDash() {
                                     <button
                                       type="button"
                                       title={row?.nama_ppl ? "Edit nama PPL" : "Tambah nama PPL"}
-                                      onClick={() => openEditDialog("nama_ppl", row?.__rowNumber, row?.nama_ppl ?? "")}
+                                      onClick={() => openEditDialog("nama_ppl", row, row?.nama_ppl ?? "")}
                                       className={`rounded p-1 ${String(row?.nama_ppl || "").trim() ? "bg-emerald-600 text-white" : "bg-slate-100"}`}
                                     >
                                       <Edit3 className="h-4 w-4" />
