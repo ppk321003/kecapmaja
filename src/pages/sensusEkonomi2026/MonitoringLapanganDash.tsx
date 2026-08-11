@@ -887,6 +887,8 @@ export default function MonitoringLapanganDash() {
   const NGIBAR_LEGACY_SHEET = "Sheet4";
   const NGIBAR_NEW_SPREADSHEET_ID = "1pKXf07TfCteNvGRW0hO7mD0A_RY1d1yNbrN_Ee_ZVKc";
   const NGIBAR_NEW_SHEET = "Form Responses 1";
+  const NGIBAR_SPPG_SPREADSHEET_ID = "1oK66oIFQ5P_-HBlU5Q7Fa65JdTQXxr4h4HkApNxlCDo";
+  const NGIBAR_SPPG_SHEET = "Form Responses 1";
   const { data: ngibarData, loading: ngibarLegacyLoading, error: ngibarLegacyError } = useGoogleSheetsData({
     spreadsheetId: NGIBAR_LEGACY_SPREADSHEET_ID,
     sheetName: NGIBAR_LEGACY_SHEET,
@@ -897,8 +899,13 @@ export default function MonitoringLapanganDash() {
     sheetName: NGIBAR_NEW_SHEET,
     enabled: tabVisited("ngibar"),
   });
-  const ngibarLoading = ngibarLegacyLoading || ngibarNewLoading;
-  const ngibarError = [ngibarLegacyError, ngibarNewError].filter(Boolean).join(" | ") || null;
+  const { data: ngibarSppgData, loading: ngibarSppgLoading, error: ngibarSppgError } = useGoogleSheetsData({
+    spreadsheetId: NGIBAR_SPPG_SPREADSHEET_ID,
+    sheetName: NGIBAR_SPPG_SHEET,
+    enabled: tabVisited("ngibar"),
+  });
+  const ngibarLoading = ngibarLegacyLoading || ngibarNewLoading || ngibarSppgLoading;
+  const ngibarError = [ngibarLegacyError, ngibarNewError, ngibarSppgError].filter(Boolean).join(" | ") || null;
   const [ngibarSearch, setNgibarSearch] = useState("");
   const [ngibarSortField, setNgibarSortField] = useState<string | null>(null);
   const [ngibarSortOrder, setNgibarSortOrder] = useState<"asc" | "desc">("asc");
@@ -914,36 +921,64 @@ export default function MonitoringLapanganDash() {
     return `${source}:${rowNumber}`;
   };
 
+  const getNgibarSourceConfig = (rowOrSource: any) => {
+    const source = String(rowOrSource?.source || rowOrSource || "legacy").toLowerCase();
+    switch (source) {
+      case "new":
+        return {
+          source,
+          spreadsheetId: NGIBAR_NEW_SPREADSHEET_ID,
+          sheetName: NGIBAR_NEW_SHEET,
+          fieldColumns: {
+            hasil_pengecekkan: "I",
+            flag_input_fasih: "L",
+            nama_pml: "M",
+            nama_ppl: "N",
+          },
+        };
+      case "sppg":
+        return {
+          source,
+          spreadsheetId: NGIBAR_SPPG_SPREADSHEET_ID,
+          sheetName: NGIBAR_SPPG_SHEET,
+          fieldColumns: {
+            hasil_pengecekkan: "J",
+            flag_input_fasih: "K",
+            nama_pml: "L",
+            nama_ppl: "M",
+          },
+        };
+      case "legacy":
+      default:
+        return {
+          source: "legacy",
+          spreadsheetId: NGIBAR_LEGACY_SPREADSHEET_ID,
+          sheetName: NGIBAR_LEGACY_SHEET,
+          fieldColumns: {
+            hasil_pengecekkan: "K",
+            flag_input_fasih: "L",
+            nama_pml: "M",
+            nama_ppl: "N",
+          },
+        };
+    }
+  };
+
   const formatSheetRange = (sheetName: string, columnLetter: string, rowNumber: number | string) => {
     const safeSheetName = String(sheetName).replace(/'/g, "''");
     return `'${safeSheetName}'!${columnLetter}${rowNumber}`;
   };
 
   const getNgibarTarget = (row: any, field: string) => {
-    const source = String(row?.source || "legacy").toLowerCase();
-    const spreadsheetId = source === "new" ? NGIBAR_NEW_SPREADSHEET_ID : NGIBAR_LEGACY_SPREADSHEET_ID;
-    const sheetName = source === "new" ? NGIBAR_NEW_SHEET : NGIBAR_LEGACY_SHEET;
-
-    let columnLetter: string | undefined;
-    switch (field) {
-      case "hasil_pengecekkan":
-        columnLetter = source === "new" ? "I" : "K";
-        break;
-      case "flag_input_fasih":
-        columnLetter = "L";
-        break;
-      case "nama_pml":
-        columnLetter = "M";
-        break;
-      case "nama_ppl":
-        columnLetter = "N";
-        break;
-      default:
-        columnLetter = undefined;
-    }
-
+    const config = getNgibarSourceConfig(row);
+    const columnLetter = config.fieldColumns[field as keyof typeof config.fieldColumns];
     return columnLetter
-      ? { spreadsheetId, sheetName, columnLetter, range: formatSheetRange(sheetName, columnLetter, row.__rowNumber) }
+      ? {
+          spreadsheetId: config.spreadsheetId,
+          sheetName: config.sheetName,
+          columnLetter,
+          range: formatSheetRange(config.sheetName, columnLetter, row.__rowNumber),
+        }
       : null;
   };
 
@@ -1111,8 +1146,32 @@ export default function MonitoringLapanganDash() {
         return applyOverrides(row);
       });
 
-    return [...mapLegacyRows(ngibarData || []), ...mapNewRows(ngibarNewData || [])];
-  }, [ngibarData, ngibarNewData, ngibarOverrides]);
+    const mapSppgRows = (rows: any[] = []) =>
+      rows.map((r: any) => {
+        const raw = Array.isArray(r?.__rawRow) ? r.__rawRow : [];
+        const row: any = {
+          __rowNumber: r.__rowNumber,
+          source: "sppg",
+          timestamp: "",
+          nama_lengkap: String(raw[1] ?? "").trim(),
+          nomor_wa: String(raw[2] ?? "").trim(),
+          email: String(raw[3] ?? "").trim(),
+          nama_satuan: String(raw[4] ?? "").trim(),
+          upload_link: String(raw[8] ?? "").trim(),
+          kecamatan: String(raw[6] ?? "").trim(),
+          alamat: "",
+          desa: String(raw[7] ?? "").trim(),
+          jenis_satuan: "SPPG",
+          hasil_pengecekkan: String(raw[9] ?? "").trim(),
+          flag_input_fasih: String(raw[10] ?? "").trim(),
+          nama_pml: String(raw[11] ?? "").trim(),
+          nama_ppl: String(raw[12] ?? "").trim(),
+        };
+        return applyOverrides(row);
+      });
+
+    return [...mapLegacyRows(ngibarData || []), ...mapNewRows(ngibarNewData || []), ...mapSppgRows(ngibarSppgData || [])];
+  }, [ngibarData, ngibarNewData, ngibarSppgData, ngibarOverrides]);
 
   const ngibarFilteredSorted = useMemo(() => {
     const q = String(ngibarSearch || "").trim().toLowerCase();
@@ -6235,7 +6294,7 @@ export default function MonitoringLapanganDash() {
                   <div className="space-y-2">
                     <div>
                       <h2 className="text-lg font-semibold">Data Ngibar</h2>
-                      <p className="text-sm text-slate-500">Gabungan data lama dengan data baru dari sheet Form Responses 1, termasuk pencatatan, pengecekan, dan penugasan PML/PPL.</p>
+                      <p className="text-sm text-slate-500">Gabungan data dari beberapa sumber Google Sheets, termasuk pencatatan, pengecekan, dan penugasan PML/PPL untuk tiap sheet asal.</p>
                     </div>
                   </div>
                   <div className="w-full md:w-80">
