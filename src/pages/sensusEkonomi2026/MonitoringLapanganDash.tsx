@@ -915,6 +915,21 @@ export default function MonitoringLapanganDash() {
   const [ngibarOverrides, setNgibarOverrides] = useState<Record<string, Record<string, string>>>({});
   const [ngibarJenisFilter, setNgibarJenisFilter] = useState<string | null>(null);
 
+  const handleNgibarSort = (field: string) => {
+    setNgibarPage(1);
+    if (ngibarSortField === field) {
+      setNgibarSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setNgibarSortField(field);
+    setNgibarSortOrder("asc");
+  };
+
+  const getNgibarSortIndicator = (field: string) => {
+    if (ngibarSortField !== field) return null;
+    return ngibarSortOrder === "asc" ? "▲" : "▼";
+  };
+
   const getNgibarRowKey = (row: any) => {
     const source = String(row?.source || "legacy").toLowerCase();
     const rowNumber = Number(row?.__rowNumber ?? 0);
@@ -1190,12 +1205,31 @@ export default function MonitoringLapanganDash() {
       rows = rows.filter((r) => String(r.jenis_satuan || "").toLowerCase() === String(ngibarJenisFilter).toLowerCase());
     }
     if (ngibarSortField) {
+      const getValue = (row: any) => {
+        if (ngibarSortField === "kecamatan_desa") {
+          return `${String(row.kecamatan || "").trim()} ${String(row.desa || "").trim()}`.trim();
+        }
+        if (ngibarSortField === "kontak") {
+          return `${String(row.nama_lengkap || "").trim()} ${String(row.nomor_wa || "").trim()} ${String(row.email || "").trim()}`.trim();
+        }
+        return String(row[ngibarSortField] ?? "").trim();
+      };
+
       rows.sort((a: any, b: any) => {
-        const va = String(a[ngibarSortField] ?? "").toLowerCase();
-        const vb = String(b[ngibarSortField] ?? "").toLowerCase();
-        if (va < vb) return ngibarSortOrder === "asc" ? -1 : 1;
-        if (va > vb) return ngibarSortOrder === "asc" ? 1 : -1;
-        return 0;
+        const vaRaw = getValue(a);
+        const vbRaw = getValue(b);
+        const va = String(vaRaw).toLowerCase();
+        const vb = String(vbRaw).toLowerCase();
+
+        if (!va && !vb) {
+          return getNgibarRowKey(a).localeCompare(getNgibarRowKey(b));
+        }
+        if (!va) return ngibarSortOrder === "asc" ? 1 : -1;
+        if (!vb) return ngibarSortOrder === "asc" ? -1 : 1;
+
+        const compare = va.localeCompare(vb, "id", { numeric: true, sensitivity: "base" });
+        if (compare !== 0) return ngibarSortOrder === "asc" ? compare : -compare;
+        return getNgibarRowKey(a).localeCompare(getNgibarRowKey(b));
       });
     }
     return rows;
@@ -6390,15 +6424,60 @@ export default function MonitoringLapanganDash() {
                           <TableHeader>
                             <TableRow className="bg-slate-50 hover:bg-slate-50">
                               <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Nama Satuan</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Jenis Satuan</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Kecamatan - Desa</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Kontak</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Link</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Hasil Pengecekkan</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">Flag</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">PML</TableHead>
-                              <TableHead className="text-slate-700 font-semibold px-4 py-3">PPL</TableHead>
+                              <TableHead
+                                className="cursor-pointer text-slate-700 font-semibold px-4 py-3 hover:bg-slate-100"
+                                onClick={() => handleNgibarSort("nama_satuan")}
+                              >
+                                Nama Satuan {getNgibarSortIndicator("nama_satuan")}
+                              </TableHead>
+                              <TableHead
+                                className="cursor-pointer text-slate-700 font-semibold px-4 py-3 hover:bg-slate-100"
+                                onClick={() => handleNgibarSort("jenis_satuan")}
+                              >
+                                Jenis Satuan {getNgibarSortIndicator("jenis_satuan")}
+                              </TableHead>
+                              <TableHead
+                                className="cursor-pointer text-slate-700 font-semibold px-4 py-3 hover:bg-slate-100"
+                                onClick={() => handleNgibarSort("kecamatan_desa")}
+                              >
+                                Kecamatan - Desa {getNgibarSortIndicator("kecamatan_desa")}
+                              </TableHead>
+                              <TableHead
+                                className="cursor-pointer text-slate-700 font-semibold px-4 py-3 hover:bg-slate-100"
+                                onClick={() => handleNgibarSort("kontak")}
+                              >
+                                Kontak {getNgibarSortIndicator("kontak")}
+                              </TableHead>
+                              <TableHead
+                                className="cursor-pointer text-slate-700 font-semibold px-4 py-3 hover:bg-slate-100"
+                                onClick={() => handleNgibarSort("upload_link")}
+                              >
+                                Link {getNgibarSortIndicator("upload_link")}
+                              </TableHead>
+                              <TableHead
+                                className="cursor-pointer text-slate-700 font-semibold px-4 py-3 hover:bg-slate-100"
+                                onClick={() => handleNgibarSort("hasil_pengecekkan")}
+                              >
+                                Hasil Pengecekkan {getNgibarSortIndicator("hasil_pengecekkan")}
+                              </TableHead>
+                              <TableHead
+                                className="cursor-pointer text-slate-700 font-semibold px-4 py-3 hover:bg-slate-100"
+                                onClick={() => handleNgibarSort("flag_input_fasih")}
+                              >
+                                Flag {getNgibarSortIndicator("flag_input_fasih")}
+                              </TableHead>
+                              <TableHead
+                                className="cursor-pointer text-slate-700 font-semibold px-4 py-3 hover:bg-slate-100"
+                                onClick={() => handleNgibarSort("nama_pml")}
+                              >
+                                PML {getNgibarSortIndicator("nama_pml")}
+                              </TableHead>
+                              <TableHead
+                                className="cursor-pointer text-slate-700 font-semibold px-4 py-3 hover:bg-slate-100"
+                                onClick={() => handleNgibarSort("nama_ppl")}
+                              >
+                                PPL {getNgibarSortIndicator("nama_ppl")}
+                              </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
