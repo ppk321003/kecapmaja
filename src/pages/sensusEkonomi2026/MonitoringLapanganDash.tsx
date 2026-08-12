@@ -1284,10 +1284,10 @@ export default function MonitoringLapanganDash() {
       existing.push({
         address: getSheetCellText(row, 1),
         prelistAwal: getSheetCellText(row, 2),
-        respondenDidata: getSheetCellText(row, 3),
-        persentaseDidata: getSheetCellText(row, 4),
-        draft: getSheetCellText(row, 5),
-        persentaseDraft: getSheetCellText(row, 6),
+        respondenDidata: getSheetCellText(row, 4),
+        persentaseDidata: getSheetCellText(row, 5),
+        draft: getSheetCellText(row, 8),
+        persentaseDraft: getSheetCellText(row, 9),
       });
       progressByKey.set(key, existing);
     });
@@ -1578,8 +1578,8 @@ export default function MonitoringLapanganDash() {
 
       const progressRows = progresData?.filter((progressRow: any) => normalizeSheetKey(getSheetCellText(progressRow, 0)) === key) || [];
       const prelist = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 2)), 0);
-      const responden = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 3)), 0);
-      const draft = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 5)), 0);
+      const responden = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 4)), 0);
+      const draft = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 8)), 0);
       const prelistWilkerstat = parseNumericValue(getSheetCellText(row, 24));
 
       const mapKey = namaPml;
