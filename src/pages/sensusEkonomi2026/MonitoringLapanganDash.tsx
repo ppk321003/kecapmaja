@@ -664,47 +664,13 @@ export default function MonitoringLapanganDash() {
     sheetName: "Semua Users",
     enabled: tabVisited("capaian-kinerja") || tabVisited("umkm-sosek") || tabVisited("dashboard"),
   });
-  const { data: afirmasiData, loading: afirmasiLoading, error: afirmasiError } = useGoogleSheetsData({
-    spreadsheetId: RECRUITMENT_SPREADSHEET_ID,
-    sheetName: RECRUITMENT_SHEET_AFIRMASI,
-    enabled: tabVisited("umkm-sosek"),
-  });
+  // AFIRMASI sheet removed — do not fetch to avoid invalid range errors
+  const afirmasiData: any[] = [];
   
   const monitoringLoading = monitoringSheetLoading || monitoringUsersLoading;
   const monitoringError = monitoringSheetError || monitoringUsersError;
 
-  const afirmasiEmailSets = useMemo(() => {
-    if (!afirmasiData || afirmasiData.length === 0) {
-      return {
-        ratih: new Set<string>(),
-        ledya: new Set<string>(),
-      };
-    }
-
-    const allKeys = Object.keys(afirmasiData[0]);
-    const emailRatihKey = allKeys[1] || "";
-    const emailLedyaKey = allKeys[3] || "";
-
-    const ratihEmails = new Set<string>();
-    const ledyaEmails = new Set<string>();
-
-    afirmasiData.forEach((row: any) => {
-      const emailRatih = String(row[emailRatihKey] || "").trim().toLowerCase();
-      const emailLedya = String(row[emailLedyaKey] || "").trim().toLowerCase();
-
-      if (emailRatih && emailRatih !== "-" && emailRatih.includes("@")) {
-        ratihEmails.add(emailRatih);
-      }
-      if (emailLedya && emailLedya !== "-" && emailLedya.includes("@")) {
-        ledyaEmails.add(emailLedya);
-      }
-    });
-
-    return {
-      ratih: ratihEmails,
-      ledya: ledyaEmails,
-    };
-  }, [afirmasiData]);
+  const afirmasiEmailSets = useMemo(() => ({ ratih: new Set<string>(), ledya: new Set<string>() }), []);
 
   const pplEmailByName = useMemo(() => {
     const map = new Map<string, string>();
@@ -3272,6 +3238,7 @@ export default function MonitoringLapanganDash() {
   useEffect(() => {
     setCurrentPage(1);
   }, [filteredRows, itemsPerPage]);
+
 
   const progressHeaderDisplay = progresHeaderData?.[0] ? extractProgressHeader(progresHeaderData[0]) : "";
   const { daysElapsed } = calculateDayProgress();
