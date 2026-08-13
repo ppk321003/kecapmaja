@@ -40,18 +40,29 @@ const normalizeString = (value: any): string =>
     .replace(/\s+/g, " ")
     .toLowerCase();
 
-type ChartRatioTooltipProps = {
-  active?: boolean;
-  payload?: any[];
-  label?: any;
-  labelPrefix: string;
+type ChartRatioTooltipSeries = {
+  name: string;
   pctKey: string;
   pctLabel: string;
   valueKey: string;
   valueLabel: string;
   targetKey: string;
   targetLabel: string;
+};
+
+type ChartRatioTooltipProps = {
+  active?: boolean;
+  payload?: any[];
+  label?: any;
+  labelPrefix: string;
+  pctKey?: string;
+  pctLabel?: string;
+  valueKey?: string;
+  valueLabel?: string;
+  targetKey?: string;
+  targetLabel?: string;
   fontSize: number;
+  series?: ChartRatioTooltipSeries[];
 };
 
 const ChartRatioTooltip = ({
@@ -66,13 +77,53 @@ const ChartRatioTooltip = ({
   targetKey,
   targetLabel,
   fontSize,
+  series,
 }: ChartRatioTooltipProps) => {
   if (!active || !payload || payload.length === 0) return null;
-  const data = payload[0]?.payload || {};
-  const pct = Number(data[pctKey]) || 0;
-  const value = Number(data[valueKey]) || 0;
-  const target = Number(data[targetKey]) || 0;
   const fmt = (n: number) => n.toLocaleString("id-ID");
+
+  const seriesRows = series && series.length > 0
+    ? series.map((entry) => {
+        const row = payload.find((item) => item?.dataKey === entry.pctKey) ?? payload[0];
+        const data = row?.payload || {};
+        return {
+          ...entry,
+          pct: Number(data[entry.pctKey]) || 0,
+          value: Number(data[entry.valueKey]) || 0,
+          target: Number(data[entry.targetKey]) || 0,
+        };
+      })
+    : [];
+
+  if (seriesRows.length > 0) {
+    return (
+      <div
+        className="rounded-lg border border-slate-300 bg-white px-3 py-2 shadow-md"
+        style={{ fontSize }}
+      >
+        <p className="font-semibold text-slate-800">{`${labelPrefix}: ${label}`}</p>
+        {seriesRows.map((entry, index) => (
+          <div key={`${entry.name}-${index}`} className={index > 0 ? "mt-2 border-t border-slate-200 pt-2" : ""}>
+            <p className="font-medium text-slate-700">{entry.name}</p>
+            <p className="mt-1 text-slate-700">
+              {entry.pctLabel}: <span className="font-semibold">{entry.pct.toFixed(2)}%</span>
+            </p>
+            <p className="text-slate-600">
+              {entry.valueLabel}: <span className="font-semibold">{fmt(entry.value)}</span>
+            </p>
+            <p className="text-slate-600">
+              {entry.targetLabel}: <span className="font-semibold">{fmt(entry.target)}</span>
+            </p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const data = payload[0]?.payload || {};
+  const pct = Number(data[pctKey ?? ""]) || 0;
+  const value = Number(data[valueKey ?? ""]) || 0;
+  const target = Number(data[targetKey ?? ""]) || 0;
 
   return (
     <div
@@ -3665,6 +3716,7 @@ export default function MonitoringLapanganDash() {
   const [chartKecamatanFilter, setChartKecamatanFilter] = useState<string>("all");
   const [chartSortOrder, setChartSortOrder] = useState<"asc" | "desc">("desc");
   const [chartFontSize, setChartFontSize] = useState<number>(12);
+  const [chartMode, setChartMode] = useState<"legacy" | "combined">("legacy");
   const [chartRespondenDivisor, setChartRespondenDivisor] = useState<"prelist" | "wilkerstat">("prelist");
   const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat">("prelist");
 
@@ -3843,7 +3895,9 @@ export default function MonitoringLapanganDash() {
       if (!key) return;
       const existing = progressTotals.get(key) || { prelist: 0, responden: 0 };
       existing.prelist += parseNumericValue(getSheetCellText(row, 2));
-      existing.responden += parseNumericValue(getSheetCellText(row, 3));
+      // Kode ini harus membaca kolom Didata dari sumber UMKM dan Sosek / progres pendataan yang benar,
+      // bukan kolom yang sebelumnya dipindai secara keliru untuk per-kecamatan drilldown.
+      existing.responden += parseNumericValue(getSheetCellText(row, 4));
       progressTotals.set(key, existing);
     });
 
@@ -3953,7 +4007,28 @@ export default function MonitoringLapanganDash() {
     }));
   }, [usahaProporsiRows, proporsiKeyToDesa]);
 
-  const wilayahProporsiNonPertanianChartData = useMemo(() => {
+  const combinedWilayahProporsiNonPertanianChartData = useMemo(() => {
+    const rows =
+      chartKecamatanFilter === "all"
+        ? proporsiKecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
+        : proporsiDesaStats
+            .filter((item) => item.kecamatan === chartKecamatanFilter)
+            .map((item) => ({ label: item.desa, ...item }));
+
+    return rows
+      .map((item) => ({
+        ...item,
+        persenNonPertanianPrelist: item.persenNonPertanianPrelist,
+        persenNonPertanianWilkerstat: item.persenNonPertanianWilkerstat,
+      }))
+      .sort((a, b) =>
+        chartSortOrder === "asc"
+          ? a.persenNonPertanianPrelist - b.persenNonPertanianPrelist
+          : b.persenNonPertanianPrelist - a.persenNonPertanianPrelist
+      );
+  }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats]);
+
+  const legacyWilayahProporsiNonPertanianChartData = useMemo(() => {
     const rows =
       chartKecamatanFilter === "all"
         ? proporsiKecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
@@ -3974,6 +4049,8 @@ export default function MonitoringLapanganDash() {
     );
   }, [chartKecamatanFilter, chartSortOrder, chartNonPertanianDivisor, proporsiKecamatanStats, proporsiDesaStats]);
 
+  const wilayahProporsiNonPertanianChartData = chartMode === "legacy" ? legacyWilayahProporsiNonPertanianChartData : combinedWilayahProporsiNonPertanianChartData;
+
   const wilayahProporsiPertanianChartData = useMemo(() => {
     const rows =
       chartKecamatanFilter === "all"
@@ -3989,8 +4066,16 @@ export default function MonitoringLapanganDash() {
     );
   }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats]);
 
-  const avgWilayahProporsiNonPertanian = wilayahProporsiNonPertanianChartData.length > 0
-    ? wilayahProporsiNonPertanianChartData.reduce((sum, item) => sum + item.persenNonPertanianAktif, 0) / wilayahProporsiNonPertanianChartData.length
+  const avgWilayahProporsiNonPertanian = combinedWilayahProporsiNonPertanianChartData.length > 0
+    ? combinedWilayahProporsiNonPertanianChartData.reduce((sum, item) => sum + item.persenNonPertanianPrelist, 0) / combinedWilayahProporsiNonPertanianChartData.length
+    : 0;
+
+  const avgWilayahProporsiNonPertanianWilkerstat = combinedWilayahProporsiNonPertanianChartData.length > 0
+    ? combinedWilayahProporsiNonPertanianChartData.reduce((sum, item) => sum + item.persenNonPertanianWilkerstat, 0) / combinedWilayahProporsiNonPertanianChartData.length
+    : 0;
+
+  const avgWilayahProporsiNonPertanianLegacy = legacyWilayahProporsiNonPertanianChartData.length > 0
+    ? legacyWilayahProporsiNonPertanianChartData.reduce((sum, item) => sum + item.persenNonPertanianAktif, 0) / legacyWilayahProporsiNonPertanianChartData.length
     : 0;
 
   const avgWilayahProporsiPertanian = wilayahProporsiPertanianChartData.length > 0
@@ -4002,7 +4087,28 @@ export default function MonitoringLapanganDash() {
     [kecamatanStats]
   );
 
-  const wilayahChartData = useMemo(() => {
+  const combinedWilayahChartData = useMemo(() => {
+    const rows =
+      chartKecamatanFilter === "all"
+        ? kecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
+        : desaStats
+            .filter((item) => item.kecamatan === chartKecamatanFilter)
+            .map((item) => ({ label: item.desa, ...item }));
+
+    return rows
+      .map((item) => ({
+        ...item,
+        persentasePrelist: item.persentase,
+        persentaseWilkerstat: item.persentaseWilkerstat,
+      }))
+      .sort((a, b) =>
+        chartSortOrder === "asc"
+          ? a.persentasePrelist - b.persentasePrelist
+          : b.persentasePrelist - a.persentasePrelist
+      );
+  }, [chartKecamatanFilter, chartSortOrder, kecamatanStats, desaStats]);
+
+  const legacyWilayahChartData = useMemo(() => {
     const rows =
       chartKecamatanFilter === "all"
         ? kecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
@@ -4019,6 +4125,20 @@ export default function MonitoringLapanganDash() {
       chartSortOrder === "asc" ? a.persentaseAktif - b.persentaseAktif : b.persentaseAktif - a.persentaseAktif
     );
   }, [chartKecamatanFilter, chartSortOrder, chartRespondenDivisor, kecamatanStats, desaStats]);
+
+  const wilayahChartData = chartMode === "legacy" ? legacyWilayahChartData : combinedWilayahChartData;
+
+  const avgWilayahPercentagePrelist = combinedWilayahChartData.length > 0
+    ? combinedWilayahChartData.reduce((sum, item) => sum + item.persentasePrelist, 0) / combinedWilayahChartData.length
+    : 0;
+
+  const avgWilayahPercentageWilkerstat = combinedWilayahChartData.length > 0
+    ? combinedWilayahChartData.reduce((sum, item) => sum + item.persentaseWilkerstat, 0) / combinedWilayahChartData.length
+    : 0;
+
+  const avgWilayahPercentageLegacy = legacyWilayahChartData.length > 0
+    ? legacyWilayahChartData.reduce((sum, item) => sum + item.persentaseAktif, 0) / legacyWilayahChartData.length
+    : 0;
 
   // Global edit dialog (rendered outside TabsContent so it is available on all tabs)
   // Uses same state variables: editDialogOpen, editDialogField, editDialogValue, editSaving
@@ -4077,7 +4197,11 @@ export default function MonitoringLapanganDash() {
     ? kecamatanStats.reduce((sum, item) => sum + item.persentase, 0) / kecamatanStats.length
     : 0;
   const avgWilayahPercentage = wilayahChartData.length > 0
-    ? wilayahChartData.reduce((sum, item) => sum + item.persentaseAktif, 0) / wilayahChartData.length
+    ? wilayahChartData.reduce((sum, item) => {
+        const record = item as any;
+        const value = chartMode === "legacy" ? (record.persentaseAktif ?? record.persentase) : (record.persentasePrelist ?? record.persentase);
+        return sum + value;
+      }, 0) / wilayahChartData.length
     : 0;
 
   return (
@@ -4208,24 +4332,38 @@ export default function MonitoringLapanganDash() {
                         Persentase Assignment per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                       </CardTitle>
                       <CardDescription>
-                        {chartRespondenDivisor === "wilkerstat" ? "Assignment Didata / Wilkerstat" : "Assignment Didata / Prelist Awal"}
+                        Assignment Didata dibandingkan terhadap Prelist Awal dan Wilkerstat
                         {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
                         {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
                       </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-end gap-3">
                       <div className="flex flex-col gap-1">
-                        <label htmlFor="chart-divisor-responden" className="text-xs font-semibold text-slate-600">Pembagi</label>
+                        <label htmlFor="chart-mode" className="text-xs font-semibold text-slate-600">Tampilan</label>
                         <select
-                          id="chart-divisor-responden"
-                          value={chartRespondenDivisor}
-                          onChange={(e) => setChartRespondenDivisor(e.target.value as "prelist" | "wilkerstat")}
+                          id="chart-mode"
+                          value={chartMode}
+                          onChange={(e) => setChartMode(e.target.value as "legacy" | "combined")}
                           className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
                         >
-                          <option value="prelist">Prelist Awal</option>
-                          <option value="wilkerstat">Wilkerstat</option>
+                          <option value="legacy">Spesifik</option>
+                          <option value="combined">Gabung</option>
                         </select>
                       </div>
+                      {chartMode === "legacy" && (
+                        <div className="flex flex-col gap-1">
+                          <label htmlFor="chart-divisor-responden" className="text-xs font-semibold text-slate-600">Pembagi</label>
+                          <select
+                            id="chart-divisor-responden"
+                            value={chartRespondenDivisor}
+                            onChange={(e) => setChartRespondenDivisor(e.target.value as "prelist" | "wilkerstat")}
+                            className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                          >
+                            <option value="prelist">Prelist Awal</option>
+                            <option value="wilkerstat">Wilkerstat</option>
+                          </select>
+                        </div>
+                      )}
                       <div className="flex flex-col gap-1">
                         <label htmlFor="chart-kecamatan" className="text-xs font-semibold text-slate-600">Kecamatan</label>
                         <select
@@ -4289,48 +4427,131 @@ export default function MonitoringLapanganDash() {
                         />
                         <Tooltip
                           content={
-                            <ChartRatioTooltip
-                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
-                              pctKey="persentaseAktif"
-                              pctLabel={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : "Assignment / Prelist Awal"}
-                              valueKey="respondenDidata"
-                              valueLabel="Assignment Didata"
-                              targetKey={chartRespondenDivisor === "wilkerstat" ? "wilkerstat" : "prelistAwal"}
-                              targetLabel={chartRespondenDivisor === "wilkerstat" ? "Target (Wilkerstat)" : "Target (Prelist Awal)"}
-                              fontSize={chartFontSize}
-                            />
+                            chartMode === "legacy" ? (
+                              <ChartRatioTooltip
+                                labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                                pctKey="persentaseAktif"
+                                pctLabel={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : "Assignment / Prelist Awal"}
+                                valueKey="respondenDidata"
+                                valueLabel="Assignment Didata"
+                                targetKey={chartRespondenDivisor === "wilkerstat" ? "wilkerstat" : "prelistAwal"}
+                                targetLabel={chartRespondenDivisor === "wilkerstat" ? "Target (Wilkerstat)" : "Target (Prelist Awal)"}
+                                fontSize={chartFontSize}
+                              />
+                            ) : (
+                              <ChartRatioTooltip
+                                labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                                fontSize={chartFontSize}
+                                series={[
+                                  {
+                                    name: "Assignment / Prelist Awal",
+                                    pctKey: "persentasePrelist",
+                                    pctLabel: "Assignment / Prelist Awal",
+                                    valueKey: "respondenDidata",
+                                    valueLabel: "Assignment Didata",
+                                    targetKey: "prelistAwal",
+                                    targetLabel: "Target (Prelist Awal)",
+                                  },
+                                  {
+                                    name: "Assignment / Wilkerstat",
+                                    pctKey: "persentaseWilkerstat",
+                                    pctLabel: "Assignment / Wilkerstat",
+                                    valueKey: "respondenDidata",
+                                    valueLabel: "Assignment Didata",
+                                    targetKey: "wilkerstat",
+                                    targetLabel: "Target (Wilkerstat)",
+                                  },
+                                ]}
+                              />
+                            )
                           }
                         />
-                        <ReferenceLine
-                          y={avgWilayahPercentage}
-                          stroke="#8b5cf6"
-                          strokeWidth={2}
-                          strokeDasharray="5 5"
-                          label={{ value: `Rata-rata: ${avgWilayahPercentage.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: chartFontSize }}
-                        />
-                        <ReferenceLine
-                          y={minPercentageTarget}
-                          stroke="#3b82f6"
-                          strokeWidth={2}
-                          label={{ value: `Target minimal hari ke-${daysElapsed}: ${minPercentageTarget.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: chartFontSize }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: chartFontSize }} />
-                        <Bar
-                          dataKey="persentaseAktif"
-                          name={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : "Assignment / Prelist Awal"}
-                          radius={[8, 8, 0, 0]}
-                          label={{
-                            position: "top",
-                            fill: "#1f2937",
-                            fontSize: chartFontSize,
-                            fontWeight: 600,
-                            formatter: (value: number) => `${value.toFixed(2)}%`,
-                          }}
-                        >
-                          {wilayahChartData.map((entry, index) => (
-                            <Cell key={`cell-${entry.label}-${index}`} fill={getColorForPercentage(entry.persentaseAktif)} />
-                          ))}
-                        </Bar>
+                        {chartMode === "legacy" ? (
+                          <>
+                            <ReferenceLine
+                              y={avgWilayahPercentageLegacy}
+                              stroke="#8b5cf6"
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              label={{ value: `Rata-rata: ${avgWilayahPercentageLegacy.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: chartFontSize }}
+                            />
+                            <ReferenceLine
+                              y={minPercentageTarget}
+                              stroke="#3b82f6"
+                              strokeWidth={2}
+                              label={{ value: `Target minimal hari ke-${daysElapsed}: ${minPercentageTarget.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: chartFontSize }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: chartFontSize }} />
+                            <Bar
+                              dataKey="persentaseAktif"
+                              name={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : "Assignment / Prelist Awal"}
+                              radius={[8, 8, 0, 0]}
+                              label={{
+                                position: "top",
+                                fill: "#1f2937",
+                                fontSize: chartFontSize,
+                                fontWeight: 600,
+                                formatter: (value: number) => `${value.toFixed(2)}%`,
+                              }}
+                            >
+                              {legacyWilayahChartData.map((entry, index) => (
+                                <Cell key={`cell-${entry.label}-${index}`} fill={getColorForPercentage(entry.persentaseAktif)} />
+                              ))}
+                            </Bar>
+                          </>
+                        ) : (
+                          <>
+                            <ReferenceLine
+                              y={avgWilayahPercentagePrelist}
+                              stroke="#3b82f6"
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              label={{ value: `Rata-rata Prelist: ${avgWilayahPercentagePrelist.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: chartFontSize }}
+                            />
+                            <ReferenceLine
+                              y={avgWilayahPercentageWilkerstat}
+                              stroke="#f59e0b"
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              label={{ value: `Rata-rata Wilkerstat: ${avgWilayahPercentageWilkerstat.toFixed(2)}%`, position: "right", fill: "#f59e0b", fontSize: chartFontSize }}
+                            />
+                            <ReferenceLine
+                              y={minPercentageTarget}
+                              stroke="#3b82f6"
+                              strokeWidth={2}
+                              label={{ value: `Target minimal hari ke-${daysElapsed}: ${minPercentageTarget.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: chartFontSize }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: chartFontSize }} />
+                            <Bar
+                              dataKey="persentasePrelist"
+                              name="Assignment / Prelist Awal"
+                              radius={[8, 8, 0, 0]}
+                              fill="#3b82f6"
+                              maxBarSize={32}
+                              label={{
+                                position: "top",
+                                fill: "#1f2937",
+                                fontSize: chartFontSize,
+                                fontWeight: 600,
+                                formatter: (value: number) => `${value.toFixed(2)}%`,
+                              }}
+                            />
+                            <Bar
+                              dataKey="persentaseWilkerstat"
+                              name="Assignment / Wilkerstat"
+                              radius={[8, 8, 0, 0]}
+                              fill="#f59e0b"
+                              maxBarSize={32}
+                              label={{
+                                position: "top",
+                                fill: "#1f2937",
+                                fontSize: chartFontSize,
+                                fontWeight: 600,
+                                formatter: (value: number) => `${value.toFixed(2)}%`,
+                              }}
+                            />
+                          </>
+                        )}
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -4342,27 +4563,41 @@ export default function MonitoringLapanganDash() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                       <CardTitle className="text-base">
-                        Persentase Usaha Non Pertanian terhadap {chartNonPertanianDivisor === "wilkerstat" ? "Usaha Wilkerstat" : "Prelist Usaha"} per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                        Persentase Usaha Non Pertanian terhadap Prelist Usaha dan Usaha Wilkerstat per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                       </CardTitle>
                       <CardDescription>
-                        Jumlah usaha non pertanian dibagi {chartNonPertanianDivisor === "wilkerstat" ? "Usaha Wilkerstat" : "Prelist Usaha"}
+                        Jumlah usaha non pertanian dibandingkan dengan Prelist Usaha dan Usaha Wilkerstat
                         {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
                         {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
                       </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-end gap-3">
                       <div className="flex flex-col gap-1">
-                        <label htmlFor="chart-divisor-non" className="text-xs font-semibold text-slate-600">Pembagi</label>
+                        <label htmlFor="chart-mode-non" className="text-xs font-semibold text-slate-600">Tampilan</label>
                         <select
-                          id="chart-divisor-non"
-                          value={chartNonPertanianDivisor}
-                          onChange={(e) => setChartNonPertanianDivisor(e.target.value as "prelist" | "wilkerstat")}
+                          id="chart-mode-non"
+                          value={chartMode}
+                          onChange={(e) => setChartMode(e.target.value as "legacy" | "combined")}
                           className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
                         >
-                          <option value="prelist">Prelist Usaha</option>
-                          <option value="wilkerstat">Usaha Wilkerstat</option>
+                          <option value="legacy">Spesifik</option>
+                          <option value="combined">Gabung</option>
                         </select>
                       </div>
+                      {chartMode === "legacy" && (
+                        <div className="flex flex-col gap-1">
+                          <label htmlFor="chart-divisor-non" className="text-xs font-semibold text-slate-600">Pembagi</label>
+                          <select
+                            id="chart-divisor-non"
+                            value={chartNonPertanianDivisor}
+                            onChange={(e) => setChartNonPertanianDivisor(e.target.value as "prelist" | "wilkerstat")}
+                            className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                          >
+                            <option value="prelist">Prelist Usaha</option>
+                            <option value="wilkerstat">Usaha Wilkerstat</option>
+                          </select>
+                        </div>
+                      )}
                       <div className="flex flex-col gap-1">
                         <label htmlFor="chart-kecamatan-non" className="text-xs font-semibold text-slate-600">Kecamatan</label>
                         <select
@@ -4426,42 +4661,119 @@ export default function MonitoringLapanganDash() {
                         />
                         <Tooltip
                           content={
-                            <ChartRatioTooltip
-                              labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
-                              pctKey="persenNonPertanianAktif"
-                              pctLabel={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
-                              valueKey="nonPertanian"
-                              valueLabel="Jumlah Usaha Non Pertanian"
-                              targetKey={chartNonPertanianDivisor === "wilkerstat" ? "usahaWilkerstat" : "prelistUsaha"}
-                              targetLabel={chartNonPertanianDivisor === "wilkerstat" ? "Target (Usaha Wilkerstat)" : "Target (Prelist Usaha)"}
-                              fontSize={chartFontSize}
-                            />
+                            chartMode === "legacy" ? (
+                              <ChartRatioTooltip
+                                labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                                pctKey="persenNonPertanianAktif"
+                                pctLabel={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
+                                valueKey="nonPertanian"
+                                valueLabel="Jumlah Usaha Non Pertanian"
+                                targetKey={chartNonPertanianDivisor === "wilkerstat" ? "usahaWilkerstat" : "prelistUsaha"}
+                                targetLabel={chartNonPertanianDivisor === "wilkerstat" ? "Target (Usaha Wilkerstat)" : "Target (Prelist Usaha)"}
+                                fontSize={chartFontSize}
+                              />
+                            ) : (
+                              <ChartRatioTooltip
+                                labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                                fontSize={chartFontSize}
+                                series={[
+                                  {
+                                    name: "Non Pertanian / Prelist Usaha",
+                                    pctKey: "persenNonPertanianPrelist",
+                                    pctLabel: "Non Pertanian / Prelist Usaha",
+                                    valueKey: "nonPertanian",
+                                    valueLabel: "Jumlah Usaha Non Pertanian",
+                                    targetKey: "prelistUsaha",
+                                    targetLabel: "Target (Prelist Usaha)",
+                                  },
+                                  {
+                                    name: "Non Pertanian / Usaha Wilkerstat",
+                                    pctKey: "persenNonPertanianWilkerstat",
+                                    pctLabel: "Non Pertanian / Usaha Wilkerstat",
+                                    valueKey: "nonPertanian",
+                                    valueLabel: "Jumlah Usaha Non Pertanian",
+                                    targetKey: "usahaWilkerstat",
+                                    targetLabel: "Target (Usaha Wilkerstat)",
+                                  },
+                                ]}
+                              />
+                            )
                           }
                         />
-                        <ReferenceLine
-                          y={avgWilayahProporsiNonPertanian}
-                          stroke="#8b5cf6"
-                          strokeWidth={2}
-                          strokeDasharray="5 5"
-                          label={{ value: `Rata-rata: ${avgWilayahProporsiNonPertanian.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: chartFontSize }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: chartFontSize }} />
-                        <Bar
-                          dataKey="persenNonPertanianAktif"
-                          name={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
-                          radius={[8, 8, 0, 0]}
-                          label={{
-                            position: "top",
-                            fill: "#1f2937",
-                            fontSize: chartFontSize,
-                            fontWeight: 600,
-                            formatter: (value: number) => `${value.toFixed(2)}%`,
-                          }}
-                        >
-                          {wilayahProporsiNonPertanianChartData.map((entry, index) => (
-                            <Cell key={`cell-non-${entry.label}-${index}`} fill={getColorForProporsiChart(entry.persenNonPertanianAktif)} />
-                          ))}
-                        </Bar>
+                        {chartMode === "legacy" ? (
+                          <>
+                            <ReferenceLine
+                              y={avgWilayahProporsiNonPertanianLegacy}
+                              stroke="#8b5cf6"
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              label={{ value: `Rata-rata: ${avgWilayahProporsiNonPertanianLegacy.toFixed(2)}%`, position: "right", fill: "#8b5cf6", fontSize: chartFontSize }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: chartFontSize }} />
+                            <Bar
+                              dataKey="persenNonPertanianAktif"
+                              name={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
+                              radius={[8, 8, 0, 0]}
+                              label={{
+                                position: "top",
+                                fill: "#1f2937",
+                                fontSize: chartFontSize,
+                                fontWeight: 600,
+                                formatter: (value: number) => `${value.toFixed(2)}%`,
+                              }}
+                            >
+                              {legacyWilayahProporsiNonPertanianChartData.map((entry, index) => (
+                                <Cell key={`cell-non-${entry.label}-${index}`} fill={getColorForProporsiChart(entry.persenNonPertanianAktif)} />
+                              ))}
+                            </Bar>
+                          </>
+                        ) : (
+                          <>
+                            <ReferenceLine
+                              y={avgWilayahProporsiNonPertanian}
+                              stroke="#2563eb"
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              label={{ value: `Rata-rata Prelist: ${avgWilayahProporsiNonPertanian.toFixed(2)}%`, position: "right", fill: "#2563eb", fontSize: chartFontSize }}
+                            />
+                            <ReferenceLine
+                              y={avgWilayahProporsiNonPertanianWilkerstat}
+                              stroke="#ec4899"
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              label={{ value: `Rata-rata Wilkerstat: ${avgWilayahProporsiNonPertanianWilkerstat.toFixed(2)}%`, position: "right", fill: "#ec4899", fontSize: chartFontSize }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: chartFontSize }} />
+                            <Bar
+                              dataKey="persenNonPertanianPrelist"
+                              name="Non Pertanian / Prelist Usaha"
+                              radius={[8, 8, 0, 0]}
+                              fill="#2563eb"
+                              maxBarSize={32}
+                              label={{
+                                position: "top",
+                                fill: "#1f2937",
+                                fontSize: chartFontSize,
+                                fontWeight: 600,
+                                formatter: (value: number) => `${value.toFixed(2)}%`,
+                              }}
+                            />
+                            <Bar
+                              dataKey="persenNonPertanianWilkerstat"
+                              name="Non Pertanian / Usaha Wilkerstat"
+                              radius={[8, 8, 0, 0]}
+                              fill="#ec4899"
+                              maxBarSize={32}
+                              label={{
+                                position: "top",
+                                fill: "#1f2937",
+                                fontSize: chartFontSize,
+                                fontWeight: 600,
+                                formatter: (value: number) => `${value.toFixed(2)}%`,
+                              }}
+                            />
+                          </>
+                        )}
                       </BarChart>
                     </ResponsiveContainer>
                   )}
