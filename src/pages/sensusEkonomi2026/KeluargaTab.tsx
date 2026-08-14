@@ -797,7 +797,7 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
         const prelistAwal = parseNumericValue(getHeaderValue(row, headers, ["prelist awal", "prelist_awal", "prelistawal", "prelist", "target prelist awal"], 2));
         const ditemukan = parseNumericValue(getHeaderValue(row, headers, ["ditemukan"], 3));
         const keluargaBaru = parseNumericValue(getHeaderValue(row, headers, ["keluarga baru", "keluarga_baru"], 5));
-        const totalHasilPendataan = parseNumericValue(getHeaderValue(row, headers, ["total hasil pendataan", "total_hasil_pendataan"], 16));
+        const totalHasilPendataan = parseNumericValue(getHeaderValue(row, headers, ["total hasil pendataan", "total_hasil_pendataan"], 14));
         const jumlahBangunanKhususHasilPendataanPpl = parseNumericValue(getHeaderValue(row, headers, ["jumlah bangunan keluarga khusus hasil pendataan ppl", "bangunan keluarga khusus hasil pendataan ppl", "hasil pendataan ppl", "jumlah bangunan keluarga khusus hasil pendataan"], 2));
         const jumlahBangunanKhususDidata = parseNumericValue(getHeaderValue(row, headers, ["jumlah bangunan keluarga khusus didata", "bangunan keluarga khusus didata", "didata", "jumlah didata"], 3));
         const persentaseBangunanKhususDidata = parseNumericValue(getHeaderValue(row, headers, ["persentase bangunan keluarga khusus didata", "persentase didata", "persentase", "% didata"], 4));
@@ -812,19 +812,19 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           ditemukan,
           persentase_ditemukan: parseNumericValue(getHeaderValue(row, headers, ["persentase ditemukan", "persen ditemukan", "% ditemukan", "ditemukan %", "ditemukanpersen"], 4)),
           keluarga_baru: keluargaBaru,
+          // % Keluarga Baru: calculate from kolom F / kolom C
           persentase_keluarga_baru: prelistAwal > 0 ? (keluargaBaru / prelistAwal) * 100 : 0,
           meninggal: parseNumericValue(getHeaderValue(row, headers, ["meninggal"], 6)),
           persentase_meninggal: parseNumericValue(getHeaderValue(row, headers, ["persentase meninggal", "% meninggal", "meninggal %"], 7)),
           tidak_eligible: parseNumericValue(getHeaderValue(row, headers, ["tidak eligible", "tidak_eligible", "tidak eligible keluarga"], 8)),
           persentase_tidak_eligible: parseNumericValue(getHeaderValue(row, headers, ["persentase tidak eligible", "% tidak eligible", "tidak eligible %"], 9)),
-          tidak_dapat_ditemui: parseNumericValue(getHeaderValue(row, headers, ["tidak dapat ditemui", "tidak_dapat_ditemui", "tidak dapat ditemui akhir"], 10)),
-          persentase_tidak_dapat_ditemui: parseNumericValue(getHeaderValue(row, headers, ["persentase tidak dapat ditemui", "% tidak dapat ditemui", "tidak dapat ditemui %"], 11)),
-          tidak_ditemukan: parseNumericValue(getHeaderValue(row, headers, ["tidak ditemukan", "tidak_ditemukan"], 12)),
-          persentase_tidak_ditemukan: parseNumericValue(getHeaderValue(row, headers, ["persentase tidak ditemukan", "% tidak ditemukan", "tidak ditemukan %"], 13)),
-          nonrespon: parseNumericValue(getHeaderValue(row, headers, ["nonrespon", "non respon"], 14)),
-          persentase_nonrespon: parseNumericValue(getHeaderValue(row, headers, ["persentase nonrespon", "% nonrespon", "nonrespon %"], 15)),
+          // legacy: some sheets include 'tidak dapat ditemui' but primary mapping uses 'tidak_eligible' and 'nonrespon'
+          tidak_ditemukan: parseNumericValue(getHeaderValue(row, headers, ["tidak ditemukan", "tidak_ditemukan"], 10)),
+          persentase_tidak_ditemukan: parseNumericValue(getHeaderValue(row, headers, ["persentase tidak ditemukan", "% tidak ditemukan", "tidak ditemukan %"], 11)),
+          nonrespon: parseNumericValue(getHeaderValue(row, headers, ["nonrespon", "non respon"], 12)),
+          persentase_nonrespon: parseNumericValue(getHeaderValue(row, headers, ["persentase nonrespon", "% nonrespon", "nonrespon %"], 13)),
           total_hasil_pendataan: totalHasilPendataan,
-          persentase_total_hasil_pendataan: parseNumericValue(getHeaderValue(row, headers, ["persentase total hasil pendataan", "% total hasil pendataan", "total hasil pendataan %"], 17)),
+          persentase_total_hasil_pendataan: parseNumericValue(getHeaderValue(row, headers, ["persentase total hasil pendataan", "% total hasil pendataan", "total hasil pendataan %"], 15)),
           jumlah_bangunan_keluarga_khusus_hasil_pendataan_ppl: jumlahBangunanKhususHasilPendataanPpl,
           jumlah_bangunan_keluarga_khusus_didata: jumlahBangunanKhususDidata,
           persentase_bangunan_keluarga_khusus_didata: persentaseBangunanKhususDidata,
@@ -866,7 +866,6 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           keluarga_baru: row.keluarga_baru || 0,
           meninggal: row.meninggal || 0,
           tidak_eligible: row.tidak_eligible || 0,
-          tidak_dapat_ditemui: row.tidak_dapat_ditemui || 0,
           tidak_ditemukan: row.tidak_ditemukan || 0,
           nonrespon: row.nonrespon || 0,
           total_hasil_pendataan: row.total_hasil_pendataan || 0,
@@ -889,7 +888,6 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
       existing.keluarga_baru += row.keluarga_baru || 0;
       existing.meninggal += row.meninggal || 0;
       existing.tidak_eligible += row.tidak_eligible || 0;
-      existing.tidak_dapat_ditemui += row.tidak_dapat_ditemui || 0;
       existing.tidak_ditemukan += row.tidak_ditemukan || 0;
       existing.nonrespon += row.nonrespon || 0;
       existing.total_hasil_pendataan += row.total_hasil_pendataan || 0;
@@ -910,7 +908,7 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
       persentase_meninggal: group.prelist_awal > 0 ? (group.meninggal / group.prelist_awal) * 100 : 0,
       persentase_keluarga_baru: group.prelist_awal > 0 ? (group.keluarga_baru / group.prelist_awal) * 100 : 0,
       persentase_tidak_eligible: group.prelist_awal > 0 ? (group.tidak_eligible / group.prelist_awal) * 100 : 0,
-      persentase_tidak_dapat_ditemui: group.prelist_awal > 0 ? (group.tidak_dapat_ditemui / group.prelist_awal) * 100 : 0,
+      // legacy 'tidak_dapat_ditemui' removed from summary; prefer 'tidak_eligible' and 'nonrespon'
       persentase_tidak_ditemukan: group.prelist_awal > 0 ? (group.tidak_ditemukan / group.prelist_awal) * 100 : 0,
       persentase_nonrespon: group.prelist_awal > 0 ? (group.nonrespon / group.prelist_awal) * 100 : 0,
       persentase_total_hasil_pendataan: group.prelist_awal > 0 ? (group.total_hasil_pendataan / group.prelist_awal) * 100 : 0,
@@ -1112,13 +1110,17 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                     <div>Meninggal</div>
                     <div className="text-xs text-slate-500">% Meninggal</div>
                   </TableHead>
-                  <TableHead onClick={() => handleSort("tidak_dapat_ditemui")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
-                    <div>Tidak Dapat Ditemui</div>
-                    <div className="text-xs text-slate-500">% Tidak Dapat Ditemui</div>
+                  <TableHead onClick={() => handleSort("tidak_eligible")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                    <div>Tidak Eligible</div>
+                    <div className="text-xs text-slate-500">% Tidak Eligible</div>
                   </TableHead>
                   <TableHead onClick={() => handleSort("tidak_ditemukan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
                     <div>Tidak Ditemukan</div>
                     <div className="text-xs text-slate-500">% Tidak Ditemukan</div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("nonrespon")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
+                    <div>Non Respon</div>
+                    <div className="text-xs text-slate-500">% Non Respon</div>
                   </TableHead>
                   <TableHead onClick={() => handleSort("persentase_total_hasil_pendataan")} className="cursor-pointer text-right text-slate-700 font-semibold px-4 py-3 whitespace-nowrap">
                     <div>Total Hasil</div>
@@ -1202,12 +1204,16 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                           <div className="text-xs text-slate-600">{formatMetric(group.persentase_meninggal, true)}</div>
                         </TableCell>
                         <TableCell className="text-right px-4 py-3">
-                          <div className="font-semibold text-slate-900">{formatMetric(group.tidak_dapat_ditemui)}</div>
-                          <div className="text-xs text-slate-600">{formatMetric(group.persentase_tidak_dapat_ditemui, true)}</div>
+                          <div className="font-semibold text-slate-900">{formatMetric(group.tidak_eligible)}</div>
+                          <div className="text-xs text-slate-600">{formatMetric(group.persentase_tidak_eligible, true)}</div>
                         </TableCell>
                         <TableCell className="text-right px-4 py-3">
                           <div className="font-semibold text-slate-900">{formatMetric(group.tidak_ditemukan)}</div>
                           <div className="text-xs text-slate-600">{formatMetric(group.persentase_tidak_ditemukan, true)}</div>
+                        </TableCell>
+                        <TableCell className="text-right px-4 py-3">
+                          <div className="font-semibold text-slate-900">{formatMetric(group.nonrespon)}</div>
+                          <div className="text-xs text-slate-600">{formatMetric(group.persentase_nonrespon, true)}</div>
                         </TableCell>
                         <TableCell className="text-right px-4 py-3">
                           <div className="font-semibold text-slate-900">{formatMetric(group.total_hasil_pendataan)}</div>
@@ -1275,12 +1281,16 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                             <div className="text-xs text-slate-600">{formatMetric(child.persentase_meninggal, true)}</div>
                           </TableCell>
                           <TableCell className="text-right px-4 py-2">
-                            <div className="font-medium text-slate-900">{formatMetric(child.tidak_dapat_ditemui)}</div>
-                            <div className="text-xs text-slate-600">{formatMetric(child.persentase_tidak_dapat_ditemui, true)}</div>
+                            <div className="font-medium text-slate-900">{formatMetric(child.tidak_eligible)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(child.persentase_tidak_eligible, true)}</div>
                           </TableCell>
                           <TableCell className="text-right px-4 py-2">
                             <div className="font-medium text-slate-900">{formatMetric(child.tidak_ditemukan)}</div>
                             <div className="text-xs text-slate-600">{formatMetric(child.persentase_tidak_ditemukan, true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-medium text-slate-900">{formatMetric(child.nonrespon)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(child.persentase_nonrespon, true)}</div>
                           </TableCell>
                           <TableCell className="text-right px-4 py-2">
                             <div className="font-medium text-slate-900">{formatMetric(child.total_hasil_pendataan)}</div>
@@ -1304,8 +1314,9 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                 const ditem = sum(p, "ditemukan");
                 const kb = sum(p, "keluarga_baru");
                 const men = sum(p, "meninggal");
-                const tdt = sum(p, "tidak_dapat_ditemui");
+                const tidakEligible = sum(p, "tidak_eligible");
                 const tdn = sum(p, "tidak_ditemukan");
+                const nonres = sum(p, "nonrespon");
                 const tot = sum(p, "total_hasil_pendataan");
                 const pct = (num: number) => (pre > 0 ? (num / pre) * 100 : 0);
                 return (
@@ -1365,12 +1376,16 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                             <div className="text-xs text-slate-600">{formatMetric(pct(men), true)}</div>
                           </TableCell>
                           <TableCell className="text-right px-4 py-2">
-                            <div className="font-semibold text-slate-900">{formatMetric(tdt)}</div>
-                            <div className="text-xs text-slate-600">{formatMetric(pct(tdt), true)}</div>
+                            <div className="font-semibold text-slate-900">{formatMetric(tidakEligible)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(pct(tidakEligible), true)}</div>
                           </TableCell>
                           <TableCell className="text-right px-4 py-2">
                             <div className="font-semibold text-slate-900">{formatMetric(tdn)}</div>
                             <div className="text-xs text-slate-600">{formatMetric(pct(tdn), true)}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-4 py-2">
+                            <div className="font-semibold text-slate-900">{formatMetric(nonres)}</div>
+                            <div className="text-xs text-slate-600">{formatMetric(pct(nonres), true)}</div>
                           </TableCell>
                           <TableCell className="text-right px-4 py-2">
                             <div className="font-semibold text-slate-900">{formatMetric(tot)}</div>
@@ -1441,12 +1456,16 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
                                     <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "meninggal") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
                                   </TableCell>
                                   <TableCell className="text-right px-4 py-2">
-                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "tidak_dapat_ditemui"))}</div>
-                                    <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "tidak_dapat_ditemui") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "tidak_eligible"))}</div>
+                                    <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "tidak_eligible") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
                                   </TableCell>
                                   <TableCell className="text-right px-4 py-2">
                                     <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "tidak_ditemukan"))}</div>
                                     <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "tidak_ditemukan") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-4 py-2">
+                                    <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "nonrespon"))}</div>
+                                    <div className="text-xs text-slate-600">{formatMetric(sumAll(all, "nonrespon") / Math.max(1, sumAll(all, "prelist_awal")) * 100, true)}</div>
                                   </TableCell>
                                   <TableCell className="text-right px-4 py-2">
                                     <div className="font-semibold text-slate-900">{formatMetric(sumAll(all, "total_hasil_pendataan"))}</div>
