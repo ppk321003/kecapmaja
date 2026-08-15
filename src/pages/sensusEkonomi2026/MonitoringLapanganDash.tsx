@@ -3275,10 +3275,12 @@ export default function MonitoringLapanganDash() {
           case "prelist_wilkerstat":
           case "responden_didata":
           case "draft":
+          case "didata_netto":
             return parseNumericValue(row[sortBy]);
           case "persentase_responden_didata":
           case "persentase_draft":
           case "persentase_wilkerstat":
+          case "persentase_didata_netto":
             return Number(String(row[sortBy]).replace(/[^0-9.-]/g, "")) || 0;
           default:
             return String(row[sortBy]).toLowerCase();
@@ -3352,10 +3354,12 @@ export default function MonitoringLapanganDash() {
           case "prelist_awal":
           case "responden_didata":
           case "draft":
+          case "didata_netto":
             return parseNumericValue(row[pmlSortBy]);
           case "persentase_responden_didata":
           case "persentase_draft":
           case "persentase_wilkerstat":
+          case "persentase_didata_netto":
             return parsePercentage(row[pmlSortBy]);
           default:
             return String(row[pmlSortBy]).toLowerCase();
@@ -5854,17 +5858,105 @@ export default function MonitoringLapanganDash() {
                                 <TableHeader>
                                 <TableRow className="bg-slate-50 hover:bg-slate-50">
                                   <TableHead className="w-12 text-center text-slate-700 font-semibold">No</TableHead>
-                                  <TableHead className="text-slate-700 font-semibold px-4 py-3">Nama PML</TableHead>
-                                  <TableHead className="text-slate-700 font-semibold px-4 py-3">Kecamatan</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Wilkerstat</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Prelist Awal</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Draft</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Draft</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Didata</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Didata</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Didata Netto</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Didata Netto</TableHead>
-                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Wilkerstat</TableHead>
+                                  <TableHead
+                                    className="text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("nama_pml");
+                                      setPmlSortOrder(pmlSortBy === "nama_pml" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-2">Nama PML<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("kecamatan");
+                                      setPmlSortOrder(pmlSortBy === "kecamatan" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-2">Kecamatan<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("prelist_wilkerstat");
+                                      setPmlSortOrder(pmlSortBy === "prelist_wilkerstat" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end gap-2">Wilkerstat<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("prelist_awal");
+                                      setPmlSortOrder(pmlSortBy === "prelist_awal" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end gap-2">Prelist Awal<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("draft");
+                                      setPmlSortOrder(pmlSortBy === "draft" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end gap-2">Draft<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("persentase_draft");
+                                      setPmlSortOrder(pmlSortBy === "persentase_draft" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end gap-2">% Draft<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("responden_didata");
+                                      setPmlSortOrder(pmlSortBy === "responden_didata" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end gap-2">Didata<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("persentase_responden_didata");
+                                      setPmlSortOrder(pmlSortBy === "persentase_responden_didata" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end gap-2">% Didata<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("didata_netto");
+                                      setPmlSortOrder(pmlSortBy === "didata_netto" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end gap-2">Didata Netto<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("persentase_didata_netto");
+                                      setPmlSortOrder(pmlSortBy === "persentase_didata_netto" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end gap-2">% Didata Netto<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
+                                  <TableHead
+                                    className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                    onClick={() => {
+                                      setPmlSortBy("persentase_wilkerstat");
+                                      setPmlSortOrder(pmlSortBy === "persentase_wilkerstat" ? (pmlSortOrder === "asc" ? "desc" : "asc") : "asc");
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-end gap-2">% Wilkerstat<ArrowUpDown className="h-4 w-4" /></div>
+                                  </TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
