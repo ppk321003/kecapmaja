@@ -3323,6 +3323,12 @@ export default function MonitoringLapanganDash() {
   const overallTotalStatus = Array.from(monitoringProgressMap.values()).reduce((sum, item) => sum + item.totalStatus, 0) || overallTotalResponden;
   const averageMajalengka = overallTotalPrelist > 0 ? (overallTotalResponden / overallTotalPrelist) * 100 : 0;
 
+  const umkmTotalDidataNetto = useMemo(() => {
+    const totalDidataNetto = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.didata_netto), 0);
+    const totalPrelist = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
+    return totalPrelist > 0 ? (totalDidataNetto / totalPrelist) * 100 : 0;
+  }, [filteredRows]);
+
   // PML filtering and sorting
   const filteredPmlRows = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -4385,6 +4391,10 @@ export default function MonitoringLapanganDash() {
                     <div className="rounded-2xl px-6 py-4 shadow-lg bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 text-white flex flex-col justify-center min-w-[200px]">
                       <div className="text-sm uppercase tracking-widest font-semibold text-slate-300">Rata-rata Kab. Majalengka</div>
                       <div className="mt-2 text-2xl font-bold text-emerald-300">{averageMajalengka.toFixed(2)}%</div>
+                    </div>
+                    <div className="rounded-2xl px-6 py-4 shadow-lg bg-gradient-to-r from-orange-800 via-orange-600 to-yellow-400 text-white flex flex-col justify-center min-w-[200px]">
+                      <div className="text-sm uppercase tracking-widest font-semibold text-slate-100">% Didata Netto</div>
+                      <div className="mt-2 text-2xl font-bold text-emerald-300">{umkmTotalDidataNetto.toFixed(2)}%</div>
                     </div>
                   </div>
                 </CardContent>
