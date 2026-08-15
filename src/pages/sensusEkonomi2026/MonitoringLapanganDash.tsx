@@ -3239,6 +3239,87 @@ export default function MonitoringLapanganDash() {
     XLSX.writeFile(workbook, `umkm-sosek-ppl-${pplExportMode}-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
+  const handleDownloadNgibarExcel = () => {
+    if (!isPpk) return;
+
+    const workbook = XLSX.utils.book_new();
+
+    // Sheet 1: Detail (sesuai tampilan UI)
+    const detailRows = ngibarFilteredSorted.map((row: any) => ({
+      "Nama Satuan": row.nama_satuan || "-",
+      "Jenis Satuan": row.jenis_satuan || "-",
+      Kecamatan: row.kecamatan || "-",
+      Desa: row.desa || "-",
+      "Nama Lengkap": row.nama_lengkap || "-",
+      "Nomor WA": row.nomor_wa || "-",
+      Email: row.email || "-",
+      "Link Upload": row.upload_link || "-",
+      "Hasil Pengecekkan": row.hasil_pengecekkan || "-",
+      Flag: row.flag_input_fasih ? "Ya" : "Tidak",
+      PML: row.nama_pml || "-",
+      PPL: row.nama_ppl || "-",
+    }));
+
+    const autoCols = (rows: Record<string, any>[]) =>
+      Object.keys(rows[0] || {}).map((key) => ({ wch: Math.min(Math.max(key.length + 2, 12), 34) }));
+
+    const detailSheet = XLSX.utils.json_to_sheet(detailRows);
+    detailSheet["!cols"] = autoCols(detailRows);
+    XLSX.utils.book_append_sheet(workbook, detailSheet, "Detail");
+
+    // Sheet 2: Summary per kecamatan (Sudah ditindaklanjuti vs Belum)
+    const kecamatanSummary = new Map<string, {
+      sudah: number;
+      belum: number;
+      total: number;
+    }>();
+
+    ngibarFilteredSorted.forEach((row: any) => {
+      const kec = row.kecamatan || "Tanpa Kecamatan";
+      const existing = kecamatanSummary.get(kec) || { sudah: 0, belum: 0, total: 0 };
+      existing.total += 1;
+      if (String(row.flag_input_fasih || "").trim()) {
+        existing.sudah += 1;
+      } else {
+        existing.belum += 1;
+      }
+      kecamatanSummary.set(kec, existing);
+    });
+
+    const summaryRows = Array.from(kecamatanSummary.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([kecamatan, data]) => ({
+        Kecamatan: kecamatan,
+        "Sudah Ditindaklanjuti": data.sudah,
+        "Belum Ditindaklanjuti": data.belum,
+        Total: data.total,
+        "% Sudah Ditindaklanjuti": data.total > 0 ? ((data.sudah / data.total) * 100).toFixed(2) : "0.00",
+      }));
+
+    const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
+    summarySheet["!cols"] = autoCols(summaryRows);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary Kecamatan");
+
+    // Sheet 3: Grafik data per kecamatan (untuk visualisasi di Excel)
+    const chartData = summaryRows.map((row) => ({
+      Kecamatan: row.Kecamatan,
+      "Sudah": row["Sudah Ditindaklanjuti"],
+      "Belum": row["Belum Ditindaklanjuti"],
+      "% Ditindaklanjuti": row["% Sudah Ditindaklanjuti"],
+    }));
+
+    const chartSheet = XLSX.utils.json_to_sheet(chartData);
+    chartSheet["!cols"] = [
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 18 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, chartSheet, "Grafik Kecamatan");
+
+    XLSX.writeFile(workbook, `data-ngibar-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const usahaKondisiSummary = useMemo(() => {
     const totalPerusahaanPrelist = filteredUsahaPerusahaanRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
     const totalPerusahaanFound = filteredUsahaPerusahaanRows.reduce((sum, row) => sum + parseNumericValue(row.ditemukan_plus_baru), 0);
@@ -6943,16 +7024,28 @@ export default function MonitoringLapanganDash() {
                       <p className="text-sm text-slate-500">Gabungan data dari beberapa sumber Google Sheets, termasuk pencatatan, pengecekan, dan penugasan PML/PPL untuk tiap sheet asal.</p>
                     </div>
                   </div>
-                  <div className="w-full md:w-80">
-                    <Input
-                      placeholder="Cari nama satuan / kecamatan / desa / jenis..."
-                      value={ngibarSearch}
-                      onChange={(e) => {
-                        setNgibarSearch(e.target.value);
-                        setNgibarPage(1);
-                      }}
-                      className="h-10"
-                    />
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <div className="w-full md:w-80">
+                      <Input
+                        placeholder="Cari nama satuan / kecamatan / desa / jenis..."
+                        value={ngibarSearch}
+                        onChange={(e) => {
+                          setNgibarSearch(e.target.value);
+                          setNgibarPage(1);
+                        }}
+                        className="h-10"
+                      />
+                    </div>
+                    {isPpk && (
+                      <button
+                        type="button"
+                        onClick={handleDownloadNgibarExcel}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download Excel
+                      </button>
+                    )}
                   </div>
                 </div>
 
