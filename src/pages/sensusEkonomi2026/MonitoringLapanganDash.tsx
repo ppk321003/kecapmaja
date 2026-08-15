@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpDown, Loader2, AlertCircle, ChevronDown, ChevronRight, Search, Database, Trophy, Users, Link, Edit3, CheckSquare, User as UserIcon, Phone, Copy, Flag as FlagIcon, Mail, Eye, Download } from "lucide-react";
+import { ArrowUpDown, Loader2, AlertCircle, ChevronDown, ChevronRight, Search, Database, Trophy, Users, Link, Edit3, CheckSquare, User as UserIcon, Phone, Copy, Flag as FlagIcon, Mail, Eye, Download, List } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useToast } from '@/hooks/use-toast';
@@ -3329,6 +3329,12 @@ export default function MonitoringLapanganDash() {
     return totalPrelist > 0 ? (totalDidataNetto / totalPrelist) * 100 : 0;
   }, [filteredRows]);
 
+  const umkmTotalWilkerstat = useMemo(() => {
+    const totalResponden = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.responden_didata), 0);
+    const totalWilkerstat = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0);
+    return totalWilkerstat > 0 ? (totalResponden / totalWilkerstat) * 100 : 0;
+  }, [filteredRows]);
+
   // PML filtering and sorting
   const filteredPmlRows = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -3412,7 +3418,9 @@ export default function MonitoringLapanganDash() {
 
     const totalPrelist = pmlRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
     const totalResponden = pmlRows.reduce((sum, row) => sum + parseNumericValue(row.responden_didata), 0);
+    const totalWilkerstat = pmlRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0);
     const averageResponden = totalPrelist > 0 ? (totalResponden / totalPrelist) * 100 : 0;
+    const averageRespondenWilkerstat = totalWilkerstat > 0 ? (totalResponden / totalWilkerstat) * 100 : 0;
 
     const topPml = pmlRows.reduce((max, row) => {
       const pctResponden = parsePercentage(row.persentase_responden_didata);
@@ -3430,7 +3438,9 @@ export default function MonitoringLapanganDash() {
       totalPml: pmlRows.length,
       totalPrelist,
       totalResponden,
+      totalWilkerstat,
       averageResponden,
+      averageRespondenWilkerstat,
       topPml: { nama_pml: topPml.nama_pml, value: parsePercentage(topPml.persentase_responden_didata) },
       lowestPml: { nama_pml: lowestPml.nama_pml, value: parsePercentage(lowestPml.persentase_responden_didata) },
     };
@@ -3920,6 +3930,16 @@ export default function MonitoringLapanganDash() {
       .sort((a: any, b: any) => (chartSortOrder === "asc" ? a.persentasePemutakhiran - b.persentasePemutakhiran : b.persentasePemutakhiran - a.persentasePemutakhiran));
   }, [chartKecamatanFilter, chartSortOrder, keluargaDashboardSummary, stackingData, progresData]);
 
+  const keluargaTotals = useMemo(() => {
+    if (keluargaDashboardSummary && Array.isArray(keluargaDashboardSummary) && keluargaDashboardSummary.length > 0) {
+      const totalPrelist = keluargaDashboardSummary.reduce((s: number, r: any) => s + (Number(r.prelistAwal) || 0), 0);
+      const totalHasil = keluargaDashboardSummary.reduce((s: number, r: any) => s + (Number(r.totalHasil) || 0), 0);
+      const persenKeluargaDidata = totalPrelist > 0 ? (totalHasil / totalPrelist) * 100 : 0;
+      return { totalPrelist, totalHasil, persenKeluargaDidata };
+    }
+    return { totalPrelist: 0, totalHasil: 0, persenKeluargaDidata: 0 };
+  }, [keluargaDashboardSummary]);
+
   const keluargaDashboardAverage = keluargaDashboardData.length > 0
     ? keluargaDashboardData.reduce((total, row: any) => total + row.persentasePemutakhiran, 0) / keluargaDashboardData.length
     : 0;
@@ -4308,72 +4328,70 @@ export default function MonitoringLapanganDash() {
             <TabsContent value="dashboard" className="space-y-6 mt-6">
               {pmlStats && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* Total PML */}
+                  {/* Responden Didata (Prelist) */}
                   <Card className="relative overflow-hidden border border-slate-200/70 shadow-sm bg-gradient-to-br from-slate-50 via-white to-slate-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                     <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-slate-700 to-slate-400" />
                     <CardContent className="pt-5 pb-4">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="p-2 rounded-lg bg-slate-100 text-slate-700">
-                          <Users className="h-4 w-4" />
+                          <Database className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">Total PML</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">Responden Didata (Prelist)</span>
                       </div>
-                      <div className="text-3xl font-bold text-slate-900">{pmlStats.totalPml}</div>
+                      <div className="text-3xl font-bold text-slate-900">{pmlStats.averageResponden.toFixed(2)}%</div>
                       <div className="mt-2 text-sm text-slate-600">
-                        <span className="font-semibold text-slate-900">{parseNumericValue(pmlStats.totalPrelist).toLocaleString("id-ID")}</span> prelist awal
+                        <span className="font-semibold text-slate-900">{parseNumericValue(pmlStats.totalResponden).toLocaleString("id-ID")}</span> responden &middot; <span className="font-semibold">{parseNumericValue(pmlStats.totalPrelist).toLocaleString("id-ID")}</span> prelist
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Total Responden */}
-                  <Card className="relative overflow-hidden border border-blue-200/70 shadow-sm bg-gradient-to-br from-blue-50 via-white to-blue-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-                    <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-blue-600 to-cyan-400" />
+                  {/* % Keluarga didata */}
+                  <Card className="relative overflow-hidden border border-blue-200/70 shadow-sm bg-white">
+                    <div className="absolute top-0 left-0 h-1 w-full bg-blue-600" />
                     <CardContent className="pt-5 pb-4">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
-                          <Database className="h-4 w-4" />
+                          <List className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Responden Didata</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">% Keluarga didata</span>
                       </div>
-                      <div className="text-3xl font-bold text-blue-900">{parseNumericValue(pmlStats.totalResponden).toLocaleString("id-ID")}</div>
-                      <div className="mt-2 text-sm text-blue-700">
-                        <span className="font-semibold">{pmlStats.averageResponden.toFixed(2)}%</span> dari prelist
+                      <div className="text-3xl font-bold text-slate-900">{keluargaTotals.persenKeluargaDidata.toFixed(2)}%</div>
+                      <div className="mt-2 text-sm text-slate-600">
+                        <span className="font-semibold text-slate-900">{keluargaTotals.totalHasil.toLocaleString("id-ID")}</span> keluarga didata &middot; <span className="font-semibold">{keluargaTotals.totalPrelist.toLocaleString("id-ID")}</span> prelist
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Top PML */}
-                  <Card className="relative overflow-hidden border border-emerald-200/70 shadow-sm bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-                    <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-emerald-600 to-teal-400" />
+                  {/* % Non Pertanian - Prelist Usaha */}
+                  <Card className="relative overflow-hidden border border-orange-200/70 shadow-sm bg-gradient-to-br from-orange-50 via-white to-orange-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                    <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-orange-600 to-orange-400" />
                     <CardContent className="pt-5 pb-4">
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
-                          <Trophy className="h-4 w-4" />
+                        <div className="p-2 rounded-lg bg-orange-100 text-orange-700">
+                          <List className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Top PML</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-orange-700">% Non Pertanian - Prelist Usaha</span>
                       </div>
-                      <div className="text-base font-bold text-emerald-900 truncate" title={pmlStats.topPml.nama_pml}>{pmlStats.topPml.nama_pml}</div>
-                      <div className="mt-2 flex items-baseline gap-1.5">
-                        <span className="text-2xl font-bold text-emerald-700">{pmlStats.topPml.value.toFixed(2)}</span>
-                        <span className="text-sm font-semibold text-emerald-600">%</span>
+                      <div className="text-2xl font-bold text-orange-700">{(overallJumlahUsaha && usahaProporsiOverallTotals.prelistUsaha) ? ((overallJumlahUsaha / usahaProporsiOverallTotals.prelistUsaha) * 100).toFixed(2) : "0.00"}%</div>
+                      <div className="mt-2 text-sm text-orange-600">
+                        <span className="font-semibold text-orange-900">{overallJumlahUsaha.toLocaleString("id-ID")}</span> non-pertanian dari <span className="font-semibold">{usahaProporsiOverallTotals.prelistUsaha.toLocaleString("id-ID")}</span>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Lowest PML */}
-                  <Card className="relative overflow-hidden border border-rose-200/70 shadow-sm bg-gradient-to-br from-rose-50 via-white to-rose-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-                    <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-rose-500 to-red-400" />
+                  {/* % Usaha Pertanian UTP ST2023 */}
+                  <Card className="relative overflow-hidden border border-green-200/70 shadow-sm bg-gradient-to-br from-green-50 via-white to-green-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                    <div className="absolute top-0 left-0 h-1 w-full bg-green-600" />
                     <CardContent className="pt-5 pb-4">
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="p-2 rounded-lg bg-rose-100 text-rose-700">
-                          <AlertCircle className="h-4 w-4" />
+                        <div className="p-2 rounded-lg bg-green-100 text-green-700">
+                          <List className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-semibold uppercase tracking-wider text-rose-700">Lowest PML</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-green-700">% Usaha Pertanian UTP ST2023</span>
                       </div>
-                      <div className="text-base font-bold text-rose-900 truncate" title={pmlStats.lowestPml.nama_pml}>{pmlStats.lowestPml.nama_pml}</div>
-                      <div className="mt-2 flex items-baseline gap-1.5">
-                        <span className="text-2xl font-bold text-rose-700">{pmlStats.lowestPml.value.toFixed(2)}</span>
-                        <span className="text-sm font-semibold text-rose-600">%</span>
+                      <div className="text-2xl font-bold text-green-700">{(overallJumlahUsahaPertanian && usahaProporsiOverallTotals.utpSt2023) ? ((overallJumlahUsahaPertanian / usahaProporsiOverallTotals.utpSt2023) * 100).toFixed(2) : "0.00"}%</div>
+                      <div className="mt-2 text-sm text-green-600">
+                        <span className="font-semibold text-green-900">{overallJumlahUsahaPertanian.toLocaleString("id-ID")}</span> usaha pertanian dari <span className="font-semibold">{usahaProporsiOverallTotals.utpSt2023.toLocaleString("id-ID")}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -4381,24 +4399,28 @@ export default function MonitoringLapanganDash() {
               )}
 
               {/* Progress Card */}
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-center gap-6">
-                    <div className="rounded-2xl px-6 py-4 shadow-lg bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-500 text-white flex flex-col justify-center">
-                      <div className="text-sm uppercase tracking-widest font-semibold text-emerald-100">Hari ke-{daysElapsed}</div>
-                      <div className="mt-2 text-2xl font-bold">Target minimal: {minPercentageTarget.toFixed(2)}%</div>
-                    </div>
-                    <div className="rounded-2xl px-6 py-4 shadow-lg bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 text-white flex flex-col justify-center min-w-[200px]">
-                      <div className="text-sm uppercase tracking-widest font-semibold text-slate-300">Rata-rata Kab. Majalengka</div>
-                      <div className="mt-2 text-2xl font-bold text-emerald-300">{averageMajalengka.toFixed(2)}%</div>
-                    </div>
-                    <div className="rounded-2xl px-6 py-4 shadow-lg bg-gradient-to-r from-orange-800 via-orange-600 to-yellow-400 text-white flex flex-col justify-center min-w-[200px]">
-                      <div className="text-sm uppercase tracking-widest font-semibold text-slate-100">% Didata Netto</div>
-                      <div className="mt-2 text-2xl font-bold text-emerald-300">{umkmTotalDidataNetto.toFixed(2)}%</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col md:flex-row md:items-center gap-6">
+                        <div className="rounded-2xl px-6 py-4 shadow-lg bg-gradient-to-r from-black via-slate-900 to-slate-800 text-white flex flex-col justify-center">
+                          <div className="text-sm uppercase tracking-widest font-semibold text-slate-200">Hari ke-{daysElapsed}</div>
+                          <div className="mt-2 text-2xl font-bold">Minimal: {minPercentageTarget.toFixed(2)}%</div>
+                        </div>
+                        <div className="rounded-2xl px-6 py-4 shadow-lg bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-500 text-white flex flex-col justify-center min-w-[200px]">
+                          <div className="text-sm uppercase tracking-widest font-semibold text-emerald-100">% Submit</div>
+                          <div className="mt-2 text-2xl font-bold text-emerald-100">{averageMajalengka.toFixed(2)}%</div>
+                        </div>
+                        <div className="rounded-2xl px-6 py-4 shadow-lg bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 text-white flex flex-col justify-center min-w-[200px]">
+                          <div className="text-sm uppercase tracking-widest font-semibold text-blue-100">% Didata Netto</div>
+                          <div className="mt-2 text-2xl font-bold text-white">{umkmTotalDidataNetto.toFixed(2)}%</div>
+                        </div>
+                        <div className="rounded-2xl px-6 py-4 shadow-lg bg-gradient-to-r from-slate-300 via-slate-200 to-slate-100 text-slate-900 flex flex-col justify-center min-w-[200px]">
+                          <div className="text-sm uppercase tracking-widest font-semibold text-slate-700">% Wilkerstat</div>
+                          <div className="mt-2 text-2xl font-bold text-slate-800">{umkmTotalWilkerstat.toFixed(2)}%</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
               {/* Keluarga debug panel component - shows debug info when keluarga data missing */}
               
