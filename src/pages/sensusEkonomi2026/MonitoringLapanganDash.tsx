@@ -595,6 +595,7 @@ interface UsahaProporsiRow {
 }
 
 type ProporsiExportMode = "kecamatan" | "ppl" | "sls";
+type PplExportMode = "ppl" | "sls";
 
 interface UsahaProporsiDetailRow {
   id: string;
@@ -844,6 +845,7 @@ export default function MonitoringLapanganDash() {
   const [umkmAfirmasiFilter, setUmkmAfirmasiFilter] = useState<"all" | "ratih" | "ledya">("all");
   const [usahaKecamatanFilter, setUsahaKecamatanFilter] = useState("all");
   const [proporsiKecamatanFilter, setProporsiKecamatanFilter] = useState("all");
+  const [pplExportMode, setPplExportMode] = useState<PplExportMode>("sls");
   const [usahaItemsPerPage, setUsahaItemsPerPage] = useState(20);
   const [usahaKondisiPerusahaanCurrentPage, setUsahaKondisiPerusahaanCurrentPage] = useState(1);
   const [usahaKondisiKeluargaCurrentPage, setUsahaKondisiKeluargaCurrentPage] = useState(1);
@@ -3189,6 +3191,54 @@ export default function MonitoringLapanganDash() {
     XLSX.writeFile(workbook, `proporsi-usaha-${proporsiExportMode}-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
+  const handleDownloadPPLExcel = () => {
+    if (!isPpk) return;
+
+    const toExportRow = (row: PPLRow | PPLDetail, namaPpl: string, kecamatan: string, tipe: string) => {
+      return {
+        Tipe: tipe,
+        "Nama PPL": namaPpl,
+        Kecamatan: kecamatan,
+        "Prelist Wilkerstat": parseNumericValue(row.prelist_wilkerstat),
+        "Prelist Awal": parseNumericValue(row.prelist_awal),
+        Draft: parseNumericValue(row.draft),
+        "% Draft": row.persentase_draft,
+        "Responden Didata": parseNumericValue(row.responden_didata),
+        "% Responden Didata": row.persentase_responden_didata,
+        "Didata Netto": parseNumericValue(row.didata_netto),
+        "% Didata Netto": row.persentase_didata_netto,
+        "% Wilkerstat": row.persentase_wilkerstat,
+      };
+    };
+
+    const pplAggregateRows = filteredRows.map((row) => ({
+      ...row,
+      id: row.id,
+      nama_ppl: row.nama_ppl,
+    }));
+
+    const exportRows = pplExportMode === "ppl"
+      ? pplAggregateRows.map((row) => toExportRow(row, row.nama_ppl, row.kecamatan, "PPL"))
+      : filteredRows.flatMap((row) => [
+          toExportRow(row, row.nama_ppl, row.kecamatan, "PPL"),
+          ...row.details.map((detail) => toExportRow(detail, detail.matchingKey, detail.address, "Detail")),
+        ]);
+
+    if (exportRows.length === 0) return;
+
+    const autoCols = (rows: Record<string, any>[]) =>
+      Object.keys(rows[0] || {}).map((key) => ({ wch: Math.min(Math.max(key.length + 2, 12), 34) }));
+
+    const workbook = XLSX.utils.book_new();
+
+    // Sheet Detail
+    const detailSheet = XLSX.utils.json_to_sheet(exportRows);
+    detailSheet["!cols"] = autoCols(exportRows);
+    XLSX.utils.book_append_sheet(workbook, detailSheet, "Detail");
+
+    XLSX.writeFile(workbook, `umkm-sosek-ppl-${pplExportMode}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const usahaKondisiSummary = useMemo(() => {
     const totalPerusahaanPrelist = filteredUsahaPerusahaanRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
     const totalPerusahaanFound = filteredUsahaPerusahaanRows.reduce((sum, row) => sum + parseNumericValue(row.ditemukan_plus_baru), 0);
@@ -5426,6 +5476,27 @@ export default function MonitoringLapanganDash() {
                         <option value="ledya">TA - Ledya</option>
                       </select>
                     ) : null}
+                    {isPpk && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          aria-label="Tingkat rekap ekspor Excel"
+                          value={pplExportMode}
+                          onChange={(event) => setPplExportMode(event.target.value as PplExportMode)}
+                          className="h-10 rounded-md border border-slate-300 bg-white px-2 text-sm font-medium text-slate-700"
+                        >
+                          <option value="ppl">PPL</option>
+                          <option value="sls">SLS</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleDownloadPPLExcel}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                        >
+                          <Download className="h-4 w-4" />
+                          Download Excel
+                        </button>
+                      </div>
+                    )}
                     <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-r from-emerald-50 via-white to-slate-50 p-4 shadow-sm">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex flex-wrap items-center gap-2">
