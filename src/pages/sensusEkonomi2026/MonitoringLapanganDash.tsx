@@ -396,17 +396,10 @@ const parsePercentage = (value: unknown): number => {
 };
 
 const getColorForPercentage = (percentage: number): string => {
-  const { daysElapsed } = calculateDayProgress();
-  const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);
-  const deviation = minPercentageTarget - percentage;
-
-  if (percentage >= minPercentageTarget) {
-    return "#15803d";
-  }
-  if (deviation > 0 && deviation <= 5) {
-    return "#f97316";
-  }
-  return "#dc2626";
+  // Change color rules to fixed thresholds for Persentase Assignment per Kecamatan
+  if (percentage >= 100) return "#15803d"; // green
+  if (percentage >= 50) return "#f97316"; // orange
+  return "#dc2626"; // red
 };
 
 const getColorForPemutakhiranPercentage = (percentage: number): string => {
@@ -3742,10 +3735,42 @@ export default function MonitoringLapanganDash() {
   // Chart display controls
   const [chartKecamatanFilter, setChartKecamatanFilter] = useState<string>("all");
   const [chartSortOrder, setChartSortOrder] = useState<"asc" | "desc">("desc");
+  const [chartSortBy, setChartSortBy] = useState<"prelist" | "netto" | "wilkerstat">("prelist");
   const [chartFontSize, setChartFontSize] = useState<number>(12);
   const [chartMode, setChartMode] = useState<"legacy" | "combined">("legacy");
   const [chartRespondenDivisor, setChartRespondenDivisor] = useState<"prelist" | "wilkerstat" | "netto">("netto");
   const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat">("prelist");
+  const [chartProporsiSortBy, setChartProporsiSortBy] = useState<"prelist" | "wilkerstat">("prelist");
+
+  useEffect(() => {
+    // Reset sorting choices when switching chart modes to keep UI predictable
+    if (chartMode !== "combined") {
+      setChartSortBy("prelist");
+      setChartSortOrder("desc");
+      setChartProporsiSortBy("prelist");
+    }
+  }, [chartMode]);
+
+  const VerticalInsideLabel = (props: any) => {
+    const { x, y, width, height, value, fill = "#000", fontSize = 12 } = props;
+    if (value === undefined || value === null) return null;
+    const cx = (x ?? 0) + (width ?? 0) / 2;
+    const cy = (y ?? 0) + (height ?? 0) / 2;
+    const text = typeof value === "number" ? `${value.toFixed(2)}%` : String(value);
+    return (
+      <text
+        x={cx}
+        y={cy}
+        transform={`rotate(-90 ${cx} ${cy})`}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill={fill}
+        style={{ fontSize, fontWeight: 700 }}
+      >
+        {text}
+      </text>
+    );
+  };
 
   // Always enable fetching keluarga summary so dashboard chart can render data
   const { data: keluargaDashboardSummary = [], isLoading: keluargaDashboardLoading } = useKeluargaDashboardSummary(true);
@@ -4050,18 +4075,18 @@ export default function MonitoringLapanganDash() {
             .filter((item) => item.kecamatan === chartKecamatanFilter)
             .map((item) => ({ label: item.desa, ...item }));
 
-    return rows
-      .map((item) => ({
-        ...item,
-        persenNonPertanianPrelist: item.persenNonPertanianPrelist,
-        persenNonPertanianWilkerstat: item.persenNonPertanianWilkerstat,
-      }))
-      .sort((a, b) =>
-        chartSortOrder === "asc"
-          ? a.persenNonPertanianPrelist - b.persenNonPertanianPrelist
-          : b.persenNonPertanianPrelist - a.persenNonPertanianPrelist
-      );
-  }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats]);
+    const mapped = rows.map((item) => ({
+      ...item,
+      persenNonPertanianPrelist: item.persenNonPertanianPrelist,
+      persenNonPertanianWilkerstat: item.persenNonPertanianWilkerstat,
+    }));
+
+    const key = chartProporsiSortBy === "wilkerstat" ? "persenNonPertanianWilkerstat" : "persenNonPertanianPrelist";
+
+    return mapped.sort((a, b) =>
+      chartSortOrder === "asc" ? (a as any)[key] - (b as any)[key] : (b as any)[key] - (a as any)[key]
+    );
+  }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats, chartProporsiSortBy, chartMode]);
 
   const legacyWilayahProporsiNonPertanianChartData = useMemo(() => {
     const rows =
@@ -4130,18 +4155,23 @@ export default function MonitoringLapanganDash() {
             .filter((item) => item.kecamatan === chartKecamatanFilter)
             .map((item) => ({ label: item.desa, ...item }));
 
-    return rows
-      .map((item) => ({
-        ...item,
-        persentasePrelist: item.persentase,
-        persentaseWilkerstat: item.persentaseWilkerstat,
-      }))
-      .sort((a, b) =>
-        chartSortOrder === "asc"
-          ? a.persentasePrelist - b.persentasePrelist
-          : b.persentasePrelist - a.persentasePrelist
-      );
-  }, [chartKecamatanFilter, chartSortOrder, kecamatanStats, desaStats]);
+    const mapped = rows.map((item) => ({
+      ...item,
+      persentasePrelist: item.persentase,
+      persentaseDidataNetto: item.persentaseDidataNetto ?? 0,
+      persentaseWilkerstat: item.persentaseWilkerstat,
+    }));
+
+    const key = chartSortBy === "netto" ? "persentaseDidataNetto" : chartSortBy === "wilkerstat" ? "persentaseWilkerstat" : "persentasePrelist";
+
+    return mapped.sort((a, b) =>
+      chartSortOrder === "asc" ? (a as any)[key] - (b as any)[key] : (b as any)[key] - (a as any)[key]
+    );
+  }, [chartKecamatanFilter, chartSortOrder, kecamatanStats, desaStats, chartSortBy]);
+
+  const avgWilayahPercentageDidata = combinedWilayahChartData.length > 0
+    ? combinedWilayahChartData.reduce((sum, item) => sum + (item.persentaseDidataNetto || 0), 0) / combinedWilayahChartData.length
+    : 0;
 
   const legacyWilayahChartData = useMemo(() => {
     const rows =
@@ -4414,18 +4444,35 @@ export default function MonitoringLapanganDash() {
                           ))}
                         </select>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <label htmlFor="chart-sort" className="text-xs font-semibold text-slate-600">Urutan</label>
-                        <select
-                          id="chart-sort"
-                          value={chartSortOrder}
-                          onChange={(e) => setChartSortOrder(e.target.value as "asc" | "desc")}
-                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
-                        >
-                          <option value="desc">Tertinggi → Terendah</option>
-                          <option value="asc">Terendah → Tertinggi</option>
-                        </select>
-                      </div>
+                      {chartMode === "combined" && (
+                        <>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="chart-sort-by" className="text-xs font-semibold text-slate-600">Urut berdasarkan</label>
+                            <select
+                              id="chart-sort-by"
+                              value={chartSortBy}
+                              onChange={(e) => setChartSortBy(e.target.value as "prelist" | "netto" | "wilkerstat")}
+                              className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                            >
+                              <option value="prelist">Prelist Awal</option>
+                              <option value="netto">Netto</option>
+                              <option value="wilkerstat">Wilkerstat</option>
+                            </select>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="chart-sort" className="text-xs font-semibold text-slate-600">Urutan</label>
+                            <select
+                              id="chart-sort"
+                              value={chartSortOrder}
+                              onChange={(e) => setChartSortOrder(e.target.value as "asc" | "desc")}
+                              className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                            >
+                              <option value="desc">Tertinggi → Terendah</option>
+                              <option value="asc">Terendah → Tertinggi</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
                       <div className="flex flex-col gap-1">
                         <label htmlFor="chart-font" className="text-xs font-semibold text-slate-600">Ukuran Font ({chartFontSize}px)</label>
                         <input
@@ -4489,6 +4536,15 @@ export default function MonitoringLapanganDash() {
                                     targetLabel: "Target (Prelist Awal)",
                                   },
                                   {
+                                    name: "Assignment / Netto",
+                                    pctKey: "persentaseDidataNetto",
+                                    pctLabel: "% Didata Netto",
+                                    valueKey: "didataNetto",
+                                    valueLabel: "Assignment Didata (Netto)",
+                                    targetKey: "didataNetto",
+                                    targetLabel: "Target (% Didata Netto)",
+                                  },
+                                  {
                                     name: "Assignment / Wilkerstat",
                                     pctKey: "persentaseWilkerstat",
                                     pctLabel: "Assignment / Wilkerstat",
@@ -4535,58 +4591,61 @@ export default function MonitoringLapanganDash() {
                               ))}
                             </Bar>
                           </>
-                        ) : (
-                          <>
-                            <ReferenceLine
-                              y={avgWilayahPercentagePrelist}
-                              stroke="#3b82f6"
-                              strokeWidth={2}
-                              strokeDasharray="5 5"
-                              label={{ value: `Rata-rata Prelist: ${avgWilayahPercentagePrelist.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: chartFontSize }}
-                            />
-                            <ReferenceLine
-                              y={avgWilayahPercentageWilkerstat}
-                              stroke="#f59e0b"
-                              strokeWidth={2}
-                              strokeDasharray="5 5"
-                              label={{ value: `Rata-rata Wilkerstat: ${avgWilayahPercentageWilkerstat.toFixed(2)}%`, position: "right", fill: "#f59e0b", fontSize: chartFontSize }}
-                            />
-                            <ReferenceLine
-                              y={minPercentageTarget}
-                              stroke="#3b82f6"
-                              strokeWidth={2}
-                              label={{ value: `Target minimal hari ke-${daysElapsed}: ${minPercentageTarget.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: chartFontSize }}
-                            />
-                            <Legend wrapperStyle={{ fontSize: chartFontSize }} />
-                            <Bar
-                              dataKey="persentasePrelist"
-                              name="Assignment / Prelist Awal"
-                              radius={[8, 8, 0, 0]}
-                              fill="#3b82f6"
-                              maxBarSize={32}
-                              label={{
-                                position: "top",
-                                fill: "#1f2937",
-                                fontSize: chartFontSize,
-                                fontWeight: 600,
-                                formatter: (value: number) => `${value.toFixed(2)}%`,
-                              }}
-                            />
-                            <Bar
-                              dataKey="persentaseWilkerstat"
-                              name="Assignment / Wilkerstat"
-                              radius={[8, 8, 0, 0]}
-                              fill="#f59e0b"
-                              maxBarSize={32}
-                              label={{
-                                position: "top",
-                                fill: "#1f2937",
-                                fontSize: chartFontSize,
-                                fontWeight: 600,
-                                formatter: (value: number) => `${value.toFixed(2)}%`,
-                              }}
-                            />
-                          </>
+                            ) : (
+                              <>
+                                <ReferenceLine
+                                  y={avgWilayahPercentagePrelist}
+                                  stroke="#3b82f6"
+                                  strokeWidth={2}
+                                  strokeDasharray="5 5"
+                                  label={{ value: `Rata-rata Prelist: ${avgWilayahPercentagePrelist.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: chartFontSize }}
+                                />
+                                <ReferenceLine
+                                  y={avgWilayahPercentageDidata}
+                                  stroke="#10b981"
+                                  strokeWidth={2}
+                                  strokeDasharray="5 5"
+                                  label={{ value: `Rata-rata Netto: ${avgWilayahPercentageDidata.toFixed(2)}%`, position: "right", fill: "#10b981", fontSize: chartFontSize }}
+                                />
+                                <ReferenceLine
+                                  y={avgWilayahPercentageWilkerstat}
+                                  stroke="#f59e0b"
+                                  strokeWidth={2}
+                                  strokeDasharray="5 5"
+                                  label={{ value: `Rata-rata Wilkerstat: ${avgWilayahPercentageWilkerstat.toFixed(2)}%`, position: "right", fill: "#f59e0b", fontSize: chartFontSize }}
+                                />
+                                <ReferenceLine
+                                  y={minPercentageTarget}
+                                  stroke="#3b82f6"
+                                  strokeWidth={2}
+                                  label={{ value: `Target minimal hari ke-${daysElapsed}: ${minPercentageTarget.toFixed(2)}%`, position: "right", fill: "#3b82f6", fontSize: chartFontSize }}
+                                />
+                                <Legend wrapperStyle={{ fontSize: chartFontSize }} />
+                                <Bar
+                                  dataKey="persentasePrelist"
+                                  name="Prelist Awal"
+                                  radius={[8, 8, 0, 0]}
+                                  fill="#3b82f6"
+                                  maxBarSize={28}
+                                  label={(props) => <VerticalInsideLabel {...props} fill="#000" fontSize={chartFontSize} />}
+                                />
+                                <Bar
+                                  dataKey="persentaseDidataNetto"
+                                  name="Netto"
+                                  radius={[8, 8, 0, 0]}
+                                  fill="#10b981"
+                                  maxBarSize={28}
+                                  label={(props) => <VerticalInsideLabel {...props} fill="#000" fontSize={chartFontSize} />}
+                                />
+                                <Bar
+                                  dataKey="persentaseWilkerstat"
+                                  name="Wilkerstat"
+                                  radius={[8, 8, 0, 0]}
+                                  fill="#f59e0b"
+                                  maxBarSize={28}
+                                  label={(props) => <VerticalInsideLabel {...props} fill="#000" fontSize={chartFontSize} />}
+                                />
+                              </>
                         )}
                       </BarChart>
                     </ResponsiveContainer>
@@ -4648,18 +4707,34 @@ export default function MonitoringLapanganDash() {
                           ))}
                         </select>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <label htmlFor="chart-sort-non" className="text-xs font-semibold text-slate-600">Urutan</label>
-                        <select
-                          id="chart-sort-non"
-                          value={chartSortOrder}
-                          onChange={(e) => setChartSortOrder(e.target.value as "asc" | "desc")}
-                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
-                        >
-                          <option value="desc">Tertinggi → Terendah</option>
-                          <option value="asc">Terendah → Tertinggi</option>
-                        </select>
-                      </div>
+                      {chartMode === "combined" && (
+                        <>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="chart-sort-by-non" className="text-xs font-semibold text-slate-600">Urut berdasarkan</label>
+                            <select
+                              id="chart-sort-by-non"
+                              value={chartProporsiSortBy}
+                              onChange={(e) => setChartProporsiSortBy(e.target.value as "prelist" | "wilkerstat")}
+                              className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                            >
+                              <option value="prelist">Prelist Usaha</option>
+                              <option value="wilkerstat">Usaha Wilkerstat</option>
+                            </select>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label htmlFor="chart-sort-non" className="text-xs font-semibold text-slate-600">Urutan</label>
+                            <select
+                              id="chart-sort-non"
+                              value={chartSortOrder}
+                              onChange={(e) => setChartSortOrder(e.target.value as "asc" | "desc")}
+                              className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                            >
+                              <option value="desc">Tertinggi → Terendah</option>
+                              <option value="asc">Terendah → Tertinggi</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
                       <div className="flex flex-col gap-1">
                         <label htmlFor="chart-font-non" className="text-xs font-semibold text-slate-600">Ukuran Font ({chartFontSize}px)</label>
                         <input
