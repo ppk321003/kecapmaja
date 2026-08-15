@@ -480,7 +480,9 @@ interface PPLDetail {
   prelist_awal: string;
   prelist_wilkerstat: string;
   responden_didata: string;
+  didata_netto: string;
   persentase_responden_didata: string;
+  persentase_didata_netto: string;
   persentase_wilkerstat: string;
   aktivitas: string;
   aktivitasColor: string;
@@ -495,7 +497,9 @@ interface PPLRow {
   prelist_awal: string;
   prelist_wilkerstat: string;
   responden_didata: string;
+  didata_netto: string;
   persentase_responden_didata: string;
+  persentase_didata_netto: string;
   persentase_wilkerstat: string;
   aktivitas: string;
   aktivitasColor: string;
@@ -510,7 +514,9 @@ interface PMLChildRow {
   prelist_wilkerstat: string;
   prelist_awal: string;
   responden_didata: string;
+  didata_netto: string;
   persentase_responden_didata: string;
+  persentase_didata_netto: string;
   persentase_wilkerstat: string;
   draft: string;
   persentase_draft: string;
@@ -523,7 +529,9 @@ interface PMLRow {
   prelist_wilkerstat: string;
   prelist_awal: string;
   responden_didata: string;
+  didata_netto: string;
   persentase_responden_didata: string;
+  persentase_didata_netto: string;
   persentase_wilkerstat: string;
   draft: string;
   persentase_draft: string;
@@ -1288,6 +1296,8 @@ export default function MonitoringLapanganDash() {
       address: string;
       prelistAwal: string;
       respondenDidata: string;
+      // kolom G -> didata netto
+      didataNetto: string;
       persentaseDidata: string;
       draft: string;
       persentaseDraft: string;
@@ -1302,6 +1312,8 @@ export default function MonitoringLapanganDash() {
         address: getSheetCellText(row, 1),
         prelistAwal: getSheetCellText(row, 2),
         respondenDidata: getSheetCellText(row, 4),
+        // kolom G -> didata netto
+        didataNetto: getSheetCellText(row, 6),
         persentaseDidata: getSheetCellText(row, 5),
         draft: getSheetCellText(row, 8),
         persentaseDraft: getSheetCellText(row, 9),
@@ -1361,7 +1373,9 @@ export default function MonitoringLapanganDash() {
             prelist_awal: progressRow.prelistAwal || "0",
             prelist_wilkerstat: (wilkerstatByKey.get(key) || 0).toString(),
             responden_didata: progressRow.respondenDidata || "0",
+            didata_netto: progressRow.didataNetto || "0",
             persentase_responden_didata: pctResponden,
+            persentase_didata_netto: prelist > 0 ? ((parseNumericValue(progressRow.didataNetto || "0") / prelist) * 100).toFixed(2) : "0.00",
             persentase_wilkerstat: pctWilkerstat,
             aktivitas: activityStatus.detail,
             aktivitasColor: activityStatus.color,
@@ -1373,8 +1387,10 @@ export default function MonitoringLapanganDash() {
       const prelistSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.prelist_awal), 0);
       const wilkerstatSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.prelist_wilkerstat), 0);
       const respondenSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.responden_didata), 0);
+      const didataNettoSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.didata_netto), 0);
       const draftSum = details.reduce((sum, detail) => sum + parseNumericValue(detail.draft), 0);
       const pctResponden = prelistSum > 0 ? ((respondenSum / prelistSum) * 100).toFixed(2) : "0.00";
+      const pctDidataNetto = prelistSum > 0 ? ((didataNettoSum / prelistSum) * 100).toFixed(2) : "0.00";
       const pctDraft = prelistSum > 0 ? ((draftSum / prelistSum) * 100).toFixed(2) : "0.00";
       const pctWilkerstat = wilkerstatSum > 0 ? ((respondenSum / wilkerstatSum) * 100).toFixed(2) : "0.00";
       const activityStatus = getActivityStatusText(respondenSum);
@@ -1387,7 +1403,9 @@ export default function MonitoringLapanganDash() {
         prelist_awal: prelistSum.toString(),
         prelist_wilkerstat: wilkerstatSum.toString(),
         responden_didata: respondenSum.toString(),
+        didata_netto: didataNettoSum.toString(),
         persentase_responden_didata: pctResponden,
+        persentase_didata_netto: pctDidataNetto,
         persentase_wilkerstat: pctWilkerstat,
         aktivitas: activityStatus.detail,
         aktivitasColor: activityStatus.color,
@@ -1582,7 +1600,7 @@ export default function MonitoringLapanganDash() {
   }, [pplRows, monitoringProgressMap, monitoringProgressRawMap, monitoringProgressByName]);
 
   const pmlRows = useMemo<PMLRow[]>(() => {
-    const pmlMap = new Map<string, { nama_pml: string; kecamatan: string; childMap: Map<string, { prelist: number; prelist_wilkerstat: number; responden: number; draft: number }> }>();
+    const pmlMap = new Map<string, { nama_pml: string; kecamatan: string; childMap: Map<string, { prelist: number; prelist_wilkerstat: number; responden: number; draft: number; didataNetto: number }> }>();
 
     (stackingData || []).forEach((row: any) => {
       const key = normalizeSheetKey(getSheetCellText(row, 3));
@@ -1596,14 +1614,15 @@ export default function MonitoringLapanganDash() {
       const progressRows = progresData?.filter((progressRow: any) => normalizeSheetKey(getSheetCellText(progressRow, 0)) === key) || [];
       const prelist = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 2)), 0);
       const responden = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 4)), 0);
+      const didataNetto = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 6)), 0);
       const draft = progressRows.reduce((sum: number, progressRow: any) => sum + parseNumericValue(getSheetCellText(progressRow, 8)), 0);
       const prelistWilkerstat = parseNumericValue(getSheetCellText(row, 24));
 
       const mapKey = namaPml;
       const existing = pmlMap.get(mapKey);
       if (!existing) {
-        const childMap = new Map<string, { prelist: number; prelist_wilkerstat: number; responden: number; draft: number }>();
-        childMap.set(namaPpl, { prelist, prelist_wilkerstat: prelistWilkerstat, responden, draft });
+        const childMap = new Map<string, { prelist: number; prelist_wilkerstat: number; responden: number; draft: number; didataNetto: number }>();
+        childMap.set(namaPpl, { prelist, prelist_wilkerstat: prelistWilkerstat, responden, draft, didataNetto });
         pmlMap.set(mapKey, {
           nama_pml: namaPml,
           kecamatan,
@@ -1612,12 +1631,13 @@ export default function MonitoringLapanganDash() {
       } else {
         const childEntry = existing.childMap.get(namaPpl);
         if (!childEntry) {
-          existing.childMap.set(namaPpl, { prelist, prelist_wilkerstat: prelistWilkerstat, responden, draft });
+          existing.childMap.set(namaPpl, { prelist, prelist_wilkerstat: prelistWilkerstat, responden, draft, didataNetto });
         } else {
           childEntry.prelist += prelist;
           childEntry.prelist_wilkerstat += prelistWilkerstat;
           childEntry.responden += responden;
           childEntry.draft += draft;
+          childEntry.didataNetto += didataNetto;
         }
       }
     });
@@ -1627,12 +1647,15 @@ export default function MonitoringLapanganDash() {
         const pctResponden = values.prelist > 0 ? ((values.responden / values.prelist) * 100).toFixed(2) : "0.00";
         const pctDraft = values.prelist > 0 ? ((values.draft / values.prelist) * 100).toFixed(2) : "0.00";
         const pctWilkerstat = values.prelist_wilkerstat > 0 ? ((values.responden / values.prelist_wilkerstat) * 100).toFixed(2) : "0.00";
+        const pctDidataNetto = values.prelist > 0 ? ((values.didataNetto || 0) / values.prelist * 100).toFixed(2) : "0.00";
         return {
           nama_ppl: namaPpl,
           prelist_wilkerstat: values.prelist_wilkerstat.toString(),
           prelist_awal: values.prelist.toString(),
           responden_didata: values.responden.toString(),
+          didata_netto: (values.didataNetto || 0).toString(),
           persentase_responden_didata: pctResponden,
+          persentase_didata_netto: pctDidataNetto,
           persentase_wilkerstat: pctWilkerstat,
           draft: values.draft.toString(),
           persentase_draft: pctDraft,
@@ -1642,8 +1665,10 @@ export default function MonitoringLapanganDash() {
       const prelistSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.prelist_awal), 0);
       const prelistWilkerstatSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.prelist_wilkerstat), 0);
       const respondenSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.responden_didata), 0);
+      const didataNettoSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.didata_netto), 0);
       const draftSum = childArray.reduce((sum, child) => sum + parseNumericValue(child.draft), 0);
       const pctResponden = prelistSum > 0 ? ((respondenSum / prelistSum) * 100).toFixed(2) : "0.00";
+      const pctDidataNetto = prelistSum > 0 ? ((didataNettoSum / prelistSum) * 100).toFixed(2) : "0.00";
       const pctDraft = prelistSum > 0 ? ((draftSum / prelistSum) * 100).toFixed(2) : "0.00";
       const pctWilkerstat = prelistWilkerstatSum > 0 ? ((respondenSum / prelistWilkerstatSum) * 100).toFixed(2) : "0.00";
 
@@ -1654,7 +1679,9 @@ export default function MonitoringLapanganDash() {
         prelist_wilkerstat: prelistWilkerstatSum.toString(),
         prelist_awal: prelistSum.toString(),
         responden_didata: respondenSum.toString(),
+        didata_netto: didataNettoSum.toString(),
         persentase_responden_didata: pctResponden,
+        persentase_didata_netto: pctDidataNetto,
         persentase_wilkerstat: pctWilkerstat,
         draft: draftSum.toString(),
         persentase_draft: pctDraft,
@@ -3717,7 +3744,7 @@ export default function MonitoringLapanganDash() {
   const [chartSortOrder, setChartSortOrder] = useState<"asc" | "desc">("desc");
   const [chartFontSize, setChartFontSize] = useState<number>(12);
   const [chartMode, setChartMode] = useState<"legacy" | "combined">("legacy");
-  const [chartRespondenDivisor, setChartRespondenDivisor] = useState<"prelist" | "wilkerstat">("prelist");
+  const [chartRespondenDivisor, setChartRespondenDivisor] = useState<"prelist" | "wilkerstat" | "netto">("netto");
   const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat">("prelist");
 
   // Always enable fetching keluarga summary so dashboard chart can render data
@@ -3864,14 +3891,15 @@ export default function MonitoringLapanganDash() {
 
   // Kecamatan data for chart
   const kecamatanStats = useMemo(() => {
-    const kecamatanMap = new Map<string, { prelist: number; responden: number; wilkerstat: number }>();
+    const kecamatanMap = new Map<string, { prelist: number; responden: number; wilkerstat: number; didata: number }>();
 
     pmlRows.forEach((row) => {
       const kecamatan = row.kecamatan || "Unknown";
-      const existing = kecamatanMap.get(kecamatan) || { prelist: 0, responden: 0, wilkerstat: 0 };
+      const existing = kecamatanMap.get(kecamatan) || { prelist: 0, responden: 0, wilkerstat: 0, didata: 0 };
       existing.prelist += parseNumericValue(row.prelist_awal);
       existing.responden += parseNumericValue(row.responden_didata);
       existing.wilkerstat += parseNumericValue(row.prelist_wilkerstat);
+      existing.didata += parseNumericValue(row.didata_netto);
       kecamatanMap.set(kecamatan, existing);
     });
 
@@ -3881,28 +3909,32 @@ export default function MonitoringLapanganDash() {
         prelistAwal: data.prelist,
         respondenDidata: data.responden,
         wilkerstat: data.wilkerstat,
+        didataNetto: data.didata,
         persentase: data.prelist > 0 ? parseFloat(((data.responden / data.prelist) * 100).toFixed(2)) : 0,
         persentaseWilkerstat: data.wilkerstat > 0 ? parseFloat(((data.responden / data.wilkerstat) * 100).toFixed(2)) : 0,
+        persentaseDidataNetto: data.prelist > 0 ? parseFloat(((data.didata / data.prelist) * 100).toFixed(2)) : 0,
       }))
       .sort((a, b) => b.persentase - a.persentase);
   }, [pmlRows]);
 
   // Desa/Kelurahan level data for chart drill-down
   const desaStats = useMemo(() => {
-    const progressTotals = new Map<string, { prelist: number; responden: number }>();
+    const progressTotals = new Map<string, { prelist: number; responden: number; didata: number }>();
     (progresData || []).forEach((row: any) => {
       const key = normalizeSheetKey(getSheetCellText(row, 0));
       if (!key) return;
-      const existing = progressTotals.get(key) || { prelist: 0, responden: 0 };
+      const existing = progressTotals.get(key) || { prelist: 0, responden: 0, didata: 0 };
       existing.prelist += parseNumericValue(getSheetCellText(row, 2));
       // Kode ini harus membaca kolom Didata dari sumber UMKM dan Sosek / progres pendataan yang benar,
       // bukan kolom yang sebelumnya dipindai secara keliru untuk per-kecamatan drilldown.
       existing.responden += parseNumericValue(getSheetCellText(row, 4));
+      // kolom G -> didata netto
+      existing.didata += parseNumericValue(getSheetCellText(row, 6));
       progressTotals.set(key, existing);
     });
 
     const seenKeys = new Set<string>();
-    const desaMap = new Map<string, { kecamatan: string; desa: string; prelist: number; responden: number; wilkerstat: number }>();
+    const desaMap = new Map<string, { kecamatan: string; desa: string; prelist: number; responden: number; wilkerstat: number; didata: number }>();
 
     (stackingData || []).forEach((row: any) => {
       const key = normalizeSheetKey(getSheetCellText(row, 3));
@@ -3911,11 +3943,12 @@ export default function MonitoringLapanganDash() {
       const kecamatan = toProperCase(getSheetCellText(row, 12));
       const desa = toProperCase(getSheetCellText(row, 14)) || "-";
       if (!kecamatan) return;
-      const totals = progressTotals.get(key) || { prelist: 0, responden: 0 };
+      const totals = progressTotals.get(key) || { prelist: 0, responden: 0, didata: 0 };
       const mapKey = `${kecamatan}||${desa}`;
-      const existing = desaMap.get(mapKey) || { kecamatan, desa, prelist: 0, responden: 0, wilkerstat: 0 };
+      const existing = desaMap.get(mapKey) || { kecamatan, desa, prelist: 0, responden: 0, wilkerstat: 0, didata: 0 };
       existing.prelist += totals.prelist;
       existing.responden += totals.responden;
+      existing.didata += totals.didata;
       // Wilkerstat pada grafik responden mengikuti kolom "Wilkerstat" tabel UMKM dan Sosek (jumlah muatan)
       existing.wilkerstat += parseNumericValue(getSheetCellText(row, 24));
       desaMap.set(mapKey, existing);
@@ -3927,8 +3960,10 @@ export default function MonitoringLapanganDash() {
       prelistAwal: item.prelist,
       respondenDidata: item.responden,
       wilkerstat: item.wilkerstat,
+      didataNetto: item.didata,
       persentase: item.prelist > 0 ? parseFloat(((item.responden / item.prelist) * 100).toFixed(2)) : 0,
       persentaseWilkerstat: item.wilkerstat > 0 ? parseFloat(((item.responden / item.wilkerstat) * 100).toFixed(2)) : 0,
+      persentaseDidataNetto: item.prelist > 0 ? parseFloat(((item.didata / item.prelist) * 100).toFixed(2)) : 0,
     }));
   }, [stackingData, progresData]);
 
@@ -4118,7 +4153,7 @@ export default function MonitoringLapanganDash() {
 
     const withValue = rows.map((item) => ({
       ...item,
-      persentaseAktif: chartRespondenDivisor === "wilkerstat" ? item.persentaseWilkerstat : item.persentase,
+      persentaseAktif: chartRespondenDivisor === "wilkerstat" ? item.persentaseWilkerstat : chartRespondenDivisor === "netto" ? (item.persentaseDidataNetto ?? item.persentase) : item.persentase,
     }));
 
     return withValue.sort((a, b) =>
@@ -4356,11 +4391,12 @@ export default function MonitoringLapanganDash() {
                           <select
                             id="chart-divisor-responden"
                             value={chartRespondenDivisor}
-                            onChange={(e) => setChartRespondenDivisor(e.target.value as "prelist" | "wilkerstat")}
+                            onChange={(e) => setChartRespondenDivisor(e.target.value as "prelist" | "wilkerstat" | "netto")}
                             className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
                           >
                             <option value="prelist">Prelist Awal</option>
                             <option value="wilkerstat">Wilkerstat</option>
+                            <option value="netto">Netto</option>
                           </select>
                         </div>
                       )}
@@ -4431,11 +4467,11 @@ export default function MonitoringLapanganDash() {
                               <ChartRatioTooltip
                                 labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                                 pctKey="persentaseAktif"
-                                pctLabel={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : "Assignment / Prelist Awal"}
+                                pctLabel={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : chartRespondenDivisor === "netto" ? "% Didata Netto" : "Assignment / Prelist Awal"}
                                 valueKey="respondenDidata"
                                 valueLabel="Assignment Didata"
-                                targetKey={chartRespondenDivisor === "wilkerstat" ? "wilkerstat" : "prelistAwal"}
-                                targetLabel={chartRespondenDivisor === "wilkerstat" ? "Target (Wilkerstat)" : "Target (Prelist Awal)"}
+                                targetKey={chartRespondenDivisor === "wilkerstat" ? "wilkerstat" : chartRespondenDivisor === "netto" ? "didataNetto" : "prelistAwal"}
+                                targetLabel={chartRespondenDivisor === "wilkerstat" ? "Target (Wilkerstat)" : chartRespondenDivisor === "netto" ? "Target (% Didata Netto)" : "Target (Prelist Awal)"}
                                 fontSize={chartFontSize}
                               />
                             ) : (
@@ -4484,7 +4520,7 @@ export default function MonitoringLapanganDash() {
                             <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                             <Bar
                               dataKey="persentaseAktif"
-                              name={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : "Assignment / Prelist Awal"}
+                              name={chartRespondenDivisor === "wilkerstat" ? "Assignment / Wilkerstat" : chartRespondenDivisor === "netto" ? "Assignment / Netto" : "Assignment / Prelist Awal"}
                               radius={[8, 8, 0, 0]}
                               label={{
                                 position: "top",
@@ -5419,6 +5455,30 @@ export default function MonitoringLapanganDash() {
                               <TableHead
                                 className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
                                 onClick={() => {
+                                  setSortBy("didata_netto");
+                                  setSortOrder(sortBy === "didata_netto" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  Didata Netto
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
+                                  setSortBy("persentase_didata_netto");
+                                  setSortOrder(sortBy === "persentase_didata_netto" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
+                                }}
+                              >
+                                <div className="flex items-center justify-end gap-2">
+                                  % Didata Netto
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </div>
+                              </TableHead>
+                              <TableHead
+                                className="text-right text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                                onClick={() => {
                                   setSortBy("persentase_wilkerstat");
                                   setSortOrder(sortBy === "persentase_wilkerstat" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
                                 }}
@@ -5428,18 +5488,7 @@ export default function MonitoringLapanganDash() {
                                   <ArrowUpDown className="h-4 w-4" />
                                 </div>
                               </TableHead>
-                              <TableHead
-                                className="text-left text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
-                                onClick={() => {
-                                  setSortBy("aktivitas");
-                                  setSortOrder(sortBy === "aktivitas" ? (sortOrder === "asc" ? "desc" : "asc") : "asc");
-                                }}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Aktivitas
-                                  <ArrowUpDown className="h-4 w-4" />
-                                </div>
-                              </TableHead>
+                              
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -5485,11 +5534,12 @@ export default function MonitoringLapanganDash() {
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>
                                       {row.persentase_responden_didata}%
                                     </TableCell>
+                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(row.didata_netto).toLocaleString("id-ID")}</TableCell>
+                                    <TableCell className="text-right font-semibold text-slate-900 px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(row.persentase_didata_netto)) }}>
+                                      {row.persentase_didata_netto}%
+                                    </TableCell>
                                     <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">
                                       {row.persentase_wilkerstat}%
-                                    </TableCell>
-                                    <TableCell className="max-w-[240px] px-4 py-3">
-                                      <div className="text-sm font-medium text-slate-900">{row.aktivitas}</div>
                                     </TableCell>
                                   </TableRow>
                                   {isExpanded && row.details.map((detail, detailIndex) => (
@@ -5507,11 +5557,12 @@ export default function MonitoringLapanganDash() {
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_responden_didata)) }}>
                                         {detail.persentase_responden_didata}%
                                       </TableCell>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(detail.didata_netto).toLocaleString("id-ID")}</TableCell>
+                                      <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(detail.persentase_didata_netto)) }}>
+                                        {detail.persentase_didata_netto}%
+                                      </TableCell>
                                       <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">
                                         {detail.persentase_wilkerstat}%
-                                      </TableCell>
-                                      <TableCell className="max-w-[240px] px-4 py-2">
-                                        <div className="text-sm font-medium text-slate-900">{detail.aktivitas}</div>
                                       </TableCell>
                                     </TableRow>
                                   ))}
@@ -5523,8 +5574,10 @@ export default function MonitoringLapanganDash() {
                               const totalPrelist = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_awal), 0);
                               const totalWilkerstat = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.prelist_wilkerstat), 0);
                               const totalResponden = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.responden_didata), 0);
+                              const totalDidataNetto = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.didata_netto), 0);
                               const totalDraft = filteredRows.reduce((sum, row) => sum + parseNumericValue(row.draft), 0);
                               const totalPctResponden = totalPrelist > 0 ? ((totalResponden / totalPrelist) * 100).toFixed(2) : "0.00";
+                              const totalPctDidataNetto = totalPrelist > 0 ? ((totalDidataNetto / totalPrelist) * 100).toFixed(2) : "0.00";
                               const totalPctDraft = totalPrelist > 0 ? ((totalDraft / totalPrelist) * 100).toFixed(2) : "0.00";
                               const totalPctWilkerstat = totalWilkerstat > 0 ? ((totalResponden / totalWilkerstat) * 100).toFixed(2) : "0.00";
                               return (
@@ -5539,6 +5592,10 @@ export default function MonitoringLapanganDash() {
                                   <TableCell className="text-right text-slate-900 px-4 py-3">{totalResponden.toLocaleString("id-ID")}</TableCell>
                                   <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctResponden)) }}>
                                     {totalPctResponden}%
+                                  </TableCell>
+                                  <TableCell className="text-right text-slate-900 px-4 py-3">{totalDidataNetto.toLocaleString("id-ID")}</TableCell>
+                                  <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctDidataNetto)) }}>
+                                    {totalPctDidataNetto}%
                                   </TableCell>
                                   <TableCell className="text-right px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(totalPctWilkerstat)) }}>
                                     {totalPctWilkerstat}%
@@ -5730,6 +5787,8 @@ export default function MonitoringLapanganDash() {
                                   <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Draft</TableHead>
                                   <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Didata</TableHead>
                                   <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Didata</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">Didata Netto</TableHead>
+                                  <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Didata Netto</TableHead>
                                   <TableHead className="text-right text-slate-700 font-semibold px-4 py-3">% Wilkerstat</TableHead>
                                 </TableRow>
                               </TableHeader>
@@ -5770,8 +5829,10 @@ export default function MonitoringLapanganDash() {
                                         <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.draft).toLocaleString("id-ID")}</TableCell>
                                         <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{pml.persentase_draft}%</TableCell>
                                         <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.responden_didata).toLocaleString("id-ID")}</TableCell>
-                                        <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>{pml.persentase_responden_didata}%</TableCell>
-                                        <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{pml.persentase_wilkerstat}%</TableCell>
+                                          <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(respPct) }}>{pml.persentase_responden_didata}%</TableCell>
+                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{parseNumericValue(pml.didata_netto).toLocaleString("id-ID")}</TableCell>
+                                          <TableCell className="text-right font-semibold px-4 py-3" style={{ color: getColorForPercentage(parsePercentage(pml.persentase_didata_netto)) }}>{pml.persentase_didata_netto}%</TableCell>
+                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-3">{pml.persentase_wilkerstat}%</TableCell>
                                       </TableRow>
                                       {isExpanded && pml.children.map((child, childIndex) => (
                                         <TableRow key={`${pml.id}-child-${childIndex}`} className="bg-slate-50 border-b hover:bg-slate-100 transition-colors">
@@ -5782,9 +5843,11 @@ export default function MonitoringLapanganDash() {
                                           <TableCell className="text-right font-semibold text-blue-900 px-4 py-2">{parseNumericValue(child.prelist_awal).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(child.draft).toLocaleString("id-ID")}</TableCell>
                                           <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{child.persentase_draft}%</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(child.responden_didata).toLocaleString("id-ID")}</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_responden_didata)) }}>{child.persentase_responden_didata}%</TableCell>
-                                          <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{child.persentase_wilkerstat}%</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(child.responden_didata).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_responden_didata)) }}>{child.persentase_responden_didata}%</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{parseNumericValue(child.didata_netto).toLocaleString("id-ID")}</TableCell>
+                                            <TableCell className="text-right font-semibold px-4 py-2" style={{ color: getColorForPercentage(parsePercentage(child.persentase_didata_netto)) }}>{child.persentase_didata_netto}%</TableCell>
+                                            <TableCell className="text-right font-semibold text-slate-900 px-4 py-2">{child.persentase_wilkerstat}%</TableCell>
                                         </TableRow>
                                       ))}
                                       </React.Fragment>
