@@ -1806,7 +1806,7 @@ export default function MonitoringLapanganDash() {
       const ganda = getRawColumnNumber(row, 7, getRowNumeric(row, "ganda", ["ganda"], 0));
       const tidakDitemukan = getRawColumnNumber(row, 9, getRowNumeric(row, "tidak_ditemukan", ["tidak ditemukan", "tidak_ditemukan"], 0));
       const baru = getRawColumnNumber(row, 11, getRowNumeric(row, "baru", ["baru"], 0));
-      const ditemukanPlusBaru = getRawColumnNumber(row, 15, getRowNumeric(row, "ditemukan_plus_baru", ["ditemukan_plus_baru", "ditemukan + baru", "ditemukan dan baru", "total_ditemukan"], 0));
+      const ditemukanPlusBaru = getRawColumnNumber(row, 35, getRowNumeric(row, "ditemukan_plus_baru", ["ditemukan_plus_baru", "ditemukan + baru", "ditemukan dan baru", "total_ditemukan"], 0));
 
       const child: UsahaChildRow = {
         id: `${key}-child-${index}`,
@@ -2208,7 +2208,7 @@ export default function MonitoringLapanganDash() {
       entry.keluarga_ganda += getRawColumnNumber(row, 7, 0);
       entry.keluarga_tidak_ditemukan += getRawColumnNumber(row, 9, 0);
       entry.keluarga_baru += getRawColumnNumber(row, 11, 0);
-      entry.keluarga_ditemukan_plus_baru += getRawColumnNumber(row, 13, 0);
+      entry.keluarga_ditemukan_plus_baru += getRawColumnNumber(row, 15, 0);
       addDetail(entry, row, id, "Keluarga");
     });
 
