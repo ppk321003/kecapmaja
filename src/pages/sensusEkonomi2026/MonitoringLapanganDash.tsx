@@ -15,6 +15,7 @@ import * as XLSX from "xlsx";
 import IdentifikasiUTTTab from "./IdentifikasiUTTTab";
 import SkalaUsahaTab from "./SkalaUsahaTab";
 import KeluargaTab, { KELUARGA_SPREADSHEET_ID, useKeluargaDashboardSummary, useKeluargaDebugInfo } from "./KeluargaTab";
+import HarianTabV2 from "./HarianTabV2";
 
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 const STACKING_SHEET = "STACKING";
@@ -465,6 +466,106 @@ const extractProgressHeader = (value: string): string => {
 
   const selected = segments.filter((part) => /^(sumber:|diperbarui:)/i.test(part));
   return selected.join(" | ");
+};
+
+// Extract tanggal dari raw header string (progresHeaderData)
+// Format: "Sumber: FASIH...|Diperbarui: 18 Agu 2026, 12.00|..."
+// Returns: Date object parsed from the Diperbarui segment
+const extractRecordDate = (headerValue: any): Date | null => {
+  try {
+    console.log("🔍 extractRecordDate input:", headerValue, "type:", typeof headerValue);
+    
+    // Handle if headerValue is an object (auto-parsed), extract first value
+    let headerString = headerValue;
+    if (typeof headerValue === 'object' && headerValue !== null && !Array.isArray(headerValue)) {
+      // If it's an object with values, try to get first property
+      const firstKey = Object.keys(headerValue)[0];
+      headerString = headerValue[firstKey] || String(headerValue);
+    }
+    
+    // If it's an array, get first element
+    if (Array.isArray(headerValue) && headerValue.length > 0) {
+      headerString = headerValue[0];
+    }
+    
+    headerString = String(headerString || "").trim();
+    console.log("🔍 headerString after conversion:", headerString);
+    
+    if (!headerString) {
+      console.log("🔍 headerString empty, returning null");
+      return null;
+    }
+
+    const segments = headerString
+      .split("|")
+      .map((part: string) => part.trim())
+      .filter(Boolean);
+
+    console.log("🔍 segments:", segments);
+
+    const diperbuaruSegment = segments.find((part: string) => /^diperbarui:/i.test(part));
+    console.log("🔍 diperbuaruSegment:", diperbuaruSegment);
+    
+    if (!diperbuaruSegment) {
+      console.log("🔍 No diperbarui segment found, returning null");
+      return null;
+    }
+
+    // Extract date and time from "Diperbarui: 18 Agu 2026, 12.00"
+    const match = diperbuaruSegment.match(/diperbarui:\s*(.+?),\s*(\d{1,2}\.\d{2})/i);
+    console.log("🔍 regex match:", match);
+    
+    if (!match) {
+      console.log("🔍 Regex match failed, returning null");
+      return null;
+    }
+
+    const dateStr = match[1].trim(); // "18 Agu 2026"
+    const timeStr = match[2].trim(); // "12.00"
+
+    console.log("🔍 dateStr:", dateStr, "timeStr:", timeStr);
+
+    // Parse Indonesian date format
+    const months: Record<string, number> = {
+      'januari': 1, 'februari': 2, 'maret': 3, 'april': 4, 'mei': 5, 'juni': 6,
+      'juli': 7, 'agustus': 8, 'september': 9, 'oktober': 10, 'november': 11, 'desember': 12,
+      'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'mei': 5, 'jun': 6,
+      'jul': 7, 'agu': 8, 'sep': 9, 'okt': 10, 'nov': 11, 'des': 12
+    };
+
+    const dateParts = dateStr.split(/\s+/);
+    const day = parseInt(dateParts[0], 10);
+    const monthStr = dateParts[1].toLowerCase();
+    const year = parseInt(dateParts[2], 10);
+    const month = months[monthStr];
+
+    console.log("🔍 Parsed - day:", day, "month:", month, "year:", year);
+
+    if (!month || isNaN(day) || isNaN(year)) {
+      console.log("🔍 Parsing failed - invalid month/day/year, returning null");
+      return null;
+    }
+
+    const timeParts = timeStr.split('.');
+    const hour = parseInt(timeParts[0], 10);
+    const minute = parseInt(timeParts[1], 10);
+
+    console.log("🔍 Parsed - hour:", hour, "minute:", minute);
+
+    const result = new Date(year, month - 1, day, hour, minute, 0);
+    
+    // Ensure result is valid Date
+    if (isNaN(result.getTime())) {
+      console.log("🔍 Date object is invalid, returning null");
+      return null;
+    }
+    
+    console.log("✅ Successfully extracted date:", result);
+    return result;
+  } catch (error) {
+    console.error('❌ Error in extractRecordDate:', error);
+    return null;
+  }
 };
 
 interface PPLDetail {
@@ -3239,6 +3340,129 @@ export default function MonitoringLapanganDash() {
     XLSX.writeFile(workbook, `umkm-sosek-ppl-${pplExportMode}-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
+  const handleRecordToHarian = async (recordDate?: Date) => {
+    if (!isPpk) {
+      toast({ title: "Error", description: "Hanya PPK yang dapat merekam data", variant: "destructive" });
+      return;
+    }
+
+    if (filteredRows.length === 0) {
+      toast({ title: "Warning", description: "Tidak ada data PPL untuk direkam", variant: "default" });
+      return;
+    }
+
+    try {
+      // First, check if sheet has header row
+      const { data: existingData, error: readError } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1uA5nThGOntZrqfwFo_TNHhP3P7P78BATfc4p4BZQe9U',
+          operation: 'read',
+          range: 'LOG_HARIAN!A1:I1'
+        }
+      });
+
+      let needsHeader = !existingData?.values || existingData.values.length === 0 || !existingData.values[0];
+
+      // If sheet needs header, add it first
+      if (needsHeader) {
+        const headerRow = [[
+          'Tanggal_Rekam',
+          'Waktu_Rekam',
+          'Nama_PPL',
+          'Kecamatan',
+        'Prelist_Awal',
+        ]];
+
+        const { error: headerError } = await supabase.functions.invoke('google-sheets', {
+          body: {
+            spreadsheetId: '1uA5nThGOntZrqfwFo_TNHhP3P7P78BATfc4p4BZQe9U',
+            operation: 'append',
+            range: 'LOG_HARIAN',
+            values: headerRow
+          }
+        });
+
+        if (headerError) {
+          console.error('Error creating header:', headerError);
+          toast({
+            title: "Error",
+            description: "Gagal membuat header di sheet Harian",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
+      // Use provided recordDate or extract from progresHeaderData, fallback to current date
+      let now: Date;
+      if (recordDate instanceof Date && !isNaN(recordDate.getTime())) {
+        now = recordDate;
+      } else {
+        const extracted = extractRecordDate(progresHeaderData?.[0]);
+        now = (extracted instanceof Date && !isNaN(extracted.getTime())) ? extracted : new Date();
+      }
+      
+      console.log("🕐 Final date to use:", now);
+      
+      const tanggalFormat = now.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+      const waktuFormat = now.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      const dataToRecord = filteredRows.map(row => [
+        tanggalFormat,           // Tanggal_Rekam
+        waktuFormat,             // Waktu_Rekam
+        row.nama_ppl,            // Nama_PPL
+        row.kecamatan,           // Kecamatan
+        parseNumericValue(row.prelist_awal),      // Prelist_Awal
+        parseNumericValue(row.responden_didata),  // Submit
+        parseNumericValue(row.draft),             // Draft
+        parseNumericValue(row.didata_netto),      // Netto
+        row.persentase_responden_didata,          // Persentase_Progress
+        user?.username || 'unknown'               // Dicatat_Oleh
+      ]);
+
+      // Append to LOG_HARIAN sheet
+      const { data, error } = await supabase.functions.invoke('google-sheets', {
+        body: {
+          spreadsheetId: '1uA5nThGOntZrqfwFo_TNHhP3P7P78BATfc4p4BZQe9U',
+          operation: 'append',
+          range: 'LOG_HARIAN',
+          values: dataToRecord
+        }
+      });
+
+      if (error) {
+        console.error('Error recording to Harian:', error);
+        toast({
+          title: "Error",
+          description: `Gagal merekam data: ${error.message || 'Unknown error'}`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: `✓ Berhasil merekam ${filteredRows.length} PPL ke sheet Harian pada ${tanggalFormat}`,
+        variant: "default"
+      });
+    } catch (err) {
+      console.error('Exception in handleRecordToHarian:', err);
+      toast({
+        title: "Error",
+        description: `Gagal merekam data: ${String(err).slice(0, 100)}`,
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleDownloadNgibarExcel = () => {
     if (!isPpk) return;
 
@@ -4455,6 +4679,7 @@ export default function MonitoringLapanganDash() {
               <TabsTrigger value="keluarga" className="rounded-xl py-2 text-sm font-semibold">Keluarga</TabsTrigger>
               <TabsTrigger value="identifikasi-utt" className="rounded-xl py-2 text-sm font-semibold">Identifikasi UTT</TabsTrigger>
               <TabsTrigger value="ngibar" className="rounded-xl py-2 text-sm font-semibold">Data Ngibar</TabsTrigger>
+              <TabsTrigger value="harian" className="rounded-xl py-2 text-sm font-semibold">Harian</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard" className="space-y-6 mt-6">
               {pmlStats && (
@@ -7387,6 +7612,9 @@ export default function MonitoringLapanganDash() {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+            <TabsContent value="harian" className="space-y-6 mt-6">
+              <HarianTabV2 onRecordToHarian={handleRecordToHarian} isPpk={isPpk} />
             </TabsContent>
           </Tabs>
         </div>
