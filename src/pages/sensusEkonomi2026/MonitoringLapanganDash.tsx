@@ -3636,6 +3636,7 @@ export default function MonitoringLapanganDash() {
           case "matchingKeys":
             return String(row[sortBy]).toLowerCase();
           case "prelist_awal":
+          case "jumlah_assignment":
           case "prelist_wilkerstat":
           case "responden_didata":
           case "draft":
