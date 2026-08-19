@@ -189,7 +189,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const uniqueTanggal = useMemo(() => {
     const dates = new Set<string>();
     harianRows.forEach(row => dates.add(row.tanggal_rekam));
-    return Array.from(dates).sort().reverse();
+    return Array.from(dates).sort();
   }, [harianRows]);
 
   // Get unique kecamatan
@@ -210,15 +210,6 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     return Array.from(times).sort();
   };
 
-  const getMostCompleteTimeForDate = (tanggal: string) => {
-    const counts = new Map<string, number>();
-    harianRows
-      .filter(row => row.tanggal_rekam === tanggal)
-      .forEach(row => counts.set(row.waktu_rekam, (counts.get(row.waktu_rekam) || 0) + 1));
-
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0]?.[0] || "";
-  };
-
   // Get unique times for the selected start date
   const uniqueJamAwal = useMemo(() => {
     return tanggalAwal ? getUniqueTimesForDate(tanggalAwal) : [];
@@ -229,15 +220,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     return tanggalAkhir ? getUniqueTimesForDate(tanggalAkhir) : [];
   }, [tanggalAkhir, harianRows]);
 
-  // Set default tanggal dan jam (most recent and second most recent)
+  // Default to the earliest and latest available snapshots.
   React.useEffect(() => {
     if (uniqueTanggal.length > 0 && !tanggalAwal) {
-      // Set akhir to most recent date
-      const dateAkhir = uniqueTanggal[0];
+      const dateAwal = uniqueTanggal[0];
+      const dateAkhir = uniqueTanggal[uniqueTanggal.length - 1];
       setTanggalAkhir(dateAkhir);
-      
-      // Set awal to second most recent date (or same if only 1 date)
-      const dateAwal = uniqueTanggal[Math.min(1, uniqueTanggal.length - 1)];
       setTanggalAwal(dateAwal);
     }
   }, [uniqueTanggal, tanggalAwal]);
@@ -245,13 +233,13 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   // Auto-set jam when tanggal changes
   React.useEffect(() => {
     if (uniqueJamAwal.length > 0 && !jamAwal) {
-      setJamAwal(getMostCompleteTimeForDate(tanggalAwal));
+      setJamAwal(uniqueJamAwal[0]);
     }
   }, [uniqueJamAwal, jamAwal, tanggalAwal, harianRows]);
 
   React.useEffect(() => {
     if (uniqueJamAkhir.length > 0 && !jamAkhir) {
-      setJamAkhir(getMostCompleteTimeForDate(tanggalAkhir));
+      setJamAkhir(uniqueJamAkhir[uniqueJamAkhir.length - 1]);
     }
   }, [uniqueJamAkhir, jamAkhir, tanggalAkhir, harianRows]);
 
@@ -568,12 +556,24 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
       )}
 
       {/* Date Range Selector */}
-      <Card className="border-0 shadow-sm bg-gradient-to-r from-slate-50 to-blue-50">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Card className="overflow-hidden border border-slate-200 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-900 px-4 py-2 text-white">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wide">Periode Perbandingan</h3>
+            <p className="text-[11px] text-slate-300">Pilih snapshot awal dan akhir untuk melihat perubahan harian</p>
+          </div>
+          <TrendingUp className="h-5 w-5 text-slate-300" />
+        </div>
+        <CardContent className="p-3">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="grid gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 sm:grid-cols-2">
+              <div className="sm:col-span-2 flex items-center gap-2 text-sm font-bold text-blue-900">
+                <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-bold text-white">AWAL</span>
+                Snapshot paling awal
+              </div>
             {/* Tanggal Awal */}
             <div>
-              <label className="text-sm font-semibold text-slate-700 block mb-2">Tanggal Awal</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-blue-800">Tanggal Awal</label>
               <select
                 value={tanggalAwal}
                 onChange={(e) => {
@@ -581,7 +581,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                   setJamAwal(""); // Reset jam when date changes
                   setCurrentPage(1);
                 }}
-                className="w-full h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                className="h-9 w-full rounded-lg border border-blue-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               >
                 <option value="">-- Pilih Tanggal Awal --</option>
                 {uniqueTanggal.map((tanggal) => (
@@ -594,7 +594,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
 
             {/* Jam Awal */}
             <div>
-              <label className="text-sm font-semibold text-slate-700 block mb-2">Jam Awal</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-blue-800">Jam Awal</label>
               <select
                 value={jamAwal}
                 onChange={(e) => {
@@ -602,7 +602,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                   setCurrentPage(1);
                 }}
                 disabled={!tanggalAwal || uniqueJamAwal.length === 0}
-                className="w-full h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-9 w-full rounded-lg border border-blue-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">-- Pilih Jam Awal --</option>
                 {uniqueJamAwal.map((jam) => (
@@ -612,10 +612,17 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                 ))}
               </select>
             </div>
+            </div>
+
+            <div className="grid gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:grid-cols-2">
+              <div className="sm:col-span-2 flex items-center gap-2 text-sm font-bold text-amber-900">
+                <span className="rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-white">AKHIR</span>
+                Snapshot paling akhir
+              </div>
 
             {/* Tanggal Akhir */}
             <div>
-              <label className="text-sm font-semibold text-slate-700 block mb-2">Tanggal Akhir</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-amber-800">Tanggal Akhir</label>
               <select
                 value={tanggalAkhir}
                 onChange={(e) => {
@@ -623,7 +630,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                   setJamAkhir(""); // Reset jam when date changes
                   setCurrentPage(1);
                 }}
-                className="w-full h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                className="h-9 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
               >
                 <option value="">-- Pilih Tanggal Akhir --</option>
                 {uniqueTanggal.map((tanggal) => (
@@ -636,7 +643,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
 
             {/* Jam Akhir */}
             <div>
-              <label className="text-sm font-semibold text-slate-700 block mb-2">Jam Akhir</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-amber-800">Jam Akhir</label>
               <select
                 value={jamAkhir}
                 onChange={(e) => {
@@ -644,7 +651,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                   setCurrentPage(1);
                 }}
                 disabled={!tanggalAkhir || uniqueJamAkhir.length === 0}
-                className="w-full h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-9 w-full rounded-lg border border-amber-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">-- Pilih Jam Akhir --</option>
                 {uniqueJamAkhir.map((jam) => (
@@ -654,10 +661,11 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                 ))}
               </select>
             </div>
+            </div>
           </div>
           {tanggalAwal && jamAwal && tanggalAkhir && jamAkhir && (
-            <div className="mt-3 text-sm text-slate-600 bg-white rounded px-3 py-2 border border-slate-200">
-              📊 Membandingkan dari <strong>{tanggalAwal} {jamAwal}</strong> ke <strong>{tanggalAkhir} {jamAkhir}</strong> ({filteredPerubahan.length} PPL)
+            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700">
+              Membandingkan <strong className="text-blue-700">{tanggalAwal} {jamAwal}</strong> ke <strong className="text-amber-700">{tanggalAkhir} {jamAkhir}</strong> ({filteredPerubahan.length} PPL)
             </div>
           )}
         </CardContent>
