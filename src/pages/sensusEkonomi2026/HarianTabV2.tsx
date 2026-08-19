@@ -8,6 +8,48 @@ import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 const HARIAN_SPREADSHEET_ID = "1uA5nThGOntZrqfwFo_TNHhP3P7P78BATfc4p4BZQe9U";
 const HARIAN_SHEET = "LOG_HARIAN";
 
+const HARIAN_MONTHS: Record<string, string> = {
+  januari: "01",
+  februari: "02",
+  maret: "03",
+  april: "04",
+  mei: "05",
+  juni: "06",
+  juli: "07",
+  agustus: "08",
+  september: "09",
+  oktober: "10",
+  november: "11",
+  desember: "12",
+};
+
+const normalizeHarianDate = (value: unknown): string => {
+  const raw = String(value ?? "").trim().replace(/\s+/g, " ");
+  if (!raw) return "";
+
+  const indonesian = raw.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  if (indonesian) {
+    const month = HARIAN_MONTHS[indonesian[2].toLowerCase()];
+    if (month) return `${indonesian[3]}-${month}-${indonesian[1].padStart(2, "0")}`;
+  }
+
+  const date = new Date(raw);
+  if (!Number.isNaN(date.getTime())) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  const numeric = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (numeric) return `${numeric[3]}-${numeric[2].padStart(2, "0")}-${numeric[1].padStart(2, "0")}`;
+  return raw;
+};
+
+const normalizeHarianTime = (value: unknown): string => {
+  const raw = String(value ?? "").trim().replace(/:/g, ".");
+  const match = raw.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{1,2}))?/);
+  if (!match) return raw;
+  return `${match[1].padStart(2, "0")}.${match[2].padStart(2, "0")}.${(match[3] || "00").padStart(2, "0")}`;
+};
+
 interface HarianRow {
   tanggal_rekam: string;
   waktu_rekam: string;
@@ -93,8 +135,8 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
 
       const result = {
         id: `${idx}`,
-        tanggal_rekam: String(getField(row, "tanggal_rekam", "Tanggal_Rekam", "Tanggal Rekam") || ""),
-        waktu_rekam: String(getField(row, "waktu_rekam", "Waktu_Rekam", "Waktu Rekam") || ""),
+        tanggal_rekam: normalizeHarianDate(getField(row, "tanggal_rekam", "Tanggal_Rekam", "Tanggal Rekam")),
+        waktu_rekam: normalizeHarianTime(getField(row, "waktu_rekam", "Waktu_Rekam", "Waktu Rekam")),
         nama_ppl: String(getField(row, "nama_ppl", "Nama_PPL", "Nama PPL") || ""),
         kecamatan: String(getField(row, "kecamatan", "Kecamatan") || ""),
         prelist_awal: Number(getField(row, "prelist_awal", "Prelist_Awal", "Prelist Awal") || 0),
@@ -139,6 +181,15 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
     return Array.from(times).sort();
   };
 
+  const getMostCompleteTimeForDate = (tanggal: string) => {
+    const counts = new Map<string, number>();
+    harianRows
+      .filter(row => row.tanggal_rekam === tanggal)
+      .forEach(row => counts.set(row.waktu_rekam, (counts.get(row.waktu_rekam) || 0) + 1));
+
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0]?.[0] || "";
+  };
+
   // Get unique times for the selected start date
   const uniqueJamAwal = useMemo(() => {
     return tanggalAwal ? getUniqueTimesForDate(tanggalAwal) : [];
@@ -165,15 +216,15 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
   // Auto-set jam when tanggal changes
   React.useEffect(() => {
     if (uniqueJamAwal.length > 0 && !jamAwal) {
-      setJamAwal(uniqueJamAwal[0]); // Earliest available time for start snapshot
+      setJamAwal(getMostCompleteTimeForDate(tanggalAwal));
     }
-  }, [uniqueJamAwal, jamAwal]);
+  }, [uniqueJamAwal, jamAwal, tanggalAwal, harianRows]);
 
   React.useEffect(() => {
     if (uniqueJamAkhir.length > 0 && !jamAkhir) {
-      setJamAkhir(uniqueJamAkhir[uniqueJamAkhir.length - 1]); // Latest available time for end snapshot
+      setJamAkhir(getMostCompleteTimeForDate(tanggalAkhir));
     }
-  }, [uniqueJamAkhir, jamAkhir]);
+  }, [uniqueJamAkhir, jamAkhir, tanggalAkhir, harianRows]);
 
   // Calculate perubahan (delta) between two dates+times
   const perubahan = useMemo<HarianPerubahan[]>(() => {
