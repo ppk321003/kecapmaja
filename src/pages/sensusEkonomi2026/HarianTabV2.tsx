@@ -93,6 +93,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterKecamatan, setFilterKecamatan] = useState<string>("");
+  const [filterUnder, setFilterUnder] = useState<"" | "under">("");
   const [sortBy, setSortBy] = useState<"nama_ppl" | "prelist_awal" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto">("perubahan_netto");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [tanggalAwal, setTanggalAwal] = useState<string>("");
@@ -307,8 +308,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
       filtered = filtered.filter(row => row.kecamatan === filterKecamatan);
     }
 
+    if (filterUnder === "under") {
+      filtered = filtered.filter(row => row.prelist_awal > row.didata_akhir);
+    }
+
     return filtered;
-  }, [perubahan, searchTerm, filterKecamatan]);
+  }, [perubahan, searchTerm, filterKecamatan, filterUnder]);
 
   // Sort perubahan
   const sortedPerubahan = useMemo(() => {
@@ -591,7 +596,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
       </Card>
 
       {/* Search & Filter */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Search by Nama PPL */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -621,6 +626,19 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
               {kecamatan}
             </option>
           ))}
+        </select>
+
+        {/* Filter Under */}
+        <select
+          value={filterUnder}
+          onChange={(e) => {
+            setFilterUnder(e.target.value as "" | "under");
+            setCurrentPage(1);
+          }}
+          className="h-10 rounded-lg border border-red-200 bg-white px-3 text-sm text-slate-700"
+        >
+          <option value="">-- Semua Status --</option>
+          <option value="under">Under (Prelist Awal &gt; Didata Akhir)</option>
         </select>
       </div>
 
@@ -738,11 +756,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
                 <TableBody>
                   {paginatedPerubahan.map((row, index) => {
                     const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
+                    const hasProgressWarning = row.prelist_awal > row.didata_akhir;
                     return (
-                      <TableRow key={`${row.nama_ppl}-${row.kecamatan}`} className="hover:bg-slate-50 border-b transition-colors">
+                      <TableRow key={`${row.nama_ppl}-${row.kecamatan}`} className={`border-b transition-colors ${hasProgressWarning ? "bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500" : "hover:bg-slate-50"}`}>
                         <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
-                        <TableCell className="text-slate-700 px-4 py-3 font-medium">{row.nama_ppl}</TableCell>
-                        <TableCell className="text-slate-600 px-4 py-3">{row.kecamatan}</TableCell>
+                        <TableCell className={`${hasProgressWarning ? "text-red-800" : "text-slate-700"} px-4 py-3 font-medium`}>{hasProgressWarning && <AlertCircle className="mr-1 inline h-4 w-4 text-red-600" aria-label="Warning: Prelist Awal lebih besar dari Didata Akhir" />}{row.nama_ppl}</TableCell>
+                        <TableCell className={`${hasProgressWarning ? "text-red-700" : "text-slate-600"} px-4 py-3`}>{row.kecamatan}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.prelist_awal.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-orange-100">{row.didata_awal.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-orange-100">{row.didata_akhir.toLocaleString("id-ID")}</TableCell>
