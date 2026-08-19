@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Loader2, AlertCircle, Search, TrendingUp, Database } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
@@ -50,12 +50,28 @@ const normalizeHarianTime = (value: unknown): string => {
   return `${match[1].padStart(2, "0")}.${match[2].padStart(2, "0")}.${(match[3] || "00").padStart(2, "0")}`;
 };
 
+const parseHarianNumber = (value: unknown): number => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  let text = String(value ?? "").trim().replace(/\s/g, "");
+  if (!text) return 0;
+  if (text.includes(",") && text.includes(".")) {
+    text = text.replace(/\./g, "").replace(",", ".");
+  } else if (text.includes(",")) {
+    text = text.replace(",", ".");
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(text)) {
+    text = text.replace(/\./g, "");
+  }
+  const parsed = Number(text.replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 interface HarianRow {
   tanggal_rekam: string;
   waktu_rekam: string;
   nama_ppl: string;
   kecamatan: string;
   prelist_awal: number;
+  jumlah_assignment: number;
   submit: number;
   draft: number;
   netto: number;
@@ -68,6 +84,7 @@ interface HarianPerubahan {
   nama_ppl: string;
   kecamatan: string;
   prelist_awal: number;
+  jumlah_assignment: number;
   perubahan_didata: number;
   perubahan_draft: number;
   perubahan_netto: number;
@@ -83,9 +100,11 @@ interface HarianPerubahan {
 interface HarianTabV2Props {
   onRecordToHarian?: () => void;
   isPpk?: boolean;
+  assignmentByPpl?: Record<string, number>;
+  prelistByPpl?: Record<string, number>;
 }
 
-export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianTabV2Props) {
+export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmentByPpl = {}, prelistByPpl = {} }: HarianTabV2Props) {
   const { data: harianRawData, loading: harianLoading, error: harianError } = useGoogleSheetsData({
     spreadsheetId: HARIAN_SPREADSHEET_ID,
     sheetName: HARIAN_SHEET,
@@ -93,8 +112,8 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterKecamatan, setFilterKecamatan] = useState<string>("");
-  const [filterUnder, setFilterUnder] = useState<"" | "under">("");
-  const [sortBy, setSortBy] = useState<"nama_ppl" | "prelist_awal" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto">("perubahan_netto");
+  const [filterUnder, setFilterUnder] = useState<"" | "under" | "good">("");
+  const [sortBy, setSortBy] = useState<"nama_ppl" | "prelist_awal" | "jumlah_assignment" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto">("perubahan_netto");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [tanggalAwal, setTanggalAwal] = useState<string>("");
   const [tanggalAkhir, setTanggalAkhir] = useState<string>("");
@@ -134,16 +153,25 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
         return undefined;
       };
 
+      const rawRow = Array.isArray(row.__rawRow) ? row.__rawRow : [];
+      const assignmentField = getField(row, "jumlah_assignment", "jml_assignment", "Jml_Assignment", "Jml Assignment", "Jumlah Assignment");
+      const parsedAssignmentField = parseHarianNumber(assignmentField);
+      const rawAssignmentValue = parseHarianNumber(rawRow[5]);
+      const assignmentValue = parsedAssignmentField !== 0 || rawAssignmentValue === 0
+        ? parsedAssignmentField
+        : rawAssignmentValue;
+
       const result = {
         id: `${idx}`,
         tanggal_rekam: normalizeHarianDate(getField(row, "tanggal_rekam", "Tanggal_Rekam", "Tanggal Rekam")),
         waktu_rekam: normalizeHarianTime(getField(row, "waktu_rekam", "Waktu_Rekam", "Waktu Rekam")),
         nama_ppl: String(getField(row, "nama_ppl", "Nama_PPL", "Nama PPL") || ""),
         kecamatan: String(getField(row, "kecamatan", "Kecamatan") || ""),
-        prelist_awal: Number(getField(row, "prelist_awal", "Prelist_Awal", "Prelist Awal") || 0),
-        submit: Number(getField(row, "submit", "Submit") || 0),
-        draft: Number(getField(row, "draft", "Draft") || 0),
-        netto: Number(getField(row, "netto", "Netto") || 0),
+        prelist_awal: parseHarianNumber(getField(row, "prelist_awal", "Prelist_Awal", "Prelist Awal")),
+        jumlah_assignment: parseHarianNumber(assignmentValue),
+        submit: parseHarianNumber(getField(row, "submit", "Submit")),
+        draft: parseHarianNumber(getField(row, "draft", "Draft")),
+        netto: parseHarianNumber(getField(row, "netto", "Netto")),
         persentase_progress: String(getField(row, "persentase_progress", "Persentase_Progress", "Persentase Progress") || "0%"),
         dicatat_oleh: String(getField(row, "dicatat_oleh", "Dicatat_Oleh", "Dicatat Oleh") || ""),
       };
@@ -259,7 +287,10 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
       .map(([key, { awal, akhir }]) => {
         const [nama_ppl, kecamatan] = key.split("|");
         
-        const prelistAwal = awal?.prelist_awal || 0;
+        const pplKey = `${nama_ppl.trim().toLowerCase()}|${kecamatan.trim().toLowerCase()}`;
+        const prelistAwal = prelistByPpl[pplKey] ?? awal?.prelist_awal ?? 0;
+        const assignmentKey = `${nama_ppl.trim().toLowerCase()}|${kecamatan.trim().toLowerCase()}`;
+        const jumlahAssignment = assignmentByPpl[assignmentKey] ?? akhir?.jumlah_assignment ?? awal?.jumlah_assignment ?? 0;
         const didataAwal = awal?.submit || 0;
         const draftAwal = awal?.draft || 0;
         const nettoAwal = awal?.netto || 0;
@@ -277,6 +308,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
           nama_ppl,
           kecamatan,
           prelist_awal: prelistAwal,
+          jumlah_assignment: jumlahAssignment,
           perubahan_didata: perubahanDidata,
           perubahan_draft: perubahanDraft,
           perubahan_netto: perubahanNetto,
@@ -289,7 +321,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
           netto_akhir: nettoAkhir,
         };
       });
-  }, [harianRows, tanggalAwal, tanggalAkhir, jamAwal, jamAkhir]);
+  }, [harianRows, tanggalAwal, tanggalAkhir, jamAwal, jamAkhir, assignmentByPpl, prelistByPpl]);
 
   // Filter perubahan
   const filteredPerubahan = useMemo(() => {
@@ -309,7 +341,9 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
     }
 
     if (filterUnder === "under") {
-      filtered = filtered.filter(row => row.prelist_awal > row.didata_akhir);
+      filtered = filtered.filter(row => row.jumlah_assignment > row.didata_akhir);
+    } else if (filterUnder === "good") {
+      filtered = filtered.filter(row => row.jumlah_assignment <= row.didata_akhir);
     }
 
     return filtered;
@@ -329,6 +363,10 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
         case "prelist_awal":
           aVal = a.prelist_awal;
           bVal = b.prelist_awal;
+          break;
+        case "jumlah_assignment":
+          aVal = a.jumlah_assignment;
+          bVal = b.jumlah_assignment;
           break;
         case "didata_awal":
           aVal = a.didata_awal;
@@ -381,7 +419,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field: "nama_ppl" | "prelist_awal" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto") => {
+  const handleSort = (field: "nama_ppl" | "prelist_awal" | "jumlah_assignment" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -415,6 +453,36 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
       totalPerubahanNetto: all.reduce((sum, row) => sum + row.perubahan_netto, 0),
     };
   }, [sortedPerubahan, paginatedPerubahan]);
+
+  const summarizePerubahan = (rows: HarianPerubahan[]) => rows.reduce((summary, row) => ({
+    prelist_awal: summary.prelist_awal + row.prelist_awal,
+    jumlah_assignment: summary.jumlah_assignment + row.jumlah_assignment,
+    didata_awal: summary.didata_awal + row.didata_awal,
+    didata_akhir: summary.didata_akhir + row.didata_akhir,
+    perubahan_didata: summary.perubahan_didata + row.perubahan_didata,
+    draft_awal: summary.draft_awal + row.draft_awal,
+    draft_akhir: summary.draft_akhir + row.draft_akhir,
+    perubahan_draft: summary.perubahan_draft + row.perubahan_draft,
+    netto_awal: summary.netto_awal + row.netto_awal,
+    netto_akhir: summary.netto_akhir + row.netto_akhir,
+    perubahan_netto: summary.perubahan_netto + row.perubahan_netto,
+  }), {
+    prelist_awal: 0,
+    jumlah_assignment: 0,
+    didata_awal: 0,
+    didata_akhir: 0,
+    perubahan_didata: 0,
+    draft_awal: 0,
+    draft_akhir: 0,
+    perubahan_draft: 0,
+    netto_awal: 0,
+    netto_akhir: 0,
+    perubahan_netto: 0,
+  });
+
+  const filteredSummary = summarizePerubahan(filteredPerubahan);
+  const overallSummary = summarizePerubahan(perubahan);
+  const formatChange = (value: number) => `${value > 0 ? "+" : ""}${value.toLocaleString("id-ID")}`;
 
   if (harianLoading) {
     return (
@@ -632,13 +700,14 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
         <select
           value={filterUnder}
           onChange={(e) => {
-            setFilterUnder(e.target.value as "" | "under");
+            setFilterUnder(e.target.value as "" | "under" | "good");
             setCurrentPage(1);
           }}
           className="h-10 rounded-lg border border-red-200 bg-white px-3 text-sm text-slate-700"
         >
           <option value="">-- Semua Status --</option>
-          <option value="under">Under (Prelist Awal &gt; Didata Akhir)</option>
+          <option value="under">Under (Jml Assignment &gt; Didata Akhir)</option>
+          <option value="good">Good (Jml Assignment &le; Didata Akhir)</option>
         </select>
       </div>
 
@@ -679,6 +748,14 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
                       </div>
                     </TableHead>
                     <TableHead
+                      className="text-right text-slate-700 font-semibold px-4 py-3 text-xs bg-blue-100 cursor-pointer hover:bg-blue-200"
+                      onClick={() => handleSort("jumlah_assignment")}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Jml Assignment {getSortIndicator("jumlah_assignment")}
+                      </div>
+                    </TableHead>
+                    <TableHead
                       className="text-right text-slate-700 font-semibold px-4 py-3 text-xs bg-orange-100 cursor-pointer hover:bg-orange-200"
                       onClick={() => handleSort("didata_awal")}
                     >
@@ -695,7 +772,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
                       </div>
                     </TableHead>
                     <TableHead
-                      className="text-right text-slate-700 font-semibold px-4 py-3 text-xs cursor-pointer bg-orange-100 hover:bg-orange-200"
+                      className="text-right text-slate-700 font-semibold px-4 py-3 text-xs cursor-pointer bg-orange-100 hover:bg-orange-200 whitespace-normal break-words"
                       onClick={() => handleSort("perubahan_didata")}
                     >
                       <div className="flex items-center justify-end gap-1">
@@ -719,7 +796,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
                       </div>
                     </TableHead>
                     <TableHead
-                      className="text-right text-slate-700 font-semibold px-4 py-3 text-xs cursor-pointer bg-yellow-100 hover:bg-yellow-200"
+                      className="text-right text-slate-700 font-semibold px-4 py-3 text-xs cursor-pointer bg-yellow-100 hover:bg-yellow-200 whitespace-normal break-words"
                       onClick={() => handleSort("perubahan_draft")}
                     >
                       <div className="flex items-center justify-end gap-1">
@@ -743,7 +820,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
                       </div>
                     </TableHead>
                     <TableHead
-                      className="text-right text-slate-700 font-semibold px-4 py-3 text-xs cursor-pointer bg-emerald-100 hover:bg-emerald-200"
+                      className="text-right text-slate-700 font-semibold px-4 py-3 text-xs cursor-pointer bg-emerald-100 hover:bg-emerald-200 whitespace-normal break-words"
                       onClick={() => handleSort("perubahan_netto")}
                     >
                       <div className="flex items-center justify-end gap-1">
@@ -756,26 +833,27 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
                 <TableBody>
                   {paginatedPerubahan.map((row, index) => {
                     const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
-                    const hasProgressWarning = row.prelist_awal > row.didata_akhir;
+                    const hasProgressWarning = row.jumlah_assignment > row.didata_akhir;
                     return (
                       <TableRow key={`${row.nama_ppl}-${row.kecamatan}`} className={`border-b transition-colors ${hasProgressWarning ? "bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500" : "hover:bg-slate-50"}`}>
                         <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
-                        <TableCell className={`${hasProgressWarning ? "text-red-800" : "text-slate-700"} px-4 py-3 font-medium`}>{hasProgressWarning && <AlertCircle className="mr-1 inline h-4 w-4 text-red-600" aria-label="Warning: Prelist Awal lebih besar dari Didata Akhir" />}{row.nama_ppl}</TableCell>
+                        <TableCell className={`${hasProgressWarning ? "text-red-800" : "text-slate-700"} px-4 py-3 font-medium`}>{hasProgressWarning && <AlertCircle className="mr-1 inline h-4 w-4 text-red-600" aria-label="Warning: Jml Assignment lebih besar dari Didata Akhir" />}{row.nama_ppl}</TableCell>
                         <TableCell className={`${hasProgressWarning ? "text-red-700" : "text-slate-600"} px-4 py-3`}>{row.kecamatan}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.prelist_awal.toLocaleString("id-ID")}</TableCell>
+                        <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.jumlah_assignment.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-orange-100">{row.didata_awal.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-orange-100">{row.didata_akhir.toLocaleString("id-ID")}</TableCell>
-                        <TableCell className={`text-right px-4 py-3 font-semibold bg-orange-100 ${row.perubahan_didata > 0 ? "text-green-600" : row.perubahan_didata < 0 ? "text-red-600" : "text-slate-600"}`}>
+                        <TableCell className={`text-right px-4 py-3 font-semibold bg-orange-100 whitespace-normal break-words ${row.perubahan_didata > 0 ? "text-green-600" : row.perubahan_didata < 0 ? "text-red-600" : "text-slate-600"}`}>
                           {row.perubahan_didata > 0 ? "+" : ""}{row.perubahan_didata.toLocaleString("id-ID")}
                         </TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-yellow-100">{row.draft_awal.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-yellow-100">{row.draft_akhir.toLocaleString("id-ID")}</TableCell>
-                        <TableCell className={`text-right px-4 py-3 font-semibold bg-yellow-100 ${row.perubahan_draft > 0 ? "text-green-600" : row.perubahan_draft < 0 ? "text-red-600" : "text-slate-600"}`}>
+                        <TableCell className={`text-right px-4 py-3 font-semibold bg-yellow-100 whitespace-normal break-words ${row.perubahan_draft > 0 ? "text-green-600" : row.perubahan_draft < 0 ? "text-red-600" : "text-slate-600"}`}>
                           {row.perubahan_draft > 0 ? "+" : ""}{row.perubahan_draft.toLocaleString("id-ID")}
                         </TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-emerald-100">{row.netto_awal.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-emerald-100">{row.netto_akhir.toLocaleString("id-ID")}</TableCell>
-                        <TableCell className={`text-right px-4 py-3 font-semibold bg-emerald-100 ${row.perubahan_netto > 0 ? "text-emerald-600" : row.perubahan_netto < 0 ? "text-red-600" : "text-slate-600"}`}>
+                        <TableCell className={`text-right px-4 py-3 font-semibold bg-emerald-100 whitespace-normal break-words ${row.perubahan_netto > 0 ? "text-emerald-600" : row.perubahan_netto < 0 ? "text-red-600" : "text-slate-600"}`}>
                           {row.perubahan_netto > 0 ? "+" : ""}{row.perubahan_netto.toLocaleString("id-ID")}
                         </TableCell>
 
@@ -783,6 +861,24 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false }: HarianT
                     );
                   })}
                 </TableBody>
+                <TableFooter>
+                  {[{ label: "Total sesuai filter", summary: filteredSummary }, { label: "Total Keseluruhan", summary: overallSummary }].map(({ label, summary }) => (
+                    <TableRow key={label} className="bg-slate-100 font-semibold">
+                      <TableCell colSpan={3} className="px-4 py-3 text-slate-900">{label}</TableCell>
+                      <TableCell className="text-right px-4 py-3">{summary.prelist_awal.toLocaleString("id-ID")}</TableCell>
+                      <TableCell className="text-right px-4 py-3">{summary.jumlah_assignment.toLocaleString("id-ID")}</TableCell>
+                      <TableCell className="text-right px-4 py-3">{summary.didata_awal.toLocaleString("id-ID")}</TableCell>
+                      <TableCell className="text-right px-4 py-3">{summary.didata_akhir.toLocaleString("id-ID")}</TableCell>
+                      <TableCell className="text-right whitespace-normal break-words px-4 py-3">{formatChange(summary.perubahan_didata)}</TableCell>
+                      <TableCell className="text-right px-4 py-3">{summary.draft_awal.toLocaleString("id-ID")}</TableCell>
+                      <TableCell className="text-right px-4 py-3">{summary.draft_akhir.toLocaleString("id-ID")}</TableCell>
+                      <TableCell className="text-right whitespace-normal break-words px-4 py-3">{formatChange(summary.perubahan_draft)}</TableCell>
+                      <TableCell className="text-right px-4 py-3">{summary.netto_awal.toLocaleString("id-ID")}</TableCell>
+                      <TableCell className="text-right px-4 py-3">{summary.netto_akhir.toLocaleString("id-ID")}</TableCell>
+                      <TableCell className="text-right whitespace-normal break-words px-4 py-3">{formatChange(summary.perubahan_netto)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableFooter>
               </Table>
 
               {/* Pagination */}
