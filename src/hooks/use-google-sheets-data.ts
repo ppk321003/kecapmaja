@@ -21,7 +21,7 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, sheetAliases = [
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: 2,
     queryFn: async (): Promise<any[]> => {
       let lastError: any = null;
 

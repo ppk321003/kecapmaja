@@ -307,6 +307,13 @@ const isRateLimited = (status: number, data: any): boolean => {
   return reason === 'RATE_LIMIT_EXCEEDED';
 };
 
+const isTransientGoogleError = (status: number, data: any): boolean => {
+  if (isRateLimited(status, data)) return true;
+  if ([500, 502, 503, 504].includes(status)) return true;
+  const reason = data?.error?.details?.find((d: any) => d?.reason)?.reason;
+  return ['backendError', 'internalError', 'unavailable'].includes(reason);
+};
+
 async function fetchGoogleSheetsWithRetry(
   url: string,
   init: RequestInit,
@@ -325,7 +332,7 @@ async function fetchGoogleSheetsWithRetry(
 
     lastError = data;
 
-    if (isRateLimited(response.status, data) && attempt < maxRetries) {
+    if (isTransientGoogleError(response.status, data) && attempt < maxRetries) {
       const baseDelayMs = 1000;
       const backoffMs = Math.min(baseDelayMs * 2 ** attempt, 10000);
       const jitterMs = Math.floor(Math.random() * 300);
@@ -417,15 +424,16 @@ serve(async (req: Request) => {
     if (operation === 'read') {
       console.log(`Reading range: ${range || 'Sheet1'}`);
       const encodedRange = encodeURIComponent(range || 'Sheet1');
-      const response = await fetch(`${baseUrl}/values/${encodedRange}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      // Stream the upstream JSON straight through: avoids parsing + re-serializing
-      // (and logging) very large payloads, which was the main latency bottleneck.
-      const text = await response.text();
+      const data = await fetchGoogleSheetsWithRetry(
+        `${baseUrl}/values/${encodedRange}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+        `Read ${range || 'Sheet1'}`,
+        3
+      );
+      const text = JSON.stringify(data);
       console.log(`Read response for ${range || 'Sheet1'}: ${text.length} bytes`);
       return new Response(text, {
-        status: response.status,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
