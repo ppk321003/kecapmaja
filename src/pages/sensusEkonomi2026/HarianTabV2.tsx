@@ -98,6 +98,18 @@ interface HarianPerubahan {
   netto_akhir: number;
 }
 
+interface HarianResumeRow {
+  kecamatan: string;
+  totalPetugas: number;
+  openPetugas: number;
+  selesaiPetugas: number;
+  jumlahAssignment: number;
+  draftAkhir: number;
+  didataAkhir: number;
+  nettoAkhir: number;
+  totalOpen: number;
+}
+
 interface HarianTabV2Props {
   onRecordToHarian?: () => void;
   isPpk?: boolean;
@@ -113,8 +125,10 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterKecamatan, setFilterKecamatan] = useState<string>("");
-  const [filterUnder, setFilterUnder] = useState<"" | "under" | "good">("");
-  const [sortBy, setSortBy] = useState<"nama_ppl" | "prelist_awal" | "jumlah_assignment" | "open" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto">("perubahan_netto");
+  const [filterUnder, setFilterUnder] = useState<"" | "under" | "attention" | "good">("");
+  const [resumeSortBy, setResumeSortBy] = useState<"kecamatan" | "petugas" | "selesai" | "open" | "assignment" | "didata" | "draft" | "netto">("open");
+  const [resumeSortOrder, setResumeSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<"nama_ppl" | "kecamatan" | "prelist_awal" | "jumlah_assignment" | "open" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto">("perubahan_netto");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [tanggalAwal, setTanggalAwal] = useState<string>("");
   const [tanggalAkhir, setTanggalAkhir] = useState<string>("");
@@ -332,9 +346,11 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     }
 
     if (filterUnder === "under") {
-      filtered = filtered.filter(row => row.jumlah_assignment > row.didata_akhir);
+      filtered = filtered.filter(row => row.open > 100);
+    } else if (filterUnder === "attention") {
+      filtered = filtered.filter(row => row.open > 0 && row.open <= 100);
     } else if (filterUnder === "good") {
-      filtered = filtered.filter(row => row.jumlah_assignment <= row.didata_akhir);
+      filtered = filtered.filter(row => row.open <= 0);
     }
 
     return filtered;
@@ -350,6 +366,10 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         case "nama_ppl":
           aVal = a.nama_ppl;
           bVal = b.nama_ppl;
+          return sortOrder === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        case "kecamatan":
+          aVal = a.kecamatan;
+          bVal = b.kecamatan;
           return sortOrder === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
         case "prelist_awal":
           aVal = a.prelist_awal;
@@ -414,7 +434,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field: "nama_ppl" | "prelist_awal" | "jumlah_assignment" | "open" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto") => {
+  const handleSort = (field: "nama_ppl" | "kecamatan" | "prelist_awal" | "jumlah_assignment" | "open" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -427,6 +447,20 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const getSortIndicator = (field: string) => {
     if (sortBy !== field) return null;
     return sortOrder === "asc" ? <span className="text-xs">▲</span> : <span className="text-xs">▼</span>;
+  };
+
+  const handleResumeSort = (field: typeof resumeSortBy) => {
+    if (resumeSortBy === field) {
+      setResumeSortOrder((current) => current === "asc" ? "desc" : "asc");
+    } else {
+      setResumeSortBy(field);
+      setResumeSortOrder(field === "kecamatan" ? "asc" : "desc");
+    }
+  };
+
+  const getResumeSortIndicator = (field: typeof resumeSortBy) => {
+    if (resumeSortBy !== field) return null;
+    return resumeSortOrder === "asc" ? <span className="text-xs">▲</span> : <span className="text-xs">▼</span>;
   };
 
   // Summary cards
@@ -480,6 +514,71 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const filteredSummary = summarizePerubahan(paginatedPerubahan);
   const overallSummary = summarizePerubahan(perubahan);
   const formatChange = (value: number) => `${value > 0 ? "+" : ""}${value.toLocaleString("id-ID")}`;
+
+  const resumeRows = useMemo<HarianResumeRow[]>(() => {
+    const groups = new Map<string, HarianResumeRow>();
+    perubahan.forEach((row) => {
+        const existing = groups.get(row.kecamatan) || {
+          kecamatan: row.kecamatan,
+          totalPetugas: 0,
+          openPetugas: 0,
+          selesaiPetugas: 0,
+          jumlahAssignment: 0,
+          draftAkhir: 0,
+          didataAkhir: 0,
+          nettoAkhir: 0,
+          totalOpen: 0,
+        };
+        existing.totalPetugas += 1;
+        existing.openPetugas += row.open > 0 ? 1 : 0;
+        existing.selesaiPetugas += row.open <= 0 ? 1 : 0;
+        existing.jumlahAssignment += row.jumlah_assignment;
+        existing.draftAkhir += row.draft_akhir;
+        existing.didataAkhir += row.didata_akhir;
+        existing.nettoAkhir += row.netto_akhir;
+        existing.totalOpen += row.open;
+        groups.set(row.kecamatan, existing);
+      });
+
+    return [...groups.values()].sort((a, b) => {
+      const values: Record<typeof resumeSortBy, (row: HarianResumeRow) => number | string> = {
+        kecamatan: (row) => row.kecamatan,
+        petugas: (row) => row.totalPetugas,
+        selesai: (row) => row.selesaiPetugas,
+        open: (row) => row.totalOpen,
+        assignment: (row) => row.jumlahAssignment,
+        didata: (row) => row.didataAkhir,
+        draft: (row) => row.draftAkhir,
+        netto: (row) => row.nettoAkhir,
+      };
+      const aValue = values[resumeSortBy](a);
+      const bValue = values[resumeSortBy](b);
+      const difference = typeof aValue === "string" && typeof bValue === "string"
+        ? aValue.localeCompare(bValue)
+        : Number(aValue) - Number(bValue);
+      return resumeSortOrder === "asc" ? difference : -difference;
+    });
+  }, [perubahan, resumeSortBy, resumeSortOrder]);
+
+  const resumeTotals = useMemo(() => resumeRows.reduce((summary, row) => ({
+    totalPetugas: summary.totalPetugas + row.totalPetugas,
+    openPetugas: summary.openPetugas + row.openPetugas,
+    selesaiPetugas: summary.selesaiPetugas + row.selesaiPetugas,
+    jumlahAssignment: summary.jumlahAssignment + row.jumlahAssignment,
+    draftAkhir: summary.draftAkhir + row.draftAkhir,
+    didataAkhir: summary.didataAkhir + row.didataAkhir,
+    nettoAkhir: summary.nettoAkhir + row.nettoAkhir,
+    totalOpen: summary.totalOpen + row.totalOpen,
+  }), {
+    totalPetugas: 0,
+    openPetugas: 0,
+    selesaiPetugas: 0,
+    jumlahAssignment: 0,
+    draftAkhir: 0,
+    didataAkhir: 0,
+    nettoAkhir: 0,
+    totalOpen: 0,
+  }), [resumeRows]);
 
   if (harianLoading) {
     return (
@@ -717,14 +816,15 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         <select
           value={filterUnder}
           onChange={(e) => {
-            setFilterUnder(e.target.value as "" | "under" | "good");
+            setFilterUnder(e.target.value as "" | "under" | "attention" | "good");
             setCurrentPage(1);
           }}
           className="h-10 rounded-lg border border-red-200 bg-white px-3 text-sm text-slate-700"
         >
           <option value="">-- Semua Status --</option>
-          <option value="under">Under (Jml Assignment &gt; Didata Akhir)</option>
-          <option value="good">Good (Jml Assignment &le; Didata Akhir)</option>
+          <option value="under">Under (Open &gt; 100)</option>
+          <option value="attention">Perlu Perhatian (Open &gt; 0 s.d. 100)</option>
+          <option value="good">Good (Open &le; 0)</option>
         </select>
       </div>
 
@@ -755,7 +855,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                         Nama PPL {getSortIndicator("nama_ppl")}
                       </div>
                     </TableHead>
-                    <TableHead className="text-slate-700 font-semibold px-4 py-3">Kecamatan</TableHead>
+                    <TableHead
+                      className="text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("kecamatan")}
+                    >
+                      Kecamatan {getSortIndicator("kecamatan")}
+                    </TableHead>
                     <TableHead
                       className="text-right text-slate-700 font-semibold px-4 py-3 text-xs bg-blue-100 cursor-pointer hover:bg-blue-200"
                       onClick={() => handleSort("prelist_awal")}
@@ -858,12 +963,26 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                 <TableBody>
                   {paginatedPerubahan.map((row, index) => {
                     const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
-                    const hasProgressWarning = row.jumlah_assignment > row.didata_akhir;
+                    const warningStatus = row.open > 100 ? "under" : row.open > 0 ? "attention" : "good";
+                    const warningClasses = warningStatus === "under"
+                      ? "bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500"
+                      : warningStatus === "attention"
+                        ? "bg-yellow-50 hover:bg-yellow-100 border-l-4 border-l-yellow-500"
+                        : "hover:bg-slate-50";
+                    const warningTextClasses = warningStatus === "under"
+                      ? "text-red-800"
+                      : warningStatus === "attention"
+                        ? "text-yellow-800"
+                        : "text-slate-700";
+                    const warningIconClasses = warningStatus === "under" ? "text-red-600" : "text-yellow-600";
+                    const warningLabel = warningStatus === "under"
+                      ? "Warning: Open lebih besar dari 100"
+                      : "Perlu perhatian: Open antara 1 sampai 100";
                     return (
-                      <TableRow key={`${row.nama_ppl}-${row.kecamatan}`} className={`border-b transition-colors ${hasProgressWarning ? "bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500" : "hover:bg-slate-50"}`}>
+                      <TableRow key={`${row.nama_ppl}-${row.kecamatan}`} className={`border-b transition-colors ${warningClasses}`}>
                         <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
-                        <TableCell className={`${hasProgressWarning ? "text-red-800" : "text-slate-700"} px-4 py-3 font-medium`}>{hasProgressWarning && <AlertCircle className="mr-1 inline h-4 w-4 text-red-600" aria-label="Warning: Jml Assignment lebih besar dari Didata Akhir" />}{row.nama_ppl}</TableCell>
-                        <TableCell className={`${hasProgressWarning ? "text-red-700" : "text-slate-600"} px-4 py-3`}>{row.kecamatan}</TableCell>
+                        <TableCell className={`${warningTextClasses} px-4 py-3 font-medium`}>{warningStatus !== "good" && <AlertCircle className={`mr-1 inline h-4 w-4 ${warningIconClasses}`} aria-label={warningLabel} />}{row.nama_ppl}</TableCell>
+                        <TableCell className={`${warningStatus === "under" ? "text-red-700" : warningStatus === "attention" ? "text-yellow-700" : "text-slate-600"} px-4 py-3`}>{row.kecamatan}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.prelist_awal.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.jumlah_assignment.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.open.toLocaleString("id-ID")}</TableCell>
@@ -945,6 +1064,104 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-blue-50">
+          <div>
+            <div>
+              <CardTitle className="text-base">Resume Harian</CardTitle>
+              <p className="mt-1 text-sm text-slate-500">Rekap petugas dan posisi Open per Kecamatan berdasarkan snapshot yang dipilih</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs font-semibold text-slate-500">Total Petugas</div>
+              <div className="mt-1 text-xl font-bold text-slate-800">{resumeTotals.totalPetugas.toLocaleString("id-ID")}</div>
+            </div>
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+              <div className="text-xs font-semibold text-red-700">Petugas Open &gt; 0</div>
+              <div className="mt-1 text-xl font-bold text-red-700">{resumeTotals.openPetugas.toLocaleString("id-ID")}</div>
+            </div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <div className="text-xs font-semibold text-emerald-700">Petugas Open &lt;= 0</div>
+              <div className="mt-1 text-xl font-bold text-emerald-700">{resumeTotals.selesaiPetugas.toLocaleString("id-ID")}</div>
+            </div>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+              <div className="text-xs font-semibold text-blue-700">Total Open</div>
+              <div className="mt-1 text-xl font-bold text-blue-700">{resumeTotals.totalOpen.toLocaleString("id-ID")}</div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 hover:bg-slate-50">
+                  <TableHead className="font-semibold">No</TableHead>
+                  <TableHead className="cursor-pointer font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("kecamatan")}>
+                    Kecamatan {getResumeSortIndicator("kecamatan")}
+                  </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("petugas")}>
+                    Total Petugas {getResumeSortIndicator("petugas")}
+                  </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold text-red-700 hover:bg-red-50" onClick={() => handleResumeSort("open")}>
+                    Open &gt; 0 {getResumeSortIndicator("open")}
+                  </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold text-emerald-700 hover:bg-emerald-50" onClick={() => handleResumeSort("selesai")}>
+                    Open &lt;= 0 {getResumeSortIndicator("selesai")}
+                  </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("assignment")}>
+                    Jml Assignment {getResumeSortIndicator("assignment")}
+                  </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("draft")}>
+                    Draft Akhir {getResumeSortIndicator("draft")}
+                  </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("didata")}>
+                    Didata Akhir {getResumeSortIndicator("didata")}
+                  </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("netto")}>
+                    Netto Akhir {getResumeSortIndicator("netto")}
+                  </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold text-blue-700 hover:bg-blue-50" onClick={() => handleResumeSort("open")}>
+                    Total Open {getResumeSortIndicator("open")}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {resumeRows.length === 0 ? (
+                  <TableRow><TableCell colSpan={10} className="py-8 text-center text-slate-500">Tidak ada data resume sesuai pilihan.</TableCell></TableRow>
+                ) : resumeRows.map((row, index) => (
+                  <TableRow key={row.kecamatan} className="hover:bg-slate-50">
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell className="font-medium">{row.kecamatan}</TableCell>
+                    <TableCell className="text-right">{row.totalPetugas.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className="bg-red-50 text-right font-semibold text-red-700">{row.openPetugas.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className="bg-emerald-50 text-right font-semibold text-emerald-700">{row.selesaiPetugas.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className="text-right">{row.jumlahAssignment.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className="text-right">{row.draftAkhir.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className="text-right">{row.didataAkhir.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className="text-right">{row.nettoAkhir.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className="bg-blue-50 text-right font-bold text-blue-700">{row.totalOpen.toLocaleString("id-ID")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow className="bg-slate-100 font-bold">
+                  <TableCell colSpan={2}>Total Resume</TableCell>
+                  <TableCell className="text-right">{resumeTotals.totalPetugas.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right text-red-700">{resumeTotals.openPetugas.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right text-emerald-700">{resumeTotals.selesaiPetugas.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right">{resumeTotals.jumlahAssignment.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right">{resumeTotals.draftAkhir.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right">{resumeTotals.didataAkhir.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right">{resumeTotals.nettoAkhir.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right text-blue-700">{resumeTotals.totalOpen.toLocaleString("id-ID")}</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
