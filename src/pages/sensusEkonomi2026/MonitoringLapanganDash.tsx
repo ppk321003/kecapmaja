@@ -29,6 +29,7 @@ const SHEET_ANOMALI_KELUARGA = "Mikro Anomali Keluarga";
 const SHEET_USAHA_PERUSAHAAN = "USAHA PERUSAHAAN";
 const SHEET_USAHA_KELUARGA = "USAHA KELUARGA";
 const SHEET_PROPORSI_USAHA = "PROPORSI USAHA";
+const SHEET_KESELURUHAN_USAHA = "KESELURUHAN USAHA";
 const SHEET_PROPORSI_PERTANIAN = "PROPORSI PERTANIAN";
 
 const normalizeSheetKey = (value: unknown) => {
@@ -886,6 +887,11 @@ export default function MonitoringLapanganDash() {
   const { data: usahaProporsiData, loading: usahaProporsiLoading, error: usahaProporsiError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
     sheetName: SHEET_PROPORSI_USAHA,
+    enabled: tabVisited("pendataan-usaha") || tabVisited("dashboard"),
+  });
+  const { data: keseluruhanUsahaData, loading: keseluruhanUsahaLoading, error: keseluruhanUsahaError } = useGoogleSheetsData({
+    spreadsheetId: STACKING_SPREADSHEET_ID,
+    sheetName: SHEET_KESELURUHAN_USAHA,
     enabled: tabVisited("pendataan-usaha") || tabVisited("dashboard"),
   });
   const { data: pertanianProporsiData, loading: pertanianProporsiLoading, error: pertanianProporsiError } = useGoogleSheetsData({
@@ -2023,6 +2029,11 @@ export default function MonitoringLapanganDash() {
 
   const usahaProporsiRows = useMemo<UsahaProporsiRow[]>(() => {
     const groups = new Map<string, UsahaProporsiRow>();
+    const keseluruhanUsahaByRowId = new Map<string, any>();
+    (keseluruhanUsahaData || []).forEach((row: any) => {
+      const rowId = getRawRowId16(row) || getStackingKey(row);
+      if (rowId) keseluruhanUsahaByRowId.set(rowId, row);
+    });
     const pertanianByRowId = new Map<string, any>();
     (pertanianProporsiData || []).forEach((row: any) => {
       const rowId = getRawRowId16(row) || getStackingKey(row);
@@ -2052,6 +2063,13 @@ export default function MonitoringLapanganDash() {
         const namaPpl = (rowId ? namaPplByKey.get(rowId) : undefined) || rawNamaPpl || "-";
         const kecamatan = (rowId ? kecamatanByKey.get(rowId) : undefined) || rawKecamatan || "-";
         if (namaPpl === "-") return;
+        const keseluruhanUsahaRow = keseluruhanUsahaByRowId.get(rowId);
+        const prelistUsaha = keseluruhanUsahaRow
+          ? (
+            parseNumericValue(getRawColumnText(keseluruhanUsahaRow, 2, "0")) +
+            parseNumericValue(getRawColumnText(keseluruhanUsahaRow, 3, "0"))
+          ).toString()
+          : "0";
         const pertanianRow = pertanianByRowId.get(rowId);
         const bkuPertanian = pertanianRow
           ? parseNumericValue(getRawColumnText(pertanianRow, 5, "0")) + parseNumericValue(getRawColumnText(pertanianRow, 7, "0"))
@@ -2064,7 +2082,7 @@ export default function MonitoringLapanganDash() {
           kode: rowId,
           sls_rt: toProperCase(getRawColumnText(row, 1, "-")),
           prelist_awal: (rowId ? prelistAwalByKey.get(rowId) : 0)?.toString() || "0",
-          prelist_usaha: getRawColumnText(row, 2, "0"),
+          prelist_usaha: prelistUsaha,
           utp_subsektor_st2023: getRawColumnText(pertanianRow, 4, "0"),
           didata: (rowId ? didataByKey.get(rowId) : 0)?.toString() || "0",
           bku_ditemukan_pertanian: bkuPertanian.toString(),
@@ -2117,7 +2135,7 @@ export default function MonitoringLapanganDash() {
       });
 
     return Array.from(groups.values());
-  }, [usahaProporsiData, pertanianProporsiData, namaPplByKey, kecamatanByKey, didataByKey, prelistAwalByKey]);
+  }, [usahaProporsiData, keseluruhanUsahaData, pertanianProporsiData, namaPplByKey, kecamatanByKey, didataByKey, prelistAwalByKey]);
 
   const mergedUsahaRows = useMemo<MergedUsahaRow[]>(() => {
     type GroupedUsaha = {
@@ -4668,8 +4686,8 @@ export default function MonitoringLapanganDash() {
     );
   }
 
-  const usahaLoading = usahaPerusahaanLoading || usahaKeluargaLoading || usahaProporsiLoading || pertanianProporsiLoading;
-  const usahaError = usahaPerusahaanError || usahaKeluargaError || usahaProporsiError || pertanianProporsiError;
+  const usahaLoading = usahaPerusahaanLoading || usahaKeluargaLoading || usahaProporsiLoading || keseluruhanUsahaLoading || pertanianProporsiLoading;
+  const usahaError = usahaPerusahaanError || usahaKeluargaError || usahaProporsiError || keseluruhanUsahaError || pertanianProporsiError;
   const loading = stackingLoading || progresLoading || progresHeaderLoading;
   const error = stackingError || progresError || progresHeaderError;
   const avgKecamatanPercentage = kecamatanStats.length > 0
@@ -6880,7 +6898,7 @@ export default function MonitoringLapanganDash() {
                                     {proporsiSortHead("Nama PPL", "nama_ppl", "w-[130px] min-w-[130px] max-w-[130px] text-xs text-slate-700 font-semibold px-2 py-3")}
                                     {proporsiSortHead("Kecamatan", "kecamatan", "w-[105px] min-w-[105px] max-w-[105px] text-xs text-slate-700 font-semibold px-2 py-3")}
                                     {proporsiColumnGroups.prelistAwal && proporsiSortHead("Prelist Awal", "prelist_awal", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-slate-700 font-semibold px-1 py-2", 1, "prelistAwal")}
-                                    {proporsiColumnGroups.prelistUsaha && proporsiSortHead("Prelist Usaha", "prelist_usaha", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-blue-700 font-bold px-1 py-2", 1, "prelistUsaha")}
+                                    {proporsiColumnGroups.prelistUsaha && proporsiSortHead("Total Prelist Usaha", "prelist_usaha", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-blue-700 font-bold px-1 py-2", 1, "prelistUsaha")}
                                     {proporsiColumnGroups.utpSt2023 && proporsiSortHead("UTP ST2023", "utp_subsektor_st2023", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-green-700 font-bold px-1 py-2", 1, "utpSt2023")}
                                     {proporsiColumnGroups.bkuUsahaWilkerstat && proporsiSortHead("Usaha Wilkerstat", "bku_usaha_wilkerstat_baru", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right font-bold px-1 py-2", 1, "bkuUsahaWilkerstat")}
                                     {proporsiColumnGroups.didata && proporsiSortHead("Didata", "didata", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-orange-800 font-bold px-1 py-2", 1, "didata")}
