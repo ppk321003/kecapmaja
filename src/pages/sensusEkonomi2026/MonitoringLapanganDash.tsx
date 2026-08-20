@@ -4765,7 +4765,7 @@ export default function MonitoringLapanganDash() {
                     </CardContent>
                   </Card>
 
-                  {/* % Non Pertanian - Prelist Usaha */}
+                  {/* % Non Pertanian - Total Prelist Usaha */}
                   <Card className="relative overflow-hidden border border-orange-200/70 shadow-sm bg-gradient-to-br from-orange-50 via-white to-orange-50/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                     <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-orange-600 to-orange-400" />
                     <CardContent className="pt-5 pb-4">
@@ -4773,7 +4773,7 @@ export default function MonitoringLapanganDash() {
                         <div className="p-2 rounded-lg bg-orange-100 text-orange-700">
                           <List className="h-4 w-4" />
                         </div>
-                        <span className="text-xs font-semibold uppercase tracking-wider text-orange-700">% Non Pertanian - Prelist Usaha</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-orange-700">% Non Pertanian - Total Prelist Usaha</span>
                       </div>
                       <div className="text-2xl font-bold text-orange-700">{(overallJumlahUsaha && usahaProporsiOverallTotals.prelistUsaha) ? ((overallJumlahUsaha / usahaProporsiOverallTotals.prelistUsaha) * 100).toFixed(2) : "0.00"}%</div>
                       <div className="mt-2 text-sm text-orange-600">
