@@ -85,6 +85,7 @@ interface HarianPerubahan {
   kecamatan: string;
   prelist_awal: number;
   jumlah_assignment: number;
+  open: number;
   perubahan_didata: number;
   perubahan_draft: number;
   perubahan_netto: number;
@@ -113,7 +114,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const [searchTerm, setSearchTerm] = useState("");
   const [filterKecamatan, setFilterKecamatan] = useState<string>("");
   const [filterUnder, setFilterUnder] = useState<"" | "under" | "good">("");
-  const [sortBy, setSortBy] = useState<"nama_ppl" | "prelist_awal" | "jumlah_assignment" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto">("perubahan_netto");
+  const [sortBy, setSortBy] = useState<"nama_ppl" | "prelist_awal" | "jumlah_assignment" | "open" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto">("perubahan_netto");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [tanggalAwal, setTanggalAwal] = useState<string>("");
   const [tanggalAkhir, setTanggalAkhir] = useState<string>("");
@@ -286,6 +287,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         const didataAkhir = akhir?.submit || 0;
         const draftAkhir = akhir?.draft || 0;
         const nettoAkhir = akhir?.netto || 0;
+        const open = jumlahAssignment - draftAkhir - didataAkhir;
         
         const perubahanDidata = didataAkhir - didataAwal;
         const perubahanDraft = draftAkhir - draftAwal;
@@ -297,6 +299,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
           kecamatan,
           prelist_awal: prelistAwal,
           jumlah_assignment: jumlahAssignment,
+          open,
           perubahan_didata: perubahanDidata,
           perubahan_draft: perubahanDraft,
           perubahan_netto: perubahanNetto,
@@ -356,6 +359,10 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
           aVal = a.jumlah_assignment;
           bVal = b.jumlah_assignment;
           break;
+        case "open":
+          aVal = a.open;
+          bVal = b.open;
+          break;
         case "didata_awal":
           aVal = a.didata_awal;
           bVal = b.didata_awal;
@@ -407,7 +414,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field: "nama_ppl" | "prelist_awal" | "jumlah_assignment" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto") => {
+  const handleSort = (field: "nama_ppl" | "prelist_awal" | "jumlah_assignment" | "open" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -445,6 +452,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const summarizePerubahan = (rows: HarianPerubahan[]) => rows.reduce((summary, row) => ({
     prelist_awal: summary.prelist_awal + row.prelist_awal,
     jumlah_assignment: summary.jumlah_assignment + row.jumlah_assignment,
+    open: summary.open + row.open,
     didata_awal: summary.didata_awal + row.didata_awal,
     didata_akhir: summary.didata_akhir + row.didata_akhir,
     perubahan_didata: summary.perubahan_didata + row.perubahan_didata,
@@ -457,6 +465,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   }), {
     prelist_awal: 0,
     jumlah_assignment: 0,
+    open: 0,
     didata_awal: 0,
     didata_akhir: 0,
     perubahan_didata: 0,
@@ -468,7 +477,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     perubahan_netto: 0,
   });
 
-  const filteredSummary = summarizePerubahan(filteredPerubahan);
+  const filteredSummary = summarizePerubahan(paginatedPerubahan);
   const overallSummary = summarizePerubahan(perubahan);
   const formatChange = (value: number) => `${value > 0 ? "+" : ""}${value.toLocaleString("id-ID")}`;
 
@@ -764,6 +773,14 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                       </div>
                     </TableHead>
                     <TableHead
+                      className="text-right text-slate-700 font-semibold px-4 py-3 text-xs bg-blue-100 cursor-pointer hover:bg-blue-200"
+                      onClick={() => handleSort("open")}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Open {getSortIndicator("open")}
+                      </div>
+                    </TableHead>
+                    <TableHead
                       className="text-right text-slate-700 font-semibold px-4 py-3 text-xs bg-orange-100 cursor-pointer hover:bg-orange-200"
                       onClick={() => handleSort("didata_awal")}
                     >
@@ -849,6 +866,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                         <TableCell className={`${hasProgressWarning ? "text-red-700" : "text-slate-600"} px-4 py-3`}>{row.kecamatan}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.prelist_awal.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.jumlah_assignment.toLocaleString("id-ID")}</TableCell>
+                        <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.open.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-orange-100">{row.didata_awal.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-orange-100">{row.didata_akhir.toLocaleString("id-ID")}</TableCell>
                         <TableCell className={`text-right px-4 py-3 font-semibold bg-orange-100 whitespace-normal break-words ${row.perubahan_didata > 0 ? "text-green-600" : row.perubahan_didata < 0 ? "text-red-600" : "text-slate-600"}`}>
@@ -875,6 +893,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                       <TableCell colSpan={3} className="px-4 py-3 text-slate-900">{label}</TableCell>
                       <TableCell className="text-right px-4 py-3">{summary.prelist_awal.toLocaleString("id-ID")}</TableCell>
                       <TableCell className="text-right px-4 py-3">{summary.jumlah_assignment.toLocaleString("id-ID")}</TableCell>
+                      <TableCell className="text-right px-4 py-3">{summary.open.toLocaleString("id-ID")}</TableCell>
                       <TableCell className="text-right px-4 py-3">{summary.didata_awal.toLocaleString("id-ID")}</TableCell>
                       <TableCell className="text-right px-4 py-3">{summary.didata_akhir.toLocaleString("id-ID")}</TableCell>
                       <TableCell className="text-right whitespace-normal break-words px-4 py-3">{formatChange(summary.perubahan_didata)}</TableCell>
