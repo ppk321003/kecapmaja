@@ -892,6 +892,7 @@ export default function MonitoringLapanganDash() {
   const { data: keseluruhanUsahaData, loading: keseluruhanUsahaLoading, error: keseluruhanUsahaError } = useGoogleSheetsData({
     spreadsheetId: STACKING_SPREADSHEET_ID,
     sheetName: SHEET_KESELURUHAN_USAHA,
+    range: `${SHEET_KESELURUHAN_USAHA}!A:D`,
     enabled: tabVisited("pendataan-usaha") || tabVisited("dashboard"),
   });
   const { data: pertanianProporsiData, loading: pertanianProporsiLoading, error: pertanianProporsiError } = useGoogleSheetsData({
