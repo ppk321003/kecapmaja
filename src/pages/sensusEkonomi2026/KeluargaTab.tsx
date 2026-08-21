@@ -345,8 +345,9 @@ export const useKeluargaStackingMap = () =>
       if (values.length > 0) {
         const headerRow = values[0] || [];
         const idIndex = findHeaderIndex(headerRow, ["id sls", "id_sub_sls", "id sub sls", "idsubsls", "kode sls", "kode_sls", "kode", "idsls"]);
-        const kecIndex = findHeaderIndex(headerRow, ["kecamatan", "nama kecamatan", "nmkec", "wilayah"]);
-        const pplIndex = findHeaderIndex(headerRow, ["nama ppl", "nama_ppl", "nama pencacah", "ppl", "nama petugas", "nama_pml"]);
+        // Keep this aligned with the proven UMKM/Sosek mapping from STACKING.
+        const kecIndex = 12;
+        const pplIndex = 26;
 
         const findBestStackingId = (row: string[]): string => {
           const exact16 = findExact16DigitKey(row);
@@ -368,8 +369,8 @@ export const useKeluargaStackingMap = () =>
           const rawId = findBestStackingId(row) || findExact16DigitKey(row);
           if (!rawId) return;
 
-          const namaPpl = String(row[pplIndex !== -1 ? pplIndex : 0] ?? "").trim();
-          const kecamatan = String(row[kecIndex !== -1 ? kecIndex : 0] ?? "").trim();
+          const namaPpl = pplIndex !== -1 ? String(row[pplIndex] ?? "").trim() : "";
+          const kecamatan = kecIndex !== -1 ? String(row[kecIndex] ?? "").trim() : "";
           if (!namaPpl && !kecamatan) return;
 
           const record = {
@@ -482,11 +483,7 @@ export const useKeluargaDashboardSummary = (enabled = true) =>
         .filter(Boolean);
 
       const keluargaSheetNames = sheetNames.filter((name) => normalizeKey(name) === "keluarga");
-      const effectiveSheetNames = keluargaSheetNames.length > 0
-        ? keluargaSheetNames
-        : sheetNames.length > 0
-          ? sheetNames
-          : ["KELUARGA"];
+      const effectiveSheetNames = keluargaSheetNames.length > 0 ? keluargaSheetNames : ["KELUARGA"];
 
       try {
         // eslint-disable-next-line no-console
@@ -521,8 +518,8 @@ export const useKeluargaDashboardSummary = (enabled = true) =>
         const stackingValues = await readStackingValues();
         {
           const stackingHeader = stackingValues[0] || [];
-          const kecIndex = findHeaderIndex(stackingHeader, ["kecamatan", "nama kecamatan", "nmkec", "wilayah"]);
-          const desaIndex = findHeaderIndex(stackingHeader, ["desa", "kelurahan", "desa kelurahan", "desa/kelurahan", "nama desa"]);
+          const kecIndex = 12;
+          const desaIndex = 14;
 
           stackingValues.slice(1).forEach((row) => {
             const key = getStackingKey(row) || findExact16DigitKey(row);
@@ -576,7 +573,10 @@ export const useKeluargaDashboardSummary = (enabled = true) =>
 
       familyReadResults.forEach((values, sheetIndex) => {
         if (values.length === 0) return;
-        const headerIndex = findBestKeluargaHeaderRowIndex(values);
+        // KELUARGA has title rows followed by headers at row 4 and a sequence row at row 5.
+        const headerIndex = sheetNames[sheetIndex] && normalizeKey(sheetNames[sheetIndex]) === "keluarga"
+          ? 3
+          : findBestKeluargaHeaderRowIndex(values);
         const headers = values[headerIndex] || [];
         try {
           // eslint-disable-next-line no-console
@@ -584,14 +584,14 @@ export const useKeluargaDashboardSummary = (enabled = true) =>
         } catch (e) {
           // ignore
         }
-        const dataStart = headerIndex + 1;
+        const dataStart = headerIndex + 2;
         const rows = values.slice(dataStart).filter((row) => (row || []).some((cell) => String(cell).trim() !== ""));
 
-        const kecamatanIndex = findColumnIndex(headers, ["kecamatan", "nama kecamatan", "kec", "wilayah"]);
-        const desaIndex = findColumnIndex(headers, ["desa", "desa kelurahan", "kelurahan", "nama desa", "desa/kelurahan", "desa kel"]);
-        const prelistIndex = findHeaderIndex(headers, ["prelist awal", "prelist", "prelistawal", "target", "wilkerstat"]);
+        const kecamatanIndex = -1;
+        const desaIndex = -1;
+        const prelistIndex = normalizeKey(sheetNames[sheetIndex]) === "keluarga" ? 2 : findHeaderIndex(headers, ["prelist awal", "prelist", "prelistawal", "target", "wilkerstat"]);
         const assignmentIndex = findColumnIndex(headers, ["assignment", "assignment didata", "responden didata", "didata", "responden"]);
-        const totalHasilIndex = findHeaderIndex(headers, ["total hasil pendataan", "total_hasil_pendataan", "total hasil", "totalhasil"]);
+        const totalHasilIndex = normalizeKey(sheetNames[sheetIndex]) === "keluarga" ? 14 : findHeaderIndex(headers, ["total hasil pendataan", "total_hasil_pendataan", "total hasil", "totalhasil"]);
 
         try {
           // eslint-disable-next-line no-console
@@ -772,16 +772,12 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
         if (candidateCode.length !== 16) return null;
         const kode = candidateCode;
         const subSls = getHeaderValue(row, headers, ["sub sls", "sub-sls", "sub_sls", "id sub sls", "idsubsls", "sub satuan lingkungan"], 1);
-        const namaPplRaw = getHeaderValue(row, headers, ["nama ppl", "nama_ppl", "nama pencacah", "ppl", "nama petugas", "petugas", "nama_pml"], 0);
-        const kecamatanRaw = getHeaderValue(row, headers, ["kecamatan", "nama kecamatan", "nmkec", "wilayah"], 1);
         const lookup = matchingKey ? stackingMap.get(matchingKey) : undefined;
 
-        const directNamaPpl = normalizeDisplayText(namaPplRaw);
-        const directKecamatan = normalizeDisplayText(kecamatanRaw);
         const lookupNamaPpl = lookup?.namaPpl && lookup.namaPpl !== "-" ? lookup.namaPpl : undefined;
         const lookupKecamatan = lookup?.kecamatan && lookup.kecamatan !== "-" ? lookup.kecamatan : undefined;
-        const namaPpl = formatProperText(lookupNamaPpl || resolveDisplayValue(directNamaPpl, "-"));
-        const kecamatan = formatProperText(lookupKecamatan || resolveDisplayValue(directKecamatan, "-"));
+        const namaPpl = formatProperText(lookupNamaPpl || "-");
+        const kecamatan = formatProperText(lookupKecamatan || "-");
 
         const prelistAwal = parseNumericValue(getHeaderValue(row, headers, ["prelist awal", "prelist_awal", "prelistawal", "prelist", "target prelist awal"], 2));
         const ditemukan = parseNumericValue(getHeaderValue(row, headers, ["ditemukan"], 3));
