@@ -2059,10 +2059,10 @@ export default function MonitoringLapanganDash() {
 
   const usahaProporsiRows = useMemo<UsahaProporsiRow[]>(() => {
     const groups = new Map<string, UsahaProporsiRow>();
-    const keseluruhanUsahaByRowId = new Map<string, any>();
-    (keseluruhanUsahaData || []).forEach((row: any) => {
+    const usahaPerusahaanByRowId = new Map<string, any>();
+    (usahaPerusahaanData || []).forEach((row: any) => {
       const rowId = getRawRowId16(row) || getStackingKey(row);
-      if (rowId) keseluruhanUsahaByRowId.set(rowId, row);
+      if (rowId) usahaPerusahaanByRowId.set(rowId, row);
     });
     const pertanianByRowId = new Map<string, any>();
     (pertanianProporsiData || []).forEach((row: any) => {
@@ -2093,12 +2093,9 @@ export default function MonitoringLapanganDash() {
         const namaPpl = (rowId ? namaPplByKey.get(rowId) : undefined) || rawNamaPpl || "-";
         const kecamatan = (rowId ? kecamatanByKey.get(rowId) : undefined) || rawKecamatan || "-";
         if (namaPpl === "-") return;
-        const keseluruhanUsahaRow = keseluruhanUsahaByRowId.get(rowId);
-        const prelistUsaha = keseluruhanUsahaRow
-          ? (
-            parseNumericValue(getRawColumnText(keseluruhanUsahaRow, 2, "0")) +
-            parseNumericValue(getRawColumnText(keseluruhanUsahaRow, 3, "0"))
-          ).toString()
+        const usahaPerusahaanRow = usahaPerusahaanByRowId.get(rowId);
+        const prelistUsaha = usahaPerusahaanRow
+          ? parseNumericValue(getRawColumnText(usahaPerusahaanRow, 2, "0")).toString()
           : "0";
         const pertanianRow = pertanianByRowId.get(rowId);
         const bkuPertanian = pertanianRow
@@ -2107,6 +2104,8 @@ export default function MonitoringLapanganDash() {
         const keluargaPertanian = pertanianRow
           ? parseNumericValue(getRawColumnText(pertanianRow, 9, "0")) + parseNumericValue(getRawColumnText(pertanianRow, 11, "0"))
           : 0;
+        const usahaBku = parseNumericValue(getRawColumnText(row, 3, "0")) - bkuPertanian;
+        const usahaDalamKeluarga = parseNumericValue(getRawColumnText(row, 5, "0")) - keluargaPertanian;
         const detail: UsahaProporsiDetailRow = {
           id: `proporsi-detail-${rowId || index}`,
           kode: rowId,
@@ -2116,7 +2115,7 @@ export default function MonitoringLapanganDash() {
           utp_subsektor_st2023: getRawColumnText(pertanianRow, 4, "0"),
           didata: (rowId ? didataByKey.get(rowId) : 0)?.toString() || "0",
           bku_ditemukan_pertanian: bkuPertanian.toString(),
-          bku_ditemukan_non_pertanian: getRawColumnText(row, 3, "0"),
+          bku_ditemukan_non_pertanian: Math.max(0, usahaBku).toString(),
           bku_baru_pertanian: getRawColumnText(row, 8, "0"),
           bku_baru_non_pertanian: getRawColumnText(row, 10, "0"),
           bku_usaha_wilkerstat_baru: (() => {
@@ -2126,7 +2125,7 @@ export default function MonitoringLapanganDash() {
             return fallback.toString();
           })(),
           keluarga_ditemukan_pertanian: keluargaPertanian.toString(),
-          keluarga_ditemukan_non_pertanian: getRawColumnText(row, 5, "0"),
+          keluarga_ditemukan_non_pertanian: Math.max(0, usahaDalamKeluarga).toString(),
           keluarga_baru_pertanian: getRawColumnText(row, 14, "0"),
           keluarga_baru_non_pertanian: getRawColumnText(row, 16, "0"),
         };
@@ -2165,7 +2164,7 @@ export default function MonitoringLapanganDash() {
       });
 
     return Array.from(groups.values());
-  }, [usahaProporsiData, keseluruhanUsahaData, pertanianProporsiData, namaPplByKey, kecamatanByKey, didataByKey, prelistAwalByKey]);
+  }, [usahaProporsiData, usahaPerusahaanData, pertanianProporsiData, namaPplByKey, kecamatanByKey, didataByKey, prelistAwalByKey]);
 
   const mergedUsahaRows = useMemo<MergedUsahaRow[]>(() => {
     type GroupedUsaha = {
@@ -6989,13 +6988,13 @@ export default function MonitoringLapanganDash() {
                                     {proporsiSortHead("Nama PPL", "nama_ppl", "w-[130px] min-w-[130px] max-w-[130px] text-xs text-slate-700 font-semibold px-2 py-3")}
                                     {proporsiSortHead("Kecamatan", "kecamatan", "w-[105px] min-w-[105px] max-w-[105px] text-xs text-slate-700 font-semibold px-2 py-3")}
                                     {proporsiColumnGroups.prelistAwal && proporsiSortHead("Prelist Awal", "prelist_awal", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-slate-700 font-semibold px-1 py-2", 1, "prelistAwal")}
-                                    {proporsiColumnGroups.prelistUsaha && proporsiSortHead("Total Prelist Usaha", "prelist_usaha", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-blue-700 font-bold px-1 py-2", 1, "prelistUsaha")}
+                                    {proporsiColumnGroups.prelistUsaha && proporsiSortHead("Prelist Usaha", "prelist_usaha", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-blue-700 font-bold px-1 py-2", 1, "prelistUsaha")}
                                     {proporsiColumnGroups.utpSt2023 && proporsiSortHead("UTP ST2023", "utp_subsektor_st2023", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-green-700 font-bold px-1 py-2", 1, "utpSt2023")}
                                     {proporsiColumnGroups.bkuUsahaWilkerstat && proporsiSortHead("Usaha Wilkerstat", "bku_usaha_wilkerstat_baru", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right font-bold px-1 py-2", 1, "bkuUsahaWilkerstat")}
                                     {proporsiColumnGroups.didata && proporsiSortHead("Didata", "didata", "w-[72px] min-w-[72px] max-w-[72px] text-[10px] leading-tight text-right text-orange-800 font-bold px-1 py-2", 1, "didata")}
                                     </>}
-                                  {proporsiColumnGroups.bkuDitemukanNonPertanian && proporsiSortHead("BKU", "bku_ditemukan_non_pertanian", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-orange-800 font-semibold px-1 py-2", 1, "bkuDitemukanNonPertanian")}
-                                  {proporsiColumnGroups.keluargaDitemukanNonPertanian && proporsiSortHead("Dalam Keluarga", "keluarga_ditemukan_non_pertanian", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-orange-800 font-semibold px-1 py-2", 1, "keluargaDitemukanNonPertanian")}
+                                  {proporsiColumnGroups.bkuDitemukanNonPertanian && proporsiSortHead("USAHA BKU", "bku_ditemukan_non_pertanian", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-orange-800 font-semibold px-1 py-2", 1, "bkuDitemukanNonPertanian")}
+                                  {proporsiColumnGroups.keluargaDitemukanNonPertanian && proporsiSortHead("USAHA Dalam Keluarga", "keluarga_ditemukan_non_pertanian", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-orange-800 font-semibold px-1 py-2", 1, "keluargaDitemukanNonPertanian")}
                                   {proporsiColumnGroups.bkuDitemukanPertanian && proporsiSortHead("BKU", "bku_ditemukan_pertanian", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-green-700 font-semibold px-1 py-2", 1, "bkuDitemukanPertanian")}
                                   {proporsiColumnGroups.keluargaDitemukanPertanian && proporsiSortHead("Dalam Keluarga", "keluarga_ditemukan_pertanian", "w-[78px] min-w-[78px] max-w-[78px] text-xs leading-tight text-right text-green-700 font-semibold px-1 py-2", 1, "keluargaDitemukanPertanian")}
                                   {proporsiColumnGroups.ringkasan && <>
