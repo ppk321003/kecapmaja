@@ -31,6 +31,8 @@ const SHEET_USAHA_KELUARGA = "USAHA KELUARGA";
 const SHEET_PROPORSI_USAHA = "PROPORSI USAHA";
 const SHEET_KESELURUHAN_USAHA = "KESELURUHAN USAHA";
 const SHEET_PROPORSI_PERTANIAN = "PROPORSI PERTANIAN";
+const HARIAN_APPS_SCRIPT_URL = String(import.meta.env.VITE_HARIAN_APPS_SCRIPT_URL || "").trim();
+const HARIAN_SPREADSHEET_ID = "1uA5nThGOntZrqfwFo_TNHhP3P7P78BATfc4p4BZQe9U";
 
 const normalizeSheetKey = (value: unknown) => {
   const digits = String(value ?? "").replace(/\D/g, "");
@@ -42,6 +44,33 @@ const normalizeString = (value: any): string =>
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase();
+
+const sendHarianSnapshotViaAppsScript = async (username: string, values: unknown[][]): Promise<boolean> => {
+  if (!HARIAN_APPS_SCRIPT_URL) return false;
+
+  const batchSize = 200;
+  for (let start = 0; start < values.length; start += batchSize) {
+    const payload = JSON.stringify({
+      action: "appendHarian",
+      username,
+      values: values.slice(start, start + batchSize),
+    });
+    const body = new Blob([payload], { type: "text/plain;charset=UTF-8" });
+    const accepted = navigator.sendBeacon(HARIAN_APPS_SCRIPT_URL, body);
+
+    if (!accepted) {
+      // sendBeacon can reject larger snapshots; no-cors POST still reaches Apps Script.
+      await fetch(HARIAN_APPS_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: payload,
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      });
+    }
+  }
+
+  return true;
+};
 
 type ChartRatioTooltipSeries = {
   name: string;
@@ -3354,14 +3383,71 @@ export default function MonitoringLapanganDash() {
     }
 
     try {
+      if (HARIAN_APPS_SCRIPT_URL) {
+        const now = recordDate instanceof Date && !isNaN(recordDate.getTime())
+          ? recordDate
+          : (() => {
+              const extracted = extractRecordDate(progresHeaderData?.[0]);
+              return extracted instanceof Date && !isNaN(extracted.getTime()) ? extracted : new Date();
+            })();
+        const tanggalFormat = now.toLocaleDateString('id-ID', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric'
+        });
+        const waktuFormat = now.toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+        const assignmentByKey = new Map<string, number>();
+        (progresData || []).forEach((progressRow: any) => {
+          const key = normalizeSheetKey(getSheetCellText(progressRow, 0));
+          if (!key) return;
+          const assignment = parseNumericValue(getSheetCellText(progressRow, 2)) + parseNumericValue(getSheetCellText(progressRow, 3));
+          assignmentByKey.set(key, (assignmentByKey.get(key) || 0) + assignment);
+        });
+        const dataToRecord = filteredRows.map(row => [
+          tanggalFormat,
+          waktuFormat,
+          row.nama_ppl,
+          row.kecamatan,
+          parseNumericValue(row.prelist_awal),
+          parseNumericValue(row.jumlah_assignment) > 0
+            ? parseNumericValue(row.jumlah_assignment)
+            : String(row.matchingKeys || "")
+                .split(",")
+                .map((key) => normalizeSheetKey(key))
+                .filter(Boolean)
+                .reduce((sum, key) => sum + (assignmentByKey.get(key) || 0), 0),
+          parseNumericValue(row.responden_didata),
+          parseNumericValue(row.draft),
+          parseNumericValue(row.didata_netto),
+          row.persentase_responden_didata,
+          user?.username || 'unknown'
+        ]);
+
+        await sendHarianSnapshotViaAppsScript(user?.username || '', dataToRecord);
+        toast({
+          title: "Permintaan dikirim",
+          description: `Snapshot ${filteredRows.length} PPL dikirim ke Apps Script pada ${tanggalFormat}. Karena mode browser no-cors, hasil penulisan belum dapat dikonfirmasi. Verifikasi baris di LOG_HARIAN sebelum mengulangi rekam.`,
+          variant: "default"
+        });
+        return;
+      }
+
       // First, check if sheet has header row
       const { data: existingData, error: readError } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1uA5nThGOntZrqfwFo_TNHhP3P7P78BATfc4p4BZQe9U',
+          spreadsheetId: HARIAN_SPREADSHEET_ID,
           operation: 'read',
             range: 'LOG_HARIAN!A1:K1'
         }
       });
+
+      if (readError) {
+        throw new Error(`Gagal membaca header sheet Harian: ${readError.message || 'Supabase Edge Function gagal'}`);
+      }
 
       const headerRow = [[
         'Tanggal_Rekam',
@@ -3384,7 +3470,7 @@ export default function MonitoringLapanganDash() {
       if (needsHeader || !hasAssignmentHeader) {
         const { error: headerError } = await supabase.functions.invoke('google-sheets', {
           body: {
-            spreadsheetId: '1uA5nThGOntZrqfwFo_TNHhP3P7P78BATfc4p4BZQe9U',
+            spreadsheetId: HARIAN_SPREADSHEET_ID,
             operation: needsHeader ? 'append' : 'update',
             range: needsHeader ? 'LOG_HARIAN' : 'LOG_HARIAN!A1:K1',
             values: headerRow
@@ -3459,7 +3545,7 @@ export default function MonitoringLapanganDash() {
       // Append to LOG_HARIAN sheet
       const { data, error } = await supabase.functions.invoke('google-sheets', {
         body: {
-          spreadsheetId: '1uA5nThGOntZrqfwFo_TNHhP3P7P78BATfc4p4BZQe9U',
+          spreadsheetId: HARIAN_SPREADSHEET_ID,
           operation: 'append',
           range: 'LOG_HARIAN',
           values: dataToRecord
@@ -3483,9 +3569,13 @@ export default function MonitoringLapanganDash() {
       });
     } catch (err) {
       console.error('Exception in handleRecordToHarian:', err);
+      const errorMessage = String(err instanceof Error ? err.message : err);
+      const fallbackMessage = !HARIAN_APPS_SCRIPT_URL && /Edge Function|Failed to send a request/i.test(errorMessage)
+        ? 'Supabase tidak tersedia dan fallback Apps Script belum dikonfigurasi. Isi VITE_HARIAN_APPS_SCRIPT_URL lalu restart aplikasi.'
+        : errorMessage.slice(0, 180);
       toast({
         title: "Error",
-        description: `Gagal merekam data: ${String(err).slice(0, 100)}`,
+        description: `Gagal merekam data: ${fallbackMessage}`,
         variant: "destructive"
       });
     }

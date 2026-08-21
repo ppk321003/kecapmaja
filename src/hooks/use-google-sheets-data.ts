@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 
 interface UseGoogleSheetsDataProps {
   spreadsheetId: string;
@@ -61,6 +60,54 @@ const fetchPublicGoogleSheetRows = async (spreadsheetId: string, sheetName: stri
   });
 };
 
+const HARIAN_APPS_SCRIPT_URL = String(import.meta.env.VITE_HARIAN_APPS_SCRIPT_URL || '').trim();
+
+export const fetchAppsScriptSheetRows = (spreadsheetId: string, sheetName: string): Promise<string[][]> =>
+  new Promise((resolve, reject) => {
+    if (!HARIAN_APPS_SCRIPT_URL) {
+      reject(new Error('Apps Script URL belum dikonfigurasi'));
+      return;
+    }
+    const callbackName = `__sheetRead_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement('script');
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Apps Script read timeout; deployment belum memperbarui readSheet'));
+    }, 15000);
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      delete (window as any)[callbackName];
+      script.remove();
+    };
+    (window as any)[callbackName] = (result: any) => {
+      cleanup();
+      if (!result?.ok) reject(new Error(result?.error || 'Apps Script gagal membaca sheet'));
+      else resolve(result.values || []);
+    };
+    script.onerror = () => { cleanup(); reject(new Error('Apps Script read request gagal')); };
+    script.src = `${HARIAN_APPS_SCRIPT_URL}?action=readSheet&spreadsheetId=${encodeURIComponent(spreadsheetId)}&sheetName=${encodeURIComponent(sheetName)}&callback=${callbackName}`;
+    document.head.appendChild(script);
+  });
+
+export const fetchAppsScriptSheetNames = (spreadsheetId: string): Promise<string[]> =>
+  new Promise((resolve, reject) => {
+    if (!HARIAN_APPS_SCRIPT_URL) {
+      reject(new Error('Apps Script URL belum dikonfigurasi'));
+      return;
+    }
+    const callbackName = `__sheetNames_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement('script');
+    const cleanup = () => { delete (window as any)[callbackName]; script.remove(); };
+    (window as any)[callbackName] = (result: any) => {
+      cleanup();
+      if (!result?.ok) reject(new Error(result?.error || 'Apps Script gagal membaca metadata'));
+      else resolve(result.sheets || []);
+    };
+    script.onerror = () => { cleanup(); reject(new Error('Apps Script metadata request gagal')); };
+    script.src = `${HARIAN_APPS_SCRIPT_URL}?action=listSheets&spreadsheetId=${encodeURIComponent(spreadsheetId)}&callback=${callbackName}`;
+    document.head.appendChild(script);
+  });
+
 export const useGoogleSheetsData = ({ spreadsheetId, sheetName, sheetAliases = [], range, mode = "rows", refreshKey, enabled = true }: UseGoogleSheetsDataProps) => {
   const candidateSheets = Array.from(new Set([sheetName, ...sheetAliases].filter(Boolean))) as string[];
 
@@ -76,128 +123,29 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, sheetAliases = [
 
       for (const candidateSheet of candidateSheets) {
         try {
-          const { data: response, error } = await supabase.functions.invoke("google-sheets", {
-            body: {
-              spreadsheetId: spreadsheetId,
-              operation: "read",
-              range: range || candidateSheet
-            }
-          });
-
-          if (error) {
-            console.warn(`[useGoogleSheetsData] sheet "${candidateSheet}" failed:`, error);
-            lastError = error;
-          } else if (response?.ok === false || response?.error) {
-            const message = typeof response.error === 'string'
-              ? response.error
-              : response.error?.message || response.message || `Sheet "${candidateSheet}" tidak dapat dibaca`;
-            console.warn(`[useGoogleSheetsData] sheet "${candidateSheet}" returned error:`, message);
-            lastError = new Error(message);
-          } else {
-            const rows = response?.values || [];
-
-            if (mode === "single-cell") {
-              const firstCell = Array.isArray(rows[0]) ? rows[0][0] : rows[0];
-              if (firstCell !== undefined && firstCell !== null && firstCell !== "") {
-                return [String(firstCell)];
+          try {
+            const publicRows = await fetchPublicGoogleSheetRows(spreadsheetId, candidateSheet);
+            if (publicRows.length > 0) {
+              if (mode === "single-cell") {
+                const firstCell = publicRows[0]?.__rawRow?.[0] ?? publicRows[0]?.[Object.keys(publicRows[0] || {})[0]];
+                return firstCell === undefined ? [] : [String(firstCell)];
               }
+              return publicRows;
             }
-
-            const isHeaderRow = (row: any[]): boolean => {
-              const headerText = row.map((cell) => String(cell || '').trim().toLowerCase());
-              const headerCandidates = [
-                'nama',
-                'kode',
-                'kecamatan',
-                'desa',
-                'sls',
-                'link',
-                'tindak',
-                'ppl',
-                'pml',
-                'assignment',
-                'provinsi'
-              ];
-              const matches = headerText.reduce((count, value) => {
-                if (!value) return count;
-                return headerCandidates.some((candidate) => value.includes(candidate)) ? count + 1 : count;
-              }, 0);
-              return matches >= 4;
-            };
-
-            let headerRowIndex = 0;
-            if (rows.length > 1) {
-              const found = rows.findIndex((row: any[]) => isHeaderRow(row));
-              headerRowIndex = found === -1 ? 0 : found;
-            }
-
-            if (rows.length > headerRowIndex + 1) {
-              let headers = rows[headerRowIndex];
-              const EXTRA_SKIP_FOR_SHEETS: Record<string, number> = {
-                "Mikro Anomali Usaha": 1,
-                "Mikro Anomali Keluarga": 1,
-                "Prelist_Awal": 1,
-              };
-
-              const extraSkip = EXTRA_SKIP_FOR_SHEETS[candidateSheet] || 0;
-
-              if (candidateSheet === "Prelist_Awal" && rows.length > headerRowIndex + 1) {
-                const secondHeaderRow = rows[headerRowIndex + 1] || [];
-                headers = headers.map((header: string, index: number) => {
-                  const primary = String(header || '').trim();
-                  const secondary = String(secondHeaderRow[index] || '').trim();
-                  const isGroupHeader = /assignment|total assignment|bku & bangunan/i.test(primary);
-                  if (secondary && (!primary || isGroupHeader || secondary.length < primary.length)) {
-                    return secondary;
-                  }
-                  return primary || secondary;
-                });
-              }
-
-              const dataStartIndex = headerRowIndex + 1 + extraSkip;
-              const dataRows = rows.slice(dataStartIndex).map((row: any[], rowIdx: number) => {
-                const obj: any = {};
-                const headerCount: Record<string, number> = {};
-
-                headers.forEach((header: string, index: number) => {
-                  const raw = String(header || '');
-                  const normalizedHeader = raw.trim().toLowerCase();
-                  const headerKeyBase = normalizedHeader || `__col_${index}`;
-
-                  const count = (headerCount[headerKeyBase] || 0) + 1;
-                  headerCount[headerKeyBase] = count;
-
-                  const key = count === 1 ? headerKeyBase : `${headerKeyBase}_${count}`;
-                  obj[key] = row[index] ?? '';
-                });
-
-                obj.__rowNumber = dataStartIndex + rowIdx + 1;
-                obj.__rawRow = row;
-                return obj;
-              });
-              return dataRows;
-            }
-
-            if (mode === "rows" && rows.length > 0) {
-              return rows;
-            }
-
-            return [];
+          } catch (publicFirstError) {
+            console.warn(`[useGoogleSheetsData] public read failed for "${candidateSheet}":`, publicFirstError);
           }
 
-          if (mode !== "single-cell") {
-            try {
-              const publicRows = await fetchPublicGoogleSheetRows(spreadsheetId, candidateSheet);
-              if (publicRows.length > 0) {
-                console.warn(`[useGoogleSheetsData] Fallback to public Google Sheets for "${candidateSheet}" because Edge Function is restricted.`);
-                return publicRows;
-              }
-            } catch (publicFallbackError) {
-              console.warn(`[useGoogleSheetsData] Public fallback failed for "${candidateSheet}":`, publicFallbackError);
-            }
+          const appsScriptRows = await fetchAppsScriptSheetRows(spreadsheetId, candidateSheet);
+          if (mode === "single-cell") {
+            const firstCell = appsScriptRows[0]?.[0];
+            if (firstCell !== undefined && firstCell !== null && firstCell !== "") return [String(firstCell)];
+          } else if (appsScriptRows.length > 0) {
+            return appsScriptRows;
           }
 
-          lastError = error ?? lastError ?? new Error(`Tidak dapat membaca sheet ${candidateSheet}`);
+          lastError = new Error(`Sheet ${candidateSheet} tidak mengembalikan data`);
+          continue;
         } catch (error) {
           console.warn(`[useGoogleSheetsData] unexpected error for "${candidateSheet}":`, error);
           lastError = error;

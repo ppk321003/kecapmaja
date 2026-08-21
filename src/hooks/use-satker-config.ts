@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchAppsScriptSheetRows } from '@/hooks/use-google-sheets-data';
 
 const MASTER_CONFIG_SPREADSHEET_ID = "1CBpS-rhb5pSSHFoleUoRa8D8CGeMh61tCoF82S0W0cQ";
 const CONFIG_SHEET_NAME = 'satker_config';
@@ -44,34 +44,22 @@ export function useSatkerConfig() {
     queryFn: async (): Promise<SatkerConfig[]> => {
       // Coba dua format sheet name: 'satker_config' dan 'Sheet1' (default Google Sheets)
       const sheetNames = [CONFIG_SHEET_NAME, 'Sheet1'];
-      let data, error;
+      let rows: string[][] = [];
       
       for (const sheetName of sheetNames) {
-        const result = await supabase.functions.invoke('google-sheets', {
-          body: {
-            spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
-            operation: 'read',
-            range: `${sheetName}!A:AB`, // 28 kolom (termasuk pulsa_id di kolom AB)
-          },
-        });
-        
-        if (!result.error && result.data?.values && result.data.values.length > 1) {
-          data = result.data;
-          error = null;
-          console.log(`[useSatkerConfig] Successfully read from sheet: ${sheetName}`);
-          break;
-        } else {
+        try {
+          const candidateRows = await fetchAppsScriptSheetRows(MASTER_CONFIG_SPREADSHEET_ID, sheetName);
+          if (candidateRows.length > 1) {
+            rows = candidateRows;
+            console.log(`[useSatkerConfig] Successfully read from sheet: ${sheetName}`);
+            break;
+          }
+        } catch (readError) {
           console.log(`[useSatkerConfig] Failed to read from ${sheetName}, trying next...`);
-          error = result.error;
+          if (sheetName === sheetNames[sheetNames.length - 1]) throw readError;
         }
       }
 
-      if (error && !data) {
-        console.error('Error fetching satker config from all sheets:', error);
-        throw error;
-      }
-
-      const rows = data?.values || [];
       if (rows.length <= 1) {
         console.warn('No satker config data found');
         return [];

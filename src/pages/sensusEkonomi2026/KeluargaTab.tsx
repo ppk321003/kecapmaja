@@ -4,12 +4,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, AlertCircle, ChevronDown, ChevronRight, ArrowUpDown, Users } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchAppsScriptSheetNames, fetchAppsScriptSheetRows } from "@/hooks/use-google-sheets-data";
 
 export const KELUARGA_SPREADSHEET_ID = "1sRg7Hi7xtBT00dx-61mugWlGL7H1P0gnr3jziaClJsw";
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 
 const DEFAULT_ITEMS_PER_PAGE = 20;
+
+const fetchPublicSheetValues = async (spreadsheetId: string, sheetName: string): Promise<string[][]> => {
+  const response = await fetch(
+    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`,
+    { cache: "no-store" }
+  );
+  if (!response.ok) throw new Error(`Public Google Sheet request failed: ${response.status}`);
+  const text = await response.text();
+  const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?\s*$/s);
+  if (!match) throw new Error("Public Google Sheet response tidak valid");
+  const parsed = JSON.parse(match[1]);
+  return (parsed?.table?.rows || []).map((row: any) =>
+    (row?.c || []).map((cell: any) => cell && typeof cell === "object" ? String(cell.f ?? cell.v ?? "") : String(cell ?? ""))
+  );
+};
+
+const readKeluargaValues = async (sheetName: string) => {
+  try {
+    return await fetchPublicSheetValues(KELUARGA_SPREADSHEET_ID, sheetName);
+  } catch {
+    return fetchAppsScriptSheetRows(KELUARGA_SPREADSHEET_ID, sheetName);
+  }
+};
+const readStackingValues = async () => {
+  try {
+    return await fetchPublicSheetValues(STACKING_SPREADSHEET_ID, "STACKING");
+  } catch {
+    return fetchAppsScriptSheetRows(STACKING_SPREADSHEET_ID, "STACKING");
+  }
+};
 
 const normalizeKey = (value: unknown): string =>
   String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -209,14 +239,12 @@ export const useKeluargaSheetNames = () =>
     refetchOnWindowFocus: false,
     retry: 1,
     queryFn: async (): Promise<string[]> => {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "metadata" },
-      });
-      if (error) throw error;
-      const sheets = (data as any)?.sheets || [];
-      return sheets
-        .map((sheet: any) => String(sheet?.properties?.title || "").trim())
-        .filter(Boolean);
+      try {
+        const names = await fetchAppsScriptSheetNames(KELUARGA_SPREADSHEET_ID);
+        return names.length > 0 ? names : ["KELUARGA"];
+      } catch {
+        return ["KELUARGA"];
+      }
     },
   });
 
@@ -230,14 +258,7 @@ export const useKeluargaSheet = (sheetName: string, enabled: boolean) =>
     refetchOnWindowFocus: false,
     retry: 1,
     queryFn: async (): Promise<SheetTable> => {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "read", range: `'${sheetName}'` },
-      });
-      if (error) throw error;
-
-      const values: string[][] = ((data as any)?.values || []).map((row: any[]) =>
-        (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell)))
-      );
+      const values = await readKeluargaValues(sheetName);
       if (values.length === 0) return { headers: [], rows: [] };
 
       const actualHeaderCandidates = [
@@ -319,13 +340,7 @@ export const useKeluargaStackingMap = () =>
     refetchOnWindowFocus: false,
     retry: 1,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: { spreadsheetId: STACKING_SPREADSHEET_ID, operation: "read", range: "'STACKING'" },
-      });
-      if (error) throw error;
-      const values: string[][] = ((data as any)?.values || []).map((row: any[]) =>
-        (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell)))
-      );
+      const values = await readStackingValues();
       const lookup = new Map<string, { namaPpl: string; kecamatan: string }>();
       if (values.length > 0) {
         const headerRow = values[0] || [];
@@ -451,9 +466,8 @@ export const useKeluargaDashboardSummary = (enabled = true) =>
     refetchOnWindowFocus: false,
     retry: 1,
     queryFn: async () => {
-      const metadataResponse = await supabase.functions.invoke("google-sheets", {
-        body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "metadata" },
-      });
+      const sheetNamesFromAppsScript = await fetchAppsScriptSheetNames(KELUARGA_SPREADSHEET_ID);
+      const metadataResponse = { data: { sheets: sheetNamesFromAppsScript.map((title) => ({ properties: { title } })) }, error: null };
       try {
         // Debug: log metadata response to help diagnose empty sheet list
         // eslint-disable-next-line no-console
@@ -485,18 +499,7 @@ export const useKeluargaDashboardSummary = (enabled = true) =>
       // Read each sheet but tolerate failures per-sheet so one bad sheet doesn't break the whole summary.
       for (const sheetName of effectiveSheetNames) {
         try {
-          const readResponse = await supabase.functions.invoke("google-sheets", {
-            body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "read", range: `'${sheetName}'` },
-          });
-          if (readResponse.error) {
-            // eslint-disable-next-line no-console
-            console.debug(`useKeluargaDashboardSummary: read ${sheetName} error`, readResponse.error);
-            familyReadResults.push([]);
-            continue;
-          }
-          const values = ((readResponse.data as any)?.values || []).map((row: any[]) =>
-            (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell)))
-          );
+          const values = await readKeluargaValues(sheetName);
           try {
             // eslint-disable-next-line no-console
             console.debug(`useKeluargaDashboardSummary: read ${sheetName} rows`, (values || []).length);
@@ -515,13 +518,8 @@ export const useKeluargaDashboardSummary = (enabled = true) =>
       const knownKecamatanNames = new Set<string>();
       const knownDesaNames = new Set<string>();
       try {
-        const stackingResponse = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: STACKING_SPREADSHEET_ID, operation: "read", range: "'STACKING'" },
-        });
-        if (!stackingResponse.error) {
-          const stackingValues = ((stackingResponse.data as any)?.values || []).map((row: any[]) =>
-            (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell)))
-          );
+        const stackingValues = await readStackingValues();
+        {
           const stackingHeader = stackingValues[0] || [];
           const kecIndex = findHeaderIndex(stackingHeader, ["kecamatan", "nama kecamatan", "nmkec", "wilayah"]);
           const desaIndex = findHeaderIndex(stackingHeader, ["desa", "kelurahan", "desa kelurahan", "desa/kelurahan", "nama desa"]);
@@ -658,24 +656,15 @@ export const useKeluargaDebugInfo = (enabled = true) =>
     queryFn: async () => {
       const out: any = { metadataResponse: null, sheetNames: [], perSheetRows: [], errors: [] };
       try {
-        const metadataResponse = await supabase.functions.invoke("google-sheets", {
-          body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "metadata" },
-        });
+        const sheetNamesFromAppsScript = await fetchAppsScriptSheetNames(KELUARGA_SPREADSHEET_ID);
+        const metadataResponse = { data: { sheets: sheetNamesFromAppsScript.map((title) => ({ properties: { title } })) }, error: null };
         out.metadataResponse = metadataResponse;
         const sheetNames = ((metadataResponse.data as any)?.sheets || []).map((s: any) => String(s?.properties?.title || "").trim()).filter(Boolean);
         out.sheetNames = sheetNames.length > 0 ? sheetNames : ["KELUARGA"];
 
         for (const sheetName of out.sheetNames) {
           try {
-            const readResponse = await supabase.functions.invoke("google-sheets", {
-              body: { spreadsheetId: KELUARGA_SPREADSHEET_ID, operation: "read", range: `'${sheetName}'` },
-            });
-            if (readResponse.error) {
-              out.perSheetRows.push({ sheetName, rows: 0, error: readResponse.error });
-              out.errors.push({ sheetName, error: readResponse.error });
-              continue;
-            }
-            const values: string[][] = ((readResponse.data as any)?.values || []).map((row: any[]) => (row || []).map((cell) => (cell === undefined || cell === null ? "" : String(cell))));
+            const values = await readKeluargaValues(sheetName);
 
             // Attempt to detect header row and sample headers + column indices for debugging
             const headerLimit = Math.min(8, values.length);
