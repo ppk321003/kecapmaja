@@ -369,8 +369,8 @@ export const useKeluargaStackingMap = () =>
           const rawId = findBestStackingId(row) || findExact16DigitKey(row);
           if (!rawId) return;
 
-          const namaPpl = pplIndex !== -1 ? String(row[pplIndex] ?? "").trim() : "";
-          const kecamatan = kecIndex !== -1 ? String(row[kecIndex] ?? "").trim() : "";
+          const namaPpl = String(row[pplIndex] ?? "").trim();
+          const kecamatan = String(row[kecIndex] ?? "").trim();
           if (!namaPpl && !kecamatan) return;
 
           const record = {
