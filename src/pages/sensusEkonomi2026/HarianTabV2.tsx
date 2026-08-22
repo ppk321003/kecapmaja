@@ -514,6 +514,14 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const filteredSummary = summarizePerubahan(paginatedPerubahan);
   const overallSummary = summarizePerubahan(perubahan);
   const formatChange = (value: number) => `${value > 0 ? "+" : ""}${value.toLocaleString("id-ID")}`;
+  const getOpenPercentage = (totalOpen: number, jumlahAssignment: number) =>
+    jumlahAssignment > 0 ? (totalOpen / jumlahAssignment) * 100 : 0;
+  const getOpenPercentageClass = (percentage: number) =>
+    percentage <= 0 ? "text-emerald-600" : percentage <= 5 ? "text-orange-600" : "text-red-600";
+  const formatOpenPercentage = (totalOpen: number, jumlahAssignment: number) => {
+    const percentage = getOpenPercentage(totalOpen, jumlahAssignment);
+    return `${percentage.toFixed(2).replace(".", ",")}%`;
+  };
 
   const resumeRows = useMemo<HarianResumeRow[]>(() => {
     const groups = new Map<string, HarianResumeRow>();
@@ -1143,7 +1151,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                     <TableCell className={`text-right font-semibold ${row.perubahanDidata >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatChange(row.perubahanDidata)}</TableCell>
                     <TableCell className={`text-right font-semibold ${row.perubahanDraft >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatChange(row.perubahanDraft)}</TableCell>
                     <TableCell className={`text-right font-semibold ${row.perubahanNetto >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatChange(row.perubahanNetto)}</TableCell>
-                    <TableCell className="bg-blue-50 text-right font-bold text-blue-700">{row.totalOpen.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className="bg-blue-50 text-right font-bold text-blue-700">
+                      <div>{row.totalOpen.toLocaleString("id-ID")}</div>
+                      <div className={`text-xs font-semibold ${getOpenPercentageClass(getOpenPercentage(row.totalOpen, row.jumlahAssignment))}`}>
+                        {formatOpenPercentage(row.totalOpen, row.jumlahAssignment)}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1157,7 +1170,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                   <TableCell className="text-right">{formatChange(resumeTotals.perubahanDidata)}</TableCell>
                   <TableCell className="text-right">{formatChange(resumeTotals.perubahanDraft)}</TableCell>
                   <TableCell className="text-right">{formatChange(resumeTotals.perubahanNetto)}</TableCell>
-                  <TableCell className="text-right text-blue-700">{resumeTotals.totalOpen.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right text-blue-700">
+                    <div>{resumeTotals.totalOpen.toLocaleString("id-ID")}</div>
+                    <div className={`text-xs font-semibold ${getOpenPercentageClass(getOpenPercentage(resumeTotals.totalOpen, resumeTotals.jumlahAssignment))}`}>
+                      {formatOpenPercentage(resumeTotals.totalOpen, resumeTotals.jumlahAssignment)}
+                    </div>
+                  </TableCell>
                 </TableRow>
               </TableFooter>
             </Table>
