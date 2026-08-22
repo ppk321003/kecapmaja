@@ -43,11 +43,31 @@ const normalizeHarianDate = (value: unknown): string => {
   return raw;
 };
 
+const formatHarianDisplayDate = (value: string): string => {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : value || "-";
+};
+
 const normalizeHarianTime = (value: unknown): string => {
   const raw = String(value ?? "").trim().replace(/:/g, ".");
   const match = raw.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{1,2}))?/);
   if (!match) return raw;
   return `${match[1].padStart(2, "0")}.${match[2].padStart(2, "0")}.${(match[3] || "00").padStart(2, "0")}`;
+};
+
+const formatComparisonDuration = (startDate: string, startTime: string, endDate: string, endTime: string): string => {
+  const start = new Date(`${startDate}T${startTime.replace(/\./g, ":")}`);
+  const end = new Date(`${endDate}T${endTime.replace(/\./g, ":")}`);
+  const totalMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  const totalHours = Math.floor(totalMinutes / 60);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  const minutes = totalMinutes % 60;
+
+  if (days > 0 && hours === 0 && minutes === 0) return `perbandingan ${days} hari/${days * 24} jam`;
+  if (days > 0) return `perbandingan ${days} hari ${hours} jam${minutes ? ` ${minutes} menit` : ""}/${totalHours} jam`;
+  if (totalHours > 0) return `perbandingan ${totalHours} jam${minutes ? ` ${minutes} menit` : ""}`;
+  return `perbandingan ${minutes} menit`;
 };
 
 const parseHarianNumber = (value: unknown): number => {
@@ -102,6 +122,8 @@ interface HarianResumeRow {
   kecamatan: string;
   totalPetugas: number;
   jumlahAssignment: number;
+  didataAwal: number;
+  nettoAwal: number;
   openPetugas: number;
   selesaiPetugas: number;
   perubahanDidata: number;
@@ -514,6 +536,13 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const filteredSummary = summarizePerubahan(paginatedPerubahan);
   const overallSummary = summarizePerubahan(perubahan);
   const formatChange = (value: number) => `${value > 0 ? "+" : ""}${value.toLocaleString("id-ID")}`;
+  const getChangePercentage = (change: number, initial: number) => initial > 0 ? (change / initial) * 100 : 0;
+  const getChangePercentageClass = (percentage: number) =>
+    percentage < 1 ? "text-red-600" : percentage < 2.6 ? "text-orange-600" : "text-emerald-600";
+  const formatChangePercentage = (change: number, initial: number) => {
+    const percentage = getChangePercentage(change, initial);
+    return `${percentage.toFixed(2).replace(".", ",")}%`;
+  };
   const getOpenPercentage = (totalOpen: number, jumlahAssignment: number) =>
     jumlahAssignment > 0 ? (totalOpen / jumlahAssignment) * 100 : 0;
   const getOpenPercentageClass = (percentage: number) =>
@@ -530,6 +559,9 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
           kecamatan: row.kecamatan,
           totalPetugas: 0,
           jumlahAssignment: 0,
+          didataAwal: 0,
+          draftAwal: 0,
+          nettoAwal: 0,
           openPetugas: 0,
           selesaiPetugas: 0,
           perubahanDidata: 0,
@@ -539,6 +571,9 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         };
         existing.totalPetugas += 1;
         existing.jumlahAssignment += row.jumlah_assignment;
+        existing.didataAwal += row.didata_awal;
+        existing.draftAwal += row.draft_awal;
+        existing.nettoAwal += row.netto_awal;
         existing.openPetugas += row.open > 0 ? 1 : 0;
         existing.selesaiPetugas += row.open <= 0 ? 1 : 0;
         existing.perubahanDidata += row.perubahan_didata;
@@ -555,9 +590,9 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         assignment: (row) => row.jumlahAssignment,
         selesai: (row) => row.selesaiPetugas,
         open: (row) => row.totalOpen,
-        perubahanDidata: (row) => row.perubahanDidata,
-        perubahanDraft: (row) => row.perubahanDraft,
-        perubahanNetto: (row) => row.perubahanNetto,
+        perubahanDidata: (row) => getChangePercentage(row.perubahanDidata, row.didataAwal),
+        perubahanDraft: (row) => getChangePercentage(row.perubahanDraft, row.draftAwal),
+        perubahanNetto: (row) => getChangePercentage(row.perubahanNetto, row.nettoAwal),
       };
       const aValue = values[resumeSortBy](a);
       const bValue = values[resumeSortBy](b);
@@ -571,6 +606,9 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const resumeTotals = useMemo(() => resumeRows.reduce((summary, row) => ({
     totalPetugas: summary.totalPetugas + row.totalPetugas,
     jumlahAssignment: summary.jumlahAssignment + row.jumlahAssignment,
+    didataAwal: summary.didataAwal + row.didataAwal,
+    draftAwal: summary.draftAwal + row.draftAwal,
+    nettoAwal: summary.nettoAwal + row.nettoAwal,
     openPetugas: summary.openPetugas + row.openPetugas,
     selesaiPetugas: summary.selesaiPetugas + row.selesaiPetugas,
     perubahanDidata: summary.perubahanDidata + row.perubahanDidata,
@@ -580,6 +618,9 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   }), {
     totalPetugas: 0,
     jumlahAssignment: 0,
+    didataAwal: 0,
+    draftAwal: 0,
+    nettoAwal: 0,
     openPetugas: 0,
     selesaiPetugas: 0,
     perubahanDidata: 0,
@@ -781,7 +822,8 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
           </div>
           {tanggalAwal && jamAwal && tanggalAkhir && jamAkhir && (
             <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700">
-              Membandingkan <strong className="text-blue-700">{tanggalAwal} {jamAwal}</strong> ke <strong className="text-amber-700">{tanggalAkhir} {jamAkhir}</strong> ({filteredPerubahan.length} PPL)
+              Membandingkan pukul <strong className="text-blue-700">{jamAwal} ({formatHarianDisplayDate(tanggalAwal)})</strong> s.d. pukul <strong className="text-amber-700">{jamAkhir} ({formatHarianDisplayDate(tanggalAkhir)})</strong>{" "}
+              <span className="text-slate-500">({formatComparisonDuration(tanggalAwal, jamAwal, tanggalAkhir, jamAkhir)}; {filteredPerubahan.length} PPL)</span>
             </div>
           )}
         </CardContent>
@@ -862,12 +904,6 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                       <div className="flex items-center gap-1">
                         Nama PPL {getSortIndicator("nama_ppl")}
                       </div>
-                    </TableHead>
-                    <TableHead
-                      className="text-slate-700 font-semibold px-4 py-3 cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("kecamatan")}
-                    >
-                      Kecamatan {getSortIndicator("kecamatan")}
                     </TableHead>
                     <TableHead
                       className="text-right text-slate-700 font-semibold px-4 py-3 text-xs bg-blue-100 cursor-pointer hover:bg-blue-200"
@@ -989,8 +1025,15 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                     return (
                       <TableRow key={`${row.nama_ppl}-${row.kecamatan}`} className={`border-b transition-colors ${warningClasses}`}>
                         <TableCell className="text-center text-slate-600 font-medium w-12">{rowNumber}</TableCell>
-                        <TableCell className={`${warningTextClasses} px-4 py-3 font-medium`}>{warningStatus !== "good" && <AlertCircle className={`mr-1 inline h-4 w-4 ${warningIconClasses}`} aria-label={warningLabel} />}{row.nama_ppl}</TableCell>
-                        <TableCell className={`${warningStatus === "under" ? "text-red-700" : warningStatus === "attention" ? "text-yellow-700" : "text-slate-600"} px-4 py-3`}>{row.kecamatan}</TableCell>
+                        <TableCell className={`${warningTextClasses} px-4 py-3 font-medium`}>
+                          <div className="flex items-start gap-1.5">
+                            {warningStatus !== "good" && <AlertCircle className={`mt-0.5 h-4 w-4 shrink-0 ${warningIconClasses}`} aria-label={warningLabel} />}
+                            <div className="min-w-0">
+                              <div className="leading-tight">{row.nama_ppl}</div>
+                              <div className="mt-0.5 text-xs font-normal leading-tight text-slate-500">{row.kecamatan}</div>
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.prelist_awal.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.jumlah_assignment.toLocaleString("id-ID")}</TableCell>
                         <TableCell className="text-right text-slate-700 px-4 py-3 text-sm bg-blue-100 font-medium">{row.open.toLocaleString("id-ID")}</TableCell>
@@ -1017,7 +1060,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                 <TableFooter>
                   {[{ label: "Total sesuai filter", summary: filteredSummary }, { label: "Total Keseluruhan", summary: overallSummary }].map(({ label, summary }) => (
                     <TableRow key={label} className="bg-slate-100 font-semibold">
-                      <TableCell colSpan={3} className="px-4 py-3 text-slate-900">{label}</TableCell>
+                      <TableCell colSpan={2} className="px-4 py-3 text-slate-900">{label}</TableCell>
                       <TableCell className="text-right px-4 py-3">{summary.prelist_awal.toLocaleString("id-ID")}</TableCell>
                       <TableCell className="text-right px-4 py-3">{summary.jumlah_assignment.toLocaleString("id-ID")}</TableCell>
                       <TableCell className="text-right px-4 py-3">{summary.open.toLocaleString("id-ID")}</TableCell>
@@ -1079,8 +1122,14 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         <CardHeader className="border-b bg-gradient-to-r from-slate-50 to-blue-50">
           <div>
             <div>
-              <CardTitle className="text-base">Resume Harian</CardTitle>
-              <p className="mt-1 text-sm text-slate-500">Rekap petugas dan posisi Open per Kecamatan berdasarkan snapshot yang dipilih</p>
+              <CardTitle className="text-base">
+                Ringkasan Perbandingan pukul <span className="text-blue-700">{jamAwal || "-"}</span>{" "}
+                <span className="text-blue-700">({formatHarianDisplayDate(tanggalAwal)})</span> s.d. pukul{" "}
+                <span className="text-amber-700">{jamAkhir || "-"}</span>{" "}
+                <span className="text-amber-700">({formatHarianDisplayDate(tanggalAkhir)})</span>{" "}
+                <span className="font-normal text-slate-500">({formatComparisonDuration(tanggalAwal, jamAwal, tanggalAkhir, jamAkhir)})</span>
+              </CardTitle>
+              <p className="mt-1 text-sm text-slate-500">Rekap petugas dan perubahan progres per Kecamatan</p>
             </div>
           </div>
         </CardHeader>
@@ -1148,9 +1197,21 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                     <TableCell className="text-right">{row.jumlahAssignment.toLocaleString("id-ID")}</TableCell>
                     <TableCell className="bg-red-50 text-right font-semibold text-red-700">{row.openPetugas.toLocaleString("id-ID")}</TableCell>
                     <TableCell className="bg-emerald-50 text-right font-semibold text-emerald-700">{row.selesaiPetugas.toLocaleString("id-ID")}</TableCell>
-                    <TableCell className={`text-right font-semibold ${row.perubahanDidata >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatChange(row.perubahanDidata)}</TableCell>
-                    <TableCell className={`text-right font-semibold ${row.perubahanDraft >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatChange(row.perubahanDraft)}</TableCell>
-                    <TableCell className={`text-right font-semibold ${row.perubahanNetto >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatChange(row.perubahanNetto)}</TableCell>
+                    <TableCell className={`text-right font-semibold ${row.perubahanDidata >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                      <div>{formatChange(row.perubahanDidata)}</div>
+                      <div className={`text-xs ${getChangePercentageClass(getChangePercentage(row.perubahanDidata, row.didataAwal))}`}>
+                        {formatChangePercentage(row.perubahanDidata, row.didataAwal)}
+                      </div>
+                    </TableCell>
+                    <TableCell className={`text-right font-semibold ${row.perubahanDraft >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                      {formatChange(row.perubahanDraft)}
+                    </TableCell>
+                    <TableCell className={`text-right font-semibold ${row.perubahanNetto >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                      <div>{formatChange(row.perubahanNetto)}</div>
+                      <div className={`text-xs ${getChangePercentageClass(getChangePercentage(row.perubahanNetto, row.nettoAwal))}`}>
+                        {formatChangePercentage(row.perubahanNetto, row.nettoAwal)}
+                      </div>
+                    </TableCell>
                     <TableCell className="bg-blue-50 text-right font-bold text-blue-700">
                       <div>{row.totalOpen.toLocaleString("id-ID")}</div>
                       <div className={`text-xs font-semibold ${getOpenPercentageClass(getOpenPercentage(row.totalOpen, row.jumlahAssignment))}`}>
@@ -1167,9 +1228,21 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                   <TableCell className="text-right">{resumeTotals.jumlahAssignment.toLocaleString("id-ID")}</TableCell>
                   <TableCell className="text-right text-red-700">{resumeTotals.openPetugas.toLocaleString("id-ID")}</TableCell>
                   <TableCell className="text-right text-emerald-700">{resumeTotals.selesaiPetugas.toLocaleString("id-ID")}</TableCell>
-                  <TableCell className="text-right">{formatChange(resumeTotals.perubahanDidata)}</TableCell>
-                  <TableCell className="text-right">{formatChange(resumeTotals.perubahanDraft)}</TableCell>
-                  <TableCell className="text-right">{formatChange(resumeTotals.perubahanNetto)}</TableCell>
+                  <TableCell className="text-right">
+                    <div>{formatChange(resumeTotals.perubahanDidata)}</div>
+                    <div className={`text-xs ${getChangePercentageClass(getChangePercentage(resumeTotals.perubahanDidata, resumeTotals.didataAwal))}`}>
+                      {formatChangePercentage(resumeTotals.perubahanDidata, resumeTotals.didataAwal)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatChange(resumeTotals.perubahanDraft)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div>{formatChange(resumeTotals.perubahanNetto)}</div>
+                    <div className={`text-xs ${getChangePercentageClass(getChangePercentage(resumeTotals.perubahanNetto, resumeTotals.nettoAwal))}`}>
+                      {formatChangePercentage(resumeTotals.perubahanNetto, resumeTotals.nettoAwal)}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right text-blue-700">
                     <div>{resumeTotals.totalOpen.toLocaleString("id-ID")}</div>
                     <div className={`text-xs font-semibold ${getOpenPercentageClass(getOpenPercentage(resumeTotals.totalOpen, resumeTotals.jumlahAssignment))}`}>
