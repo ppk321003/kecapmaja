@@ -101,12 +101,12 @@ interface HarianPerubahan {
 interface HarianResumeRow {
   kecamatan: string;
   totalPetugas: number;
+  jumlahAssignment: number;
   openPetugas: number;
   selesaiPetugas: number;
-  jumlahAssignment: number;
-  draftAkhir: number;
-  didataAkhir: number;
-  nettoAkhir: number;
+  perubahanDidata: number;
+  perubahanDraft: number;
+  perubahanNetto: number;
   totalOpen: number;
 }
 
@@ -126,7 +126,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const [searchTerm, setSearchTerm] = useState("");
   const [filterKecamatan, setFilterKecamatan] = useState<string>("");
   const [filterUnder, setFilterUnder] = useState<"" | "under" | "attention" | "good">("");
-  const [resumeSortBy, setResumeSortBy] = useState<"kecamatan" | "petugas" | "selesai" | "open" | "assignment" | "didata" | "draft" | "netto">("open");
+  const [resumeSortBy, setResumeSortBy] = useState<"kecamatan" | "petugas" | "assignment" | "selesai" | "open" | "perubahanDidata" | "perubahanDraft" | "perubahanNetto">("open");
   const [resumeSortOrder, setResumeSortOrder] = useState<"asc" | "desc">("desc");
   const [sortBy, setSortBy] = useState<"nama_ppl" | "kecamatan" | "prelist_awal" | "jumlah_assignment" | "open" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto">("perubahan_netto");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -521,21 +521,21 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         const existing = groups.get(row.kecamatan) || {
           kecamatan: row.kecamatan,
           totalPetugas: 0,
+          jumlahAssignment: 0,
           openPetugas: 0,
           selesaiPetugas: 0,
-          jumlahAssignment: 0,
-          draftAkhir: 0,
-          didataAkhir: 0,
-          nettoAkhir: 0,
+          perubahanDidata: 0,
+          perubahanDraft: 0,
+          perubahanNetto: 0,
           totalOpen: 0,
         };
         existing.totalPetugas += 1;
+        existing.jumlahAssignment += row.jumlah_assignment;
         existing.openPetugas += row.open > 0 ? 1 : 0;
         existing.selesaiPetugas += row.open <= 0 ? 1 : 0;
-        existing.jumlahAssignment += row.jumlah_assignment;
-        existing.draftAkhir += row.draft_akhir;
-        existing.didataAkhir += row.didata_akhir;
-        existing.nettoAkhir += row.netto_akhir;
+        existing.perubahanDidata += row.perubahan_didata;
+        existing.perubahanDraft += row.perubahan_draft;
+        existing.perubahanNetto += row.perubahan_netto;
         existing.totalOpen += row.open;
         groups.set(row.kecamatan, existing);
       });
@@ -544,12 +544,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
       const values: Record<typeof resumeSortBy, (row: HarianResumeRow) => number | string> = {
         kecamatan: (row) => row.kecamatan,
         petugas: (row) => row.totalPetugas,
+        assignment: (row) => row.jumlahAssignment,
         selesai: (row) => row.selesaiPetugas,
         open: (row) => row.totalOpen,
-        assignment: (row) => row.jumlahAssignment,
-        didata: (row) => row.didataAkhir,
-        draft: (row) => row.draftAkhir,
-        netto: (row) => row.nettoAkhir,
+        perubahanDidata: (row) => row.perubahanDidata,
+        perubahanDraft: (row) => row.perubahanDraft,
+        perubahanNetto: (row) => row.perubahanNetto,
       };
       const aValue = values[resumeSortBy](a);
       const bValue = values[resumeSortBy](b);
@@ -562,21 +562,21 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
 
   const resumeTotals = useMemo(() => resumeRows.reduce((summary, row) => ({
     totalPetugas: summary.totalPetugas + row.totalPetugas,
+    jumlahAssignment: summary.jumlahAssignment + row.jumlahAssignment,
     openPetugas: summary.openPetugas + row.openPetugas,
     selesaiPetugas: summary.selesaiPetugas + row.selesaiPetugas,
-    jumlahAssignment: summary.jumlahAssignment + row.jumlahAssignment,
-    draftAkhir: summary.draftAkhir + row.draftAkhir,
-    didataAkhir: summary.didataAkhir + row.didataAkhir,
-    nettoAkhir: summary.nettoAkhir + row.nettoAkhir,
+    perubahanDidata: summary.perubahanDidata + row.perubahanDidata,
+    perubahanDraft: summary.perubahanDraft + row.perubahanDraft,
+    perubahanNetto: summary.perubahanNetto + row.perubahanNetto,
     totalOpen: summary.totalOpen + row.totalOpen,
   }), {
     totalPetugas: 0,
+    jumlahAssignment: 0,
     openPetugas: 0,
     selesaiPetugas: 0,
-    jumlahAssignment: 0,
-    draftAkhir: 0,
-    didataAkhir: 0,
-    nettoAkhir: 0,
+    perubahanDidata: 0,
+    perubahanDraft: 0,
+    perubahanNetto: 0,
     totalOpen: 0,
   }), [resumeRows]);
 
@@ -1106,23 +1106,23 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                   <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("petugas")}>
                     Total Petugas {getResumeSortIndicator("petugas")}
                   </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("assignment")}>
+                    Jml Assignment {getResumeSortIndicator("assignment")}
+                  </TableHead>
                   <TableHead className="cursor-pointer text-right font-semibold text-red-700 hover:bg-red-50" onClick={() => handleResumeSort("open")}>
                     Open &gt; 0 {getResumeSortIndicator("open")}
                   </TableHead>
                   <TableHead className="cursor-pointer text-right font-semibold text-emerald-700 hover:bg-emerald-50" onClick={() => handleResumeSort("selesai")}>
                     Open &lt;= 0 {getResumeSortIndicator("selesai")}
                   </TableHead>
-                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("assignment")}>
-                    Jml Assignment {getResumeSortIndicator("assignment")}
+                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("perubahanDidata")}>
+                    Perubahan Didata {getResumeSortIndicator("perubahanDidata")}
                   </TableHead>
-                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("draft")}>
-                    Draft Akhir {getResumeSortIndicator("draft")}
+                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("perubahanDraft")}>
+                    Perubahan Draft {getResumeSortIndicator("perubahanDraft")}
                   </TableHead>
-                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("didata")}>
-                    Didata Akhir {getResumeSortIndicator("didata")}
-                  </TableHead>
-                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("netto")}>
-                    Netto Akhir {getResumeSortIndicator("netto")}
+                  <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("perubahanNetto")}>
+                    Perubahan Netto {getResumeSortIndicator("perubahanNetto")}
                   </TableHead>
                   <TableHead className="cursor-pointer text-right font-semibold text-blue-700 hover:bg-blue-50" onClick={() => handleResumeSort("open")}>
                     Total Open {getResumeSortIndicator("open")}
@@ -1137,12 +1137,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{row.kecamatan}</TableCell>
                     <TableCell className="text-right">{row.totalPetugas.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className="text-right">{row.jumlahAssignment.toLocaleString("id-ID")}</TableCell>
                     <TableCell className="bg-red-50 text-right font-semibold text-red-700">{row.openPetugas.toLocaleString("id-ID")}</TableCell>
                     <TableCell className="bg-emerald-50 text-right font-semibold text-emerald-700">{row.selesaiPetugas.toLocaleString("id-ID")}</TableCell>
-                    <TableCell className="text-right">{row.jumlahAssignment.toLocaleString("id-ID")}</TableCell>
-                    <TableCell className="text-right">{row.draftAkhir.toLocaleString("id-ID")}</TableCell>
-                    <TableCell className="text-right">{row.didataAkhir.toLocaleString("id-ID")}</TableCell>
-                    <TableCell className="text-right">{row.nettoAkhir.toLocaleString("id-ID")}</TableCell>
+                    <TableCell className={`text-right font-semibold ${row.perubahanDidata >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatChange(row.perubahanDidata)}</TableCell>
+                    <TableCell className={`text-right font-semibold ${row.perubahanDraft >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatChange(row.perubahanDraft)}</TableCell>
+                    <TableCell className={`text-right font-semibold ${row.perubahanNetto >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatChange(row.perubahanNetto)}</TableCell>
                     <TableCell className="bg-blue-50 text-right font-bold text-blue-700">{row.totalOpen.toLocaleString("id-ID")}</TableCell>
                   </TableRow>
                 ))}
@@ -1151,12 +1151,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                 <TableRow className="bg-slate-100 font-bold">
                   <TableCell colSpan={2}>Total Resume</TableCell>
                   <TableCell className="text-right">{resumeTotals.totalPetugas.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right">{resumeTotals.jumlahAssignment.toLocaleString("id-ID")}</TableCell>
                   <TableCell className="text-right text-red-700">{resumeTotals.openPetugas.toLocaleString("id-ID")}</TableCell>
                   <TableCell className="text-right text-emerald-700">{resumeTotals.selesaiPetugas.toLocaleString("id-ID")}</TableCell>
-                  <TableCell className="text-right">{resumeTotals.jumlahAssignment.toLocaleString("id-ID")}</TableCell>
-                  <TableCell className="text-right">{resumeTotals.draftAkhir.toLocaleString("id-ID")}</TableCell>
-                  <TableCell className="text-right">{resumeTotals.didataAkhir.toLocaleString("id-ID")}</TableCell>
-                  <TableCell className="text-right">{resumeTotals.nettoAkhir.toLocaleString("id-ID")}</TableCell>
+                  <TableCell className="text-right">{formatChange(resumeTotals.perubahanDidata)}</TableCell>
+                  <TableCell className="text-right">{formatChange(resumeTotals.perubahanDraft)}</TableCell>
+                  <TableCell className="text-right">{formatChange(resumeTotals.perubahanNetto)}</TableCell>
                   <TableCell className="text-right text-blue-700">{resumeTotals.totalOpen.toLocaleString("id-ID")}</TableCell>
                 </TableRow>
               </TableFooter>
