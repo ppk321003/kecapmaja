@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchAppsScriptSheetRows } from '@/hooks/use-google-sheets-data';
+import { supabase } from '@/integrations/supabase/client';
 
 const MASTER_CONFIG_SPREADSHEET_ID = "1CBpS-rhb5pSSHFoleUoRa8D8CGeMh61tCoF82S0W0cQ";
 const CONFIG_SHEET_NAME = 'satker_config';
@@ -42,21 +43,38 @@ export function useSatkerConfig() {
   return useQuery({
     queryKey: ['satker-config'],
     queryFn: async (): Promise<SatkerConfig[]> => {
-      // Coba dua format sheet name: 'satker_config' dan 'Sheet1' (default Google Sheets)
-      const sheetNames = [CONFIG_SHEET_NAME, 'Sheet1'];
       let rows: string[][] = [];
+
+      try {
+        const { data, error } = await supabase.functions.invoke('google-sheets', {
+          body: {
+            spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
+            operation: 'read',
+            range: `${CONFIG_SHEET_NAME}!A:AB`,
+          },
+        });
+
+        if (error) throw error;
+        rows = Array.isArray(data?.values) ? data.values : [];
+      } catch (readError) {
+        console.warn('[useSatkerConfig] Edge Function read failed, trying Apps Script fallback', readError);
+      }
       
-      for (const sheetName of sheetNames) {
-        try {
-          const candidateRows = await fetchAppsScriptSheetRows(MASTER_CONFIG_SPREADSHEET_ID, sheetName);
-          if (candidateRows.length > 1) {
-            rows = candidateRows;
-            console.log(`[useSatkerConfig] Successfully read from sheet: ${sheetName}`);
-            break;
+      if (rows.length <= 1) {
+        // Coba dua format sheet name: 'satker_config' dan 'Sheet1' (default Google Sheets)
+        const sheetNames = [CONFIG_SHEET_NAME, 'Sheet1'];
+        for (const sheetName of sheetNames) {
+          try {
+            const candidateRows = await fetchAppsScriptSheetRows(MASTER_CONFIG_SPREADSHEET_ID, sheetName);
+            if (candidateRows.length > 1) {
+              rows = candidateRows;
+              console.log(`[useSatkerConfig] Successfully read from sheet: ${sheetName}`);
+              break;
+            }
+          } catch (fallbackError) {
+            console.log(`[useSatkerConfig] Failed to read from ${sheetName}, trying next...`);
+            if (sheetName === 'Sheet1') throw fallbackError;
           }
-        } catch (readError) {
-          console.log(`[useSatkerConfig] Failed to read from ${sheetName}, trying next...`);
-          if (sheetName === sheetNames[sheetNames.length - 1]) throw readError;
         }
       }
 

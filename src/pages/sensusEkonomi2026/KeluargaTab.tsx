@@ -818,7 +818,7 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
           pindah_dalam_negeri: parseNumericValue(getHeaderValue(row, headers, ["pindah dalam negeri", "pindah_dalam_negeri", "dn"], 4)),
           pindah_luar_negeri: parseNumericValue(getHeaderValue(row, headers, ["pindah luar negeri", "pindah_luar_negeri", "ln"], 5)),
           anggota_keluarga_khusus: parseNumericValue(getHeaderValue(row, headers, ["anggota keluarga khusus", "anggota_keluarga_khusus"], 7)),
-          total_anggota_keluarga: parseNumericValue(getHeaderValue(row, headers, ["total anggota keluarga", "total_anggota_keluarga"], 8)),
+          total_anggota_keluarga: parseNumericValue(getHeaderValue(row, headers, ["total anggota keluarga", "total_anggota_keluarga"], 9)),
         };
 
         if (!item.kecamatan || item.kecamatan === "-") {

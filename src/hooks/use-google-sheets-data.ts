@@ -11,14 +11,14 @@ interface UseGoogleSheetsDataProps {
   enabled?: boolean;
 }
 
-const fetchPublicGoogleSheetRows = async (spreadsheetId: string, sheetName: string): Promise<any[]> => {
+const fetchPublicGoogleSheetRows = async (spreadsheetId: string, sheetName: string, range?: string): Promise<any[]> => {
   const cleanSheetName = String(sheetName || '').trim();
   if (!cleanSheetName) {
     return [];
   }
 
   const response = await fetch(
-    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(cleanSheetName)}`,
+    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(cleanSheetName)}${range ? `&range=${encodeURIComponent(range)}` : ''}`,
     { cache: 'no-store' }
   );
 
@@ -89,6 +89,18 @@ export const fetchAppsScriptSheetRows = (spreadsheetId: string, sheetName: strin
     document.head.appendChild(script);
   });
 
+const getSingleCellFromRange = (rows: string[][], range?: string): string | undefined => {
+  const cellReference = String(range || "").split("!").pop()?.match(/([A-Z]+)(\d+)/i);
+  if (!cellReference) return rows[0]?.[0];
+
+  const columnLetters = cellReference[1].toUpperCase();
+  const rowIndex = Number(cellReference[2]) - 1;
+  let columnIndex = 0;
+  for (const letter of columnLetters) columnIndex = columnIndex * 26 + letter.charCodeAt(0) - 64;
+  columnIndex -= 1;
+  return rows[rowIndex]?.[columnIndex];
+};
+
 export const fetchAppsScriptSheetNames = (spreadsheetId: string): Promise<string[]> =>
   new Promise((resolve, reject) => {
     if (!HARIAN_APPS_SCRIPT_URL) {
@@ -124,11 +136,13 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, sheetAliases = [
       for (const candidateSheet of candidateSheets) {
         try {
           try {
-            const publicRows = await fetchPublicGoogleSheetRows(spreadsheetId, candidateSheet);
+            const requestedRange = range?.split("!").pop();
+            const publicRows = await fetchPublicGoogleSheetRows(spreadsheetId, candidateSheet, mode === "single-cell" ? requestedRange : undefined);
             if (publicRows.length > 0) {
               if (mode === "single-cell") {
-                const firstCell = publicRows[0]?.__rawRow?.[0] ?? publicRows[0]?.[Object.keys(publicRows[0] || {})[0]];
-                return firstCell === undefined ? [] : [String(firstCell)];
+                // The public request is already restricted to the requested cell.
+                const cellValue = publicRows[0]?.__rawRow?.[0];
+                return cellValue === undefined || cellValue === null || cellValue === "" ? [] : [String(cellValue)];
               }
               return publicRows;
             }
@@ -137,9 +151,11 @@ export const useGoogleSheetsData = ({ spreadsheetId, sheetName, sheetAliases = [
           }
 
           const appsScriptRows = await fetchAppsScriptSheetRows(spreadsheetId, candidateSheet);
+          console.debug(`[useGoogleSheetsData] appsScriptRows for "${candidateSheet}":`, { rowCount: appsScriptRows.length, mode, range });
           if (mode === "single-cell") {
-            const firstCell = appsScriptRows[0]?.[0];
-            if (firstCell !== undefined && firstCell !== null && firstCell !== "") return [String(firstCell)];
+            const cellValue = getSingleCellFromRange(appsScriptRows, range);
+            console.debug(`[useGoogleSheetsData] extracted cell value:`, { cellValue, range });
+            if (cellValue !== undefined && cellValue !== null && cellValue !== "") return [String(cellValue)];
           } else if (appsScriptRows.length > 0) {
             return appsScriptRows;
           }

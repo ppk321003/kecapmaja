@@ -466,6 +466,16 @@ const extractProgressHeader = (value: string): string => {
   return selected.join(" | ");
 };
 
+const extractProgressUpdatedLabel = (value: string): string => {
+  const updatedSegment = String(value || "")
+    .split("|")
+    .map((part) => part.trim())
+    .find((part) => /^diperbarui:/i.test(part));
+
+  if (!updatedSegment) return "";
+  return /\bWIB\b/i.test(updatedSegment) ? updatedSegment : `${updatedSegment} WIB`;
+};
+
 // Extract tanggal dari raw header string (progresHeaderData)
 // Format: "Sumber: FASIH...|Diperbarui: 18 Agu 2026, 12.00|..."
 // Returns: Date object parsed from the Diperbarui segment
@@ -3786,7 +3796,10 @@ export default function MonitoringLapanganDash() {
   }, [filteredRows, itemsPerPage]);
 
 
-  const progressHeaderDisplay = progresHeaderData?.[0] ? extractProgressHeader(progresHeaderData[0]) : "";
+  const rawProgressHeader = String(
+    progresHeaderData?.[0] ?? progresData?.[1]?.__rawRow?.[0] ?? ""
+  ).trim();
+  const progressHeaderDisplay = extractProgressUpdatedLabel(rawProgressHeader);
   const { daysElapsed } = calculateDayProgress();
   const daysElapsedTer1 = calculateDayProgress(new Date(2026, 6, 15)).daysElapsed;
   const minPercentageTarget = getTargetMinimalPercentage(daysElapsed);

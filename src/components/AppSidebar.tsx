@@ -44,6 +44,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { useSatkerConfig } from "@/hooks/use-satker-config";
 
 // ALWAYS VISIBLE ITEMS
 const topLevelItems = [
@@ -126,6 +127,7 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const { user } = useAuth();
   const satkerContext = useSatkerConfigContext();
+  const { data: fallbackSatkerConfigs } = useSatkerConfig();
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
   
   // State untuk track which groups are open - Default collapsed
@@ -174,8 +176,13 @@ export function AppSidebar() {
 
   // Get satker_nama from satker config (column B) - current logged-in user's satker
   const satkerNama = useMemo(() => {
-    return satkerContext?.getUserSatkerConfig()?.satker_nama || 'BPS';
-  }, [satkerContext]);
+    const configuredName = (
+      satkerContext?.getUserSatkerConfig()?.satker_nama
+      || fallbackSatkerConfigs?.find((config) => config.satker_id === user?.satker)?.satker_nama
+    )?.trim();
+    if (configuredName) return configuredName;
+    return user?.satker ? `Satker ${user.satker}` : 'BPS';
+  }, [fallbackSatkerConfigs, satkerContext, user?.satker]);
 
   // Helper function to check if item should be visible
   const shouldShowItem = (item: MenuItem): boolean => {
