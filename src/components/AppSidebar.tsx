@@ -79,6 +79,7 @@ const sensusEkonomiItems = [
   { title: "Petugas", url: "/sensus-ekonomi-2026/petugas", icon: Users },
   { title: "Pelatihan", url: "/sensus-ekonomi-2026/pelatihan", icon: BookOpen },
   { title: "Monitoring Lapangan", url: "/monitoringlapangandash", icon: TrendingUp },
+  { title: "Verifikasi Akhir", url: "/sensus-ekonomi-2026/verifikasi-akhir", icon: FileCheck },
   { title: "Monitoring Lapangan (old)", url: "/monitoringlapangan", icon: TrendingUp, conditional: "isPPK" },
 ];
 

@@ -62,6 +62,7 @@ import SensusEkonomiPetugas from "./pages/sensusEkonomiPetugas";
 import SensusEkonomiPelatihan from "./pages/sensusEkonomiPelatihan";
 import MonitoringLapangan from "./pages/sensusEkonomi2026/MonitoringLapangan";
 import MonitoringLapanganDash from "./pages/sensusEkonomi2026/MonitoringLapanganDash";
+import VerifikasiAkhir from "./pages/sensusEkonomi2026/VerifikasiAkhir";
 import BahanRevisiAnggaran from "./components/bahanrevisi/BahanRevisiAnggaran";
 
 const queryClient = new QueryClient();
@@ -144,6 +145,7 @@ const App = () => (
             <Route path="/konfirmasikepka2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/petugas" element={<ProtectedRoute><Layout><SensusEkonomiPetugas /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/pelatihan" element={<ProtectedRoute><Layout><SensusEkonomiPelatihan /></Layout></ProtectedRoute>} />
+            <Route path="/sensus-ekonomi-2026/verifikasi-akhir" element={<ProtectedRoute><Layout><VerifikasiAkhir /></Layout></ProtectedRoute>} />
             <Route path="/monitoringlapangandash" element={<Layout><MonitoringLapanganDash /></Layout>} />
             <Route path="/monitoringlapangan" element={<MonitoringLapanganAccessGate />} />
             <Route path="/sensus-ekonomi-2026/monitoring-lapangan" element={<MonitoringLapanganAccessGate />} />
