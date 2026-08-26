@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import {
   AlertCircle,
   ArrowUpDown,
   ChevronDown,
   ChevronRight,
+  Download,
   Loader2,
   Search,
   ShieldCheck,
@@ -596,6 +598,50 @@ export default function VerifikasiAkhir() {
     MetricKey,
     string
   >;
+  const downloadExcel = () => {
+    const isPpl = activeTab === "ppl";
+    const rows = isPpl ? filteredPpl : filteredPml;
+    const actionColumns: ActionColumn[] = isPpl ? ["S", "T", "U"] : ["V", "W", "X"];
+    const actionLabels = ["PJ Kecamatan", "Ketua Tim SE2026", "PPK"];
+    const headers = [
+      "No",
+      isPpl ? "Nama PPL" : "Nama PML",
+      "Kecamatan",
+      ...METRIC_COLUMNS.map(([, label]) => label),
+      ...actionLabels,
+    ];
+    const rowsForExport = rows.map((row, index) => [
+      index + 1,
+      row.nama,
+      row.kecamatan,
+      ...METRIC_COLUMNS.map(([key]) => row[key]),
+      ...actionColumns.map((column) => actionValue(row.actionRows, column, actionOverrides)),
+    ]);
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      [`REKAP VERIFIKASI AKHIR ${isPpl ? "PPL" : "PML"}`],
+      ["Tanggal Export", new Date().toLocaleString("id-ID")],
+      ["Filter Kecamatan", kecamatan === "all" ? "Semua Kecamatan" : kecamatan],
+      ["Pencarian", search || "-"],
+      [],
+      headers,
+      ...rowsForExport,
+    ]);
+    worksheet["!cols"] = [
+      { wch: 6 },
+      { wch: 28 },
+      { wch: 20 },
+      ...METRIC_COLUMNS.map(() => ({ wch: 18 })),
+      { wch: 24 },
+      { wch: 24 },
+      { wch: 24 },
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, isPpl ? "PPL" : "PML");
+    XLSX.writeFile(
+      workbook,
+      `Verifikasi_Akhir_${isPpl ? "PPL" : "PML"}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  };
   const renderGroupedHeads = (
     sort: SortKey,
     direction: Direction,
@@ -826,6 +872,17 @@ export default function VerifikasiAkhir() {
                 />
               </div>
               <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  title={`Download Excel ${activeTab.toUpperCase()}`}
+                  aria-label={`Download Excel ${activeTab.toUpperCase()}`}
+                  onClick={downloadExcel}
+                  disabled={loading || !!error}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Download className="h-4 w-4" />
+                  Excel
+                </button>
                 <select
                   aria-label="Filter kecamatan"
                   value={kecamatan}
