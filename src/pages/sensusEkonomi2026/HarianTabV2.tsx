@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Loader2, AlertCircle, Search, TrendingUp, Database } from "lucide-react";
+import { AlertCircle, Database, Download, Loader2, Search, TrendingUp } from "lucide-react";
 import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 
 const HARIAN_SPREADSHEET_ID = "1uA5nThGOntZrqfwFo_TNHhP3P7P78BATfc4p4BZQe9U";
@@ -629,6 +630,61 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     totalOpen: 0,
   }), [resumeRows]);
 
+  const downloadExcel = () => {
+    const detailHeaders = [
+      "No", "Nama PPL", "Kecamatan", "Prelist Awal", "Jml Assignment", "Open",
+      "Didata Awal", "Didata Akhir", "Perubahan Didata", "Draft Awal", "Draft Akhir",
+      "Perubahan Draft", "Netto Awal", "Netto Akhir", "Perubahan Netto",
+    ];
+    const detailRows = sortedPerubahan.map((row, index) => [
+      index + 1, row.nama_ppl, row.kecamatan, row.prelist_awal, row.jumlah_assignment,
+      row.open, row.didata_awal, row.didata_akhir, row.perubahan_didata, row.draft_awal,
+      row.draft_akhir, row.perubahan_draft, row.netto_awal, row.netto_akhir,
+      row.perubahan_netto,
+    ]);
+    const resumeHeaders = [
+      "No", "Kecamatan", "Total Petugas", "Jml Assignment", "Open > 0", "Open <= 0",
+      "Perubahan Didata", "Perubahan Draft", "Perubahan Netto", "Total Open",
+    ];
+    const resumeData = resumeRows.map((row, index) => [
+      index + 1, row.kecamatan, row.totalPetugas, row.jumlahAssignment, row.openPetugas,
+      row.selesaiPetugas, row.perubahanDidata, row.perubahanDraft, row.perubahanNetto,
+      row.totalOpen,
+    ]);
+    const metadata = [
+      ["Periode Awal", `${formatHarianDisplayDate(tanggalAwal)} ${jamAwal || "-"}`],
+      ["Periode Akhir", `${formatHarianDisplayDate(tanggalAkhir)} ${jamAkhir || "-"}`],
+      ["Filter Kecamatan", filterKecamatan || "Semua Kecamatan"],
+      ["Filter Status", filterUnder || "Semua Status"],
+      ["Pencarian", searchTerm || "-"],
+      ["Tanggal Export", new Date().toLocaleString("id-ID")],
+    ];
+    const detailSheet = XLSX.utils.aoa_to_sheet([
+      ["ANALISIS PERUBAHAN HARIAN PER PPL"],
+      ...metadata,
+      [],
+      detailHeaders,
+      ...detailRows,
+    ]);
+    detailSheet["!cols"] = [
+      { wch: 6 }, { wch: 28 }, { wch: 20 }, ...Array.from({ length: 12 }, () => ({ wch: 18 })),
+    ];
+    const resumeSheet = XLSX.utils.aoa_to_sheet([
+      ["RINGKASAN PERBANDINGAN HARIAN PER KECAMATAN"],
+      ...metadata,
+      [],
+      resumeHeaders,
+      ...resumeData,
+    ]);
+    resumeSheet["!cols"] = [
+      { wch: 6 }, { wch: 20 }, ...Array.from({ length: 8 }, () => ({ wch: 18 })),
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, detailSheet, "Perubahan PPL");
+    XLSX.utils.book_append_sheet(workbook, resumeSheet, "Ringkasan Kecamatan");
+    XLSX.writeFile(workbook, `Harian_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   if (harianLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -680,6 +736,16 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
             Rekam ke Harian
           </button>
         )}
+        <button
+          type="button"
+          onClick={downloadExcel}
+          disabled={sortedPerubahan.length === 0}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-600 bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
+          title="Download analisis Harian ke Excel"
+        >
+          <Download className="h-4 w-4" />
+          Download Excel
+        </button>
       </div>
 
       {/* Summary Cards */}
