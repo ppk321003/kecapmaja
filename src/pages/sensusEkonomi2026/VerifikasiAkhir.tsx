@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Download,
   Loader2,
+  Save,
   Search,
   ShieldCheck,
   Star,
@@ -90,7 +91,11 @@ type PplRow = Metrics & {
   details: DetailRow[];
   actionRows: ActionRecord[];
 };
-type PmlChild = Metrics & { nama: string; actionRows: ActionRecord[] };
+type PmlChild = Metrics & {
+  nama: string;
+  actionRows: ActionRecord[];
+  pplActionRows: ActionRecord[];
+};
 type PmlRow = Metrics & {
   id: string;
   nama: string;
@@ -148,6 +153,23 @@ const text = (row: any, index: number, key?: string): string => {
   return String(value ?? "").trim();
 };
 const formatNumber = (value: number) => value.toLocaleString("id-ID");
+const formatVerificationTimestamp = (date = new Date()) => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(date)
+      .map(({ type, value }) => [type, value]),
+  );
+  return `${parts.hour}.${parts.minute} WIB - ${parts.weekday}, ${parts.day}/${parts.month}/${parts.year}`;
+};
 const formatPercent = (value: number, total: number) =>
   total > 0 ? `${((value / total) * 100).toFixed(2)}%` : "0.00%";
 const normalizeKecamatan = (value: string) =>
@@ -249,12 +271,14 @@ function KabupatenActions({
   columns,
   overrides,
   kecamatan,
+  allPplFlagged = true,
   onSaved,
 }: {
   records: ActionRecord[];
   columns: [ActionColumn, ActionColumn, ActionColumn];
   overrides: Record<string, string>;
   kecamatan: string;
+  allPplFlagged?: boolean;
   onSaved: (updates: Record<string, string>) => void;
 }) {
   const { user } = useAuth();
@@ -283,6 +307,7 @@ function KabupatenActions({
   const canPjk =
     actor === "PJK" &&
     allowedKecamatan.includes(normalizeKecamatan(kecamatan)) &&
+    (pjk || allPplFlagged) &&
     !ketua &&
     !ppk;
   const canKetua = isKetuaPelaksana && pjk && !ppk;
@@ -341,7 +366,13 @@ function KabupatenActions({
       <TableCell className="w-[64px] min-w-[64px] bg-violet-50 px-1 py-2 text-center align-middle">
         <button
           type="button"
-          title={pjk ? "Batalkan flag PJ Kecamatan" : "Flag PJ Kecamatan"}
+          title={
+            pjk
+              ? "Batalkan flag PJ Kecamatan"
+              : allPplFlagged
+                ? "Flag PJ Kecamatan"
+                : "Semua PPL harus sudah flag terlebih dahulu"
+          }
           disabled={saving !== null || !canPjk}
           onClick={() => write(columns[0], pjk ? "" : "Approve")}
           className={`rounded p-1.5 ${pjk ? "text-amber-500 hover:bg-amber-100" : "text-slate-400 hover:bg-slate-100"} disabled:cursor-not-allowed disabled:opacity-40`}
@@ -388,9 +419,16 @@ function KabupatenActions({
 }
 
 export default function VerifikasiAkhir() {
+  const { user } = useAuth();
   const { data, loading, error } = useGoogleSheetsData({
     spreadsheetId: SPREADSHEET_ID,
     sheetName: SHEET_NAME,
+  });
+  const { data: timestampData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: SHEET_NAME,
+    range: "Z1",
+    mode: "single-cell",
   });
   const [activeTab, setActiveTab] = useState("ppl");
   const [search, setSearch] = useState("");
@@ -407,6 +445,44 @@ export default function VerifikasiAkhir() {
   const [actionOverrides, setActionOverrides] = useState<
     Record<string, string>
   >({});
+  const [verificationTimestamp, setVerificationTimestamp] = useState("");
+  const [savingVerificationTimestamp, setSavingVerificationTimestamp] =
+    useState(false);
+  const isPpk = user?.role === "Pejabat Pembuat Komitmen";
+
+  useEffect(() => {
+    const timestamp = String(timestampData?.[0] ?? "").trim();
+    if (timestamp) setVerificationTimestamp(timestamp);
+  }, [timestampData]);
+
+  const recordVerificationTimestamp = async () => {
+    if (!isPpk || savingVerificationTimestamp) return;
+    setSavingVerificationTimestamp(true);
+    const timestamp = formatVerificationTimestamp();
+    try {
+      const { error: updateError } = await supabase.functions.invoke(
+        "google-sheets",
+        {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "batch-update",
+            updates: [
+              {
+                range: `'${SHEET_NAME}'!Z1`,
+                values: [[timestamp]],
+              },
+            ],
+          },
+        },
+      );
+      if (updateError) throw updateError;
+      setVerificationTimestamp(timestamp);
+    } catch (err: any) {
+      console.error("Gagal merekam waktu verifikasi akhir:", err);
+    } finally {
+      setSavingVerificationTimestamp(false);
+    }
+  };
 
   const { pplRows, pmlRows } = useMemo(() => {
     const pplMap = new Map<string, PplRow>();
@@ -477,11 +553,13 @@ export default function VerifikasiAkhir() {
         if (child) {
           addMetricObject(child, detailMetrics);
           child.actionRows.push(pmlAction);
+          child.pplActionRows.push(pplAction);
         } else
           current.children.push({
             ...emptyMetrics(),
             nama: namaPpl,
             actionRows: [pmlAction],
+            pplActionRows: [pplAction],
             ...detailMetrics,
           });
         pmlMap.set(key, current);
@@ -526,6 +604,16 @@ export default function VerifikasiAkhir() {
     () => sortRows(filterRows(pmlRows), pmlSort, pmlDirection),
     [pmlRows, search, kecamatan, pmlSort, pmlDirection],
   );
+  const isPmlReadyForFlag = (row: PmlRow) =>
+    row.children.length > 0 &&
+    row.children.every((child) => {
+      const ppl = pplRows.find(
+        (item) =>
+          item.nama.toLowerCase() === child.nama.toLowerCase() &&
+          item.kecamatan.toLowerCase() === row.kecamatan.toLowerCase(),
+      );
+      return !!ppl && actionValue(ppl.actionRows, "S", actionOverrides) !== "";
+    });
   const pplTotalPages = Math.max(1, Math.ceil(filteredPpl.length / pageSize));
   const pmlTotalPages = Math.max(1, Math.ceil(filteredPml.length / pageSize));
   const visiblePpl = filteredPpl.slice(
@@ -770,12 +858,13 @@ export default function VerifikasiAkhir() {
   const renderMetrics = (
     row: Metrics & Partial<{ actionRows: ActionRecord[]; kecamatan: string }>,
     detail = false,
+    actionRecords?: ActionRecord[],
   ) => (
     <>
       {groups.flatMap((group) =>
         group.keys.map((key) => renderMetricCell(row, key, detail)),
       )}
-      {detail ? (
+      {detail && !actionRecords ? (
         <>
           <TableCell className="bg-violet-50/50" />
           <TableCell className="bg-violet-50/50" />
@@ -783,10 +872,22 @@ export default function VerifikasiAkhir() {
         </>
       ) : (
         <KabupatenActions
-          records={row.actionRows || []}
-          columns={activeTab === "ppl" ? ["S", "T", "U"] : ["V", "W", "X"]}
+          records={actionRecords || row.actionRows || []}
+          columns={
+            actionRecords
+              ? ["S", "T", "U"]
+              : activeTab === "ppl"
+                ? ["S", "T", "U"]
+                : ["V", "W", "X"]
+          }
           overrides={actionOverrides}
           kecamatan={row.kecamatan || ""}
+            allPplFlagged={
+              !!actionRecords ||
+              detail ||
+              activeTab === "ppl" ||
+              ("children" in row && isPmlReadyForFlag(row as PmlRow))
+            }
           onSaved={(updates) =>
             setActionOverrides((current) => ({ ...current, ...updates }))
           }
@@ -849,11 +950,38 @@ export default function VerifikasiAkhir() {
     <div className="space-y-6 py-6">
       <Card className="border-0 shadow-sm">
         <CardHeader className="border-b bg-gradient-to-r from-sky-50 to-slate-50">
-          <CardTitle>Verifikasi Akhir</CardTitle>
-          <CardDescription>
-            Rekap verifikasi akhir Sensus Ekonomi 2026 untuk pembayaran honor
-            Petugas Lapangan
-          </CardDescription>
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <CardTitle>Verifikasi Akhir</CardTitle>
+              <CardDescription>
+                Rekap verifikasi akhir Sensus Ekonomi 2026 untuk pembayaran honor
+                Petugas Lapangan
+              </CardDescription>
+            </div>
+            <div className="flex flex-col items-start gap-2 md:items-end">
+              {verificationTimestamp && (
+                <div className="text-sm font-bold text-red-600">
+                  Terakhir direkam: {verificationTimestamp}
+                </div>
+              )}
+              {isPpk && (
+                <button
+                  type="button"
+                  onClick={recordVerificationTimestamp}
+                  disabled={savingVerificationTimestamp}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-red-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Rekam waktu verifikasi akhir ke sel Z1"
+                >
+                  {savingVerificationTimestamp ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Rekam Waktu Verifikasi
+                </button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-4 [&_table]:!w-full [&_table]:!min-w-0 [&_.overflow-auto]:!overflow-hidden [&_.overflow-x-auto]:!overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -872,17 +1000,19 @@ export default function VerifikasiAkhir() {
                 />
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  title={`Download Excel ${activeTab.toUpperCase()}`}
-                  aria-label={`Download Excel ${activeTab.toUpperCase()}`}
-                  onClick={downloadExcel}
-                  disabled={loading || !!error}
-                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Download className="h-4 w-4" />
-                  Excel
-                </button>
+                {isPpk && (
+                  <button
+                    type="button"
+                    title={`Download Excel ${activeTab.toUpperCase()}`}
+                    aria-label={`Download Excel ${activeTab.toUpperCase()}`}
+                    onClick={downloadExcel}
+                    disabled={loading || !!error}
+                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Download className="h-4 w-4" />
+                    Excel
+                  </button>
+                )}
                 <select
                   aria-label="Filter kecamatan"
                   value={kecamatan}
@@ -1168,18 +1298,17 @@ export default function VerifikasiAkhir() {
                               </TableRow>
                               {expanded &&
                                 row.children.map((child) => (
-                                  <TableRow
-                                    key={`${row.id}-${child.nama}`}
-                                    className="bg-slate-50"
-                                  >
+                                  <TableRow key={`${row.id}-${child.nama}`} className="bg-slate-50">
                                     <TableCell />
                                     <TableCell className="break-words pl-9 text-sm italic text-slate-700">
-                                      {child.nama || "-"}
+                                      <span className="inline-flex items-center gap-2">
+                                        {child.nama || "-"}
+                                      </span>
                                     </TableCell>
                                     <TableCell className="break-words text-sm text-slate-600">
                                       {row.kecamatan || "-"}
                                     </TableCell>
-                                    {renderMetrics(child, true)}
+                                    {renderMetrics(child, true, child.pplActionRows)}
                                   </TableRow>
                                 ))}
                             </React.Fragment>
