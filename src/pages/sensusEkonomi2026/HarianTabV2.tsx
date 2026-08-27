@@ -591,9 +591,9 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         assignment: (row) => row.jumlahAssignment,
         selesai: (row) => row.selesaiPetugas,
         open: (row) => row.totalOpen,
-        perubahanDidata: (row) => getChangePercentage(row.perubahanDidata, row.didataAwal),
-        perubahanDraft: (row) => getChangePercentage(row.perubahanDraft, row.draftAwal),
-        perubahanNetto: (row) => getChangePercentage(row.perubahanNetto, row.nettoAwal),
+        perubahanDidata: (row) => getChangePercentage(row.perubahanDidata, row.jumlahAssignment),
+        perubahanDraft: (row) => getChangePercentage(row.perubahanDraft, row.jumlahAssignment),
+        perubahanNetto: (row) => getChangePercentage(row.perubahanNetto, row.jumlahAssignment),
       };
       const aValue = values[resumeSortBy](a);
       const bValue = values[resumeSortBy](b);
@@ -633,22 +633,31 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const downloadExcel = () => {
     const detailHeaders = [
       "No", "Nama PPL", "Kecamatan", "Prelist Awal", "Jml Assignment", "Open",
-      "Didata Awal", "Didata Akhir", "Perubahan Didata", "Draft Awal", "Draft Akhir",
-      "Perubahan Draft", "Netto Awal", "Netto Akhir", "Perubahan Netto",
+      "Didata Awal", "Didata Akhir", "Perubahan Didata", "Perubahan Didata (%)", "Draft Awal", "Draft Akhir",
+      "Perubahan Draft", "Perubahan Draft (%)", "Netto Awal", "Netto Akhir", "Perubahan Netto", "Perubahan Netto (%)",
     ];
     const detailRows = sortedPerubahan.map((row, index) => [
       index + 1, row.nama_ppl, row.kecamatan, row.prelist_awal, row.jumlah_assignment,
-      row.open, row.didata_awal, row.didata_akhir, row.perubahan_didata, row.draft_awal,
-      row.draft_akhir, row.perubahan_draft, row.netto_awal, row.netto_akhir,
-      row.perubahan_netto,
+      row.open, row.didata_awal, row.didata_akhir, row.perubahan_didata,
+      getChangePercentage(row.perubahan_didata, row.jumlah_assignment) / 100,
+      row.draft_awal, row.draft_akhir, row.perubahan_draft,
+      getChangePercentage(row.perubahan_draft, row.jumlah_assignment) / 100,
+      row.netto_awal, row.netto_akhir, row.perubahan_netto,
+      getChangePercentage(row.perubahan_netto, row.jumlah_assignment) / 100,
     ]);
     const resumeHeaders = [
       "No", "Kecamatan", "Total Petugas", "Jml Assignment", "Open > 0", "Open <= 0",
-      "Perubahan Didata", "Perubahan Draft", "Perubahan Netto", "Total Open",
+      "Perubahan Didata", "Perubahan Didata (%)", "Perubahan Draft", "Perubahan Draft (%)",
+      "Perubahan Netto", "Perubahan Netto (%)", "Total Open",
     ];
     const resumeData = resumeRows.map((row, index) => [
       index + 1, row.kecamatan, row.totalPetugas, row.jumlahAssignment, row.openPetugas,
-      row.selesaiPetugas, row.perubahanDidata, row.perubahanDraft, row.perubahanNetto,
+      row.selesaiPetugas, row.perubahanDidata,
+      getChangePercentage(row.perubahanDidata, row.jumlahAssignment) / 100,
+      row.perubahanDraft,
+      getChangePercentage(row.perubahanDraft, row.jumlahAssignment) / 100,
+      row.perubahanNetto,
+      getChangePercentage(row.perubahanNetto, row.jumlahAssignment) / 100,
       row.totalOpen,
     ]);
     const metadata = [
@@ -667,8 +676,14 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
       ...detailRows,
     ]);
     detailSheet["!cols"] = [
-      { wch: 6 }, { wch: 28 }, { wch: 20 }, ...Array.from({ length: 12 }, () => ({ wch: 18 })),
+      { wch: 6 }, { wch: 28 }, { wch: 20 }, ...Array.from({ length: 15 }, () => ({ wch: 18 })),
     ];
+    [9, 13, 17].forEach((column) => {
+      detailRows.forEach((_, index) => {
+        const cell = detailSheet[XLSX.utils.encode_cell({ r: index + 9, c: column })];
+        if (cell) cell.z = "0.00%";
+      });
+    });
     const resumeSheet = XLSX.utils.aoa_to_sheet([
       ["RINGKASAN PERBANDINGAN HARIAN PER KECAMATAN"],
       ...metadata,
@@ -677,8 +692,14 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
       ...resumeData,
     ]);
     resumeSheet["!cols"] = [
-      { wch: 6 }, { wch: 20 }, ...Array.from({ length: 8 }, () => ({ wch: 18 })),
+      { wch: 6 }, { wch: 20 }, ...Array.from({ length: 11 }, () => ({ wch: 18 })),
     ];
+    [7, 9, 11].forEach((column) => {
+      resumeData.forEach((_, index) => {
+        const cell = resumeSheet[XLSX.utils.encode_cell({ r: index + 9, c: column })];
+        if (cell) cell.z = "0.00%";
+      });
+    });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, detailSheet, "Perubahan PPL");
     XLSX.utils.book_append_sheet(workbook, resumeSheet, "Ringkasan Kecamatan");
@@ -1265,17 +1286,20 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                     <TableCell className="bg-emerald-50 text-right font-semibold text-emerald-700">{row.selesaiPetugas.toLocaleString("id-ID")}</TableCell>
                     <TableCell className={`text-right font-semibold ${row.perubahanDidata >= 0 ? "text-emerald-700" : "text-red-700"}`}>
                       <div>{formatChange(row.perubahanDidata)}</div>
-                      <div className={`text-xs ${getChangePercentageClass(getChangePercentage(row.perubahanDidata, row.didataAwal))}`}>
-                        {formatChangePercentage(row.perubahanDidata, row.didataAwal)}
+                      <div className={`text-xs ${getChangePercentageClass(getChangePercentage(row.perubahanDidata, row.jumlahAssignment))}`}>
+                        {formatChangePercentage(row.perubahanDidata, row.jumlahAssignment)}
                       </div>
                     </TableCell>
                     <TableCell className={`text-right font-semibold ${row.perubahanDraft >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-                      {formatChange(row.perubahanDraft)}
+                      <div>{formatChange(row.perubahanDraft)}</div>
+                      <div className={`text-xs ${getChangePercentageClass(getChangePercentage(row.perubahanDraft, row.jumlahAssignment))}`}>
+                        {formatChangePercentage(row.perubahanDraft, row.jumlahAssignment)}
+                      </div>
                     </TableCell>
                     <TableCell className={`text-right font-semibold ${row.perubahanNetto >= 0 ? "text-emerald-700" : "text-red-700"}`}>
                       <div>{formatChange(row.perubahanNetto)}</div>
-                      <div className={`text-xs ${getChangePercentageClass(getChangePercentage(row.perubahanNetto, row.nettoAwal))}`}>
-                        {formatChangePercentage(row.perubahanNetto, row.nettoAwal)}
+                      <div className={`text-xs ${getChangePercentageClass(getChangePercentage(row.perubahanNetto, row.jumlahAssignment))}`}>
+                        {formatChangePercentage(row.perubahanNetto, row.jumlahAssignment)}
                       </div>
                     </TableCell>
                     <TableCell className="bg-blue-50 text-right font-bold text-blue-700">
@@ -1296,17 +1320,20 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                   <TableCell className="text-right text-emerald-700">{resumeTotals.selesaiPetugas.toLocaleString("id-ID")}</TableCell>
                   <TableCell className="text-right">
                     <div>{formatChange(resumeTotals.perubahanDidata)}</div>
-                    <div className={`text-xs ${getChangePercentageClass(getChangePercentage(resumeTotals.perubahanDidata, resumeTotals.didataAwal))}`}>
-                      {formatChangePercentage(resumeTotals.perubahanDidata, resumeTotals.didataAwal)}
+                    <div className={`text-xs ${getChangePercentageClass(getChangePercentage(resumeTotals.perubahanDidata, resumeTotals.jumlahAssignment))}`}>
+                      {formatChangePercentage(resumeTotals.perubahanDidata, resumeTotals.jumlahAssignment)}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    {formatChange(resumeTotals.perubahanDraft)}
+                    <div>{formatChange(resumeTotals.perubahanDraft)}</div>
+                    <div className={`text-xs ${getChangePercentageClass(getChangePercentage(resumeTotals.perubahanDraft, resumeTotals.jumlahAssignment))}`}>
+                      {formatChangePercentage(resumeTotals.perubahanDraft, resumeTotals.jumlahAssignment)}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div>{formatChange(resumeTotals.perubahanNetto)}</div>
-                    <div className={`text-xs ${getChangePercentageClass(getChangePercentage(resumeTotals.perubahanNetto, resumeTotals.nettoAwal))}`}>
-                      {formatChangePercentage(resumeTotals.perubahanNetto, resumeTotals.nettoAwal)}
+                    <div className={`text-xs ${getChangePercentageClass(getChangePercentage(resumeTotals.perubahanNetto, resumeTotals.jumlahAssignment))}`}>
+                      {formatChangePercentage(resumeTotals.perubahanNetto, resumeTotals.jumlahAssignment)}
                     </div>
                   </TableCell>
                   <TableCell className="text-right text-blue-700">

@@ -79,6 +79,7 @@ type ActionRecord = {
 };
 type DetailRow = Metrics & {
   id: string;
+  idsubsls: string;
   nmsls: string;
   desa: string;
   kecamatan: string;
@@ -514,6 +515,7 @@ export default function VerifikasiAkhir() {
       const detail: DetailRow = {
         ...detailMetrics,
         id: `${index}`,
+        idsubsls: text(row, 0, "idsubsls"),
         nmsls: text(row, 1, "nmsls"),
         desa: text(row, SHEET_COLUMNS.desa, "nmdesa"),
         kecamatan: kec,
@@ -1170,7 +1172,10 @@ export default function VerifikasiAkhir() {
                                       {detail.nmsls || "-"}
                                     </TableCell>
                                     <TableCell className="break-words text-sm text-slate-600">
-                                      {detail.desa || detail.kecamatan || "-"}
+                                      <div>{detail.desa || detail.kecamatan || "-"}</div>
+                                      <div className="mt-0.5 text-[11px] text-slate-400">
+                                        {detail.idsubsls || "-"}
+                                      </div>
                                     </TableCell>
                                     {renderMetrics(detail, true)}
                                   </TableRow>
