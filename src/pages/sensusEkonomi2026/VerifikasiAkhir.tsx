@@ -5,6 +5,7 @@ import {
   ArrowUpDown,
   ChevronDown,
   ChevronRight,
+  ClipboardCheck,
   Download,
   Loader2,
   Save,
@@ -72,7 +73,7 @@ type SortKey = "nama" | "kecamatan" | MetricKey;
 type Direction = "asc" | "desc";
 
 type Metrics = Record<MetricKey, number>;
-type ActionColumn = "S" | "T" | "U" | "V" | "W" | "X";
+type ActionColumn = "S" | "T" | "U" | "V" | "W" | "X" | "Y";
 type ActionRecord = {
   rowNumber: number;
   values: Partial<Record<ActionColumn, string>>;
@@ -176,7 +177,7 @@ const formatPercent = (value: number, total: number) =>
 const normalizeKecamatan = (value: string) =>
   value.trim().toLowerCase().replace(/\s+/g, " ");
 const kecamatanFromRole = (role: string) => {
-  const match = role.match(/pj\s+kecamatan\s+(.+)/i);
+  const match = role.match(/(?:pj\s+kecamatan|pml)\s+(.+)/i);
   return match
     ? match[1].split(/\s+dan\s+/i).map(normalizeKecamatan).filter(Boolean)
     : [];
@@ -273,6 +274,7 @@ function KabupatenActions({
   overrides,
   kecamatan,
   allPplFlagged = true,
+  showPmlFlag = false,
   onSaved,
 }: {
   records: ActionRecord[];
@@ -280,6 +282,7 @@ function KabupatenActions({
   overrides: Record<string, string>;
   kecamatan: string;
   allPplFlagged?: boolean;
+  showPmlFlag?: boolean;
   onSaved: (updates: Record<string, string>) => void;
 }) {
   const { user } = useAuth();
@@ -287,6 +290,7 @@ function KabupatenActions({
   const [saving, setSaving] = useState<string | null>(null);
   const role = String(user?.role || "").toLowerCase();
   const allowedKecamatan = kecamatanFromRole(role);
+  const isPml = role.startsWith("pml ");
   const isKetuaPelaksana =
     normalizeKecamatan(role) === "ketua tim pelaksana se2026";
   const actor = role.includes("pejabat pembuat komitmen")
@@ -299,12 +303,26 @@ function KabupatenActions({
           role.includes("kecamatan") ||
           role.includes("penanggung jawab")
         ? "PJK"
+        : isPml
+          ? "PML"
         : "";
   const isApproved = (column: ActionColumn) =>
     actionValue(records, column, overrides) !== "";
   const pjk = isApproved(columns[0]);
   const ketua = isApproved(columns[1]);
   const ppk = actionValue(records, columns[2], overrides);
+  const pmlFlag = actionValue(records, "S", overrides) !== "";
+  const pjkStarted = records.some(
+    (record) =>
+      (overrides[`${record.rowNumber}:${columns[0]}`] ??
+        record.values[columns[0]] ??
+        "")
+        .trim() !== "",
+  );
+  const canPml =
+    isPml &&
+    allowedKecamatan.includes(normalizeKecamatan(kecamatan)) &&
+    !pjkStarted;
   const canPjk =
     actor === "PJK" &&
     allowedKecamatan.includes(normalizeKecamatan(kecamatan)) &&
@@ -317,6 +335,7 @@ function KabupatenActions({
     if (
       !actor ||
       records.length === 0 ||
+      (column === "S" && pjkStarted) ||
       (column === columns[0] && !canPjk) ||
       (column === columns[1] && !canKetua) ||
       (column === columns[2] && !canPpk)
@@ -364,6 +383,20 @@ function KabupatenActions({
   };
   return (
     <>
+      {showPmlFlag && (
+        <TableCell className="w-[64px] min-w-[64px] bg-violet-50 px-1 py-2 text-center align-middle">
+          <button
+            type="button"
+            aria-pressed={pmlFlag}
+            title={pmlFlag ? "Batalkan flag PML" : "Flag verifikasi PML"}
+            disabled={saving !== null || !canPml}
+            onClick={() => write("S", pmlFlag ? "" : "Approve")}
+            className={`rounded p-1 transition-colors ${pmlFlag ? "text-emerald-500 hover:text-emerald-600" : "text-slate-400 hover:text-slate-600"} disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            <ClipboardCheck className="h-4 w-4" strokeWidth={pmlFlag ? 3 : 2} />
+          </button>
+        </TableCell>
+      )}
       <TableCell className="w-[64px] min-w-[64px] bg-violet-50 px-1 py-2 text-center align-middle">
         <button
           type="button"
@@ -428,7 +461,7 @@ export default function VerifikasiAkhir() {
   const { data: timestampData } = useGoogleSheetsData({
     spreadsheetId: SPREADSHEET_ID,
     sheetName: SHEET_NAME,
-    range: "Z1",
+    range: "AA1",
     mode: "single-cell",
   });
   const [activeTab, setActiveTab] = useState("ppl");
@@ -449,6 +482,7 @@ export default function VerifikasiAkhir() {
   const [verificationTimestamp, setVerificationTimestamp] = useState("");
   const [savingVerificationTimestamp, setSavingVerificationTimestamp] =
     useState(false);
+  const isPmlUser = String(user?.role || "").toLowerCase().startsWith("pml ");
   const isPpk = user?.role === "Pejabat Pembuat Komitmen";
 
   useEffect(() => {
@@ -469,7 +503,7 @@ export default function VerifikasiAkhir() {
             operation: "batch-update",
             updates: [
               {
-                range: `'${SHEET_NAME}'!Z1`,
+                range: `'${SHEET_NAME}'!AA1`,
                 values: [[timestamp]],
               },
             ],
@@ -492,6 +526,14 @@ export default function VerifikasiAkhir() {
       const namaPpl = text(row, SHEET_COLUMNS.namaPpl, "nama_ppl");
       const namaPml = text(row, SHEET_COLUMNS.namaPml, "nama_pml");
       const kec = text(row, SHEET_COLUMNS.kecamatan, "nmkec");
+      const allowedKecamatan = kecamatanFromRole(
+        String(user?.role || "").toLowerCase(),
+      );
+      if (
+        isPmlUser &&
+        !allowedKecamatan.includes(normalizeKecamatan(kec))
+      )
+        return;
       if (!namaPpl && !namaPml) return;
       const detailMetrics = emptyMetrics();
       addMetrics(detailMetrics, row);
@@ -499,17 +541,18 @@ export default function VerifikasiAkhir() {
       const pplAction: ActionRecord = {
         rowNumber,
         values: {
-          S: text(row, 18, "pjk"),
-          T: text(row, 19, "ketua_tim_se2026"),
-          U: text(row, 20, "ppk"),
+          S: text(row, 18, "flag_pml"),
+          T: text(row, 19, "pjk"),
+          U: text(row, 20, "ketua_tim_se2026"),
+          V: text(row, 21, "ppk"),
         },
       };
       const pmlAction: ActionRecord = {
         rowNumber,
         values: {
-          V: text(row, 21, "pjk_pml"),
-          W: text(row, 22, "ketua_tim_se2026_pml"),
-          X: text(row, 23, "ppk_pml"),
+          W: text(row, 22, "pjk_pml"),
+          X: text(row, 23, "ketua_tim_se2026_pml"),
+          Y: text(row, 24, "ppk_pml"),
         },
       };
       const detail: DetailRow = {
@@ -571,7 +614,7 @@ export default function VerifikasiAkhir() {
       pplRows: Array.from(pplMap.values()),
       pmlRows: Array.from(pmlMap.values()),
     };
-  }, [data]);
+  }, [data, isPmlUser, user?.role]);
 
   const kecamatanOptions = useMemo(
     () =>
@@ -691,8 +734,10 @@ export default function VerifikasiAkhir() {
   const downloadExcel = () => {
     const isPpl = activeTab === "ppl";
     const rows = isPpl ? filteredPpl : filteredPml;
-    const actionColumns: ActionColumn[] = isPpl ? ["S", "T", "U"] : ["V", "W", "X"];
-    const actionLabels = ["PJ Kecamatan", "Ketua Tim SE2026", "PPK"];
+    const actionColumns: ActionColumn[] = isPpl ? ["S", "T", "U", "V"] : ["W", "X", "Y"];
+    const actionLabels = isPpl
+      ? ["Flag PML", "PJ Kecamatan", "Ketua Tim SE2026", "PPK"]
+      : ["PJ Kecamatan", "Ketua Tim SE2026", "PPK"];
     const headers = [
       "No",
       isPpl ? "Nama PPL" : "Nama PML",
@@ -721,9 +766,7 @@ export default function VerifikasiAkhir() {
       { wch: 28 },
       { wch: 20 },
       ...METRIC_COLUMNS.map(() => ({ wch: 18 })),
-      { wch: 24 },
-      { wch: 24 },
-      { wch: 24 },
+      ...actionColumns.map(() => ({ wch: 24 })),
     ];
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, isPpl ? "PPL" : "PML");
@@ -868,27 +911,29 @@ export default function VerifikasiAkhir() {
       )}
       {detail && !actionRecords ? (
         <>
-          <TableCell className="bg-violet-50/50" />
-          <TableCell className="bg-violet-50/50" />
-          <TableCell className="bg-violet-50/50" />
+          {Array.from({ length: activeTab === "ppl" ? 4 : 3 }, (_, index) => (
+            <TableCell key={`empty-action-${index}`} className="bg-violet-50/50" />
+          ))}
         </>
       ) : (
         <KabupatenActions
           records={actionRecords || row.actionRows || []}
           columns={
             actionRecords
-              ? ["S", "T", "U"]
+              ? ["T", "U", "V"]
               : activeTab === "ppl"
-                ? ["S", "T", "U"]
-                : ["V", "W", "X"]
+                ? ["T", "U", "V"]
+                : ["W", "X", "Y"]
           }
+          showPmlFlag={activeTab === "ppl" && !detail && !actionRecords}
           overrides={actionOverrides}
           kecamatan={row.kecamatan || ""}
             allPplFlagged={
               !!actionRecords ||
               detail ||
-              activeTab === "ppl" ||
-              ("children" in row && isPmlReadyForFlag(row as PmlRow))
+              (activeTab === "ppl"
+                ? actionValue(row.actionRows || [], "S", actionOverrides) !== ""
+                : "children" in row && isPmlReadyForFlag(row as PmlRow))
             }
           onSaved={(updates) =>
             setActionOverrides((current) => ({ ...current, ...updates }))
@@ -923,7 +968,7 @@ export default function VerifikasiAkhir() {
       </TableRow>
     );
   };
-  const renderColumnGroup = () => (
+  const renderColumnGroup = (actionCount: number) => (
     <colgroup>
       <col className="w-[3%]" />
       <col className="w-[14%]" />
@@ -942,9 +987,9 @@ export default function VerifikasiAkhir() {
           }
         />
       ))}
-      <col className="w-[3%]" />
-      <col className="w-[3%]" />
-      <col className="w-[6%]" />
+      {Array.from({ length: actionCount }, (_, index) => (
+        <col key={`action-col-${index}`} className={index === actionCount - 1 ? "w-[6%]" : "w-[3%]"} />
+      ))}
     </colgroup>
   );
 
@@ -967,7 +1012,7 @@ export default function VerifikasiAkhir() {
                   onClick={recordVerificationTimestamp}
                   disabled={savingVerificationTimestamp}
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-red-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Rekam waktu verifikasi akhir ke sel Z1"
+                  title="Rekam waktu verifikasi akhir ke sel AA1"
                 >
                   {savingVerificationTimestamp ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -982,9 +1027,13 @@ export default function VerifikasiAkhir() {
         </CardHeader>
         <CardContent className="p-4 [&_table]:!w-full [&_table]:!min-w-0 [&_.overflow-auto]:!overflow-hidden [&_.overflow-x-auto]:!overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-5 grid w-full max-w-sm grid-cols-2">
+            <TabsList
+              className={`mb-5 grid w-full max-w-sm ${isPmlUser ? "grid-cols-1" : "grid-cols-2"}`}
+            >
               <TabsTrigger value="ppl">PPL ({filteredPpl.length})</TabsTrigger>
-              <TabsTrigger value="pml">PML ({filteredPml.length})</TabsTrigger>
+              {!isPmlUser && (
+                <TabsTrigger value="pml">PML ({filteredPml.length})</TabsTrigger>
+              )}
             </TabsList>
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
@@ -1061,7 +1110,7 @@ export default function VerifikasiAkhir() {
                 <TabsContent value="ppl" className="mt-0">
                   <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <Table className="table-fixed min-w-[1610px]">
-                      <>{renderColumnGroup()}</>
+                      <>{renderColumnGroup(4)}</>
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead
@@ -1096,7 +1145,7 @@ export default function VerifikasiAkhir() {
                             </TableHead>
                           ))}
                           <TableHead
-                            colSpan={3}
+                            colSpan={4}
                             className="border border-violet-200 bg-violet-100 text-center text-xs font-bold text-violet-900"
                           >
                             AKSI KABUPATEN
@@ -1115,6 +1164,9 @@ export default function VerifikasiAkhir() {
                               />
                             )),
                           )}
+                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-xs font-semibold leading-tight text-violet-900">
+                            Flag PML
+                          </TableHead>
                           <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-xs font-semibold leading-tight text-violet-900">
                             PJ Kecamatan
                           </TableHead>
@@ -1203,7 +1255,7 @@ export default function VerifikasiAkhir() {
                 <TabsContent value="pml" className="mt-0">
                   <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <Table className="table-fixed min-w-[1610px]">
-                      <>{renderColumnGroup()}</>
+                      <>{renderColumnGroup(3)}</>
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead

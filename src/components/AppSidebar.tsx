@@ -156,6 +156,7 @@ export function AppSidebar() {
 
   // Check if user is PPK for User Management menu
   const isPPK = user?.role === "Pejabat Pembuat Komitmen";
+  const isPML = user?.role?.toLowerCase().startsWith("pml ") === true;
   
   // Check if user is Administrator
   const isAdministrator = user?.role === "Administrator";
@@ -187,6 +188,9 @@ export function AppSidebar() {
 
   // Helper function to check if item should be visible
   const shouldShowItem = (item: MenuItem): boolean => {
+    if (isPML) {
+      return ["/monitoringlapangandash", "/sensus-ekonomi-2026/verifikasi-akhir"].includes(item.url);
+    }
     if (!item.conditional) return true;
     
     const conditions: Record<string, boolean> = {
@@ -507,7 +511,7 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-1">
                   {/* TOP LEVEL: Beranda & Dashboard */}
-                  {topLevelItems.map((item) => (
+                  {topLevelItems.filter((item) => !isPML).map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
                         <NavLink
