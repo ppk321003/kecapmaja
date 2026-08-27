@@ -146,10 +146,10 @@ const App = () => (
             <Route path="/sensus-ekonomi-2026/petugas" element={<ProtectedRoute><Layout><SensusEkonomiPetugas /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/pelatihan" element={<ProtectedRoute><Layout><SensusEkonomiPelatihan /></Layout></ProtectedRoute>} />
             <Route path="/sensus-ekonomi-2026/verifikasi-akhir" element={<ProtectedRoute><Layout><VerifikasiAkhir /></Layout></ProtectedRoute>} />
-            <Route path="/monitoringlapangandash" element={<Layout><MonitoringLapanganDash /></Layout>} />
-            <Route path="/monitoringlapangan" element={<MonitoringLapanganAccessGate />} />
-            <Route path="/sensus-ekonomi-2026/monitoring-lapangan" element={<MonitoringLapanganAccessGate />} />
-            <Route path="/sensus-ekonomi-2026/monitoring-lapangan-dash" element={<Layout><MonitoringLapanganDash /></Layout>} />
+            <Route path="/monitoringlapangandash" element={<ProtectedRoute><Layout><MonitoringLapanganDash /></Layout></ProtectedRoute>} />
+            <Route path="/monitoringlapangan" element={<ProtectedRoute><MonitoringLapanganAccessGate /></ProtectedRoute>} />
+            <Route path="/sensus-ekonomi-2026/monitoring-lapangan" element={<ProtectedRoute><MonitoringLapanganAccessGate /></ProtectedRoute>} />
+            <Route path="/sensus-ekonomi-2026/monitoring-lapangan-dash" element={<ProtectedRoute><Layout><MonitoringLapanganDash /></Layout></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
