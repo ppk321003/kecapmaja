@@ -45,31 +45,48 @@ const normalizeString = (value: any): string =>
     .replace(/\s+/g, " ")
     .toLowerCase();
 
-const sendHarianSnapshotViaAppsScript = async (username: string, values: unknown[][]): Promise<boolean> => {
-  if (!HARIAN_APPS_SCRIPT_URL) return false;
+const sendHarianSnapshotViaAppsScript = async (username: string, values: unknown[][]): Promise<number> => {
+  if (!HARIAN_APPS_SCRIPT_URL) return 0;
 
   const batchSize = 200;
-  for (let start = 0; start < values.length; start += batchSize) {
-    const payload = JSON.stringify({
-      action: "appendHarian",
-      username,
-      values: values.slice(start, start + batchSize),
-    });
-    const body = new Blob([payload], { type: "text/plain;charset=UTF-8" });
-    const accepted = navigator.sendBeacon(HARIAN_APPS_SCRIPT_URL, body);
+  const maxAttempts = 3;
+  let sentCount = 0;
 
-    if (!accepted) {
-      // sendBeacon can reject larger snapshots; no-cors POST still reaches Apps Script.
-      await fetch(HARIAN_APPS_SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        body: payload,
-        headers: { "Content-Type": "text/plain;charset=UTF-8" },
-      });
+  for (let start = 0; start < values.length; start += batchSize) {
+    const batch = values.slice(start, start + batchSize);
+    const payload = JSON.stringify({ action: "appendHarian", username, values: batch });
+    let sent = false;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= maxAttempts && !sent; attempt += 1) {
+      try {
+        // Await each request so batches cannot be dropped by the browser while the page is busy.
+        await fetch(HARIAN_APPS_SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          body: payload,
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        });
+        sent = true;
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => window.setTimeout(resolve, attempt * 1000));
+        }
+      }
+    }
+
+    if (!sent) {
+      throw lastError instanceof Error ? lastError : new Error("Gagal mengirim batch ke Apps Script");
+    }
+
+    sentCount += batch.length;
+    if (start + batchSize < values.length) {
+      await new Promise((resolve) => window.setTimeout(resolve, 300));
     }
   }
 
-  return true;
+  return sentCount;
 };
 
 type ChartRatioTooltipSeries = {
@@ -3386,7 +3403,8 @@ export default function MonitoringLapanganDash() {
       return;
     }
 
-    if (filteredRows.length === 0) {
+    const rowsToRecord = pplRows;
+    if (rowsToRecord.length === 0) {
       toast({ title: "Warning", description: "Tidak ada data PPL untuk direkam", variant: "default" });
       return;
     }
@@ -3416,7 +3434,7 @@ export default function MonitoringLapanganDash() {
           const assignment = parseNumericValue(getSheetCellText(progressRow, 2)) + parseNumericValue(getSheetCellText(progressRow, 3));
           assignmentByKey.set(key, (assignmentByKey.get(key) || 0) + assignment);
         });
-        const dataToRecord = filteredRows.map(row => [
+        const dataToRecord = rowsToRecord.map(row => [
           tanggalFormat,
           waktuFormat,
           row.nama_ppl,
@@ -3436,10 +3454,10 @@ export default function MonitoringLapanganDash() {
           user?.username || 'unknown'
         ]);
 
-        await sendHarianSnapshotViaAppsScript(user?.username || '', dataToRecord);
+        const sentCount = await sendHarianSnapshotViaAppsScript(user?.username || '', dataToRecord);
         toast({
-          title: "Permintaan dikirim",
-          description: `Snapshot ${filteredRows.length} PPL dikirim ke Apps Script pada ${tanggalFormat}. Karena mode browser no-cors, hasil penulisan belum dapat dikonfirmasi. Verifikasi baris di LOG_HARIAN sebelum mengulangi rekam.`,
+          title: "Snapshot dikirim",
+          description: `${sentCount} dari ${rowsToRecord.length} PPL dikirim bertahap ke Apps Script pada ${tanggalFormat}. Periksa LOG_HARIAN sebelum merekam ulang snapshot yang sama.`,
           variant: "default"
         });
         return;
@@ -3537,7 +3555,7 @@ export default function MonitoringLapanganDash() {
           .reduce((sum, key) => sum + (assignmentByKey.get(key) || 0), 0);
       };
 
-      const dataToRecord = filteredRows.map(row => [
+      const dataToRecord = rowsToRecord.map(row => [
         tanggalFormat,           // Tanggal_Rekam
         waktuFormat,             // Waktu_Rekam
         row.nama_ppl,            // Nama_PPL
@@ -3573,7 +3591,7 @@ export default function MonitoringLapanganDash() {
 
       toast({
         title: "Success",
-        description: `✓ Berhasil merekam ${filteredRows.length} PPL ke sheet Harian pada ${tanggalFormat}`,
+        description: `✓ Berhasil merekam ${rowsToRecord.length} PPL ke sheet Harian pada ${tanggalFormat}`,
         variant: "default"
       });
     } catch (err) {
