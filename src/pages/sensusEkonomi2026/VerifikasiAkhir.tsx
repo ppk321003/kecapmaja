@@ -888,7 +888,8 @@ export default function VerifikasiAkhir() {
       >
         <div className="whitespace-nowrap">{formatNumber(row[key])}</div>
         {percentages.length > 0 && (
-          <div className="flex flex-wrap justify-end gap-x-0.5 sm:gap-x-1 whitespace-normal text-[8px] sm:text-[11px] font-medium leading-tight\">\n            {percentages.map((percentage, index) => (
+          <div className="flex flex-wrap justify-end gap-x-0.5 sm:gap-x-1 whitespace-normal text-[8px] sm:text-[11px] font-medium leading-tight">
+            {percentages.map((percentage, index) => (
               <React.Fragment key={`${key}-${index}`}>
                 {index > 0 && <span className="text-slate-500\">|</span>}
                 <span className={percentage.color}>{percentage.value}</span>

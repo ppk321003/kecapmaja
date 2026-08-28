@@ -1,0 +1,648 @@
+import React, { useMemo, useState } from "react";
+import {
+  AlertCircle,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  ExternalLink,
+  Loader2,
+  Search,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import * as XLSX from "xlsx";
+
+// Google Sheets ID and Sheet Names
+const SPREADSHEET_ID = "12_gOs_3ONM1E2o_SXnljRM0Sx_YMkpXIN7yTfIRi2uU";
+const PRODUKSI_SHEET = "PRODUKSI<1JT";
+const VERIFIKASI_SPREADSHEET_ID = "1x9P3MlkJySQI9FK6mV3maik3qMnUIBW8IKwWPudAA2Y";
+
+// Data types
+type SortKey = "idsls" | "nama_ppl" | "nama_pml" | "kecamatan" | "nama_usaha" | "nama_komersial" | "pendapatan" | "pengeluaran";
+type Direction = "asc" | "desc";
+
+interface OutlierRow {
+  idsls: string;
+  nama_ppl: string;
+  nama_pml: string;
+  kecamatan: string;
+  desa: string;
+  nama_usaha: string;
+  nama_komersial: string;
+  pendapatan: number;
+  pengeluaran: number;
+  link: string;
+  tindak_lanjut: string;
+  catatan: string;
+  rowNumber: number;
+  raw: string[];
+}
+
+// Helper functions
+const formatNumber = (num: number | string): string => {
+  if (typeof num === "string") {
+    const parsed = parseFloat(num);
+    return isNaN(parsed) ? num : formatNumber(parsed);
+  }
+  return num.toLocaleString("id-ID", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+};
+
+const parseOutlierData = (rows: string[][] | any): OutlierRow[] => {
+  if (!rows || !Array.isArray(rows) || rows.length <= 1) return [];
+
+  const headers = Array.isArray(rows[0]) ? rows[0] : [];
+  
+  // Ensure headers is an array of strings
+  if (!Array.isArray(headers) || headers.length === 0) return [];
+
+  // Find column indices dynamically
+  const findCol = (name: string): number => {
+    if (!Array.isArray(headers)) return -1;
+    return headers.findIndex(h => {
+      const headerStr = String(h || "").toLowerCase().trim();
+      const searchStr = name.toLowerCase().trim();
+      return headerStr.includes(searchStr);
+    });
+  };
+  
+  const idslsIdx = findCol("idsls") >= 0 ? findCol("idsls") : 0;
+  const pplIdx = 16;
+  const pmlIdx = 17;
+  const kecIdx = findCol("kecamatan") >= 0 ? findCol("kecamatan") : 3;
+  const desaIdx = findCol("desa") >= 0 ? findCol("desa") : 4;
+  const usahaIdx = 6;
+  const komersialIdx = 7;
+  const pendapatanIdx = 9;
+  const pengeluaranIdx = 10;
+  const tindakLanjutIdx = 11;
+  const catatanIdx = 12;
+  const linkIdx = 13;
+
+  return rows.slice(1).map((row, idx) => {
+    // Ensure row is an array
+    if (!Array.isArray(row)) {
+      return null;
+    }
+
+    const idsls = String(row[idslsIdx] || `SLS-${idx + 1}`).trim();
+    const nama_ppl = String(row[pplIdx] || "-").trim();
+    const nama_pml = String(row[pmlIdx] || "-").trim();
+    const kecamatan = String(row[kecIdx] || "-").trim();
+    const desa = String(row[desaIdx] || "-").trim();
+    const nama_usaha = String(row[usahaIdx] || "-").trim();
+    const nama_komersial = String(row[komersialIdx] || "-").trim();
+    const pendapatan = parseFloat(String(row[pendapatanIdx] || "0").replace(/[^0-9.-]/g, "")) || 0;
+    const pengeluaran = parseFloat(String(row[pengeluaranIdx] || "0").replace(/[^0-9.-]/g, "")) || 0;
+    const link = String(row[linkIdx] || "").trim();
+    const tindak_lanjut = String(row[tindakLanjutIdx] || "").trim();
+    const catatan = String(row[catatanIdx] || "-").trim();
+
+    return {
+      idsls,
+      nama_ppl,
+      nama_pml,
+      kecamatan,
+      desa,
+      nama_usaha,
+      nama_komersial,
+      pendapatan,
+      pengeluaran,
+      link,
+      tindak_lanjut,
+      catatan,
+      rowNumber: idx + 2,
+      raw: row,
+    };
+  }).filter((row): row is OutlierRow => row !== null && row.idsls && row.idsls !== "-");
+};
+
+const compareValues = (
+  a: any,
+  b: any,
+  key: SortKey,
+  direction: Direction
+): number => {
+  const aVal =
+    key === "idsls" || key === "nama_ppl" || key === "nama_pml" || key === "kecamatan"
+      ? String(a[key]).toLowerCase()
+      : Number(a[key]);
+  const bVal =
+    key === "idsls" || key === "nama_ppl" || key === "nama_pml" || key === "kecamatan"
+      ? String(b[key]).toLowerCase()
+      : Number(b[key]);
+
+  let result = 0;
+  if (typeof aVal === "number" && typeof bVal === "number") {
+    result = aVal - bVal;
+  } else {
+    result = String(aVal).localeCompare(String(bVal), "id");
+  }
+
+  return direction === "asc" ? result : -result;
+};
+
+const SortHead = ({
+  label,
+  active,
+  direction,
+  onClick,
+  numeric = true,
+}: {
+  label: string;
+  active: boolean;
+  direction: Direction;
+  onClick: () => void;
+  numeric?: boolean;
+}): JSX.Element => (
+  <TableHead
+    onClick={onClick}
+    className="cursor-pointer select-none whitespace-normal break-words px-1 sm:px-2 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-slate-700 align-middle hover:bg-slate-100 transition-colors"
+  >
+    <span className="inline-flex items-center justify-center gap-1">
+      {label}
+      <ArrowUpDown
+        className={`h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 ${
+          active ? "text-sky-600" : "text-slate-300"
+        }`}
+      />
+      {active && (
+        <span className="text-[8px] sm:text-[10px]">
+          {direction === "asc" ? "▲" : "▼"}
+        </span>
+      )}
+    </span>
+  </TableHead>
+);
+
+export default function OutlierSE26() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { data: rawData, loading, error } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: PRODUKSI_SHEET,
+  });
+  const { data: verifikasiData } = useGoogleSheetsData({
+    spreadsheetId: VERIFIKASI_SPREADSHEET_ID,
+    sheetName: "6-KECAP",
+  });
+
+  // Debug log raw data
+  React.useEffect(() => {
+    console.log("🔍 OutlierSE26 - Raw Data Debug:", {
+      hasData: !!rawData,
+      isArray: Array.isArray(rawData),
+      length: Array.isArray(rawData) ? rawData.length : "N/A",
+      loading,
+      error,
+      sample: Array.isArray(rawData) ? rawData.slice(0, 3) : rawData,
+    });
+  }, [rawData, loading, error]);
+
+  // State management
+  const [activeTab, setActiveTab] = useState("produksi");
+  const [search, setSearch] = useState("");
+  const [kecamatanFilter, setKecamatanFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortKey, setSortKey] = useState<SortKey>("idsls");
+  const [sortDir, setSortDir] = useState<Direction>("asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [savingRow, setSavingRow] = useState<number | null>(null);
+  const [rowEdits, setRowEdits] = useState<Record<number, { tindak_lanjut?: string; catatan?: string }>>({});
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // Parse and process data
+  const outlierRows = useMemo(() => {
+    try {
+      if (!rawData) {
+        console.log("No raw data received");
+        return [];
+      }
+      
+      // The sheet hook returns objects keyed by normalized column labels.
+      const firstRow = rawData[0];
+      if (!firstRow) return [];
+      const dataArray = Array.isArray(firstRow)
+        ? rawData
+        : [
+            Object.keys(firstRow).filter((key) => !key.startsWith("__")),
+            ...rawData.map((row: any) =>
+              Object.keys(firstRow)
+                .filter((key) => !key.startsWith("__"))
+                .map((key) => row?.[key] ?? "")
+            ),
+          ];
+      console.log("Raw data received:", { length: dataArray.length, firstRow: dataArray[0] });
+
+      const parsed = parseOutlierData(dataArray);
+      const personnelById = new Map<string, { namaPpl: string; namaPml: string }>();
+      (verifikasiData || []).forEach((row: any) => {
+        const rawRow = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+        const id = String(rawRow[0] ?? row?.idsubsls ?? "").trim();
+        if (!id) return;
+        personnelById.set(id, {
+          namaPpl: String(rawRow[16] ?? "").trim(),
+          namaPml: String(rawRow[17] ?? "").trim(),
+        });
+      });
+
+      const resolved = parsed.map((row) => {
+        const personnel = personnelById.get(row.idsls);
+        return personnel
+          ? { ...row, nama_ppl: personnel.namaPpl || row.nama_ppl, nama_pml: personnel.namaPml || row.nama_pml }
+          : row;
+      });
+      console.log("Parsed outlier rows:", resolved.length);
+      return resolved;
+    } catch (err) {
+      console.error("Error parsing outlier data:", err);
+      return [];
+    }
+  }, [rawData, verifikasiData]);
+
+  // Filter rows
+  const filteredRows = useMemo(() => {
+    return outlierRows.filter((row) => {
+      const needle = search.toLowerCase();
+      const status = rowEdits[row.rowNumber]?.tindak_lanjut ?? row.tindak_lanjut;
+      return (
+        !needle ||
+        row.idsls.toLowerCase().includes(needle) ||
+        row.nama_ppl.toLowerCase().includes(needle) ||
+        row.nama_pml.toLowerCase().includes(needle) ||
+        row.kecamatan.toLowerCase().includes(needle)
+      ) &&
+        (kecamatanFilter === "all" || row.kecamatan === kecamatanFilter) &&
+        (statusFilter === "all" || status === statusFilter);
+    });
+  }, [outlierRows, search, kecamatanFilter, statusFilter, rowEdits]);
+
+  const kecamatanOptions = useMemo(
+    () => Array.from(new Set(outlierRows.map((row) => row.kecamatan).filter(Boolean))).sort((a, b) => a.localeCompare(b, "id")),
+    [outlierRows],
+  );
+
+  // Sort rows
+  const sortedRows = useMemo(() => {
+    return [...filteredRows].sort((a, b) =>
+      compareValues(a, b, sortKey, sortDir)
+    );
+  }, [filteredRows, sortKey, sortDir]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const visibleRows = sortedRows.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setPage(1);
+  }, [search, kecamatanFilter, statusFilter, pageSize]);
+
+  const toggleSort = (key: SortKey) => {
+    setSortKey(key);
+    setSortDir((current) =>
+      sortKey === key ? (current === "asc" ? "desc" : "asc") : "asc"
+    );
+  };
+
+  const downloadExcel = () => {
+    const headers = [
+      "No.",
+      "Kecamatan",
+      "Nama Usaha",
+      "Pendapatan",
+      "Pengeluaran",
+      "Link",
+      "Tindak Lanjut",
+      "Catatan",
+      "Nama PPL",
+      "Nama PML",
+    ];
+
+    const rowsForExport = sortedRows.map((row, index) => [
+      index + 1,
+      `${row.kecamatan}\n${row.desa}`,
+      row.nama_usaha,
+      row.pendapatan,
+      row.pengeluaran,
+      row.link,
+      row.tindak_lanjut,
+      row.catatan,
+      row.nama_ppl,
+      row.nama_pml,
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rowsForExport]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Outlier Produksi");
+
+    worksheet["!cols"] = [
+      { wch: 15 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 25 },
+    ];
+
+    XLSX.writeFile(
+      workbook,
+      `Outlier_SE26_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  };
+
+  const updateRow = async (row: OutlierRow, column: "L" | "M", value: string) => {
+    const field = column === "L" ? "tindak_lanjut" : "catatan";
+    setRowEdits((current) => ({ ...current, [row.rowNumber]: { ...current[row.rowNumber], [field]: value } }));
+    setSavingRow(row.rowNumber);
+    try {
+      const { error: updateError } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "batch-update",
+          updates: [{ range: `'${PRODUKSI_SHEET}'!${column}${row.rowNumber}`, values: [[value]] }],
+        },
+      });
+      if (updateError) throw updateError;
+      row.raw[column === "L" ? 11 : 12] = value;
+      toast({ title: "Tersimpan", description: "Perubahan berhasil direkam ke Google Sheet." });
+    } catch (updateError: any) {
+      setRowEdits((current) => {
+        const next = { ...current };
+        const previous = { ...next[row.rowNumber] };
+        delete previous[field];
+        next[row.rowNumber] = previous;
+        return next;
+      });
+      toast({ title: "Gagal menyimpan", description: updateError?.message || String(updateError), variant: "destructive" });
+    } finally {
+      setSavingRow(null);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-none space-y-4 sm:space-y-6 py-3 sm:py-6 px-2 sm:px-0">
+      <Card className="w-full max-w-none border-0 shadow-sm">
+        <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-slate-50 px-4 py-4 sm:px-6 sm:py-6">
+          <div className="flex flex-col gap-3">
+            <div>
+              <CardTitle className="text-xl sm:text-2xl">Outlier SE2026</CardTitle>
+              <CardDescription className="text-xs sm:text-sm mt-1">
+                Analisis data outlier Sensus Ekonomi 2026 berdasarkan produksi usaha
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="w-full p-3 sm:p-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="mb-4 sm:mb-5 grid w-full max-w-md text-xs sm:text-sm">
+              <TabsTrigger value="produksi">
+                Produksi &lt; 1Juta ({filteredRows.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="mb-4 space-y-3 sm:space-y-4">
+              <div className="flex flex-col gap-2">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari ID SLS, nama PPL/PML, atau kecamatan..."
+                    className="pl-9 text-xs sm:text-sm h-9 sm:h-10"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <select
+                  value={kecamatanFilter}
+                  onChange={(e) => setKecamatanFilter(e.target.value)}
+                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+                >
+                  <option value="all">Semua Kecamatan</option>
+                  {kecamatanOptions.map((kecamatan) => (
+                    <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="">Belum ditindaklanjuti</option>
+                  <option value="Diperbaiki">Diperbaiki</option>
+                  <option value="Tidak diperbaiki">Tidak diperbaiki</option>
+                </select>
+
+                {user?.role === "Pejabat Pembuat Komitmen" && (
+                  <button
+                    onClick={downloadExcel}
+                    disabled={loading || !!error}
+                    className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-2 sm:px-3 text-xs sm:text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                    <span className="hidden sm:inline">Excel</span>
+                    <span className="sm:hidden">DL</span>
+                  </button>
+                )}
+
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+                >
+                  <option value="10">10/hal</option>
+                  <option value="20">20/hal</option>
+                  <option value="50">50/hal</option>
+                  <option value="100">100/hal</option>
+                </select>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-12 sm:py-16 text-xs sm:text-base text-slate-500">
+                <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin shrink-0" />
+                Memuat data...
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center gap-2 py-12 sm:py-16 text-xs sm:text-base text-rose-600">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                {String(error)}
+              </div>
+            ) : outlierRows.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 py-12 sm:py-16 text-xs sm:text-base text-slate-500">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                Tidak ada data tersedia atau data gagal diproses
+              </div>
+            ) : (
+              <TabsContent value="produksi" className="mt-0">
+                <div className="-mx-3 w-full sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
+                  <Table className="w-full table-fixed min-w-[1200px] sm:min-w-[1400px]">
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead className="w-8 sm:w-12 text-center align-middle text-xs sm:text-sm px-1 sm:px-2">
+                          No
+                        </TableHead>
+                        <SortHead
+                          label="Kecamatan"
+                          active={sortKey === "kecamatan"}
+                          direction={sortDir}
+                          onClick={() => toggleSort("kecamatan")}
+                          numeric={false}
+                        />
+                        <SortHead
+                          label="Nama Usaha"
+                          active={sortKey === "nama_usaha"}
+                          direction={sortDir}
+                          onClick={() => toggleSort("nama_usaha")}
+                          numeric={false}
+                        />
+                        <SortHead label="Pendapatan" active={sortKey === "pendapatan"} direction={sortDir} onClick={() => toggleSort("pendapatan")} />
+                        <SortHead label="Pengeluaran" active={sortKey === "pengeluaran"} direction={sortDir} onClick={() => toggleSort("pengeluaran")} />
+                        <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          Link
+                        </TableHead>
+                        <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          Tindak Lanjut
+                        </TableHead>
+                        <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          Catatan
+                        </TableHead>
+                        <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          Nama PPL
+                        </TableHead>
+                        <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          Nama PML
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {visibleRows.map((row, idx) => (
+                        <TableRow key={`${row.idsls}-${(page - 1) * pageSize + idx}`} className="border-b hover:bg-slate-50">
+                          <TableCell className="text-center text-xs sm:text-sm text-slate-500">
+                            {(page - 1) * pageSize + idx + 1}
+                          </TableCell>
+                          <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                            <div>{row.kecamatan || "-"}</div>
+                            <div className="text-[10px] text-slate-500">{row.desa || "-"}</div>
+                          </TableCell>
+                          <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                            <div>{row.nama_usaha}</div>
+                            <div className="text-[10px] text-slate-500">{row.nama_komersial || "-"}</div>
+                          </TableCell>
+                          <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
+                            {formatNumber(row.pendapatan)}
+                          </TableCell>
+                          <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
+                            {formatNumber(row.pengeluaran)}
+                          </TableCell>
+                          <TableCell className="text-center px-1 sm:px-2 py-2 sm:py-3">
+                            {row.link ? <a href={row.link} target="_blank" rel="noreferrer" title="Buka link" className="inline-flex text-sky-600 hover:text-sky-800"><ExternalLink className="h-4 w-4" /></a> : "-"}
+                          </TableCell>
+                          <TableCell className="px-1 sm:px-2 py-2 sm:py-3">
+                            <select
+                              value={rowEdits[row.rowNumber]?.tindak_lanjut ?? row.tindak_lanjut}
+                              disabled={savingRow === row.rowNumber}
+                              onChange={(event) => updateRow(row, "L", event.target.value)}
+                              className="h-8 w-full rounded border border-slate-300 bg-white px-1 text-xs"
+                            >
+                              <option value="">Pilih</option>
+                              <option value="Diperbaiki">Diperbaiki</option>
+                              <option value="Tidak diperbaiki">Tidak diperbaiki</option>
+                            </select>
+                          </TableCell>
+                          <TableCell className="px-1 sm:px-2 py-2 sm:py-3">
+                            <Input
+                              value={rowEdits[row.rowNumber]?.catatan ?? (row.catatan === "-" ? "" : row.catatan)}
+                              disabled={savingRow === row.rowNumber}
+                              onChange={(event) => setRowEdits((current) => ({ ...current, [row.rowNumber]: { ...current[row.rowNumber], catatan: event.target.value } }))}
+                              onBlur={(event) => updateRow(row, "M", event.target.value)}
+                              placeholder="Tulis catatan..."
+                              className="h-8 text-xs"
+                            />
+                          </TableCell>
+                          <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                            {row.nama_ppl || "-"}
+                          </TableCell>
+                          <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                            {row.nama_pml || "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+                  <div className="text-slate-600">
+                    Menampilkan {Math.max(0, (page - 1) * pageSize + 1)} -
+                    {Math.min(page * pageSize, sortedRows.length)} dari{" "}
+                    {sortedRows.length} data
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setPage(Math.max(1, page - 1))}
+                      disabled={page <= 1}
+                      className="px-2 py-1.5 sm:px-3 sm:py-2 rounded border border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 text-xs sm:text-sm"
+                    >
+                      Sebelumnya
+                    </button>
+                    <div className="px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm">
+                      Hal {page} dari {totalPages}
+                    </div>
+                    <button
+                      onClick={() => setPage(Math.min(totalPages, page + 1))}
+                      disabled={page >= totalPages}
+                      className="px-2 py-1.5 sm:px-3 sm:py-2 rounded border border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 text-xs sm:text-sm"
+                    >
+                      Berikutnya
+                    </button>
+                  </div>
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

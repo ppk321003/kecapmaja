@@ -80,6 +80,7 @@ const sensusEkonomiItems = [
   { title: "Pelatihan", url: "/sensus-ekonomi-2026/pelatihan", icon: BookOpen },
   { title: "Monitoring Lapangan", url: "/monitoringlapangandash", icon: TrendingUp },
   { title: "Verifikasi Akhir", url: "/sensus-ekonomi-2026/verifikasi-akhir", icon: FileCheck },
+  { title: "Outlier SE26", url: "/sensus-ekonomi-2026/outlier", icon: BarChart3 },
   { title: "Monitoring Lapangan (old)", url: "/monitoringlapangan", icon: TrendingUp, conditional: "isPPK" },
 ];
 
@@ -189,7 +190,11 @@ export function AppSidebar() {
   // Helper function to check if item should be visible
   const shouldShowItem = (item: MenuItem): boolean => {
     if (isPML) {
-      return ["/monitoringlapangandash", "/sensus-ekonomi-2026/verifikasi-akhir"].includes(item.url);
+      return [
+        "/monitoringlapangandash",
+        "/sensus-ekonomi-2026/verifikasi-akhir",
+        "/sensus-ekonomi-2026/outlier",
+      ].includes(item.url);
     }
     if (!item.conditional) return true;
     

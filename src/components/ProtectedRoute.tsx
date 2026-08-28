@@ -9,6 +9,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     '/monitoringlapangandash',
     '/sensus-ekonomi-2026/monitoring-lapangan-dash',
     '/sensus-ekonomi-2026/verifikasi-akhir',
+    '/sensus-ekonomi-2026/outlier',
   ];
 
   if (!isAuthenticated) {
