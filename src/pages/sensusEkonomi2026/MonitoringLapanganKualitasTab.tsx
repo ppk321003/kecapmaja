@@ -42,6 +42,14 @@ const getColumnValue = (obj: any, primaryName: string, fallbackNames: string[] =
   return defaultValue;
 };
 
+const getTotalAnggotaKeluargaValue = (row: any, defaultValue: any = "-") => {
+  const rawRow = row && Array.isArray(row.__rawRow) ? row.__rawRow : undefined;
+  if (rawRow && rawRow.length > 8 && rawRow[8] !== "" && rawRow[8] !== undefined && rawRow[8] !== null) {
+    return rawRow[8];
+  }
+  return getColumnValue(row, "total_anggota_keluarga", ["total anggota keluarga"], defaultValue);
+};
+
 const getRowCode = (row: any): string => {
   const code = getColumnValue(row, "kode", ["kode", "code", "__col_0"], "");
   return String(code ?? "").trim();
@@ -247,11 +255,11 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
   const { data: usahaBku = [], loading: l1, error: usahaBkuError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Progres_Usaha_BKU", refreshKey: qualityReloadCounter });
   const { data: usahaRumah = [], loading: l2, error: usahaRumahError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Usaha_Dlm_Rumah", refreshKey: qualityReloadCounter });
   const { data: kkData = [], loading: l3, error: kkError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_KK", refreshKey: qualityReloadCounter });
-  const { data: anggotaData = [], loading: l4, error: anggotaError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_Anggota_K", refreshKey: qualityReloadCounter });
+  const { data: anggotaData = [], loading: l4, error: anggotaError } = useGoogleSheetsData({ spreadsheetId, sheetName: "ANGGOTA KELUARGA", refreshKey: qualityReloadCounter });
   const { data: prelistAwalData = [], loading: l5, error: prelistError } = useGoogleSheetsData({ spreadsheetId: PRELIST_SPREADSHEET_ID, sheetName: "Prelist_Awal", refreshKey: qualityReloadCounter });
   const { data: usahaHeader = [], loading: h1, error: usahaHeaderError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Progres_Usaha_BKU", range: "Progres_Usaha_BKU!A2", mode: "single-cell", refreshKey: qualityReloadCounter });
   const { data: kkHeader = [], loading: h2, error: kkHeaderError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_KK", range: "Pemutakhiran_KK!A2", mode: "single-cell", refreshKey: qualityReloadCounter });
-  const { data: anggotaHeader = [], loading: h3, error: anggotaHeaderError } = useGoogleSheetsData({ spreadsheetId, sheetName: "Pemutakhiran_Anggota_K", range: "Pemutakhiran_Anggota_K!A2", mode: "single-cell", refreshKey: qualityReloadCounter });
+  const { data: anggotaHeader = [], loading: h3, error: anggotaHeaderError } = useGoogleSheetsData({ spreadsheetId, sheetName: "ANGGOTA KELUARGA", range: "ANGGOTA KELUARGA!A2", mode: "single-cell", refreshKey: qualityReloadCounter });
 
   const loading = l1 || l2 || l3 || l4 || l5 || h1 || h2 || h3;
   const qualityTabErrors = [usahaBkuError, usahaRumahError, kkError, anggotaError, prelistError, usahaHeaderError, kkHeaderError, anggotaHeaderError].filter(Boolean);
@@ -654,7 +662,7 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
       totals.pindahLn += sumNumeric(getColumnValue(r, "pindah_ln", ["pindah luar negeri", "pindah_ln"], "0"));
       totals.tidakDitemukan += sumNumeric(getColumnValue(r, "tidak_ditemukan", ["tidak ditemukan"], "0"));
       totals.anggotaKhusus += sumNumeric(getColumnValue(r, "anggota_keluarga_khusus", ["anggota keluarga khusus"], "0"));
-      totals.totalAnggotaKeluarga += sumNumeric(getColumnValue(r, "total_anggota_keluarga", ["total anggota keluarga"], "0"));
+      totals.totalAnggotaKeluarga += sumNumeric(getTotalAnggotaKeluargaValue(r, "0"));
     });
     return totals;
   }, [sortedAnggotaRows]);
@@ -779,7 +787,7 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
         getColumnValue(row, "pindah_ln", ["pindah luar negeri", "pindah_ln"], "0"),
         getColumnValue(row, "tidak_ditemukan", ["tidak ditemukan"], "0"),
         getColumnValue(row, "anggota_keluarga_khusus", ["anggota keluarga khusus"], "0"),
-        getColumnValue(row, "total_anggota_keluarga", ["total anggota keluarga"], "0"),
+        getTotalAnggotaKeluargaValue(row, "0"),
       ];
     });
 
@@ -1254,7 +1262,7 @@ export default function MonitoringLapanganKualitasTab({ spreadsheetId }: Props) 
                     <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "pindah_ln", ["pindah luar negeri", "pindah_ln"], "-"))}</TableCell>
                     <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "tidak_ditemukan", ["tidak ditemukan"], "-"))}</TableCell>
                     <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "anggota_keluarga_khusus", ["anggota keluarga khusus"], "-"))}</TableCell>
-                    <TableCell className="text-center">{formatNumberValue(getColumnValue(r, "total_anggota_keluarga", ["total anggota keluarga"], "-"))}</TableCell>
+                    <TableCell className="text-center">{formatNumberValue(getTotalAnggotaKeluargaValue(r, "-"))}</TableCell>
                     {showPplPmlColumns ? (
                       <>
                         <TableCell className="text-center">{getNamaPplFromRow(r)}</TableCell>
