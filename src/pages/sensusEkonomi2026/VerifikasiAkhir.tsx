@@ -240,15 +240,15 @@ const SortHead = ({
   <TableHead
     rowSpan={rowSpan}
     onClick={onClick}
-    className={`cursor-pointer select-none whitespace-normal break-words px-2 py-3 text-center text-xs font-semibold leading-tight text-slate-700 align-middle ${className}`}
+    className={`cursor-pointer select-none whitespace-normal break-words px-1 sm:px-2 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold leading-tight text-slate-700 align-middle ${className}`}
   >
-    <span className="inline-flex max-w-full flex-wrap items-center justify-center gap-1">
+    <span className="inline-flex max-w-full flex-wrap items-center justify-center gap-0.5 sm:gap-1">
       {label}
       <ArrowUpDown
-        className={`h-3.5 w-3.5 shrink-0 ${active ? "text-sky-600" : "text-slate-400"}`}
+        className={`h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 ${active ? "text-sky-600" : "text-slate-400"}`}
       />
       {active && (
-        <span className="text-[10px]">{direction === "asc" ? "▲" : "▼"}</span>
+        <span className="text-[8px] sm:text-[10px]">{direction === "asc" ? "▲" : "▼"}</span>
       )}
     </span>
   </TableHead>
@@ -384,20 +384,20 @@ function KabupatenActions({
   return (
     <>
       {showPmlFlag && (
-        <TableCell className="w-[64px] min-w-[64px] bg-violet-50 px-1 py-2 text-center align-middle">
+        <TableCell className="w-[50px] sm:w-[64px] min-w-[50px] sm:min-w-[64px] bg-violet-50 px-0.5 sm:px-1 py-1 sm:py-2 text-center align-middle">
           <button
             type="button"
             aria-pressed={pmlFlag}
             title={pmlFlag ? "Batalkan flag PML" : "Flag verifikasi PML"}
             disabled={saving !== null || !canPml}
             onClick={() => write("S", pmlFlag ? "" : "Approve")}
-            className={`rounded p-1 transition-colors ${pmlFlag ? "text-emerald-500 hover:text-emerald-600" : "text-slate-400 hover:text-slate-600"} disabled:cursor-not-allowed disabled:opacity-40`}
+            className={`rounded p-0.5 sm:p-1 transition-colors ${pmlFlag ? "text-emerald-500 hover:text-emerald-600" : "text-slate-400 hover:text-slate-600"} disabled:cursor-not-allowed disabled:opacity-40`}
           >
-            <ClipboardCheck className="h-4 w-4" strokeWidth={pmlFlag ? 3 : 2} />
+            <ClipboardCheck className="h-3 w-3 sm:h-4 sm:w-4" strokeWidth={pmlFlag ? 3 : 2} />
           </button>
         </TableCell>
       )}
-      <TableCell className="w-[64px] min-w-[64px] bg-violet-50 px-1 py-2 text-center align-middle">
+      <TableCell className="w-[50px] sm:w-[64px] min-w-[50px] sm:min-w-[64px] bg-violet-50 px-0.5 sm:px-1 py-1 sm:py-2 text-center align-middle">
         <button
           type="button"
           title={
@@ -409,12 +409,12 @@ function KabupatenActions({
           }
           disabled={saving !== null || !canPjk}
           onClick={() => write(columns[0], pjk ? "" : "Approve")}
-          className={`rounded p-1.5 ${pjk ? "text-amber-500 hover:bg-amber-100" : "text-slate-400 hover:bg-slate-100"} disabled:cursor-not-allowed disabled:opacity-40`}
+          className={`rounded p-1 sm:p-1.5 ${pjk ? "text-amber-500 hover:bg-amber-100" : "text-slate-400 hover:bg-slate-100"} disabled:cursor-not-allowed disabled:opacity-40`}
         >
-          <Star className="h-4 w-4" fill={pjk ? "currentColor" : "none"} />
+          <Star className="h-3 w-3 sm:h-4 sm:w-4" fill={pjk ? "currentColor" : "none"} />
         </button>
       </TableCell>
-      <TableCell className="w-[64px] min-w-[64px] bg-violet-50 px-1 py-2 text-center align-middle">
+      <TableCell className="w-[50px] sm:w-[64px] min-w-[50px] sm:min-w-[64px] bg-violet-50 px-0.5 sm:px-1 py-1 sm:py-2 text-center align-middle">
         <button
           type="button"
           title={
@@ -424,28 +424,28 @@ function KabupatenActions({
             saving !== null || (ketua ? !isKetuaPelaksana || !!ppk : !canKetua)
           }
           onClick={() => write(columns[1], ketua ? "" : "Approve")}
-          className={`rounded p-1.5 ${ketua ? "text-blue-600 hover:bg-blue-100" : "text-slate-400 hover:bg-slate-100"} disabled:cursor-not-allowed disabled:opacity-40`}
+          className={`rounded p-1 sm:p-1.5 ${ketua ? "text-blue-600 hover:bg-blue-100" : "text-slate-400 hover:bg-slate-100"} disabled:cursor-not-allowed disabled:opacity-40`}
         >
-          <ShieldCheck className="h-4 w-4" />
+          <ShieldCheck className="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
       </TableCell>
-      <TableCell className="w-[96px] min-w-[96px] bg-violet-50 px-1 py-2 text-center align-middle">
+      <TableCell className="w-[75px] sm:w-[96px] min-w-[75px] sm:min-w-[96px] bg-violet-50 px-0.5 sm:px-1 py-1 sm:py-2 text-center align-middle">
         <select
           aria-label="Tahap PPK"
           value={ppk ? ppk.split(",")[0] : ""}
           disabled={saving !== null || (ppk ? actor !== "PPK" : !canPpk)}
           onChange={(event) => write(columns[2], event.target.value)}
-          className="h-8 w-full rounded border border-slate-300 bg-white px-1 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-7 sm:h-8 w-full rounded border border-slate-300 bg-white px-0.5 sm:px-1 text-[10px] sm:text-xs disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <option value="">Pilih tahap</option>
+          <option value="">Pilih</option>
           {Array.from({ length: 10 }, (_, index) => (
             <option key={index + 1} value={`Tahap-${index + 1}`}>
-              Tahap-{index + 1}
+              T{index + 1}
             </option>
           ))}
         </select>
         {saving && (
-          <Loader2 className="mx-auto mt-1 h-3.5 w-3.5 animate-spin text-slate-500" />
+          <Loader2 className="mx-auto mt-0.5 h-3 w-3 animate-spin text-slate-500" />
         )}
       </TableCell>
     </>
@@ -873,25 +873,24 @@ export default function VerifikasiAkhir() {
             : "bg-slate-100/80";
     const widthClass =
       key === "keluarga" || key === "nonPertanian"
-        ? "w-[120px] min-w-[120px] max-w-[120px]"
+        ? "w-[80px] sm:w-[120px] min-w-[80px] sm:min-w-[120px] max-w-[80px] sm:max-w-[120px]"
         : key === "prelistUsaha"
-          ? "w-[76px] min-w-[76px] max-w-[76px]"
+          ? "w-[60px] sm:w-[76px] min-w-[60px] sm:min-w-[76px] max-w-[60px] sm:max-w-[76px]"
           : key === "nonPertanianWilkerstat"
-            ? "w-[60px] min-w-[60px] max-w-[60px]"
+            ? "w-[50px] sm:w-[60px] min-w-[50px] sm:min-w-[60px] max-w-[50px] sm:max-w-[60px]"
         : COMPACT_METRIC_KEYS.has(key)
-          ? "w-[88px] min-w-[88px] max-w-[88px]"
-          : "w-[104px] min-w-[104px] max-w-[104px]";
+          ? "w-[60px] sm:w-[88px] min-w-[60px] sm:min-w-[88px] max-w-[60px] sm:max-w-[88px]"
+          : "w-[70px] sm:w-[104px] min-w-[70px] sm:min-w-[104px] max-w-[70px] sm:max-w-[104px]";
     return (
       <TableCell
         key={key}
-        className={`${widthClass} px-2 py-2 text-right align-middle font-semibold ${cellBackground} ${detail ? "text-sm text-slate-700" : "text-slate-900"}`}
+        className={`${widthClass} px-1 sm:px-2 py-1.5 sm:py-2 text-right align-middle font-semibold text-[10px] sm:text-sm ${cellBackground} ${detail ? "text-slate-700" : "text-slate-900"}`}
       >
         <div className="whitespace-nowrap">{formatNumber(row[key])}</div>
         {percentages.length > 0 && (
-          <div className="flex flex-wrap justify-end gap-x-1 whitespace-normal text-[11px] font-medium leading-tight">
-            {percentages.map((percentage, index) => (
+          <div className="flex flex-wrap justify-end gap-x-0.5 sm:gap-x-1 whitespace-normal text-[8px] sm:text-[11px] font-medium leading-tight\">\n            {percentages.map((percentage, index) => (
               <React.Fragment key={`${key}-${index}`}>
-                {index > 0 && <span className="text-slate-500">|</span>}
+                {index > 0 && <span className="text-slate-500\">|</span>}
                 <span className={percentage.color}>{percentage.value}</span>
               </React.Fragment>
             ))}
@@ -994,65 +993,66 @@ export default function VerifikasiAkhir() {
   );
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="space-y-4 sm:space-y-6 py-3 sm:py-6 px-2 sm:px-0">
       <Card className="border-0 shadow-sm">
-        <CardHeader className="border-b bg-gradient-to-r from-sky-50 to-slate-50">
+        <CardHeader className="border-b bg-gradient-to-r from-sky-50 to-slate-50 px-4 py-4 sm:px-6 sm:py-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-              <CardTitle>Verifikasi Akhir</CardTitle>
-              <CardDescription>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-xl sm:text-2xl">Verifikasi Akhir</CardTitle>
+              <CardDescription className="text-xs sm:text-sm mt-1">
                 Rekap verifikasi akhir Sensus Ekonomi 2026 untuk pembayaran honor
                 Petugas Lapangan
               </CardDescription>
             </div>
-            <div className="flex flex-col items-start gap-2 md:items-end">
+            <div className="flex flex-col items-stretch gap-2 w-full sm:w-auto sm:items-end">
               {isPpk && (
                 <button
                   type="button"
                   onClick={recordVerificationTimestamp}
                   disabled={savingVerificationTimestamp}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-red-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-9 sm:h-10 items-center justify-center gap-2 rounded-md bg-red-600 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
                   title="Rekam waktu verifikasi akhir ke sel AA1"
                 >
                   {savingVerificationTimestamp ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
                   ) : (
-                    <Save className="h-4 w-4" />
+                    <Save className="h-4 w-4 shrink-0" />
                   )}
-                  Rekam Waktu Verifikasi
+                  <span className="hidden sm:inline">Rekam Waktu Verifikasi</span>
+                  <span className="sm:hidden">Rekam</span>
                 </button>
               )}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 [&_table]:!w-full [&_table]:!min-w-0 [&_.overflow-auto]:!overflow-hidden [&_.overflow-x-auto]:!overflow-hidden">
+        <CardContent className="p-3 sm:p-4 [&_table]:!w-full [&_table]:!min-w-0 [&_.overflow-auto]:!overflow-hidden [&_.overflow-x-auto]:!overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList
-              className={`mb-5 grid w-full max-w-sm ${isPmlUser ? "grid-cols-1" : "grid-cols-2"}`}
+              className={`mb-4 sm:mb-5 grid w-full max-w-sm text-xs sm:text-sm ${isPmlUser ? "grid-cols-1" : "grid-cols-2"}`}
             >
-              <TabsTrigger value="ppl">PPL ({filteredPpl.length})</TabsTrigger>
+              <TabsTrigger value="ppl" className="text-xs sm:text-sm">PPL ({filteredPpl.length})</TabsTrigger>
               {!isPmlUser && (
-                <TabsTrigger value="pml">PML ({filteredPml.length})</TabsTrigger>
+                <TabsTrigger value="pml" className="text-xs sm:text-sm">PML ({filteredPml.length})</TabsTrigger>
               )}
             </TabsList>
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative min-w-[220px] flex-1 md:max-w-sm">
+            <div className="mb-4 space-y-3 sm:space-y-4">
+              <div className="flex flex-col gap-2">
+                <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Cari nama petugas atau kecamatan..."
-                    className="pl-9"
+                    placeholder="Cari nama atau kecamatan..."
+                    className="pl-9 text-xs sm:text-sm h-9 sm:h-10"
                   />
                 </div>
                 {verificationTimestamp && (
-                  <div className="whitespace-nowrap text-sm font-bold text-red-600">
+                  <div className="text-xs sm:text-sm font-bold text-red-600 truncate">
                     Terakhir direkam: {verificationTimestamp}
                   </div>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:flex sm:flex-wrap sm:items-center">
                 {isPpk && (
                   <button
                     type="button"
@@ -1060,10 +1060,11 @@ export default function VerifikasiAkhir() {
                     aria-label={`Download Excel ${activeTab.toUpperCase()}`}
                     onClick={downloadExcel}
                     disabled={loading || !!error}
-                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-2 sm:px-3 text-xs sm:text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 col-span-1"
                   >
-                    <Download className="h-4 w-4" />
-                    Excel
+                    <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                    <span className="hidden sm:inline">Excel</span>
+                    <span className="sm:hidden">DL</span>
                   </button>
                 )}
                 <select
@@ -1074,9 +1075,9 @@ export default function VerifikasiAkhir() {
                     setPplPage(1);
                     setPmlPage(1);
                   }}
-                  className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
                 >
-                  <option value="all">Semua Kecamatan</option>
+                  <option value="all">Semua Kec.</option>
                   {kecamatanOptions.map((item) => (
                     <option key={item} value={item}>
                       {item}
@@ -1087,29 +1088,29 @@ export default function VerifikasiAkhir() {
                   aria-label="Jumlah baris per halaman"
                   value={pageSize}
                   onChange={(event) => setPageSize(Number(event.target.value))}
-                  className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
                 >
                   {PAGE_SIZES.map((size) => (
                     <option key={size} value={size}>
-                      {size} / halaman
+                      {size}/hal
                     </option>
                   ))}
                 </select>
               </div>
             </div>
             {loading ? (
-              <div className="flex items-center justify-center gap-2 py-16 text-slate-500">
-                <Loader2 className="h-5 w-5 animate-spin" /> Memuat data...
+              <div className="flex items-center justify-center gap-2 py-12 sm:py-16 text-xs sm:text-base text-slate-500">
+                <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin shrink-0" /> Memuat data...
               </div>
             ) : error ? (
-              <div className="flex items-center justify-center gap-2 py-16 text-rose-600">
-                <AlertCircle className="h-5 w-5" /> {String(error)}
+              <div className="flex items-center justify-center gap-2 py-12 sm:py-16 text-xs sm:text-base text-rose-600">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" /> {String(error)}
               </div>
             ) : (
               <>
                 <TabsContent value="ppl" className="mt-0">
-                  <div className="overflow-x-auto rounded-lg border border-slate-200">
-                    <Table className="table-fixed min-w-[1610px]">
+                  <div className="-mx-3 sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200\">
+                    <Table className="table-fixed min-w-[1400px] sm:min-w-[1610px]\">
                       <>{renderColumnGroup(4)}</>
                       <TableHeader>
                         <TableRow className="bg-slate-50">
@@ -1139,16 +1140,16 @@ export default function VerifikasiAkhir() {
                             <TableHead
                               key={group.label}
                               colSpan={group.keys.length}
-                              className={`whitespace-normal text-center text-xs font-bold ${groupClass[group.color]}`}
+                              className={`whitespace-normal text-center text-[10px] sm:text-xs font-bold ${groupClass[group.color]}`}
                             >
                               {group.label}
                             </TableHead>
                           ))}
                           <TableHead
                             colSpan={4}
-                            className="border border-violet-200 bg-violet-100 text-center text-xs font-bold text-violet-900"
+                            className="border border-violet-200 bg-violet-100 text-center text-[10px] sm:text-xs font-bold text-violet-900"
                           >
-                            AKSI KABUPATEN
+                            AKSI KAB
                           </TableHead>
                         </TableRow>
                         <TableRow>
@@ -1164,16 +1165,16 @@ export default function VerifikasiAkhir() {
                               />
                             )),
                           )}
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-xs font-semibold leading-tight text-violet-900">
+                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
                             Flag PML
                           </TableHead>
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-xs font-semibold leading-tight text-violet-900">
-                            PJ Kecamatan
+                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
+                            PJ Kec
                           </TableHead>
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-xs font-semibold leading-tight text-violet-900">
-                            Ketua Tim SE2026
+                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
+                            Ketua SE2026
                           </TableHead>
-                          <TableHead className="border border-violet-200 bg-violet-100 px-1 text-center text-xs font-semibold text-violet-900">
+                          <TableHead className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-violet-900">
                             PPK
                           </TableHead>
                         </TableRow>
@@ -1188,7 +1189,7 @@ export default function VerifikasiAkhir() {
                                   {(pplPage - 1) * pageSize + index + 1}
                                 </TableCell>
                                 <TableCell
-                                  className="cursor-pointer px-3 py-3 font-medium text-slate-800"
+                                  className="cursor-pointer px-1.5 sm:px-3 py-2 sm:py-3 font-medium text-xs sm:text-sm text-slate-800"
                                   onClick={() =>
                                     setExpandedPpl((current) => {
                                       const next = new Set(current);
@@ -1199,16 +1200,16 @@ export default function VerifikasiAkhir() {
                                     })
                                   }
                                 >
-                                  <span className="inline-flex items-center gap-2 break-words">
+                                  <span className="inline-flex items-center gap-1 sm:gap-2 break-words">
                                     {expanded ? (
-                                      <ChevronDown className="h-4 w-4 shrink-0" />
+                                      <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                                     ) : (
-                                      <ChevronRight className="h-4 w-4 shrink-0" />
+                                      <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                                     )}
                                     {row.nama}
                                   </span>
                                 </TableCell>
-                                <TableCell className="break-words px-3 py-3">
+                                <TableCell className="break-words px-1.5 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm">
                                   {row.kecamatan || "-"}
                                 </TableCell>
                                 {renderMetrics(row)}
@@ -1220,12 +1221,12 @@ export default function VerifikasiAkhir() {
                                     className="bg-slate-50"
                                   >
                                     <TableCell />
-                                    <TableCell className="break-words pl-9 text-sm italic text-slate-700">
+                                    <TableCell className="break-words pl-6 sm:pl-9 text-[10px] sm:text-sm italic text-slate-700">
                                       {detail.nmsls || "-"}
                                     </TableCell>
-                                    <TableCell className="break-words text-sm text-slate-600">
+                                    <TableCell className="break-words text-[10px] sm:text-sm text-slate-600">
                                       <div>{detail.desa || detail.kecamatan || "-"}</div>
-                                      <div className="mt-0.5 text-[11px] text-slate-400">
+                                      <div className="mt-0.5 text-[8px] sm:text-[11px] text-slate-400">
                                         {detail.idsubsls || "-"}
                                       </div>
                                     </TableCell>
@@ -1253,14 +1254,14 @@ export default function VerifikasiAkhir() {
                   />
                 </TabsContent>
                 <TabsContent value="pml" className="mt-0">
-                  <div className="overflow-x-auto rounded-lg border border-slate-200">
-                    <Table className="table-fixed min-w-[1610px]">
+                  <div className="-mx-3 sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200\">
+                    <Table className="table-fixed min-w-[1400px] sm:min-w-[1610px]\">
                       <>{renderColumnGroup(3)}</>
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead
                             rowSpan={2}
-                            className="w-12 text-center align-middle"
+                            className="w-8 sm:w-12 text-center align-middle text-xs sm:text-sm px-1 sm:px-2"
                           >
                             No
                           </TableHead>
@@ -1284,16 +1285,16 @@ export default function VerifikasiAkhir() {
                             <TableHead
                               key={group.label}
                               colSpan={group.keys.length}
-                              className={`whitespace-normal text-center text-xs font-bold ${groupClass[group.color]}`}
+                              className={`whitespace-normal text-center text-[10px] sm:text-xs font-bold ${groupClass[group.color]}`}
                             >
                               {group.label}
                             </TableHead>
                           ))}
                           <TableHead
                             colSpan={3}
-                            className="border border-violet-200 bg-violet-100 text-center text-xs font-bold text-violet-900"
+                            className="border border-violet-200 bg-violet-100 text-center text-[10px] sm:text-xs font-bold text-violet-900"
                           >
-                            AKSI KABUPATEN
+                            AKSI KAB
                           </TableHead>
                         </TableRow>
                         <TableRow>
@@ -1309,13 +1310,13 @@ export default function VerifikasiAkhir() {
                               />
                             )),
                           )}
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-xs font-semibold leading-tight text-violet-900">
-                            PJ Kecamatan
+                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
+                            PJ Kec
                           </TableHead>
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-xs font-semibold leading-tight text-violet-900">
-                            Ketua Tim SE2026
+                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
+                            Ketua SE2026
                           </TableHead>
-                          <TableHead className="border border-violet-200 bg-violet-100 px-1 text-center text-xs font-semibold text-violet-900">
+                          <TableHead className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-violet-900">
                             PPK
                           </TableHead>
                         </TableRow>
@@ -1326,11 +1327,11 @@ export default function VerifikasiAkhir() {
                           return (
                             <React.Fragment key={row.id}>
                               <TableRow className="border-b hover:bg-slate-50">
-                                <TableCell className="text-center text-slate-500">
+                                <TableCell className="text-center text-xs sm:text-sm text-slate-500">
                                   {(pmlPage - 1) * pageSize + index + 1}
                                 </TableCell>
                                 <TableCell
-                                  className="cursor-pointer px-3 py-3 font-medium text-slate-800"
+                                  className="cursor-pointer px-1.5 sm:px-3 py-2 sm:py-3 font-medium text-xs sm:text-sm text-slate-800"
                                   onClick={() =>
                                     setExpandedPml((current) => {
                                       const next = new Set(current);
@@ -1341,16 +1342,16 @@ export default function VerifikasiAkhir() {
                                     })
                                   }
                                 >
-                                  <span className="inline-flex items-center gap-2 break-words">
+                                  <span className="inline-flex items-center gap-1 sm:gap-2 break-words">
                                     {expanded ? (
-                                      <ChevronDown className="h-4 w-4 shrink-0" />
+                                      <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                                     ) : (
-                                      <ChevronRight className="h-4 w-4 shrink-0" />
+                                      <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                                     )}
                                     {row.nama}
                                   </span>
                                 </TableCell>
-                                <TableCell className="break-words px-3 py-3">
+                                <TableCell className="break-words px-1.5 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm">
                                   {row.kecamatan || "-"}
                                 </TableCell>
                                 {renderMetrics(row)}
@@ -1359,12 +1360,12 @@ export default function VerifikasiAkhir() {
                                 row.children.map((child) => (
                                   <TableRow key={`${row.id}-${child.nama}`} className="bg-slate-50">
                                     <TableCell />
-                                    <TableCell className="break-words pl-9 text-sm italic text-slate-700">
-                                      <span className="inline-flex items-center gap-2">
+                                    <TableCell className="break-words pl-6 sm:pl-9 text-[10px] sm:text-sm italic text-slate-700">
+                                      <span className="inline-flex items-center gap-1 sm:gap-2">
                                         {child.nama || "-"}
                                       </span>
                                     </TableCell>
-                                    <TableCell className="break-words text-sm text-slate-600">
+                                    <TableCell className="break-words text-[10px] sm:text-sm text-slate-600">
                                       {row.kecamatan || "-"}
                                     </TableCell>
                                     {renderMetrics(child, true, child.pplActionRows)}
