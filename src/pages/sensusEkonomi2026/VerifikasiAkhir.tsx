@@ -14,6 +14,16 @@ import {
   Star,
 } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -275,6 +285,7 @@ function KabupatenActions({
   kecamatan,
   allPplFlagged = true,
   showPmlFlag = false,
+  disablePmlFlag = false,
   onSaved,
 }: {
   records: ActionRecord[];
@@ -283,11 +294,13 @@ function KabupatenActions({
   kecamatan: string;
   allPplFlagged?: boolean;
   showPmlFlag?: boolean;
+  disablePmlFlag?: boolean;
   onSaved: (updates: Record<string, string>) => void;
 }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState<string | null>(null);
+  const [pmlConfirmOpen, setPmlConfirmOpen] = useState(false);
   const role = String(user?.role || "").toLowerCase();
   const allowedKecamatan = kecamatanFromRole(role);
   const isPml = role.startsWith("pml ");
@@ -312,6 +325,17 @@ function KabupatenActions({
   const ketua = isApproved(columns[1]);
   const ppk = actionValue(records, columns[2], overrides);
   const pmlFlag = actionValue(records, "S", overrides) !== "";
+  const handlePmlFlagToggle = () => {
+    if (pmlFlag) {
+      write("S", "");
+      return;
+    }
+    setPmlConfirmOpen(true);
+  };
+  const handlePmlApprove = () => {
+    setPmlConfirmOpen(false);
+    write("S", "Approve");
+  };
   const pjkStarted = records.some(
     (record) =>
       (overrides[`${record.rowNumber}:${columns[0]}`] ??
@@ -322,7 +346,8 @@ function KabupatenActions({
   const canPml =
     isPml &&
     allowedKecamatan.includes(normalizeKecamatan(kecamatan)) &&
-    !pjkStarted;
+    !pjkStarted &&
+    !disablePmlFlag;
   const canPjk =
     actor === "PJK" &&
     allowedKecamatan.includes(normalizeKecamatan(kecamatan)) &&
@@ -383,14 +408,34 @@ function KabupatenActions({
   };
   return (
     <>
+      <AlertDialog open={pmlConfirmOpen} onOpenChange={setPmlConfirmOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Verifikasi Akhir</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda sudah melakukan pemeriksaan dan memastikan kewajaran cakupan serta kualitas pendataan telah terpenuhi?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batalkan</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePmlApprove}>Ya, lanjutkan</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {showPmlFlag && (
         <TableCell className="w-[50px] sm:w-[64px] min-w-[50px] sm:min-w-[64px] bg-violet-50 px-0.5 sm:px-1 py-1 sm:py-2 text-center align-middle">
           <button
             type="button"
             aria-pressed={pmlFlag}
-            title={pmlFlag ? "Batalkan flag PML" : "Flag verifikasi PML"}
+            title={
+              pmlFlag
+                ? "Batalkan flag PML"
+                : disablePmlFlag
+                  ? "Open/Draft belum nol, flag PML tidak aktif"
+                  : "Flag verifikasi PML"
+            }
             disabled={saving !== null || !canPml}
-            onClick={() => write("S", pmlFlag ? "" : "Approve")}
+            onClick={handlePmlFlagToggle}
             className={`rounded p-0.5 sm:p-1 transition-colors ${pmlFlag ? "text-emerald-500 hover:text-emerald-600" : "text-slate-400 hover:text-slate-600"} disabled:cursor-not-allowed disabled:opacity-40`}
           >
             <ClipboardCheck className="h-3 w-3 sm:h-4 sm:w-4" strokeWidth={pmlFlag ? 3 : 2} />
@@ -926,15 +971,21 @@ export default function VerifikasiAkhir() {
                 : ["W", "X", "Y"]
           }
           showPmlFlag={activeTab === "ppl" && !detail && !actionRecords}
+          disablePmlFlag={
+            activeTab === "ppl" &&
+            !detail &&
+            !actionRecords &&
+            (Number(row.open) !== 0 || Number(row.draft) !== 0)
+          }
           overrides={actionOverrides}
           kecamatan={row.kecamatan || ""}
-            allPplFlagged={
-              !!actionRecords ||
-              detail ||
-              (activeTab === "ppl"
-                ? actionValue(row.actionRows || [], "S", actionOverrides) !== ""
-                : "children" in row && isPmlReadyForFlag(row as PmlRow))
-            }
+          allPplFlagged={
+            !!actionRecords ||
+            detail ||
+            (activeTab === "ppl"
+              ? actionValue(row.actionRows || [], "S", actionOverrides) !== ""
+              : "children" in row && isPmlReadyForFlag(row as PmlRow))
+          }
           onSaved={(updates) =>
             setActionOverrides((current) => ({ ...current, ...updates }))
           }
