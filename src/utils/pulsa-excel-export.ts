@@ -15,6 +15,34 @@ export interface ExportPulsaOptions {
   mitraList: PersonRef[];
 }
 
+function normalizeNameKey(value: string): string {
+  return String(value ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(?:dr|drs|ir|i|s\.?st|s\.?si|m\.?si|m\.?pd|s\.?pd|sp|sh|skm|s\.?kom|a\.?md|a\.?mds|d\.?rs|prof)\b/gi, ' ')
+    .replace(/[.,;:/()\[\]{}"'`]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function buildLookupMap(list: PersonRef[]) {
+  const map = new Map<string, PersonRef>();
+
+  for (const person of list) {
+    const name = person.name?.trim() || '';
+    if (!name) continue;
+
+    const normalized = normalizeNameKey(name);
+    if (normalized) map.set(normalized, person);
+
+    const compact = normalized.replace(/\s+/g, '');
+    if (compact) map.set(compact, person);
+  }
+
+  return map;
+}
+
 const BULAN_NAMA = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
@@ -34,9 +62,8 @@ export function exportPulsaToExcel(opts: ExportPulsaOptions): void {
   const { rows, bulan, tahun, organikList, mitraList } = opts;
   const bulanNama = BULAN_NAMA[bulan - 1] || `Bulan ${bulan}`;
 
-  // Lookup map (case-insensitive trim)
-  const orgMap = new Map(organikList.map(p => [p.name.trim().toLowerCase(), p]));
-  const mitMap = new Map(mitraList.map(p => [p.name.trim().toLowerCase(), p]));
+  const orgMap = buildLookupMap(organikList);
+  const mitMap = buildLookupMap(mitraList);
 
   // Group rows by kegiatan (each row already 1 kegiatan; multiple rows possible)
   const byKegiatan = new Map<string, PulsaRow[]>();
@@ -66,7 +93,7 @@ export function exportPulsaToExcel(opts: ExportPulsaOptions): void {
       allNames.forEach((p, idx) => {
         if (row.statusList[idx] === 'approved_ppk') {
           const lookup = p.tipe === 'Organik' ? orgMap : mitMap;
-          const ref = lookup.get(p.nama.trim().toLowerCase());
+          const ref = lookup.get(normalizeNameKey(p.nama)) ?? lookup.get(normalizeNameKey(p.nama).replace(/\s+/g, ''));
           approved.push({
             nama: p.nama,
             tipe: p.tipe,

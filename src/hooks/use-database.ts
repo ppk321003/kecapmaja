@@ -30,6 +30,32 @@ interface MitraStatistik {
   noHp: string;
 }
 
+const getFirstTruthyCell = (row: Record<string, any>, keys: string[]): string => {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return String(value).trim();
+    }
+  }
+  return '';
+};
+
+const getMasterPhone = (row: Record<string, any>): string => getFirstTruthyCell(row, [
+  'no. hp',
+  'no hp',
+  'nohp',
+  'no.hp',
+  'no_hp',
+  'no._hp',
+  'no__hp',
+  'nomor hp',
+  'nomor_hp',
+  'telepon',
+  'telp',
+  'phone',
+  'whatsapp',
+]);
+
 export const useOrganikBPS = () => {
   const satkerContext = useSatkerConfigContext();
   
@@ -50,9 +76,9 @@ export const useOrganikBPS = () => {
     nip: row.nip || '',
     jabatan: row.jabatan || '',
     kecamatan: row.kecamatan || '',
-    golongan: row['gol.akhir'] || '',
+    golongan: row['gol.akhir'] || row['gol_akhir'] || '',
     pangkat: row.pangkat || '',
-    noHp: row['no. hp'] || '',
+    noHp: getMasterPhone(row),
     rekening: row.rekening || '',
     bank: row.bank || ''
   }));
@@ -83,7 +109,7 @@ export const useMitraStatistik = () => {
     bank: row.bank || '',
     rekening: row.rekening || '',
     kecamatan: row.kecamatan || '',
-    noHp: row['no. hp'] || row['no hp'] || row['nohp'] || ''
+    noHp: getMasterPhone(row)
   }));
 
   return { data, loading, error };
