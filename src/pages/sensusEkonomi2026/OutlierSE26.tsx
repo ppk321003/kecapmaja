@@ -21,6 +21,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -40,6 +41,7 @@ import * as XLSX from "xlsx";
 // Google Sheets ID and Sheet Names
 const SPREADSHEET_ID = "12_gOs_3ONM1E2o_SXnljRM0Sx_YMkpXIN7yTfIRi2uU";
 const PRODUKSI_SHEET = "PRODUKSI<1JT";
+const TK_DIBAYAR_SHEET = "TK-DIBAYAR-1";
 const VERIFIKASI_SPREADSHEET_ID = "1x9P3MlkJySQI9FK6mV3maik3qMnUIBW8IKwWPudAA2Y";
 
 // Data types
@@ -63,6 +65,21 @@ interface OutlierRow {
   raw: string[];
 }
 
+interface TkDibayarRow {
+  idsls: string;
+  nama_ppl: string;
+  nama_pml: string;
+  kecamatan: string;
+  desa: string;
+  alamat: string;
+  nama_usaha: string;
+  link: string;
+  tindak_lanjut: string;
+  catatan: string;
+  rowNumber: number;
+  raw: string[];
+}
+
 // Helper functions
 const formatNumber = (num: number | string): string => {
   if (typeof num === "string") {
@@ -79,8 +96,9 @@ const normalizeKecamatan = (value: string) =>
   String(value ?? "")
     .trim()
     .toLowerCase()
-    .replace(/\./g, "")
-    .replace(/\bkecamatan\b|\bkec\b/g, "")
+    .replace(/[.,/\\-]+/g, " ")
+    .replace(/\b(?:kecamatan|kec|kabupaten|kab|kota)\b/gi, " ")
+    .replace(/\s+\d+\s*$/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -88,7 +106,7 @@ const kecamatanFromRole = (role: string) => {
   const match = role.match(/(?:pj\s+kecamatan|pml)\s+(.+)/i);
   if (!match) return [];
   return match[1]
-    .split(/\s+dan\s+|,\s*/i)
+    .split(/\s*(?:,|;|\s+dan\s+|\s+&\s+)\s*/i)
     .map((item) => normalizeKecamatan(item))
     .filter(Boolean);
 };
@@ -165,6 +183,58 @@ const parseOutlierData = (rows: string[][] | any): OutlierRow[] => {
   }).filter((row): row is OutlierRow => row !== null && row.idsls && row.idsls !== "-");
 };
 
+const parseTkDibayarData = (rows: string[][] | any): TkDibayarRow[] => {
+  if (!rows || !Array.isArray(rows) || rows.length <= 1) return [];
+
+  const headers = Array.isArray(rows[0]) ? rows[0] : [];
+  if (!Array.isArray(headers) || headers.length === 0) return [];
+
+  const findCol = (name: string): number => {
+    return headers.findIndex((h: any) => {
+      const headerStr = String(h || "").toLowerCase().trim();
+      const searchStr = name.toLowerCase().trim();
+      return headerStr.includes(searchStr);
+    });
+  };
+
+  const idslsIdx = findCol("idsls") >= 0 ? findCol("idsls") : 4;
+  const kecIdx = findCol("kecamatan") >= 0 ? findCol("kecamatan") : 1;
+  const desaIdx = findCol("desa") >= 0 ? findCol("desa") : 2;
+  const alamatIdx = findCol("alamat") >= 0 ? findCol("alamat") : 3;
+  const usahaIdx = findCol("nama usaha") >= 0 ? findCol("nama usaha") : 6;
+  const linkIdx = findCol("link") >= 0 ? findCol("link") : 13;
+  const tindakLanjutIdx = findCol("tindak lanjut") >= 0 ? findCol("tindak lanjut") : 14;
+  const catatanIdx = findCol("catatan") >= 0 ? findCol("catatan") : 15;
+
+  return rows.slice(1).map((row: any, idx: number) => {
+    if (!Array.isArray(row)) return null;
+
+    const idsls = String(row[idslsIdx] || `TK-${idx + 1}`).trim();
+    const kecamatan = String(row[kecIdx] || "-").trim();
+    const desa = String(row[desaIdx] || "-").trim();
+    const alamat = String(row[alamatIdx] || "-").trim();
+    const nama_usaha = String(row[usahaIdx] || "-").trim();
+    const link = String(row[linkIdx] || "").trim();
+    const tindak_lanjut = String(row[tindakLanjutIdx] || "").trim();
+    const catatan = String(row[catatanIdx] || "-").trim();
+
+    return {
+      idsls,
+      nama_ppl: "",
+      nama_pml: "",
+      kecamatan,
+      desa,
+      alamat,
+      nama_usaha,
+      link,
+      tindak_lanjut,
+      catatan,
+      rowNumber: idx + 2,
+      raw: row,
+    };
+  }).filter((row): row is TkDibayarRow => row !== null && row.idsls && row.idsls !== "-");
+};
+
 const compareValues = (
   a: any,
   b: any,
@@ -233,6 +303,10 @@ export default function OutlierSE26() {
     spreadsheetId: SPREADSHEET_ID,
     sheetName: PRODUKSI_SHEET,
   });
+  const { data: tkDibayarRawData, loading: tkLoading, error: tkError } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: TK_DIBAYAR_SHEET,
+  });
   const { data: verifikasiData } = useGoogleSheetsData({
     spreadsheetId: VERIFIKASI_SPREADSHEET_ID,
     sheetName: "6-KECAP",
@@ -261,6 +335,7 @@ export default function OutlierSE26() {
   const [pageSize, setPageSize] = useState(20);
   const [savingRow, setSavingRow] = useState<number | null>(null);
   const [rowEdits, setRowEdits] = useState<Record<number, { tindak_lanjut?: string; catatan?: string }>>({});
+  const [tkRowEdits, setTkRowEdits] = useState<Record<number, { tindak_lanjut?: string; catatan?: string }>>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Parse and process data
@@ -312,19 +387,62 @@ export default function OutlierSE26() {
     }
   }, [rawData, verifikasiData]);
 
+  const tkDibayarRows = useMemo(() => {
+    try {
+      if (!tkDibayarRawData) return [];
+
+      const firstRow = tkDibayarRawData[0];
+      if (!firstRow) return [];
+
+      const dataArray = Array.isArray(firstRow)
+        ? tkDibayarRawData
+        : [
+            Object.keys(firstRow).filter((key) => !key.startsWith("__")),
+            ...tkDibayarRawData.map((row: any) =>
+              Object.keys(firstRow)
+                .filter((key) => !key.startsWith("__"))
+                .map((key) => row?.[key] ?? "")
+            ),
+          ];
+
+      const parsed = parseTkDibayarData(dataArray);
+      const personnelById = new Map<string, { namaPpl: string; namaPml: string }>();
+      (verifikasiData || []).forEach((row: any) => {
+        const rawRow = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+        const id = String(rawRow[0] ?? row?.idsubsls ?? "").trim();
+        if (!id) return;
+        personnelById.set(id, {
+          namaPpl: String(rawRow[16] ?? "").trim(),
+          namaPml: String(rawRow[17] ?? "").trim(),
+        });
+      });
+
+      return parsed.map((row) => {
+        const personnel = personnelById.get(row.idsls);
+        return personnel
+          ? { ...row, nama_ppl: personnel.namaPpl || row.nama_ppl, nama_pml: personnel.namaPml || row.nama_pml }
+          : row;
+      });
+    } catch (err) {
+      console.error("Error parsing TK dibayar data:", err);
+      return [];
+    }
+  }, [tkDibayarRawData, verifikasiData]);
+
   useEffect(() => {
     if (isPmlUser && allowedKecamatan.length > 0) {
-      const effectiveDefault = allowedKecamatan[0];
       const currentAllowed =
         kecamatanFilter === "all" ||
-        !allowedKecamatan.some((value) => isSameKecamatan(value, kecamatanFilter));
-      if (currentAllowed) setKecamatanFilter(effectiveDefault);
+        allowedKecamatan.some((value) => isSameKecamatan(value, kecamatanFilter));
+      if (!currentAllowed) setKecamatanFilter("all");
     }
   }, [isPmlUser, allowedKecamatan, kecamatanFilter]);
 
   // Filter rows
   const effectiveKecamatanFilter =
-    isPmlUser && allowedKecamatan.length > 0 ? allowedKecamatan[0] : kecamatanFilter;
+    isPmlUser && allowedKecamatan.length > 0 && kecamatanFilter !== "all"
+      ? kecamatanFilter
+      : "all";
 
   const filteredRows = useMemo(() => {
     return outlierRows.filter((row) => {
@@ -347,6 +465,29 @@ export default function OutlierSE26() {
     });
   }, [outlierRows, search, effectiveKecamatanFilter, statusFilter, rowEdits, isPmlUser, allowedKecamatan]);
 
+  const filteredTkRows = useMemo(() => {
+    return tkDibayarRows.filter((row) => {
+      const needle = search.toLowerCase();
+      const status = tkRowEdits[row.rowNumber]?.tindak_lanjut ?? row.tindak_lanjut;
+      const rowMatchesRole =
+        !isPmlUser ||
+        allowedKecamatan.length === 0 ||
+        allowedKecamatan.some((value) => isSameKecamatan(value, row.kecamatan));
+      return (
+        rowMatchesRole &&
+        (!needle ||
+          row.idsls.toLowerCase().includes(needle) ||
+          row.nama_ppl.toLowerCase().includes(needle) ||
+          row.nama_pml.toLowerCase().includes(needle) ||
+          row.kecamatan.toLowerCase().includes(needle) ||
+          row.nama_usaha.toLowerCase().includes(needle) ||
+          row.alamat.toLowerCase().includes(needle)) &&
+        (effectiveKecamatanFilter === "all" || isSameKecamatan(row.kecamatan, effectiveKecamatanFilter)) &&
+        (statusFilter === "all" || status === statusFilter)
+      );
+    });
+  }, [tkDibayarRows, search, effectiveKecamatanFilter, statusFilter, tkRowEdits, isPmlUser, allowedKecamatan]);
+
   const kecamatanOptions = useMemo(() => {
     const options = Array.from(new Set(outlierRows.map((row) => row.kecamatan).filter(Boolean))).sort((a, b) => a.localeCompare(b, "id"));
     if (isPmlUser && allowedKecamatan.length > 0) {
@@ -364,9 +505,22 @@ export default function OutlierSE26() {
     );
   }, [filteredRows, sortKey, sortDir]);
 
+  const sortedTkRows = useMemo(() => {
+    return [...filteredTkRows].sort((a, b) => {
+      const aValue = `${a.kecamatan} ${a.desa}`.toLowerCase();
+      const bValue = `${b.kecamatan} ${b.desa}`.toLowerCase();
+      const result = aValue.localeCompare(bValue, "id");
+      return result;
+    });
+  }, [filteredTkRows]);
+
   // Pagination
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const visibleRows = sortedRows.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+  const visibleTkRows = sortedTkRows.slice(
     (page - 1) * pageSize,
     page * pageSize
   );
@@ -461,6 +615,35 @@ export default function OutlierSE26() {
     }
   };
 
+  const updateTkRow = async (row: TkDibayarRow, column: "O" | "P", value: string) => {
+    const field = column === "O" ? "tindak_lanjut" : "catatan";
+    setTkRowEdits((current) => ({ ...current, [row.rowNumber]: { ...current[row.rowNumber], [field]: value } }));
+    setSavingRow(row.rowNumber);
+    try {
+      const { error: updateError } = await supabase.functions.invoke("google-sheets", {
+        body: {
+          spreadsheetId: SPREADSHEET_ID,
+          operation: "batch-update",
+          updates: [{ range: `'${TK_DIBAYAR_SHEET}'!${column}${row.rowNumber}`, values: [[value]] }],
+        },
+      });
+      if (updateError) throw updateError;
+      row.raw[column === "O" ? 14 : 15] = value;
+      toast({ title: "Tersimpan", description: "Perubahan berhasil direkam ke Google Sheet." });
+    } catch (updateError: any) {
+      setTkRowEdits((current) => {
+        const next = { ...current };
+        const previous = { ...next[row.rowNumber] };
+        delete previous[field];
+        next[row.rowNumber] = previous;
+        return next;
+      });
+      toast({ title: "Gagal menyimpan", description: updateError?.message || String(updateError), variant: "destructive" });
+    } finally {
+      setSavingRow(null);
+    }
+  };
+
   return (
     <div className="w-full max-w-none space-y-4 sm:space-y-6 py-3 sm:py-6 px-2 sm:px-0">
       <Card className="w-full max-w-none border-0 shadow-sm">
@@ -477,72 +660,71 @@ export default function OutlierSE26() {
 
         <CardContent className="w-full p-3 sm:p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-4 sm:mb-5 grid w-full max-w-md text-xs sm:text-sm">
-              <TabsTrigger value="produksi">
+            <TabsList className="mb-4 sm:mb-5 flex w-full max-w-2xl overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-1 text-xs sm:text-sm [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <TabsTrigger value="produksi" className="whitespace-nowrap">
                 Produksi &lt; 1Juta ({filteredRows.length})
+              </TabsTrigger>
+              <TabsTrigger value="tk-dibayar" className="whitespace-nowrap">
+                Tenaga Kerja dibayar ({filteredTkRows.length})
               </TabsTrigger>
             </TabsList>
 
-            <div className="mb-4 space-y-3 sm:space-y-4">
-              <div className="flex flex-col gap-2">
-                <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Cari ID SLS, nama PPL/PML, atau kecamatan..."
-                    className="pl-9 text-xs sm:text-sm h-9 sm:h-10"
-                  />
-                </div>
+            <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-3">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari ID SLS, nama PPL/PML, atau kecamatan..."
+                  className="pl-9 text-xs sm:text-sm h-9 sm:h-10 w-full"
+                />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <select
-                  value={effectiveKecamatanFilter}
-                  onChange={(e) => setKecamatanFilter(e.target.value)}
-                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
-                  disabled={isPmlUser && allowedKecamatan.length > 0}
-                >
-                  {!isPmlUser && <option value="all">Semua Kecamatan</option>}
-                  {kecamatanOptions.map((kecamatan) => (
-                    <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
-                  ))}
-                </select>
+              <select
+                value={effectiveKecamatanFilter}
+                onChange={(e) => setKecamatanFilter(e.target.value)}
+                className="h-9 sm:h-10 min-w-[150px] rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+                disabled={isPmlUser && allowedKecamatan.length > 0}
+              >
+                {!isPmlUser && <option value="all">Semua Kecamatan</option>}
+                {kecamatanOptions.map((kecamatan) => (
+                  <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
+                ))}
+              </select>
 
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="">Belum ditindaklanjuti</option>
-                  <option value="Diperbaiki">Diperbaiki</option>
-                  <option value="Tidak diperbaiki">Tidak diperbaiki</option>
-                </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="h-9 sm:h-10 min-w-[150px] rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+              >
+                <option value="all">Semua Status</option>
+                <option value="">Belum ditindaklanjuti</option>
+                <option value="Diperbaiki">Diperbaiki</option>
+                <option value="Tidak diperbaiki">Tidak diperbaiki</option>
+              </select>
 
-                {user?.role === "Pejabat Pembuat Komitmen" && (
-                  <button
-                    onClick={downloadExcel}
-                    disabled={loading || !!error}
-                    className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-2 sm:px-3 text-xs sm:text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                    <span className="hidden sm:inline">Excel</span>
-                    <span className="sm:hidden">DL</span>
-                  </button>
-                )}
-
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+              {user?.role === "Pejabat Pembuat Komitmen" && (
+                <button
+                  onClick={downloadExcel}
+                  disabled={loading || !!error}
+                  className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-2 sm:px-3 text-xs sm:text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="10">10/hal</option>
-                  <option value="20">20/hal</option>
-                  <option value="50">50/hal</option>
-                  <option value="100">100/hal</option>
-                </select>
-              </div>
+                  <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                  <span className="hidden sm:inline">Excel</span>
+                  <span className="sm:hidden">DL</span>
+                </button>
+              )}
+
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="h-9 sm:h-10 min-w-[90px] rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+              >
+                <option value="10">10/hal</option>
+                <option value="20">20/hal</option>
+                <option value="50">50/hal</option>
+                <option value="100">100/hal</option>
+              </select>
             </div>
 
             {loading ? (
@@ -561,132 +743,231 @@ export default function OutlierSE26() {
                 Tidak ada data tersedia atau data gagal diproses
               </div>
             ) : (
-              <TabsContent value="produksi" className="mt-0">
-                <div className="-mx-3 w-full sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
-                  <Table className="w-full table-fixed min-w-[1200px] sm:min-w-[1400px]">
-                    <TableHeader>
-                      <TableRow className="bg-slate-50">
-                        <TableHead className="w-8 sm:w-12 text-center align-middle text-xs sm:text-sm px-1 sm:px-2">
-                          No
-                        </TableHead>
-                        <SortHead
-                          label="Kecamatan"
-                          active={sortKey === "kecamatan"}
-                          direction={sortDir}
-                          onClick={() => toggleSort("kecamatan")}
-                          numeric={false}
-                        />
-                        <SortHead
-                          label="Nama Usaha"
-                          active={sortKey === "nama_usaha"}
-                          direction={sortDir}
-                          onClick={() => toggleSort("nama_usaha")}
-                          numeric={false}
-                        />
-                        <SortHead label="Pendapatan" active={sortKey === "pendapatan"} direction={sortDir} onClick={() => toggleSort("pendapatan")} />
-                        <SortHead label="Pengeluaran" active={sortKey === "pengeluaran"} direction={sortDir} onClick={() => toggleSort("pengeluaran")} />
-                        <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
-                          Link
-                        </TableHead>
-                        <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
-                          Tindak Lanjut
-                        </TableHead>
-                        <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
-                          Catatan
-                        </TableHead>
-                        <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
-                          Nama PPL
-                        </TableHead>
-                        <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
-                          Nama PML
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {visibleRows.map((row, idx) => (
-                        <TableRow key={`${row.idsls}-${(page - 1) * pageSize + idx}`} className="border-b hover:bg-slate-50">
-                          <TableCell className="text-center text-xs sm:text-sm text-slate-500">
-                            {(page - 1) * pageSize + idx + 1}
-                          </TableCell>
-                          <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
-                            <div>{row.kecamatan || "-"}</div>
-                            <div className="text-[10px] text-slate-500">{row.desa || "-"}</div>
-                          </TableCell>
-                          <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
-                            <div>{row.nama_usaha}</div>
-                            <div className="text-[10px] text-slate-500">{row.nama_komersial || "-"}</div>
-                          </TableCell>
-                          <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
-                            {formatNumber(row.pendapatan)}
-                          </TableCell>
-                          <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
-                            {formatNumber(row.pengeluaran)}
-                          </TableCell>
-                          <TableCell className="text-center px-1 sm:px-2 py-2 sm:py-3">
-                            {row.link ? <a href={row.link} target="_blank" rel="noreferrer" title="Buka link" className="inline-flex text-sky-600 hover:text-sky-800"><ExternalLink className="h-4 w-4" /></a> : "-"}
-                          </TableCell>
-                          <TableCell className="px-1 sm:px-2 py-2 sm:py-3">
-                            <select
-                              value={rowEdits[row.rowNumber]?.tindak_lanjut ?? row.tindak_lanjut}
-                              disabled={savingRow === row.rowNumber}
-                              onChange={(event) => updateRow(row, "L", event.target.value)}
-                              className="h-8 w-full rounded border border-slate-300 bg-white px-1 text-xs"
-                            >
-                              <option value="">Pilih</option>
-                              <option value="Diperbaiki">Diperbaiki</option>
-                              <option value="Tidak diperbaiki">Tidak diperbaiki</option>
-                            </select>
-                          </TableCell>
-                          <TableCell className="px-1 sm:px-2 py-2 sm:py-3">
-                            <Input
-                              value={rowEdits[row.rowNumber]?.catatan ?? (row.catatan === "-" ? "" : row.catatan)}
-                              disabled={savingRow === row.rowNumber}
-                              onChange={(event) => setRowEdits((current) => ({ ...current, [row.rowNumber]: { ...current[row.rowNumber], catatan: event.target.value } }))}
-                              onBlur={(event) => updateRow(row, "M", event.target.value)}
-                              placeholder="Tulis catatan..."
-                              className="h-8 text-xs"
-                            />
-                          </TableCell>
-                          <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
-                            {row.nama_ppl || "-"}
-                          </TableCell>
-                          <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
-                            {row.nama_pml || "-"}
+              <>
+                <TabsContent value="produksi" className="mt-0">
+                  <div className="-mx-3 w-full sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
+                    <Table className="w-full table-fixed min-w-[1200px] sm:min-w-[1400px]">
+                      <TableHeader>
+                        <TableRow className="bg-slate-50">
+                          <TableHead className="w-8 sm:w-12 text-center align-middle text-xs sm:text-sm px-1 sm:px-2">
+                            No
+                          </TableHead>
+                          <SortHead
+                            label="Kecamatan"
+                            active={sortKey === "kecamatan"}
+                            direction={sortDir}
+                            onClick={() => toggleSort("kecamatan")}
+                            numeric={false}
+                          />
+                          <SortHead
+                            label="Nama Usaha"
+                            active={sortKey === "nama_usaha"}
+                            direction={sortDir}
+                            onClick={() => toggleSort("nama_usaha")}
+                            numeric={false}
+                          />
+                          <SortHead label="Pendapatan" active={sortKey === "pendapatan"} direction={sortDir} onClick={() => toggleSort("pendapatan")} />
+                          <SortHead label="Pengeluaran" active={sortKey === "pengeluaran"} direction={sortDir} onClick={() => toggleSort("pengeluaran")} />
+                          <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                            Link
+                          </TableHead>
+                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                            Tindak Lanjut
+                          </TableHead>
+                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                            Catatan
+                          </TableHead>
+                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                            Nama PPL
+                          </TableHead>
+                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                            Nama PML
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {visibleRows.map((row, idx) => (
+                          <TableRow key={`${row.idsls}-${(page - 1) * pageSize + idx}`} className="border-b hover:bg-slate-50">
+                            <TableCell className="text-center text-xs sm:text-sm text-slate-500">
+                              {(page - 1) * pageSize + idx + 1}
+                            </TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                              <div>{row.kecamatan || "-"}</div>
+                              <div className="text-[10px] text-slate-500">{row.desa || "-"}</div>
+                            </TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                              <div>{row.nama_usaha}</div>
+                              <div className="text-[10px] text-slate-500">{row.nama_komersial || "-"}</div>
+                            </TableCell>
+                            <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
+                              {formatNumber(row.pendapatan)}
+                            </TableCell>
+                            <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
+                              {formatNumber(row.pengeluaran)}
+                            </TableCell>
+                            <TableCell className="text-center px-1 sm:px-2 py-2 sm:py-3">
+                              {row.link ? <a href={row.link} target="_blank" rel="noreferrer" title="Buka link" className="inline-flex text-sky-600 hover:text-sky-800"><ExternalLink className="h-4 w-4" /></a> : "-"}
+                            </TableCell>
+                            <TableCell className="px-1 sm:px-2 py-2 sm:py-3">
+                              <select
+                                value={rowEdits[row.rowNumber]?.tindak_lanjut ?? row.tindak_lanjut}
+                                disabled={savingRow === row.rowNumber}
+                                onChange={(event) => updateRow(row, "L", event.target.value)}
+                                className="h-8 w-full rounded border border-slate-300 bg-white px-1 text-xs"
+                              >
+                                <option value="">Pilih</option>
+                                <option value="Diperbaiki">Diperbaiki</option>
+                                <option value="Tidak diperbaiki">Tidak diperbaiki</option>
+                              </select>
+                            </TableCell>
+                            <TableCell className="px-1 sm:px-2 py-2 sm:py-3">
+                              <Input
+                                value={rowEdits[row.rowNumber]?.catatan ?? (row.catatan === "-" ? "" : row.catatan)}
+                                disabled={savingRow === row.rowNumber}
+                                onChange={(event) => setRowEdits((current) => ({ ...current, [row.rowNumber]: { ...current[row.rowNumber], catatan: event.target.value } }))}
+                                onBlur={(event) => updateRow(row, "M", event.target.value)}
+                                placeholder="Tulis catatan..."
+                                className="h-8 text-xs"
+                              />
+                            </TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                              {row.nama_ppl || "-"}
+                            </TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                              {row.nama_pml || "-"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                      <TableFooter>
+                        <TableRow className="bg-slate-50">
+                          <TableCell colSpan={10} className="text-left text-xs sm:text-sm font-medium text-slate-700 px-2 py-2">
+                            Jumlah Nama Usaha = {sortedRows.length} terindikasi sebagai outlier
                           </TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableFooter>
+                    </Table>
+                  </div>
 
-                {/* Pagination */}
-                <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
-                  <div className="text-slate-600">
-                    Menampilkan {Math.max(0, (page - 1) * pageSize + 1)} -
-                    {Math.min(page * pageSize, sortedRows.length)} dari{" "}
-                    {sortedRows.length} data
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => setPage(Math.max(1, page - 1))}
-                      disabled={page <= 1}
-                      className="px-2 py-1.5 sm:px-3 sm:py-2 rounded border border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 text-xs sm:text-sm"
-                    >
-                      Sebelumnya
-                    </button>
-                    <div className="px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm">
-                      Hal {page} dari {totalPages}
+                  <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+                    <div className="text-slate-600">
+                      Menampilkan {Math.max(0, (page - 1) * pageSize + 1)} -
+                      {Math.min(page * pageSize, sortedRows.length)} dari{" "}
+                      {sortedRows.length} data
                     </div>
-                    <button
-                      onClick={() => setPage(Math.min(totalPages, page + 1))}
-                      disabled={page >= totalPages}
-                      className="px-2 py-1.5 sm:px-3 sm:py-2 rounded border border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 text-xs sm:text-sm"
-                    >
-                      Berikutnya
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setPage(Math.max(1, page - 1))}
+                        disabled={page <= 1}
+                        className="px-2 py-1.5 sm:px-3 sm:py-2 rounded border border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 text-xs sm:text-sm"
+                      >
+                        Sebelumnya
+                      </button>
+                      <div className="px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm">
+                        Hal {page} dari {totalPages}
+                      </div>
+                      <button
+                        onClick={() => setPage(Math.min(totalPages, page + 1))}
+                        disabled={page >= totalPages}
+                        className="px-2 py-1.5 sm:px-3 sm:py-2 rounded border border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 text-xs sm:text-sm"
+                      >
+                        Berikutnya
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </TabsContent>
+                </TabsContent>
+
+                <TabsContent value="tk-dibayar" className="mt-0">
+                  <div className="-mx-3 w-full sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
+                    <Table className="w-full table-fixed min-w-[1200px] sm:min-w-[1300px]">
+                      <TableHeader>
+                        <TableRow className="bg-slate-50">
+                          <TableHead className="w-10 text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">No</TableHead>
+                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Kecamatan</TableHead>
+                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama Usaha</TableHead>
+                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Alamat</TableHead>
+                          <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Link</TableHead>
+                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Tindak Lanjut</TableHead>
+                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Catatan</TableHead>
+                          <TableHead className="w-[160px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PPL</TableHead>
+                          <TableHead className="w-[160px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PML</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {visibleTkRows.map((row, idx) => (
+                          <TableRow key={`${row.idsls}-${(page - 1) * pageSize + idx}`} className="border-b hover:bg-slate-50 align-top">
+                            <TableCell className="text-center text-xs sm:text-sm text-slate-500 align-top">{(page - 1) * pageSize + idx + 1}</TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">
+                              <div>{row.kecamatan || "-"}</div>
+                              <div className="text-[10px] text-slate-500">{row.desa || "-"}</div>
+                            </TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.nama_usaha || "-"}</TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.alamat || "-"}</TableCell>
+                            <TableCell className="text-center px-1 sm:px-2 py-2 sm:py-3 align-top">
+                              {row.link ? <a href={row.link} target="_blank" rel="noreferrer" title="Buka link" className="inline-flex text-sky-600 hover:text-sky-800"><ExternalLink className="h-4 w-4" /></a> : "-"}
+                            </TableCell>
+                            <TableCell className="px-1 sm:px-2 py-2 sm:py-3 align-top">
+                              <select
+                                value={tkRowEdits[row.rowNumber]?.tindak_lanjut ?? row.tindak_lanjut}
+                                disabled={savingRow === row.rowNumber}
+                                onChange={(event) => updateTkRow(row, "O", event.target.value)}
+                                className="h-8 w-full rounded border border-slate-300 bg-white px-1 text-xs"
+                              >
+                                <option value="">Pilih</option>
+                                <option value="Diperbaiki">Diperbaiki</option>
+                                <option value="Tidak diperbaiki">Tidak diperbaiki</option>
+                              </select>
+                            </TableCell>
+                            <TableCell className="px-1 sm:px-2 py-2 sm:py-3 align-top">
+                              <Input
+                                value={tkRowEdits[row.rowNumber]?.catatan ?? (row.catatan === "-" ? "" : row.catatan)}
+                                disabled={savingRow === row.rowNumber}
+                                onChange={(event) => setTkRowEdits((current) => ({ ...current, [row.rowNumber]: { ...current[row.rowNumber], catatan: event.target.value } }))}
+                                onBlur={(event) => updateTkRow(row, "P", event.target.value)}
+                                placeholder="Tulis catatan..."
+                                className="h-8 text-xs"
+                              />
+                            </TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.nama_ppl || "-"}</TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.nama_pml || "-"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                      <TableFooter>
+                        <TableRow className="bg-slate-50">
+                          <TableCell colSpan={9} className="px-2 py-2" />
+                        </TableRow>
+                      </TableFooter>
+                    </Table>
+                  </div>
+
+                  <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+                    <div className="text-slate-600">
+                      Menampilkan {Math.max(0, (page - 1) * pageSize + 1)} -
+                      {Math.min(page * pageSize, sortedTkRows.length)} dari {sortedTkRows.length} data
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setPage(Math.max(1, page - 1))}
+                        disabled={page <= 1}
+                        className="px-2 py-1.5 sm:px-3 sm:py-2 rounded border border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 text-xs sm:text-sm"
+                      >
+                        Sebelumnya
+                      </button>
+                      <div className="px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm">
+                        Hal {page} dari {Math.max(1, Math.ceil(sortedTkRows.length / pageSize))}
+                      </div>
+                      <button
+                        onClick={() => setPage(Math.min(Math.max(1, Math.ceil(sortedTkRows.length / pageSize)), page + 1))}
+                        disabled={page >= Math.max(1, Math.ceil(sortedTkRows.length / pageSize))}
+                        className="px-2 py-1.5 sm:px-3 sm:py-2 rounded border border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 text-xs sm:text-sm"
+                      >
+                        Berikutnya
+                      </button>
+                    </div>
+                  </div>
+                </TabsContent>
+              </>
             )}
           </Tabs>
         </CardContent>
