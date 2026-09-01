@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowUpDown,
@@ -74,6 +74,27 @@ const formatNumber = (num: number | string): string => {
     maximumFractionDigits: 0,
   });
 };
+
+const normalizeKecamatan = (value: string) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\bkecamatan\b|\bkec\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const kecamatanFromRole = (role: string) => {
+  const match = role.match(/(?:pj\s+kecamatan|pml)\s+(.+)/i);
+  if (!match) return [];
+  return match[1]
+    .split(/\s+dan\s+|,\s*/i)
+    .map((item) => normalizeKecamatan(item))
+    .filter(Boolean);
+};
+
+const isSameKecamatan = (a: string, b: string) =>
+  normalizeKecamatan(a) === normalizeKecamatan(b);
 
 const parseOutlierData = (rows: string[][] | any): OutlierRow[] => {
   if (!rows || !Array.isArray(rows) || rows.length <= 1) return [];
@@ -205,6 +226,9 @@ const SortHead = ({
 export default function OutlierSE26() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const role = String(user?.role || "").toLowerCase();
+  const allowedKecamatan = kecamatanFromRole(role);
+  const isPmlUser = role.startsWith("pml ");
   const { data: rawData, loading, error } = useGoogleSheetsData({
     spreadsheetId: SPREADSHEET_ID,
     sheetName: PRODUKSI_SHEET,
@@ -288,27 +312,50 @@ export default function OutlierSE26() {
     }
   }, [rawData, verifikasiData]);
 
+  useEffect(() => {
+    if (isPmlUser && allowedKecamatan.length > 0) {
+      const effectiveDefault = allowedKecamatan[0];
+      const currentAllowed =
+        kecamatanFilter === "all" ||
+        !allowedKecamatan.some((value) => isSameKecamatan(value, kecamatanFilter));
+      if (currentAllowed) setKecamatanFilter(effectiveDefault);
+    }
+  }, [isPmlUser, allowedKecamatan, kecamatanFilter]);
+
   // Filter rows
+  const effectiveKecamatanFilter =
+    isPmlUser && allowedKecamatan.length > 0 ? allowedKecamatan[0] : kecamatanFilter;
+
   const filteredRows = useMemo(() => {
     return outlierRows.filter((row) => {
       const needle = search.toLowerCase();
       const status = rowEdits[row.rowNumber]?.tindak_lanjut ?? row.tindak_lanjut;
+      const rowMatchesRole =
+        !isPmlUser ||
+        allowedKecamatan.length === 0 ||
+        allowedKecamatan.some((value) => isSameKecamatan(value, row.kecamatan));
       return (
-        !needle ||
-        row.idsls.toLowerCase().includes(needle) ||
-        row.nama_ppl.toLowerCase().includes(needle) ||
-        row.nama_pml.toLowerCase().includes(needle) ||
-        row.kecamatan.toLowerCase().includes(needle)
-      ) &&
-        (kecamatanFilter === "all" || row.kecamatan === kecamatanFilter) &&
-        (statusFilter === "all" || status === statusFilter);
+        rowMatchesRole &&
+        (!needle ||
+          row.idsls.toLowerCase().includes(needle) ||
+          row.nama_ppl.toLowerCase().includes(needle) ||
+          row.nama_pml.toLowerCase().includes(needle) ||
+          row.kecamatan.toLowerCase().includes(needle)) &&
+        (effectiveKecamatanFilter === "all" || isSameKecamatan(row.kecamatan, effectiveKecamatanFilter)) &&
+        (statusFilter === "all" || status === statusFilter)
+      );
     });
-  }, [outlierRows, search, kecamatanFilter, statusFilter, rowEdits]);
+  }, [outlierRows, search, effectiveKecamatanFilter, statusFilter, rowEdits, isPmlUser, allowedKecamatan]);
 
-  const kecamatanOptions = useMemo(
-    () => Array.from(new Set(outlierRows.map((row) => row.kecamatan).filter(Boolean))).sort((a, b) => a.localeCompare(b, "id")),
-    [outlierRows],
-  );
+  const kecamatanOptions = useMemo(() => {
+    const options = Array.from(new Set(outlierRows.map((row) => row.kecamatan).filter(Boolean))).sort((a, b) => a.localeCompare(b, "id"));
+    if (isPmlUser && allowedKecamatan.length > 0) {
+      return options.filter((kecamatan) =>
+        allowedKecamatan.some((value) => isSameKecamatan(value, kecamatan)),
+      );
+    }
+    return options;
+  }, [outlierRows, isPmlUser, allowedKecamatan]);
 
   // Sort rows
   const sortedRows = useMemo(() => {
@@ -451,11 +498,12 @@ export default function OutlierSE26() {
 
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <select
-                  value={kecamatanFilter}
+                  value={effectiveKecamatanFilter}
                   onChange={(e) => setKecamatanFilter(e.target.value)}
                   className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+                  disabled={isPmlUser && allowedKecamatan.length > 0}
                 >
-                  <option value="all">Semua Kecamatan</option>
+                  {!isPmlUser && <option value="all">Semua Kecamatan</option>}
                   {kecamatanOptions.map((kecamatan) => (
                     <option key={kecamatan} value={kecamatan}>{kecamatan}</option>
                   ))}
