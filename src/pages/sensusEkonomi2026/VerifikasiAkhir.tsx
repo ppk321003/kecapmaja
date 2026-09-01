@@ -52,6 +52,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const SPREADSHEET_ID = "1x9P3MlkJySQI9FK6mV3maik3qMnUIBW8IKwWPudAA2Y";
 const SHEET_NAME = "6-KECAP";
+const PETA_SHEET_NAME = "7-PETA";
 const PAGE_SIZES = [10, 20, 50, 100];
 const COMPACT_METRIC_KEYS = new Set<MetricKey>([
   "jumlahAssignment",
@@ -186,6 +187,13 @@ const formatPercent = (value: number, total: number) =>
   total > 0 ? `${((value / total) * 100).toFixed(2)}%` : "0.00%";
 const normalizeKecamatan = (value: string) =>
   value.trim().toLowerCase().replace(/\s+/g, " ");
+const normalizeSheetId = (value: unknown) =>
+  String(value ?? "").trim().replace(/\s+/g, "");
+const isTrueFlag = (value: unknown) => {
+  if (value === true || value === 1 || value === "1") return true;
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return ["true", "ya", "yes", "y"].includes(normalized);
+};
 const kecamatanFromRole = (role: string) => {
   const match = role.match(/(?:pj\s+kecamatan|pml)\s+(.+)/i);
   return match
@@ -286,6 +294,7 @@ function KabupatenActions({
   allPplFlagged = true,
   showPmlFlag = false,
   disablePmlFlag = false,
+  petaAllEntered = false,
   onSaved,
 }: {
   records: ActionRecord[];
@@ -295,12 +304,25 @@ function KabupatenActions({
   allPplFlagged?: boolean;
   showPmlFlag?: boolean;
   disablePmlFlag?: boolean;
+  petaAllEntered?: boolean;
   onSaved: (updates: Record<string, string>) => void;
 }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState<string | null>(null);
   const [pmlConfirmOpen, setPmlConfirmOpen] = useState(false);
+  const [confirmChecks, setConfirmChecks] = useState({
+    pemeriksaan: false,
+    cakupan: false,
+    kualitas: false,
+  });
+  const allConfirmationsChecked = Object.values(confirmChecks).every(Boolean);
+  const resetConfirmChecks = () =>
+    setConfirmChecks({
+      pemeriksaan: false,
+      cakupan: false,
+      kualitas: false,
+    });
   const role = String(user?.role || "").toLowerCase();
   const allowedKecamatan = kecamatanFromRole(role);
   const isPml = role.startsWith("pml ");
@@ -333,6 +355,8 @@ function KabupatenActions({
     setPmlConfirmOpen(true);
   };
   const handlePmlApprove = () => {
+    if (!allConfirmationsChecked) return;
+    resetConfirmChecks();
     setPmlConfirmOpen(false);
     write("S", "Approve");
   };
@@ -347,7 +371,8 @@ function KabupatenActions({
     isPml &&
     allowedKecamatan.includes(normalizeKecamatan(kecamatan)) &&
     !pjkStarted &&
-    !disablePmlFlag;
+    !disablePmlFlag &&
+    petaAllEntered;
   const canPjk =
     actor === "PJK" &&
     allowedKecamatan.includes(normalizeKecamatan(kecamatan)) &&
@@ -408,17 +433,79 @@ function KabupatenActions({
   };
   return (
     <>
-      <AlertDialog open={pmlConfirmOpen} onOpenChange={setPmlConfirmOpen}>
-        <AlertDialogContent className="max-w-md">
+      <AlertDialog
+        open={pmlConfirmOpen}
+        onOpenChange={(isOpen) => {
+          setPmlConfirmOpen(isOpen);
+          if (!isOpen) resetConfirmChecks();
+        }}
+      >
+        <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Konfirmasi Verifikasi Akhir</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda sudah melakukan pemeriksaan dan memastikan kewajaran cakupan serta kualitas pendataan telah terpenuhi?
+            <AlertDialogDescription className="space-y-3 pt-2">
+              <div className="flex items-start gap-3">
+                <input
+                  id="pml-confirm-pemeriksaan"
+                  type="checkbox"
+                  checked={confirmChecks.pemeriksaan}
+                  onChange={(event) =>
+                    setConfirmChecks((current) => ({
+                      ...current,
+                      pemeriksaan: event.target.checked,
+                    }))
+                  }
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                <label htmlFor="pml-confirm-pemeriksaan" className="text-sm text-slate-700">
+                  Saya telah melakukan pemeriksaan dan memastikan hasil pekerjaan telah memenuhi ketentuan.
+                </label>
+              </div>
+              <div className="flex items-start gap-3">
+                <input
+                  id="pml-confirm-cakupan"
+                  type="checkbox"
+                  checked={confirmChecks.cakupan}
+                  onChange={(event) =>
+                    setConfirmChecks((current) => ({
+                      ...current,
+                      cakupan: event.target.checked,
+                    }))
+                  }
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                <label htmlFor="pml-confirm-cakupan" className="text-sm text-slate-700">
+                  Saya telah memastikan kewajaran cakupan pendataan telah terpenuhi.
+                </label>
+              </div>
+              <div className="flex items-start gap-3">
+                <input
+                  id="pml-confirm-kualitas"
+                  type="checkbox"
+                  checked={confirmChecks.kualitas}
+                  onChange={(event) =>
+                    setConfirmChecks((current) => ({
+                      ...current,
+                      kualitas: event.target.checked,
+                    }))
+                  }
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                <label htmlFor="pml-confirm-kualitas" className="text-sm text-slate-700">
+                  Saya telah memastikan kualitas hasil pendataan telah memenuhi ketentuan.
+                </label>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Batalkan</AlertDialogCancel>
-            <AlertDialogAction onClick={handlePmlApprove}>Ya, lanjutkan</AlertDialogAction>
+            <AlertDialogCancel onClick={resetConfirmChecks}>Batalkan</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handlePmlApprove}
+              disabled={!allConfirmationsChecked}
+              className="disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Ya, lanjutkan
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -430,9 +517,11 @@ function KabupatenActions({
             title={
               pmlFlag
                 ? "Batalkan flag PML"
-                : disablePmlFlag
-                  ? "Open/Draft belum nol, flag PML tidak aktif"
-                  : "Flag verifikasi PML"
+                : disablePmlFlag && !petaAllEntered
+                  ? "Open/Draft belum nol dan status Peta wilayah kerja belum semua masuk"
+                  : petaAllEntered
+                    ? "Flag verifikasi PML (semua Peta wilayah kerja sudah masuk)"
+                    : "Flag verifikasi PML"
             }
             disabled={saving !== null || !canPml}
             onClick={handlePmlFlagToggle}
@@ -509,6 +598,10 @@ export default function VerifikasiAkhir() {
     range: "AA1",
     mode: "single-cell",
   });
+  const { data: petaData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: PETA_SHEET_NAME,
+  });
   const [activeTab, setActiveTab] = useState("ppl");
   const [search, setSearch] = useState("");
   const [kecamatan, setKecamatan] = useState("all");
@@ -529,6 +622,52 @@ export default function VerifikasiAkhir() {
     useState(false);
   const isPmlUser = String(user?.role || "").toLowerCase().startsWith("pml ");
   const isPpk = user?.role === "Pejabat Pembuat Komitmen";
+  const petaMatchedIds = useMemo(() => {
+    const next = new Set<string>();
+    (petaData || []).forEach((row: any) => {
+      const rawRow = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+      const idsls = normalizeSheetId(
+        row?.idsubsls ?? row?.idsls ?? row?.id_sls ?? row?.idsls_ ?? rawRow[0],
+      );
+      const petaValue =
+        row?.peta ??
+        row?.Peta ??
+        row?.aa ??
+        row?.AA ??
+        row?.a_a ??
+        row?.is_peta ??
+        rawRow[26] ??
+        rawRow[29] ??
+        rawRow[25] ??
+        "";
+      const isTrue = isTrueFlag(petaValue);
+      if (idsls && isTrue) next.add(idsls);
+    });
+    return next;
+  }, [petaData]);
+  const petaMissingIds = useMemo(() => {
+    const next = new Set<string>();
+    (petaData || []).forEach((row: any) => {
+      const rawRow = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+      const idsls = normalizeSheetId(
+        row?.idsubsls ?? row?.idsls ?? row?.id_sls ?? row?.idsls_ ?? rawRow[0],
+      );
+      const petaValue =
+        row?.peta ??
+        row?.Peta ??
+        row?.aa ??
+        row?.AA ??
+        row?.a_a ??
+        row?.is_peta ??
+        rawRow[26] ??
+        rawRow[29] ??
+        rawRow[25] ??
+        "";
+      const isTrue = isTrueFlag(petaValue);
+      if (idsls && !isTrue) next.add(idsls);
+    });
+    return next;
+  }, [petaData]);
 
   useEffect(() => {
     const timestamp = String(timestampData?.[0] ?? "").trim();
@@ -945,54 +1084,122 @@ export default function VerifikasiAkhir() {
       </TableCell>
     );
   };
+  const hasAllPetaInPplWork = (row: Metrics & Partial<{ details: DetailRow[]; children: PmlChild[]; kecamatan: string; nama: string }>) => {
+    const detailRows =
+      "details" in row && Array.isArray(row.details)
+        ? row.details
+        : "children" in row && Array.isArray(row.children)
+          ? row.children.flatMap((child) => {
+              const matchingPpl = pplRows.find(
+                (ppl) =>
+                  normalizeKecamatan(ppl.nama || "") === normalizeKecamatan(child.nama || "") &&
+                  normalizeKecamatan(ppl.kecamatan || "") === normalizeKecamatan(row.kecamatan || ""),
+              );
+              return matchingPpl?.details ?? [];
+            })
+          : [];
+    if (detailRows.length === 0) return false;
+    return detailRows.every((detailItem) => {
+      const value = detailItem.idsubsls ? normalizeSheetId(detailItem.idsubsls) : "";
+      return value && petaMatchedIds.has(value);
+    });
+  };
+
   const renderMetrics = (
-    row: Metrics & Partial<{ actionRows: ActionRecord[]; kecamatan: string }>,
+    row: Metrics & Partial<{ actionRows: ActionRecord[]; kecamatan: string; idsubsls: string }>,
     detail = false,
     actionRecords?: ActionRecord[],
-  ) => (
-    <>
-      {groups.flatMap((group) =>
-        group.keys.map((key) => renderMetricCell(row, key, detail)),
-      )}
-      {detail && !actionRecords ? (
-        <>
-          {Array.from({ length: activeTab === "ppl" ? 4 : 3 }, (_, index) => (
-            <TableCell key={`empty-action-${index}`} className="bg-violet-50/50" />
-          ))}
-        </>
-      ) : (
-        <KabupatenActions
-          records={actionRecords || row.actionRows || []}
-          columns={
-            actionRecords
-              ? ["T", "U", "V"]
-              : activeTab === "ppl"
+  ) => {
+    const normalizedIdsls = row?.idsubsls
+      ? normalizeSheetId(row.idsubsls)
+      : "";
+    const petaStatus =
+      detail &&
+      activeTab === "ppl" &&
+      normalizedIdsls
+        ? petaMatchedIds.has(normalizedIdsls)
+          ? { text: "Peta: sudah masuk", tone: "success" }
+          : petaMissingIds.has(normalizedIdsls)
+            ? { text: "Peta: belum masuk", tone: "warning" }
+            : null
+        : null;
+    const petaAllEnteredForRow =
+      activeTab === "ppl" && row && hasAllPetaInPplWork(row as Metrics & Partial<{ details: DetailRow[]; children: PmlChild[]; kecamatan: string; nama: string }>);
+
+    return (
+      <>
+        {groups.flatMap((group) =>
+          group.keys.map((key) => renderMetricCell(row, key, detail)),
+        )}
+        {detail && !actionRecords ? (
+          activeTab === "ppl" ? (
+            <TableCell
+              colSpan={4}
+              className="bg-violet-50/50 px-2 py-2 text-left align-middle"
+            >
+              {petaStatus ? (
+                <div
+                  className={`min-w-[180px] whitespace-normal break-words rounded-md border px-2 py-1.5 text-[10px] sm:text-xs leading-snug font-medium ${
+                    petaStatus.tone === "success"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-amber-200 bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {petaStatus.text}
+                </div>
+              ) : (
+                <div className="min-w-[180px] whitespace-normal break-words text-[10px] sm:text-xs leading-snug text-slate-400">
+                  -
+                </div>
+              )}
+            </TableCell>
+          ) : (
+            <>
+              {Array.from({ length: 3 }, (_, index) => (
+                <TableCell
+                  key={`empty-action-${index}`}
+                  className="bg-violet-50/50 px-1 py-2 text-center text-[10px] sm:text-xs text-slate-700 align-middle"
+                >
+                  {""}
+                </TableCell>
+              ))}
+            </>
+          )
+        ) : (
+          <KabupatenActions
+            records={actionRecords || row.actionRows || []}
+            columns={
+              actionRecords
                 ? ["T", "U", "V"]
-                : ["W", "X", "Y"]
-          }
-          showPmlFlag={activeTab === "ppl" && !detail && !actionRecords}
-          disablePmlFlag={
-            activeTab === "ppl" &&
-            !detail &&
-            !actionRecords &&
-            (Number(row.open) !== 0 || Number(row.draft) !== 0)
-          }
-          overrides={actionOverrides}
-          kecamatan={row.kecamatan || ""}
-          allPplFlagged={
-            !!actionRecords ||
-            detail ||
-            (activeTab === "ppl"
-              ? actionValue(row.actionRows || [], "S", actionOverrides) !== ""
-              : "children" in row && isPmlReadyForFlag(row as PmlRow))
-          }
-          onSaved={(updates) =>
-            setActionOverrides((current) => ({ ...current, ...updates }))
-          }
-        />
-      )}
-    </>
-  );
+                : activeTab === "ppl"
+                  ? ["T", "U", "V"]
+                  : ["W", "X", "Y"]
+            }
+            showPmlFlag={activeTab === "ppl" && !detail && !actionRecords}
+            disablePmlFlag={
+              activeTab === "ppl" &&
+              !detail &&
+              !actionRecords &&
+              (!petaAllEnteredForRow || Number(row.open) !== 0 || Number(row.draft) !== 0)
+            }
+            petaAllEntered={petaAllEnteredForRow}
+            overrides={actionOverrides}
+            kecamatan={row.kecamatan || ""}
+            allPplFlagged={
+              !!actionRecords ||
+              detail ||
+              (activeTab === "ppl"
+                ? actionValue(row.actionRows || [], "S", actionOverrides) !== ""
+                : "children" in row && isPmlReadyForFlag(row as PmlRow))
+            }
+            onSaved={(updates) =>
+              setActionOverrides((current) => ({ ...current, ...updates }))
+            }
+          />
+        )}
+      </>
+    );
+  };
   const renderTotalRow = <T extends Metrics>(
     rows: T[],
     label: string,
