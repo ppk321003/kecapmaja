@@ -124,9 +124,11 @@ interface HarianResumeRow {
   totalPetugas: number;
   jumlahAssignment: number;
   didataAwal: number;
+  draftAwal: number;
   nettoAwal: number;
   openPetugas: number;
   selesaiPetugas: number;
+  totalDraft: number;
   perubahanDidata: number;
   perubahanDraft: number;
   perubahanNetto: number;
@@ -149,7 +151,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
   const [searchTerm, setSearchTerm] = useState("");
   const [filterKecamatan, setFilterKecamatan] = useState<string>("");
   const [filterUnder, setFilterUnder] = useState<"" | "under" | "attention" | "good">("");
-  const [resumeSortBy, setResumeSortBy] = useState<"kecamatan" | "petugas" | "assignment" | "selesai" | "open" | "perubahanDidata" | "perubahanDraft" | "perubahanNetto">("open");
+  const [resumeSortBy, setResumeSortBy] = useState<"kecamatan" | "petugas" | "assignment" | "selesai" | "open" | "totalDraft" | "perubahanDidata" | "perubahanDraft" | "perubahanNetto">("open");
   const [resumeSortOrder, setResumeSortOrder] = useState<"asc" | "desc">("desc");
   const [sortBy, setSortBy] = useState<"nama_ppl" | "kecamatan" | "prelist_awal" | "jumlah_assignment" | "open" | "didata_awal" | "didata_akhir" | "perubahan_didata" | "draft_awal" | "draft_akhir" | "perubahan_draft" | "netto_awal" | "netto_akhir" | "perubahan_netto">("perubahan_netto");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -565,6 +567,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
           nettoAwal: 0,
           openPetugas: 0,
           selesaiPetugas: 0,
+          totalDraft: 0,
           perubahanDidata: 0,
           perubahanDraft: 0,
           perubahanNetto: 0,
@@ -577,6 +580,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         existing.nettoAwal += row.netto_awal;
         existing.openPetugas += row.open > 0 ? 1 : 0;
         existing.selesaiPetugas += row.open <= 0 ? 1 : 0;
+        existing.totalDraft += row.draft_akhir;
         existing.perubahanDidata += row.perubahan_didata;
         existing.perubahanDraft += row.perubahan_draft;
         existing.perubahanNetto += row.perubahan_netto;
@@ -591,6 +595,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
         assignment: (row) => row.jumlahAssignment,
         selesai: (row) => row.selesaiPetugas,
         open: (row) => row.totalOpen,
+        totalDraft: (row) => row.totalDraft,
         perubahanDidata: (row) => getChangePercentage(row.perubahanDidata, row.jumlahAssignment),
         perubahanDraft: (row) => getChangePercentage(row.perubahanDraft, row.jumlahAssignment),
         perubahanNetto: (row) => getChangePercentage(row.perubahanNetto, row.jumlahAssignment),
@@ -612,6 +617,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     nettoAwal: summary.nettoAwal + row.nettoAwal,
     openPetugas: summary.openPetugas + row.openPetugas,
     selesaiPetugas: summary.selesaiPetugas + row.selesaiPetugas,
+    totalDraft: summary.totalDraft + row.totalDraft,
     perubahanDidata: summary.perubahanDidata + row.perubahanDidata,
     perubahanDraft: summary.perubahanDraft + row.perubahanDraft,
     perubahanNetto: summary.perubahanNetto + row.perubahanNetto,
@@ -624,6 +630,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     nettoAwal: 0,
     openPetugas: 0,
     selesaiPetugas: 0,
+    totalDraft: 0,
     perubahanDidata: 0,
     perubahanDraft: 0,
     perubahanNetto: 0,
@@ -648,7 +655,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
     const resumeHeaders = [
       "No", "Kecamatan", "Total Petugas", "Jml Assignment", "Open > 0", "Open <= 0",
       "Perubahan Didata", "Perubahan Didata (%)", "Perubahan Draft", "Perubahan Draft (%)",
-      "Perubahan Netto", "Perubahan Netto (%)", "Total Open",
+      "Perubahan Netto", "Perubahan Netto (%)", "Total Draft", "Total Open",
     ];
     const resumeData = resumeRows.map((row, index) => [
       index + 1, row.kecamatan, row.totalPetugas, row.jumlahAssignment, row.openPetugas,
@@ -658,6 +665,7 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
       getChangePercentage(row.perubahanDraft, row.jumlahAssignment) / 100,
       row.perubahanNetto,
       getChangePercentage(row.perubahanNetto, row.jumlahAssignment) / 100,
+      row.totalDraft,
       row.totalOpen,
     ]);
     const metadata = [
@@ -757,16 +765,18 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
             Rekam ke Harian
           </button>
         )}
-        <button
-          type="button"
-          onClick={downloadExcel}
-          disabled={sortedPerubahan.length === 0}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-600 bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
-          title="Download analisis Harian ke Excel"
-        >
-          <Download className="h-4 w-4" />
-          Download Excel
-        </button>
+        {isPpk && (
+          <button
+            type="button"
+            onClick={downloadExcel}
+            disabled={sortedPerubahan.length === 0}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-600 bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
+            title="Download analisis Harian ke Excel"
+          >
+            <Download className="h-4 w-4" />
+            Download Excel
+          </button>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -1268,6 +1278,9 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                   <TableHead className="cursor-pointer text-right font-semibold hover:bg-slate-100" onClick={() => handleResumeSort("perubahanNetto")}>
                     Perubahan Netto {getResumeSortIndicator("perubahanNetto")}
                   </TableHead>
+                  <TableHead className="cursor-pointer text-right font-semibold text-yellow-700 hover:bg-yellow-50" onClick={() => handleResumeSort("totalDraft")}>
+                    Total Draft {getResumeSortIndicator("totalDraft")}
+                  </TableHead>
                   <TableHead className="cursor-pointer text-right font-semibold text-blue-700 hover:bg-blue-50" onClick={() => handleResumeSort("open")}>
                     Total Open {getResumeSortIndicator("open")}
                   </TableHead>
@@ -1302,6 +1315,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                         {formatChangePercentage(row.perubahanNetto, row.jumlahAssignment)}
                       </div>
                     </TableCell>
+                    <TableCell className="bg-yellow-50 text-right font-semibold text-yellow-700">
+                      <div>{row.totalDraft.toLocaleString("id-ID")}</div>
+                      <div className={`text-xs font-semibold ${getOpenPercentageClass(getOpenPercentage(row.totalDraft, row.jumlahAssignment))}`}>
+                        {formatOpenPercentage(row.totalDraft, row.jumlahAssignment)}
+                      </div>
+                    </TableCell>
                     <TableCell className="bg-blue-50 text-right font-bold text-blue-700">
                       <div>{row.totalOpen.toLocaleString("id-ID")}</div>
                       <div className={`text-xs font-semibold ${getOpenPercentageClass(getOpenPercentage(row.totalOpen, row.jumlahAssignment))}`}>
@@ -1334,6 +1353,12 @@ export default function HarianTabV2({ onRecordToHarian, isPpk = false, assignmen
                     <div>{formatChange(resumeTotals.perubahanNetto)}</div>
                     <div className={`text-xs ${getChangePercentageClass(getChangePercentage(resumeTotals.perubahanNetto, resumeTotals.jumlahAssignment))}`}>
                       {formatChangePercentage(resumeTotals.perubahanNetto, resumeTotals.jumlahAssignment)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right text-yellow-700">
+                    <div>{resumeTotals.totalDraft.toLocaleString("id-ID")}</div>
+                    <div className={`text-xs font-semibold ${getOpenPercentageClass(getOpenPercentage(resumeTotals.totalDraft, resumeTotals.jumlahAssignment))}`}>
+                      {formatOpenPercentage(resumeTotals.totalDraft, resumeTotals.jumlahAssignment)}
                     </div>
                   </TableCell>
                   <TableCell className="text-right text-blue-700">
