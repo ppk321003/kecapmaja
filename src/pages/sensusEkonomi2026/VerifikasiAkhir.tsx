@@ -1118,9 +1118,9 @@ export default function VerifikasiAkhir() {
       activeTab === "ppl" &&
       normalizedIdsls
         ? petaMatchedIds.has(normalizedIdsls)
-          ? { text: "Peta: sudah masuk", tone: "success" }
+          ? { text: "Peta dan PSLS: Sudah Diterima", tone: "success" }
           : petaMissingIds.has(normalizedIdsls)
-            ? { text: "Peta: belum masuk", tone: "warning" }
+            ? { text: "Peta dan PSLS: Belum Diterima", tone: "warning" }
             : null
         : null;
     const petaAllEnteredForRow =
