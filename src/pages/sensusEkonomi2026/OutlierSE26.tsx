@@ -430,19 +430,19 @@ export default function OutlierSE26() {
   }, [tkDibayarRawData, verifikasiData]);
 
   useEffect(() => {
-    if (isPmlUser && allowedKecamatan.length > 0) {
-      const currentAllowed =
-        kecamatanFilter === "all" ||
-        allowedKecamatan.some((value) => isSameKecamatan(value, kecamatanFilter));
-      if (!currentAllowed) setKecamatanFilter("all");
-    }
+    if (!isPmlUser || allowedKecamatan.length === 0) return;
+
+    const currentAllowed =
+      kecamatanFilter === "all" ||
+      allowedKecamatan.some((value) => isSameKecamatan(value, kecamatanFilter));
+    if (!currentAllowed) setKecamatanFilter("all");
   }, [isPmlUser, allowedKecamatan, kecamatanFilter]);
 
   // Filter rows
   const effectiveKecamatanFilter =
-    isPmlUser && allowedKecamatan.length > 0 && kecamatanFilter !== "all"
-      ? kecamatanFilter
-      : "all";
+    isPmlUser && allowedKecamatan.length > 0
+      ? (kecamatanFilter === "all" || allowedKecamatan.some((value) => isSameKecamatan(value, kecamatanFilter)) ? kecamatanFilter : "all")
+      : kecamatanFilter;
 
   const filteredRows = useMemo(() => {
     return outlierRows.filter((row) => {
@@ -725,6 +725,20 @@ export default function OutlierSE26() {
                 <option value="50">50/hal</option>
                 <option value="100">100/hal</option>
               </select>
+            </div>
+
+            <div className="mb-4 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 via-white to-sky-50 p-3 sm:p-4 shadow-sm">
+              {activeTab === "produksi" ? (
+                <p className="text-xs sm:text-sm leading-6 text-slate-800">
+                  <span className="font-bold text-violet-700">Produksi &lt; 1Juta ({filteredRows.length})</span>{" "}
+                  <span className="text-slate-700">— Outlier usaha non pertanian yang nilai produksinya berada di bawah Rp1.000.000, sehingga masuk kategori usaha dengan skala produksi sangat kecil dan berpotensi tidak mewakili aktivitas ekonomi yang sebenarnya. Data ini dicermati untuk melihat apakah usaha tersebut memang masih berjalan secara riil atau justru merupakan entitas yang belum berkembang secara optimal.</span>
+                </p>
+              ) : (
+                <p className="text-xs sm:text-sm leading-6 text-slate-800">
+                  <span className="font-bold text-sky-700">Tenaga Kerja dibayar ({filteredTkRows.length})</span>{" "}
+                  <span className="text-slate-700">— Outlier tenaga kerja yang hanya berjumlah 1 orang tetapi tetap tercatat menerima upah, sehingga berpotensi menunjukkan bahwa pemilik usaha juga berperan sebagai pekerja yang dibayar. Kondisi ini perlu ditinjau karena pemilik usaha tidak seharusnya masuk kategori tenaga kerja dibayar bila ia merupakan satu-satunya pengelola usaha yang juga menjalankan operasionalnya.</span>
+                </p>
+              )}
             </div>
 
             {loading ? (
