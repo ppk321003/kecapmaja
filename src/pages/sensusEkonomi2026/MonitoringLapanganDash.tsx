@@ -5403,13 +5403,14 @@ export default function MonitoringLapanganDash() {
                           content={
                             chartMode === "legacy" ? (
                               <ChartRatioTooltip
-                                labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                                labelPrefix={chartNonPertanianDivisor === "se2016" || chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                                 pctKey="persenNonPertanianAktif"
-                                pctLabel={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
+                                pctLabel={`Non Pertanian / ${nonPertanianDivisorLabel}`}
                                 valueKey="nonPertanian"
                                 valueLabel="Jumlah Usaha Non Pertanian"
-                                targetKey={chartNonPertanianDivisor === "wilkerstat" ? "usahaWilkerstat" : "prelistUsaha"}
-                                targetLabel={chartNonPertanianDivisor === "wilkerstat" ? "Target (Usaha Wilkerstat)" : "Target (Prelist Usaha)"}
+                                targetKey={chartNonPertanianDivisor === "se2016" ? "se2016" : chartNonPertanianDivisor === "wilkerstat" ? "usahaWilkerstat" : "prelistUsaha"}
+                                targetLabel={`Target (${nonPertanianDivisorLabel})`}
+
                                 fontSize={chartFontSize}
                               />
                             ) : (
