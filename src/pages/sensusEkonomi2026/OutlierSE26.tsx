@@ -74,6 +74,7 @@ interface TkDibayarRow {
   desa: string;
   alamat: string;
   nama_usaha: string;
+  footer_text: string;
   link: string;
   tindak_lanjut: string;
   catatan: string;
@@ -205,8 +206,8 @@ const parseTkDibayarData = (rows: string[][] | any): TkDibayarRow[] => {
   const kecIdx = findCol("kecamatan") >= 0 ? findCol("kecamatan") : 1;
   const desaIdx = findCol("desa") >= 0 ? findCol("desa") : 2;
   const alamatIdx = findCol("alamat") >= 0 ? findCol("alamat") : 3;
-  const usahaIdx = findCol("nama usaha") >= 0 ? findCol("nama usaha") : 6;
-  const linkIdx = findCol("link") >= 0 ? findCol("link") : 13;
+  const usahaIdx = 6; // kolom G = nama_usaha
+  const linkIdx = 13; // kolom N = link/assignment_id
   const tindakLanjutIdx = findCol("tindak lanjut") >= 0 ? findCol("tindak lanjut") : 14;
   const catatanIdx = findCol("catatan") >= 0 ? findCol("catatan") : 15;
 
@@ -218,6 +219,7 @@ const parseTkDibayarData = (rows: string[][] | any): TkDibayarRow[] => {
     const desa = String(row[desaIdx] || "-").trim();
     const alamat = String(row[alamatIdx] || "-").trim();
     const nama_usaha = String(row[usahaIdx] || "-").trim();
+    const footer_text = String(row[0] || "").trim();
     const link = String(row[linkIdx] || "").trim();
     const tindak_lanjut = String(row[tindakLanjutIdx] || "").trim();
     const catatan = String(row[catatanIdx] || "-").trim();
@@ -230,6 +232,7 @@ const parseTkDibayarData = (rows: string[][] | any): TkDibayarRow[] => {
       desa,
       alamat,
       nama_usaha,
+      footer_text,
       link,
       tindak_lanjut,
       catatan,
@@ -902,7 +905,7 @@ export default function OutlierSE26() {
                         {productionFooterText && (
                           <TableRow className="bg-slate-50">
                             <TableCell colSpan={10} className="text-left text-xs sm:text-sm text-slate-600 px-2 py-2">
-                              {productionFooterText}
+                              Footer (kolom A): {productionFooterText}
                             </TableCell>
                           </TableRow>
                         )}
@@ -963,7 +966,10 @@ export default function OutlierSE26() {
                               <div className="text-[10px] text-slate-500">{row.desa || "-"}</div>
                             </TableCell>
                             <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.alamat || "-"}</TableCell>
-                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.nama_usaha || "-"}</TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">
+                              <div>{row.nama_usaha || "-"}</div>
+                              {row.footer_text && <div className="mt-1 text-[10px] text-slate-500">{row.footer_text}</div>}
+                            </TableCell>
                             <TableCell className="text-center px-1 sm:px-2 py-2 sm:py-3 align-top">
                               {row.link ? <a href={row.link} target="_blank" rel="noreferrer" title="Buka link" className="inline-flex text-sky-600 hover:text-sky-800"><ExternalLink className="h-4 w-4" /></a> : "-"}
                             </TableCell>
@@ -998,13 +1004,6 @@ export default function OutlierSE26() {
                         <TableRow className="bg-slate-50">
                           <TableCell colSpan={9} className="px-2 py-2" />
                         </TableRow>
-                        {tkFooterText && (
-                          <TableRow className="bg-slate-50">
-                            <TableCell colSpan={9} className="text-left text-xs sm:text-sm text-slate-600 px-2 py-2">
-                              {tkFooterText}
-                            </TableCell>
-                          </TableRow>
-                        )}
                       </TableFooter>
                     </Table>
                   </div>
