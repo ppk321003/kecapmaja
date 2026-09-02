@@ -4680,24 +4680,35 @@ export default function MonitoringLapanganDash() {
   }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats, chartProporsiSortBy, chartMode]);
 
   const legacyWilayahProporsiNonPertanianChartData = useMemo(() => {
+    const isSe2016 = chartNonPertanianDivisor === "se2016";
     const rows =
-      chartKecamatanFilter === "all"
+      chartKecamatanFilter === "all" || isSe2016
         ? proporsiKecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
         : proporsiDesaStats
             .filter((item) => item.kecamatan === chartKecamatanFilter)
             .map((item) => ({ label: item.desa, ...item }));
 
-    const withValue = rows.map((item) => ({
-      ...item,
-      persenNonPertanianAktif:
-        chartNonPertanianDivisor === "wilkerstat" ? item.persenNonPertanianWilkerstat : item.persenNonPertanianPrelist,
-    }));
+    const withValue = rows.map((item) => {
+      const se2016 = se2016ByKecamatan.get(String(item.kecamatan || '').trim().toUpperCase()) || 0;
+      const persenSe2016 = se2016 > 0 ? parseFloat(((item.nonPertanian / se2016) * 100).toFixed(2)) : 0;
+      return {
+        ...item,
+        se2016,
+        persenNonPertanianSe2016: persenSe2016,
+        persenNonPertanianAktif: isSe2016
+          ? persenSe2016
+          : chartNonPertanianDivisor === "wilkerstat"
+            ? item.persenNonPertanianWilkerstat
+            : item.persenNonPertanianPrelist,
+      };
+    });
 
     return withValue.sort((a, b) =>
       chartSortOrder === "asc"
         ? a.persenNonPertanianAktif - b.persenNonPertanianAktif
         : b.persenNonPertanianAktif - a.persenNonPertanianAktif
     );
+
   }, [chartKecamatanFilter, chartSortOrder, chartNonPertanianDivisor, proporsiKecamatanStats, proporsiDesaStats]);
 
   const wilayahProporsiNonPertanianChartData = chartMode === "legacy" ? legacyWilayahProporsiNonPertanianChartData : combinedWilayahProporsiNonPertanianChartData;
