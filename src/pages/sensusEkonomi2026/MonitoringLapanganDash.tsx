@@ -4711,6 +4711,14 @@ export default function MonitoringLapanganDash() {
 
   }, [chartKecamatanFilter, chartSortOrder, chartNonPertanianDivisor, proporsiKecamatanStats, proporsiDesaStats, se2016ByKecamatan]);
 
+  const nonPertanianDivisorLabel =
+    chartNonPertanianDivisor === "se2016"
+      ? "SE2016"
+      : chartNonPertanianDivisor === "wilkerstat"
+        ? "Usaha Wilkerstat"
+        : "Prelist Usaha";
+
+
   const wilayahProporsiNonPertanianChartData = chartMode === "legacy" ? legacyWilayahProporsiNonPertanianChartData : combinedWilayahProporsiNonPertanianChartData;
 
   const wilayahProporsiPertanianChartData = useMemo(() => {
