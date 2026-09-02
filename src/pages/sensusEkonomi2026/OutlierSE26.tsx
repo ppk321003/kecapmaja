@@ -903,13 +903,6 @@ export default function OutlierSE26() {
                             Jumlah Nama Usaha = {sortedRows.length} terindikasi sebagai outlier
                           </TableCell>
                         </TableRow>
-                        {productionFooterText && (
-                          <TableRow className="bg-slate-50">
-                            <TableCell colSpan={10} className="text-left text-xs sm:text-sm text-slate-600 px-2 py-2">
-                              Footer (kolom A): {productionFooterText}
-                            </TableCell>
-                          </TableRow>
-                        )}
                       </TableFooter>
                     </Table>
                   </div>
