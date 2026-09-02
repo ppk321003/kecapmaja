@@ -424,12 +424,15 @@ serve(async (req: Request) => {
     if (operation === 'read') {
       console.log(`Reading range: ${range || 'Sheet1'}`);
       const encodedRange = encodeURIComponent(range || 'Sheet1');
+      const renderOption = (body as any)?.valueRenderOption;
+      const readQuery = renderOption ? `?valueRenderOption=${encodeURIComponent(renderOption)}` : '';
       const data = await fetchGoogleSheetsWithRetry(
-        `${baseUrl}/values/${encodedRange}`,
+        `${baseUrl}/values/${encodedRange}${readQuery}`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
         `Read ${range || 'Sheet1'}`,
         3
       );
+
       const text = JSON.stringify(data);
       console.log(`Read response for ${range || 'Sheet1'}: ${text.length} bytes`);
       return new Response(text, {

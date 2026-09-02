@@ -4269,7 +4269,51 @@ export default function MonitoringLapanganDash() {
   const [chartFontSize, setChartFontSize] = useState<number>(12);
   const [chartMode, setChartMode] = useState<"legacy" | "combined">("legacy");
   const [chartRespondenDivisor, setChartRespondenDivisor] = useState<"prelist" | "wilkerstat" | "netto" | "assignment">("assignment");
-  const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat">("prelist");
+  const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat" | "se2016">("se2016");
+  const [se2016ByKecamatan, setSe2016ByKecamatan] = useState<Map<string, number>>(new Map());
+
+  // SE2016 divisor data (kecamatan level only)
+  useEffect(() => {
+    let cancelled = false;
+    const loadSe2016 = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('google-sheets', {
+          body: {
+            spreadsheetId: '1lByoV26AJ5tgmNz2F43RxIGeXhH9dLQOnqPSxKWoqHk',
+            operation: 'read',
+            range: 'Sheet1!A1:B100',
+            valueRenderOption: 'UNFORMATTED_VALUE',
+          },
+        });
+        if (error) throw error;
+        const values: any[][] = (data as any)?.values || [];
+        const map = new Map<string, number>();
+        values.slice(1).forEach((row) => {
+          const name = String(row?.[0] ?? '').trim().toUpperCase();
+          if (!name) return;
+          const raw = row?.[1];
+          const num = typeof raw === 'number' ? raw : parseNumericValue(String(raw ?? '').replace(/\./g, '').replace(/,/g, '.'));
+          if (!Number.isFinite(num)) return;
+          map.set(name, num);
+        });
+        if (!cancelled) setSe2016ByKecamatan(map);
+      } catch (e) {
+        console.error('[SE2016] gagal memuat data pembagi SE2016:', e);
+      }
+    };
+    loadSe2016();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // SE2016 hanya tersedia di level kecamatan
+  useEffect(() => {
+    if (chartNonPertanianDivisor === "se2016" && chartKecamatanFilter !== "all") {
+      setChartKecamatanFilter("all");
+    }
+  }, [chartNonPertanianDivisor, chartKecamatanFilter]);
+
   const [chartProporsiSortBy, setChartProporsiSortBy] = useState<"prelist" | "wilkerstat">("prelist");
 
   useEffect(() => {
@@ -4636,25 +4680,44 @@ export default function MonitoringLapanganDash() {
   }, [chartKecamatanFilter, chartSortOrder, proporsiKecamatanStats, proporsiDesaStats, chartProporsiSortBy, chartMode]);
 
   const legacyWilayahProporsiNonPertanianChartData = useMemo(() => {
+    const isSe2016 = chartNonPertanianDivisor === "se2016";
     const rows =
-      chartKecamatanFilter === "all"
+      chartKecamatanFilter === "all" || isSe2016
         ? proporsiKecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
         : proporsiDesaStats
             .filter((item) => item.kecamatan === chartKecamatanFilter)
             .map((item) => ({ label: item.desa, ...item }));
 
-    const withValue = rows.map((item) => ({
-      ...item,
-      persenNonPertanianAktif:
-        chartNonPertanianDivisor === "wilkerstat" ? item.persenNonPertanianWilkerstat : item.persenNonPertanianPrelist,
-    }));
+    const withValue = rows.map((item) => {
+      const se2016 = se2016ByKecamatan.get(String(item.kecamatan || '').trim().toUpperCase()) || 0;
+      const persenSe2016 = se2016 > 0 ? parseFloat(((item.nonPertanian / se2016) * 100).toFixed(2)) : 0;
+      return {
+        ...item,
+        se2016,
+        persenNonPertanianSe2016: persenSe2016,
+        persenNonPertanianAktif: isSe2016
+          ? persenSe2016
+          : chartNonPertanianDivisor === "wilkerstat"
+            ? item.persenNonPertanianWilkerstat
+            : item.persenNonPertanianPrelist,
+      };
+    });
 
     return withValue.sort((a, b) =>
       chartSortOrder === "asc"
         ? a.persenNonPertanianAktif - b.persenNonPertanianAktif
         : b.persenNonPertanianAktif - a.persenNonPertanianAktif
     );
-  }, [chartKecamatanFilter, chartSortOrder, chartNonPertanianDivisor, proporsiKecamatanStats, proporsiDesaStats]);
+
+  }, [chartKecamatanFilter, chartSortOrder, chartNonPertanianDivisor, proporsiKecamatanStats, proporsiDesaStats, se2016ByKecamatan]);
+
+  const nonPertanianDivisorLabel =
+    chartNonPertanianDivisor === "se2016"
+      ? "SE2016"
+      : chartNonPertanianDivisor === "wilkerstat"
+        ? "Usaha Wilkerstat"
+        : "Prelist Usaha";
+
 
   const wilayahProporsiNonPertanianChartData = chartMode === "legacy" ? legacyWilayahProporsiNonPertanianChartData : combinedWilayahProporsiNonPertanianChartData;
 
@@ -5214,13 +5277,20 @@ export default function MonitoringLapanganDash() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                       <CardTitle className="text-base">
-                        Persentase Usaha Non Pertanian terhadap Prelist Usaha dan Usaha Wilkerstat per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                        {chartMode === "legacy"
+                          ? `Persentase Usaha Non Pertanian terhadap ${nonPertanianDivisorLabel} per ${chartNonPertanianDivisor === "se2016" || chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}`
+                          : `Persentase Usaha Non Pertanian terhadap Prelist Usaha dan Usaha Wilkerstat per ${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}`}
                       </CardTitle>
                       <CardDescription>
-                        Jumlah usaha non pertanian dibandingkan dengan Prelist Usaha dan Usaha Wilkerstat
-                        {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
+                        {chartMode === "legacy"
+                          ? `Jumlah usaha non pertanian dibandingkan dengan ${nonPertanianDivisorLabel}`
+                          : "Jumlah usaha non pertanian dibandingkan dengan Prelist Usaha dan Usaha Wilkerstat"}
+                        {chartMode === "legacy" && chartNonPertanianDivisor === "se2016"
+                          ? " per Kecamatan"
+                          : chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
                         {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
                       </CardDescription>
+
                     </div>
                     <div className="flex flex-wrap items-end gap-3">
                       <div className="flex flex-col gap-1">
@@ -5241,9 +5311,10 @@ export default function MonitoringLapanganDash() {
                           <select
                             id="chart-divisor-non"
                             value={chartNonPertanianDivisor}
-                            onChange={(e) => setChartNonPertanianDivisor(e.target.value as "prelist" | "wilkerstat")}
+                            onChange={(e) => setChartNonPertanianDivisor(e.target.value as "prelist" | "wilkerstat" | "se2016")}
                             className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
                           >
+                            <option value="se2016">SE2016</option>
                             <option value="prelist">Prelist Usaha</option>
                             <option value="wilkerstat">Usaha Wilkerstat</option>
                           </select>
@@ -5255,7 +5326,8 @@ export default function MonitoringLapanganDash() {
                           id="chart-kecamatan-non"
                           value={chartKecamatanFilter}
                           onChange={(e) => setChartKecamatanFilter(e.target.value)}
-                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                          disabled={chartMode === "legacy" && chartNonPertanianDivisor === "se2016"}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                         >
                           <option value="all">Semua Kecamatan</option>
                           {chartKecamatanOptions.map((kecamatan) => (
@@ -5263,6 +5335,7 @@ export default function MonitoringLapanganDash() {
                           ))}
                         </select>
                       </div>
+
                       {chartMode === "combined" && (
                         <>
                           <div className="flex flex-col gap-1">
@@ -5330,13 +5403,14 @@ export default function MonitoringLapanganDash() {
                           content={
                             chartMode === "legacy" ? (
                               <ChartRatioTooltip
-                                labelPrefix={chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                                labelPrefix={chartNonPertanianDivisor === "se2016" || chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
                                 pctKey="persenNonPertanianAktif"
-                                pctLabel={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
+                                pctLabel={`Non Pertanian / ${nonPertanianDivisorLabel}`}
                                 valueKey="nonPertanian"
                                 valueLabel="Jumlah Usaha Non Pertanian"
-                                targetKey={chartNonPertanianDivisor === "wilkerstat" ? "usahaWilkerstat" : "prelistUsaha"}
-                                targetLabel={chartNonPertanianDivisor === "wilkerstat" ? "Target (Usaha Wilkerstat)" : "Target (Prelist Usaha)"}
+                                targetKey={chartNonPertanianDivisor === "se2016" ? "se2016" : chartNonPertanianDivisor === "wilkerstat" ? "usahaWilkerstat" : "prelistUsaha"}
+                                targetLabel={`Target (${nonPertanianDivisorLabel})`}
+
                                 fontSize={chartFontSize}
                               />
                             ) : (
@@ -5379,7 +5453,7 @@ export default function MonitoringLapanganDash() {
                             <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                             <Bar
                               dataKey="persenNonPertanianAktif"
-                              name={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
+                              name={`Non Pertanian / ${nonPertanianDivisorLabel}`}
                               radius={[8, 8, 0, 0]}
                               label={{
                                 position: "top",
