@@ -80,7 +80,14 @@ const METRIC_COLUMNS = [
   ["pertanian", "Pertanian"],
 ] as const;
 type MetricKey = (typeof METRIC_COLUMNS)[number][0];
-type SortKey = "nama" | "kecamatan" | MetricKey;
+type SortKey =
+  | "nama"
+  | "kecamatan"
+  | MetricKey
+  | "flagPml"
+  | "pjKec"
+  | "ketuaSe2026"
+  | "ppk";
 type Direction = "asc" | "desc";
 
 type Metrics = Record<MetricKey, number>;
@@ -222,15 +229,59 @@ const addMetricObject = (target: Metrics, source: Metrics) => {
   });
 };
 
-const compareValues = (a: any, b: any, key: SortKey, direction: Direction) => {
-  const aValue =
-    key === "nama" || key === "kecamatan"
+const getActionSortValue = (
+  row: any,
+  key: SortKey,
+  overrides: Record<string, string>,
+): string => {
+  const actionRows = Array.isArray(row?.actionRows) ? row.actionRows : [];
+  const actionMap: Record<string, ActionColumn> = {
+    flagPml: "S",
+    pjKec: row?.kecamatan ? "T" : "W",
+    ketuaSe2026: row?.kecamatan ? "U" : "X",
+    ppk: row?.kecamatan ? "V" : "Y",
+  };
+
+  const column = actionMap[key];
+  if (!column) return "";
+
+  const isPmlTabLike = !!row?.children || (row?.kecamatan && !Array.isArray(row?.details));
+  const mappedColumn: ActionColumn =
+    key === "pjKec"
+      ? (isPmlTabLike ? "W" : "T")
+      : key === "ketuaSe2026"
+        ? (isPmlTabLike ? "X" : "U")
+        : key === "ppk"
+          ? (isPmlTabLike ? "Y" : "V")
+          : column;
+
+  return actionValue(actionRows, mappedColumn, overrides);
+};
+
+const compareValues = (
+  a: any,
+  b: any,
+  key: SortKey,
+  direction: Direction,
+  overrides: Record<string, string> = {},
+) => {
+  const isActionKey =
+    key === "flagPml" ||
+    key === "pjKec" ||
+    key === "ketuaSe2026" ||
+    key === "ppk";
+
+  const aValue = isActionKey
+    ? getActionSortValue(a, key, overrides)
+    : key === "nama" || key === "kecamatan"
       ? String(a[key]).toLowerCase()
       : Number(a[key]);
-  const bValue =
-    key === "nama" || key === "kecamatan"
+  const bValue = isActionKey
+    ? getActionSortValue(b, key, overrides)
+    : key === "nama" || key === "kecamatan"
       ? String(b[key]).toLowerCase()
       : Number(b[key]);
+
   const result =
     typeof aValue === "number" && typeof bValue === "number"
       ? aValue - bValue
@@ -824,14 +875,14 @@ export default function VerifikasiAkhir() {
     rows: T[],
     key: SortKey,
     direction: Direction,
-  ) => [...rows].sort((a, b) => compareValues(a, b, key, direction));
+  ) => [...rows].sort((a, b) => compareValues(a, b, key, direction, actionOverrides));
   const filteredPpl = useMemo(
     () => sortRows(filterRows(pplRows), pplSort, pplDirection),
-    [pplRows, search, kecamatan, pplSort, pplDirection],
+    [pplRows, search, kecamatan, pplSort, pplDirection, actionOverrides],
   );
   const filteredPml = useMemo(
     () => sortRows(filterRows(pmlRows), pmlSort, pmlDirection),
-    [pmlRows, search, kecamatan, pmlSort, pmlDirection],
+    [pmlRows, search, kecamatan, pmlSort, pmlDirection, actionOverrides],
   );
   const isPmlReadyForFlag = (row: PmlRow) =>
     row.children.length > 0 &&
@@ -1424,18 +1475,38 @@ export default function VerifikasiAkhir() {
                               />
                             )),
                           )}
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
-                            Flag PML
-                          </TableHead>
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
-                            PJ Kec
-                          </TableHead>
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
-                            Ketua SE2026
-                          </TableHead>
-                          <TableHead className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-violet-900">
-                            PPK
-                          </TableHead>
+                          <SortHead
+                            label="Flag PML"
+                            active={pplSort === "flagPml"}
+                            direction={pplDirection}
+                            onClick={() => toggleSort("ppl", "flagPml")}
+                            numeric={false}
+                            className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900"
+                          />
+                          <SortHead
+                            label="PJ Kec"
+                            active={pplSort === "pjKec"}
+                            direction={pplDirection}
+                            onClick={() => toggleSort("ppl", "pjKec")}
+                            numeric={false}
+                            className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900"
+                          />
+                          <SortHead
+                            label="Ketua SE2026"
+                            active={pplSort === "ketuaSe2026"}
+                            direction={pplDirection}
+                            onClick={() => toggleSort("ppl", "ketuaSe2026")}
+                            numeric={false}
+                            className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900"
+                          />
+                          <SortHead
+                            label="PPK"
+                            active={pplSort === "ppk"}
+                            direction={pplDirection}
+                            onClick={() => toggleSort("ppl", "ppk")}
+                            numeric={false}
+                            className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-violet-900"
+                          />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1569,15 +1640,30 @@ export default function VerifikasiAkhir() {
                               />
                             )),
                           )}
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
-                            PJ Kec
-                          </TableHead>
-                          <TableHead className="whitespace-normal border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900">
-                            Ketua SE2026
-                          </TableHead>
-                          <TableHead className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-violet-900">
-                            PPK
-                          </TableHead>
+                          <SortHead
+                            label="PJ Kec"
+                            active={pmlSort === "pjKec"}
+                            direction={pmlDirection}
+                            onClick={() => toggleSort("pml", "pjKec")}
+                            numeric={false}
+                            className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900"
+                          />
+                          <SortHead
+                            label="Ketua SE2026"
+                            active={pmlSort === "ketuaSe2026"}
+                            direction={pmlDirection}
+                            onClick={() => toggleSort("pml", "ketuaSe2026")}
+                            numeric={false}
+                            className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold leading-tight text-violet-900"
+                          />
+                          <SortHead
+                            label="PPK"
+                            active={pmlSort === "ppk"}
+                            direction={pmlDirection}
+                            onClick={() => toggleSort("pml", "ppk")}
+                            numeric={false}
+                            className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-violet-900"
+                          />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
