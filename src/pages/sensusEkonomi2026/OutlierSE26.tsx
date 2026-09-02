@@ -45,7 +45,7 @@ const TK_DIBAYAR_SHEET = "TK-DIBAYAR-1";
 const VERIFIKASI_SPREADSHEET_ID = "1x9P3MlkJySQI9FK6mV3maik3qMnUIBW8IKwWPudAA2Y";
 
 // Data types
-type SortKey = "idsls" | "nama_ppl" | "nama_pml" | "kecamatan" | "nama_usaha" | "nama_komersial" | "pendapatan" | "pengeluaran";
+type SortKey = "idsls" | "nama_ppl" | "nama_pml" | "kecamatan" | "nama_usaha" | "nama_komersial" | "alamat" | "pendapatan" | "pengeluaran";
 type Direction = "asc" | "desc";
 
 interface OutlierRow {
@@ -54,6 +54,7 @@ interface OutlierRow {
   nama_pml: string;
   kecamatan: string;
   desa: string;
+  alamat: string;
   nama_usaha: string;
   nama_komersial: string;
   pendapatan: number;
@@ -137,6 +138,7 @@ const parseOutlierData = (rows: string[][] | any): OutlierRow[] => {
   const pmlIdx = 17;
   const kecIdx = findCol("kecamatan") >= 0 ? findCol("kecamatan") : 3;
   const desaIdx = findCol("desa") >= 0 ? findCol("desa") : 4;
+  const alamatIdx = findCol("alamat") >= 0 ? findCol("alamat") : 4;
   const usahaIdx = 6;
   const komersialIdx = 7;
   const pendapatanIdx = 9;
@@ -156,6 +158,7 @@ const parseOutlierData = (rows: string[][] | any): OutlierRow[] => {
     const nama_pml = String(row[pmlIdx] || "-").trim();
     const kecamatan = String(row[kecIdx] || "-").trim();
     const desa = String(row[desaIdx] || "-").trim();
+    const alamat = String(row[alamatIdx] || "-").trim();
     const nama_usaha = String(row[usahaIdx] || "-").trim();
     const nama_komersial = String(row[komersialIdx] || "-").trim();
     const pendapatan = parseFloat(String(row[pendapatanIdx] || "0").replace(/[^0-9.-]/g, "")) || 0;
@@ -170,6 +173,7 @@ const parseOutlierData = (rows: string[][] | any): OutlierRow[] => {
       nama_pml,
       kecamatan,
       desa,
+      alamat,
       nama_usaha,
       nama_komersial,
       pendapatan,
@@ -242,11 +246,11 @@ const compareValues = (
   direction: Direction
 ): number => {
   const aVal =
-    key === "idsls" || key === "nama_ppl" || key === "nama_pml" || key === "kecamatan"
+    key === "idsls" || key === "nama_ppl" || key === "nama_pml" || key === "kecamatan" || key === "alamat"
       ? String(a[key]).toLowerCase()
       : Number(a[key]);
   const bVal =
-    key === "idsls" || key === "nama_ppl" || key === "nama_pml" || key === "kecamatan"
+    key === "idsls" || key === "nama_ppl" || key === "nama_pml" || key === "kecamatan" || key === "alamat"
       ? String(b[key]).toLowerCase()
       : Number(b[key]);
 
@@ -540,11 +544,12 @@ export default function OutlierSE26() {
   const downloadExcel = () => {
     const headers = [
       "No.",
+      "Link",
       "Kecamatan",
       "Nama Usaha",
+      "Alamat",
       "Pendapatan",
       "Pengeluaran",
-      "Link",
       "Tindak Lanjut",
       "Catatan",
       "Nama PPL",
@@ -553,11 +558,12 @@ export default function OutlierSE26() {
 
     const rowsForExport = sortedRows.map((row, index) => [
       index + 1,
+      row.link,
       `${row.kecamatan}\n${row.desa}`,
       row.nama_usaha,
+      row.alamat,
       row.pendapatan,
       row.pengeluaran,
-      row.link,
       row.tindak_lanjut,
       row.catatan,
       row.nama_ppl,
@@ -569,15 +575,17 @@ export default function OutlierSE26() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Outlier Produksi");
 
     worksheet["!cols"] = [
-      { wch: 15 },
+      { wch: 10 },
       { wch: 20 },
       { wch: 20 },
-      { wch: 15 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 15 },
-      { wch: 15 },
       { wch: 25 },
+      { wch: 30 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 20 },
     ];
 
     XLSX.writeFile(
@@ -780,6 +788,13 @@ export default function OutlierSE26() {
                             onClick={() => toggleSort("nama_usaha")}
                             numeric={false}
                           />
+                          <SortHead
+                            label="Alamat"
+                            active={sortKey === "alamat"}
+                            direction={sortDir}
+                            onClick={() => toggleSort("alamat")}
+                            numeric={false}
+                          />
                           <SortHead label="Pendapatan" active={sortKey === "pendapatan"} direction={sortDir} onClick={() => toggleSort("pendapatan")} />
                           <SortHead label="Pengeluaran" active={sortKey === "pengeluaran"} direction={sortDir} onClick={() => toggleSort("pengeluaran")} />
                           <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
@@ -812,6 +827,9 @@ export default function OutlierSE26() {
                             <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
                               <div>{row.nama_usaha}</div>
                               <div className="text-[10px] text-slate-500">{row.nama_komersial || "-"}</div>
+                            </TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                              {row.alamat || "-"}
                             </TableCell>
                             <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
                               {formatNumber(row.pendapatan)}
