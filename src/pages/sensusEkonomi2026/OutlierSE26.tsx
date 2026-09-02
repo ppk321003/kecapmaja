@@ -695,10 +695,10 @@ export default function OutlierSE26() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="mb-4 sm:mb-5 flex w-full max-w-2xl overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-1 text-xs sm:text-sm [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               <TabsTrigger value="produksi" className="whitespace-nowrap">
-                Produksi &lt; 1Juta ({filteredRows.length})
+                Produksi &lt; 1Juta
               </TabsTrigger>
               <TabsTrigger value="tk-dibayar" className="whitespace-nowrap">
-                Tenaga Kerja dibayar ({filteredTkRows.length})
+                Tenaga Kerja dibayar
               </TabsTrigger>
             </TabsList>
 
@@ -763,13 +763,15 @@ export default function OutlierSE26() {
             <div className="mb-4 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 via-white to-sky-50 p-3 sm:p-4 shadow-sm">
               {activeTab === "produksi" ? (
                 <p className="text-xs sm:text-sm leading-6 text-slate-800">
-                  <span className="font-bold text-violet-700">Produksi &lt; 1Juta ({filteredRows.length})</span>{" "}
+                  <span className="font-bold text-violet-700">Produksi &lt; 1Juta</span>{" "}
                   <span className="text-slate-700">— Outlier usaha non pertanian yang nilai produksinya berada di bawah Rp1.000.000, sehingga masuk kategori usaha dengan skala produksi sangat kecil dan berpotensi tidak mewakili aktivitas ekonomi yang sebenarnya. Data ini dicermati untuk melihat apakah usaha tersebut memang masih berjalan secara riil atau justru merupakan entitas yang belum berkembang secara optimal.</span>
+                  <span className="ml-2 font-semibold text-violet-700">{filteredRows.length} record</span>
                 </p>
               ) : (
                 <p className="text-xs sm:text-sm leading-6 text-slate-800">
-                  <span className="font-bold text-sky-700">Tenaga Kerja dibayar ({filteredTkRows.length})</span>{" "}
+                  <span className="font-bold text-sky-700">Tenaga Kerja dibayar</span>{" "}
                   <span className="text-slate-700">— Outlier tenaga kerja yang hanya berjumlah 1 orang tetapi tetap tercatat menerima upah, sehingga berpotensi menunjukkan bahwa pemilik usaha juga berperan sebagai pekerja yang dibayar. Kondisi ini perlu ditinjau karena pemilik usaha tidak seharusnya masuk kategori tenaga kerja dibayar bila ia merupakan satu-satunya pengelola usaha yang juga menjalankan operasionalnya.</span>
+                  <span className="ml-2 font-semibold text-sky-700">{filteredTkRows.length} record</span>
                 </p>
               )}
             </div>
