@@ -4709,7 +4709,7 @@ export default function MonitoringLapanganDash() {
         : b.persenNonPertanianAktif - a.persenNonPertanianAktif
     );
 
-  }, [chartKecamatanFilter, chartSortOrder, chartNonPertanianDivisor, proporsiKecamatanStats, proporsiDesaStats]);
+  }, [chartKecamatanFilter, chartSortOrder, chartNonPertanianDivisor, proporsiKecamatanStats, proporsiDesaStats, se2016ByKecamatan]);
 
   const wilayahProporsiNonPertanianChartData = chartMode === "legacy" ? legacyWilayahProporsiNonPertanianChartData : combinedWilayahProporsiNonPertanianChartData;
 
