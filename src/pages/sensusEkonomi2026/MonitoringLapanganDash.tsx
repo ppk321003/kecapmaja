@@ -5311,9 +5311,10 @@ export default function MonitoringLapanganDash() {
                           <select
                             id="chart-divisor-non"
                             value={chartNonPertanianDivisor}
-                            onChange={(e) => setChartNonPertanianDivisor(e.target.value as "prelist" | "wilkerstat")}
+                            onChange={(e) => setChartNonPertanianDivisor(e.target.value as "prelist" | "wilkerstat" | "se2016")}
                             className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
                           >
+                            <option value="se2016">SE2016</option>
                             <option value="prelist">Prelist Usaha</option>
                             <option value="wilkerstat">Usaha Wilkerstat</option>
                           </select>
@@ -5325,7 +5326,8 @@ export default function MonitoringLapanganDash() {
                           id="chart-kecamatan-non"
                           value={chartKecamatanFilter}
                           onChange={(e) => setChartKecamatanFilter(e.target.value)}
-                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"
+                          disabled={chartMode === "legacy" && chartNonPertanianDivisor === "se2016"}
+                          className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                         >
                           <option value="all">Semua Kecamatan</option>
                           {chartKecamatanOptions.map((kecamatan) => (
@@ -5333,6 +5335,7 @@ export default function MonitoringLapanganDash() {
                           ))}
                         </select>
                       </div>
+
                       {chartMode === "combined" && (
                         <>
                           <div className="flex flex-col gap-1">
