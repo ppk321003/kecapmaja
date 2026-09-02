@@ -448,6 +448,28 @@ export default function OutlierSE26() {
       ? (kecamatanFilter === "all" || allowedKecamatan.some((value) => isSameKecamatan(value, kecamatanFilter)) ? kecamatanFilter : "all")
       : kecamatanFilter;
 
+  const getFooterTextFromColumnA = (sheetData: any[] | null | undefined) => {
+    if (!Array.isArray(sheetData) || sheetData.length <= 1) return "";
+
+    for (const row of sheetData.slice(1)) {
+      if (Array.isArray(row)) {
+        const value = String(row[0] ?? "").trim();
+        if (value) return value;
+      }
+
+      if (row && typeof row === "object") {
+        const rawRow = Array.isArray(row.__rawRow) ? row.__rawRow : [];
+        const value = String(rawRow[0] ?? "").trim();
+        if (value) return value;
+      }
+    }
+
+    return "";
+  };
+
+  const productionFooterText = useMemo(() => getFooterTextFromColumnA(rawData), [rawData]);
+  const tkFooterText = useMemo(() => getFooterTextFromColumnA(tkDibayarRawData), [tkDibayarRawData]);
+
   const filteredRows = useMemo(() => {
     return outlierRows.filter((row) => {
       const needle = search.toLowerCase();
@@ -782,17 +804,17 @@ export default function OutlierSE26() {
                             numeric={false}
                           />
                           <SortHead
-                            label="Nama Usaha"
-                            active={sortKey === "nama_usaha"}
-                            direction={sortDir}
-                            onClick={() => toggleSort("nama_usaha")}
-                            numeric={false}
-                          />
-                          <SortHead
                             label="Alamat"
                             active={sortKey === "alamat"}
                             direction={sortDir}
                             onClick={() => toggleSort("alamat")}
+                            numeric={false}
+                          />
+                          <SortHead
+                            label="Nama Usaha"
+                            active={sortKey === "nama_usaha"}
+                            direction={sortDir}
+                            onClick={() => toggleSort("nama_usaha")}
                             numeric={false}
                           />
                           <SortHead label="Pendapatan" active={sortKey === "pendapatan"} direction={sortDir} onClick={() => toggleSort("pendapatan")} />
@@ -825,11 +847,11 @@ export default function OutlierSE26() {
                               <div className="text-[10px] text-slate-500">{row.desa || "-"}</div>
                             </TableCell>
                             <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
-                              <div>{row.nama_usaha}</div>
-                              <div className="text-[10px] text-slate-500">{row.nama_komersial || "-"}</div>
+                              {row.alamat || "-"}
                             </TableCell>
                             <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
-                              {row.alamat || "-"}
+                              <div>{row.nama_usaha}</div>
+                              <div className="text-[10px] text-slate-500">{row.nama_komersial || "-"}</div>
                             </TableCell>
                             <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
                               {formatNumber(row.pendapatan)}
@@ -877,6 +899,13 @@ export default function OutlierSE26() {
                             Jumlah Nama Usaha = {sortedRows.length} terindikasi sebagai outlier
                           </TableCell>
                         </TableRow>
+                        {productionFooterText && (
+                          <TableRow className="bg-slate-50">
+                            <TableCell colSpan={10} className="text-left text-xs sm:text-sm text-slate-600 px-2 py-2">
+                              {productionFooterText}
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableFooter>
                     </Table>
                   </div>
@@ -916,8 +945,8 @@ export default function OutlierSE26() {
                         <TableRow className="bg-slate-50">
                           <TableHead className="w-10 text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">No</TableHead>
                           <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Kecamatan</TableHead>
-                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama Usaha</TableHead>
                           <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Alamat</TableHead>
+                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama Usaha</TableHead>
                           <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Link</TableHead>
                           <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Tindak Lanjut</TableHead>
                           <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Catatan</TableHead>
@@ -933,8 +962,8 @@ export default function OutlierSE26() {
                               <div>{row.kecamatan || "-"}</div>
                               <div className="text-[10px] text-slate-500">{row.desa || "-"}</div>
                             </TableCell>
-                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.nama_usaha || "-"}</TableCell>
                             <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.alamat || "-"}</TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.nama_usaha || "-"}</TableCell>
                             <TableCell className="text-center px-1 sm:px-2 py-2 sm:py-3 align-top">
                               {row.link ? <a href={row.link} target="_blank" rel="noreferrer" title="Buka link" className="inline-flex text-sky-600 hover:text-sky-800"><ExternalLink className="h-4 w-4" /></a> : "-"}
                             </TableCell>
@@ -969,6 +998,13 @@ export default function OutlierSE26() {
                         <TableRow className="bg-slate-50">
                           <TableCell colSpan={9} className="px-2 py-2" />
                         </TableRow>
+                        {tkFooterText && (
+                          <TableRow className="bg-slate-50">
+                            <TableCell colSpan={9} className="text-left text-xs sm:text-sm text-slate-600 px-2 py-2">
+                              {tkFooterText}
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableFooter>
                     </Table>
                   </div>
