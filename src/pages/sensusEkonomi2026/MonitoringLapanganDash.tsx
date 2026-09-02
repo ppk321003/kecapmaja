@@ -5453,7 +5453,7 @@ export default function MonitoringLapanganDash() {
                             <Legend wrapperStyle={{ fontSize: chartFontSize }} />
                             <Bar
                               dataKey="persenNonPertanianAktif"
-                              name={chartNonPertanianDivisor === "wilkerstat" ? "Non Pertanian / Usaha Wilkerstat" : "Non Pertanian / Prelist Usaha"}
+                              name={`Non Pertanian / ${nonPertanianDivisorLabel}`}
                               radius={[8, 8, 0, 0]}
                               label={{
                                 position: "top",
