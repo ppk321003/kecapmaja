@@ -4269,7 +4269,51 @@ export default function MonitoringLapanganDash() {
   const [chartFontSize, setChartFontSize] = useState<number>(12);
   const [chartMode, setChartMode] = useState<"legacy" | "combined">("legacy");
   const [chartRespondenDivisor, setChartRespondenDivisor] = useState<"prelist" | "wilkerstat" | "netto" | "assignment">("assignment");
-  const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat">("prelist");
+  const [chartNonPertanianDivisor, setChartNonPertanianDivisor] = useState<"prelist" | "wilkerstat" | "se2016">("se2016");
+  const [se2016ByKecamatan, setSe2016ByKecamatan] = useState<Map<string, number>>(new Map());
+
+  // SE2016 divisor data (kecamatan level only)
+  useEffect(() => {
+    let cancelled = false;
+    const loadSe2016 = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('google-sheets', {
+          body: {
+            spreadsheetId: '1lByoV26AJ5tgmNz2F43RxIGeXhH9dLQOnqPSxKWoqHk',
+            operation: 'read',
+            range: 'Sheet1!A1:B100',
+            valueRenderOption: 'UNFORMATTED_VALUE',
+          },
+        });
+        if (error) throw error;
+        const values: any[][] = (data as any)?.values || [];
+        const map = new Map<string, number>();
+        values.slice(1).forEach((row) => {
+          const name = String(row?.[0] ?? '').trim().toUpperCase();
+          if (!name) return;
+          const raw = row?.[1];
+          const num = typeof raw === 'number' ? raw : parseNumericValue(String(raw ?? '').replace(/\./g, '').replace(/,/g, '.'));
+          if (!Number.isFinite(num)) return;
+          map.set(name, num);
+        });
+        if (!cancelled) setSe2016ByKecamatan(map);
+      } catch (e) {
+        console.error('[SE2016] gagal memuat data pembagi SE2016:', e);
+      }
+    };
+    loadSe2016();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // SE2016 hanya tersedia di level kecamatan
+  useEffect(() => {
+    if (chartNonPertanianDivisor === "se2016" && chartKecamatanFilter !== "all") {
+      setChartKecamatanFilter("all");
+    }
+  }, [chartNonPertanianDivisor, chartKecamatanFilter]);
+
   const [chartProporsiSortBy, setChartProporsiSortBy] = useState<"prelist" | "wilkerstat">("prelist");
 
   useEffect(() => {
