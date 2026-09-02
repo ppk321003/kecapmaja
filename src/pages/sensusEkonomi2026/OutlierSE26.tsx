@@ -56,6 +56,7 @@ interface OutlierRow {
   desa: string;
   alamat: string;
   nama_usaha: string;
+  nama_keluarga: string;
   nama_komersial: string;
   pendapatan: number;
   pengeluaran: number;
@@ -135,6 +136,7 @@ const parseOutlierData = (rows: string[][] | any): OutlierRow[] => {
   };
   
   const idslsIdx = findCol("idsls") >= 0 ? findCol("idsls") : 0;
+  const namaKeluargaIdx = 1;
   const pplIdx = 16;
   const pmlIdx = 17;
   const kecIdx = findCol("kecamatan") >= 0 ? findCol("kecamatan") : 3;
@@ -161,6 +163,7 @@ const parseOutlierData = (rows: string[][] | any): OutlierRow[] => {
     const desa = String(row[desaIdx] || "-").trim();
     const alamat = String(row[alamatIdx] || "-").trim();
     const nama_usaha = String(row[usahaIdx] || "-").trim();
+    const nama_keluarga = String(row[namaKeluargaIdx] || "-").trim();
     const nama_komersial = String(row[komersialIdx] || "-").trim();
     const pendapatan = parseFloat(String(row[pendapatanIdx] || "0").replace(/[^0-9.-]/g, "")) || 0;
     const pengeluaran = parseFloat(String(row[pengeluaranIdx] || "0").replace(/[^0-9.-]/g, "")) || 0;
@@ -176,6 +179,7 @@ const parseOutlierData = (rows: string[][] | any): OutlierRow[] => {
       desa,
       alamat,
       nama_usaha,
+      nama_keluarga,
       nama_komersial,
       pendapatan,
       pengeluaran,
@@ -568,13 +572,12 @@ export default function OutlierSE26() {
 
   const downloadExcel = () => {
     const headers = [
-      "No.",
-      "Link",
+      "No",
       "Kecamatan",
-      "Nama Usaha",
       "Alamat",
-      "Pendapatan",
-      "Pengeluaran",
+      "Nama Usaha",
+      "Nama Keluarga",
+      "Link",
       "Tindak Lanjut",
       "Catatan",
       "Nama PPL",
@@ -583,12 +586,11 @@ export default function OutlierSE26() {
 
     const rowsForExport = sortedRows.map((row, index) => [
       index + 1,
-      row.link,
       `${row.kecamatan}\n${row.desa}`,
-      row.nama_usaha,
       row.alamat,
-      row.pendapatan,
-      row.pengeluaran,
+      row.nama_usaha,
+      row.nama_keluarga,
+      row.link,
       row.tindak_lanjut,
       row.catatan,
       row.nama_ppl,
@@ -600,14 +602,13 @@ export default function OutlierSE26() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Outlier Produksi");
 
     worksheet["!cols"] = [
-      { wch: 10 },
+      { wch: 8 },
       { wch: 20 },
-      { wch: 20 },
-      { wch: 25 },
       { wch: 30 },
-      { wch: 18 },
-      { wch: 18 },
+      { wch: 28 },
+      { wch: 22 },
       { wch: 20 },
+      { wch: 18 },
       { wch: 20 },
       { wch: 20 },
       { wch: 20 },
@@ -815,6 +816,9 @@ export default function OutlierSE26() {
                             onClick={() => toggleSort("alamat")}
                             numeric={false}
                           />
+                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                            Nama Keluarga
+                          </TableHead>
                           <SortHead
                             label="Nama Usaha"
                             active={sortKey === "nama_usaha"}
@@ -822,8 +826,6 @@ export default function OutlierSE26() {
                             onClick={() => toggleSort("nama_usaha")}
                             numeric={false}
                           />
-                          <SortHead label="Pendapatan" active={sortKey === "pendapatan"} direction={sortDir} onClick={() => toggleSort("pendapatan")} />
-                          <SortHead label="Pengeluaran" active={sortKey === "pengeluaran"} direction={sortDir} onClick={() => toggleSort("pengeluaran")} />
                           <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Link
                           </TableHead>
@@ -855,14 +857,11 @@ export default function OutlierSE26() {
                               {row.alamat || "-"}
                             </TableCell>
                             <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                              {row.nama_keluarga || "-"}
+                            </TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
                               <div>{row.nama_usaha}</div>
                               <div className="text-[10px] text-slate-500">{row.nama_komersial || "-"}</div>
-                            </TableCell>
-                            <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
-                              {formatNumber(row.pendapatan)}
-                            </TableCell>
-                            <TableCell className="text-right px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap">
-                              {formatNumber(row.pengeluaran)}
                             </TableCell>
                             <TableCell className="text-center px-1 sm:px-2 py-2 sm:py-3">
                               {row.link ? <a href={row.link} target="_blank" rel="noreferrer" title="Buka link" className="inline-flex text-sky-600 hover:text-sky-800"><ExternalLink className="h-4 w-4" /></a> : "-"}
