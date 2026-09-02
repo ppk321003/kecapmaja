@@ -5269,13 +5269,20 @@ export default function MonitoringLapanganDash() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                       <CardTitle className="text-base">
-                        Persentase Usaha Non Pertanian terhadap Prelist Usaha dan Usaha Wilkerstat per {chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}
+                        {chartMode === "legacy"
+                          ? `Persentase Usaha Non Pertanian terhadap ${nonPertanianDivisorLabel} per ${chartNonPertanianDivisor === "se2016" || chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}`
+                          : `Persentase Usaha Non Pertanian terhadap Prelist Usaha dan Usaha Wilkerstat per ${chartKecamatanFilter === "all" ? "Kecamatan" : "Desa/Kelurahan"}`}
                       </CardTitle>
                       <CardDescription>
-                        Jumlah usaha non pertanian dibandingkan dengan Prelist Usaha dan Usaha Wilkerstat
-                        {chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
+                        {chartMode === "legacy"
+                          ? `Jumlah usaha non pertanian dibandingkan dengan ${nonPertanianDivisorLabel}`
+                          : "Jumlah usaha non pertanian dibandingkan dengan Prelist Usaha dan Usaha Wilkerstat"}
+                        {chartMode === "legacy" && chartNonPertanianDivisor === "se2016"
+                          ? " per Kecamatan"
+                          : chartKecamatanFilter === "all" ? " per Kecamatan" : ` di Kecamatan ${chartKecamatanFilter}`}
                         {` (Diurutkan ${chartSortOrder === "asc" ? "Ascending" : "Descending"})`}
                       </CardDescription>
+
                     </div>
                     <div className="flex flex-wrap items-end gap-3">
                       <div className="flex flex-col gap-1">
