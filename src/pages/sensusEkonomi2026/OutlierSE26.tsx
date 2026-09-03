@@ -864,7 +864,7 @@ export default function OutlierSE26() {
                     <Table className="w-full table-fixed min-w-0 text-[10px] sm:text-xs">
                       <TableHeader>
                         <TableRow className="bg-slate-50">
-                          <TableHead className="w-8 sm:w-12 text-center align-middle text-xs sm:text-sm px-1 sm:px-2">
+                          <TableHead className="w-[3%] text-center align-middle text-xs sm:text-sm px-1">
                             No
                           </TableHead>
                           <SortHead
@@ -873,7 +873,7 @@ export default function OutlierSE26() {
                             direction={sortDir}
                             onClick={() => toggleSort("kecamatan")}
                             numeric={false}
-                            widthClass="w-[120px]"
+                            widthClass="w-[10%]"
                           />
                           <SortHead
                             label="Alamat"
@@ -881,9 +881,9 @@ export default function OutlierSE26() {
                             direction={sortDir}
                             onClick={() => toggleSort("alamat")}
                             numeric={false}
-                            widthClass="w-[160px]"
+                            widthClass="w-[15%]"
                           />
-                          <TableHead className="w-[140px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[13%] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Nama Keluarga
                           </TableHead>
                           <SortHead
@@ -892,18 +892,18 @@ export default function OutlierSE26() {
                             direction={sortDir}
                             onClick={() => toggleSort("nama_usaha")}
                             numeric={false}
-                            widthClass="w-[180px]"
+                            widthClass="w-[16%]"
                           />
-                          <TableHead className="w-[60px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[5%] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Link
                           </TableHead>
-                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[12%] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Tindak Lanjut
                           </TableHead>
-                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[14%] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Catatan
                           </TableHead>
-                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[12%] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Nama PPL / PML
                           </TableHead>
                         </TableRow>
@@ -1003,14 +1003,14 @@ export default function OutlierSE26() {
                     <Table className="w-full table-fixed min-w-0 text-[10px] sm:text-xs">
                       <TableHeader>
                         <TableRow className="bg-slate-50">
-                          <TableHead className="w-10 text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">No</TableHead>
-                          <TableHead className="w-[120px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Kecamatan</TableHead>
-                          <TableHead className="w-[160px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Alamat</TableHead>
-                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama Usaha</TableHead>
-                          <TableHead className="w-[60px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Link</TableHead>
-                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Tindak Lanjut</TableHead>
-                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Catatan</TableHead>
-                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PPL / PML</TableHead>
+                          <TableHead className="w-[3%] text-center text-xs sm:text-sm px-1 py-2 sm:py-3">No</TableHead>
+                          <TableHead className="w-[10%] text-center text-xs sm:text-sm px-1 py-2 sm:py-3">Kecamatan</TableHead>
+                          <TableHead className="w-[15%] text-center text-xs sm:text-sm px-1 py-2 sm:py-3">Alamat</TableHead>
+                          <TableHead className="w-[17%] text-center text-xs sm:text-sm px-1 py-2 sm:py-3">Nama Usaha</TableHead>
+                          <TableHead className="w-[5%] text-center text-xs sm:text-sm px-1 py-2 sm:py-3">Link</TableHead>
+                          <TableHead className="w-[12%] text-center text-xs sm:text-sm px-1 py-2 sm:py-3">Tindak Lanjut</TableHead>
+                          <TableHead className="w-[18%] text-center text-xs sm:text-sm px-1 py-2 sm:py-3">Catatan</TableHead>
+                          <TableHead className="w-[20%] text-center text-xs sm:text-sm px-1 py-2 sm:py-3">Nama PPL / PML</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
