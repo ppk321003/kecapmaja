@@ -860,8 +860,8 @@ export default function OutlierSE26() {
             ) : (
               <>
                 <TabsContent value="produksi" className="mt-0">
-                  <div className="-mx-3 w-full sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
-                    <Table className="w-full table-fixed min-w-[1100px] sm:min-w-0">
+                  <div className="w-full overflow-hidden rounded-none border-0 border-slate-200 sm:rounded-lg sm:border">
+                    <Table className="w-full table-fixed min-w-0 text-[10px] sm:text-xs">
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead className="w-8 sm:w-12 text-center align-middle text-xs sm:text-sm px-1 sm:px-2">
@@ -873,7 +873,7 @@ export default function OutlierSE26() {
                             direction={sortDir}
                             onClick={() => toggleSort("kecamatan")}
                             numeric={false}
-                            widthClass="w-[160px]"
+                            widthClass="w-[120px]"
                           />
                           <SortHead
                             label="Alamat"
@@ -881,9 +881,9 @@ export default function OutlierSE26() {
                             direction={sortDir}
                             onClick={() => toggleSort("alamat")}
                             numeric={false}
-                            widthClass="w-[220px]"
+                            widthClass="w-[160px]"
                           />
-                          <TableHead className="w-[200px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[140px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Nama Keluarga
                           </TableHead>
                           <SortHead
@@ -892,18 +892,18 @@ export default function OutlierSE26() {
                             direction={sortDir}
                             onClick={() => toggleSort("nama_usaha")}
                             numeric={false}
-                            widthClass="w-[260px]"
+                            widthClass="w-[180px]"
                           />
-                          <TableHead className="w-[100px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[60px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Link
                           </TableHead>
-                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Tindak Lanjut
                           </TableHead>
-                          <TableHead className="w-[300px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Catatan
                           </TableHead>
-                          <TableHead className="w-[260px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Nama PPL / PML
                           </TableHead>
                         </TableRow>
@@ -999,18 +999,18 @@ export default function OutlierSE26() {
                 </TabsContent>
 
                 <TabsContent value="tk-dibayar" className="mt-0">
-                  <div className="-mx-3 w-full sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
-                    <Table className="w-full table-fixed min-w-[1100px] sm:min-w-0">
+                  <div className="w-full overflow-hidden rounded-none border-0 border-slate-200 sm:rounded-lg sm:border">
+                    <Table className="w-full table-fixed min-w-0 text-[10px] sm:text-xs">
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead className="w-10 text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">No</TableHead>
-                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Kecamatan</TableHead>
-                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Alamat</TableHead>
-                          <TableHead className="w-[260px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama Usaha</TableHead>
-                          <TableHead className="w-[100px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Link</TableHead>
-                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Tindak Lanjut</TableHead>
-                          <TableHead className="w-[300px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Catatan</TableHead>
-                          <TableHead className="w-[260px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PPL / PML</TableHead>
+                          <TableHead className="w-[120px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Kecamatan</TableHead>
+                          <TableHead className="w-[160px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Alamat</TableHead>
+                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama Usaha</TableHead>
+                          <TableHead className="w-[60px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Link</TableHead>
+                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Tindak Lanjut</TableHead>
+                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Catatan</TableHead>
+                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PPL / PML</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
