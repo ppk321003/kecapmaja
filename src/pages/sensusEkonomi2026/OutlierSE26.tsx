@@ -62,6 +62,20 @@ const GENERIC_OUTLIER_TABS = [
   ["RUMAH>2", "Outlier rumah tangga yang tercatat memiliki lebih dari dua rumah. Periksa kembali status kepemilikan dan keberadaan setiap rumah, serta pastikan rumah yang digunakan sebagai tempat usaha atau milik anggota keluarga lain tidak salah dicatat."],
   ["RUMAH<10JT", "Outlier dengan harga rumah di bawah Rp10.000.000. Nilai ini perlu diverifikasi untuk memastikan tidak terjadi kesalahan satuan, kesalahan pengisian nilai total, atau tertukarnya harga bangunan dengan harga tanah."],
 ] as const;
+const PERUMAHAN_TABS = [
+  ["BTT_LAINNYA", "Outlier komponen bangunan tempat tinggal lainnya."],
+  ["ATAP", "Outlier kondisi atau jenis atap rumah tangga."],
+  ["PENERANGAN", "Outlier sumber penerangan rumah tangga."],
+] as const;
+const PENDAPATAN_PENGELUARAN_TABS = [
+  ["PENGELUARAN<100RB", "Outlier dengan pengeluaran rumah tangga per bulan di bawah Rp100.000."],
+  ["MOBIL>1", "Outlier rumah tangga yang tercatat memiliki lebih dari satu mobil."],
+] as const;
+const ALL_GENERIC_OUTLIER_TABS = [
+  ...GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName !== "PENGELUARAN<100RB"),
+  ...PERUMAHAN_TABS,
+  ...PENDAPATAN_PENGELUARAN_TABS,
+] as const;
 
 const OUTLIER_TAB_LABELS: Record<string, string> = {
   "AC>2": "AC > 2",
@@ -79,6 +93,10 @@ const OUTLIER_TAB_LABELS: Record<string, string> = {
   "LAHAN<10JT": "Lahan < 10JT",
   "RUMAH>2": "Rumah > 2",
   "RUMAH<10JT": "Rumah < 10JT",
+  BTT_LAINNYA: "BTT Lainnya",
+  ATAP: "Atap",
+  PENERANGAN: "Penerangan",
+  "MOBIL>1": "Mobil > 1",
 };
 
 const getOutlierTabLabel = (sheetName: string) => OUTLIER_TAB_LABELS[sheetName] || sheetName;
@@ -382,6 +400,8 @@ export default function OutlierSE26() {
     ? "aset"
     : searchParams.get("section") === "pendapatan-pengeluaran"
       ? "pendapatan-pengeluaran"
+      : searchParams.get("section") === "perumahan"
+        ? "perumahan"
       : "pekerjaan";
   const [sectionTab, setSectionTab] = useState(requestedSection);
   const [activeTab, setActiveTab] = useState("produksi");
@@ -399,7 +419,7 @@ export default function OutlierSE26() {
 
   useEffect(() => {
     setSectionTab(requestedSection);
-    setActiveTab(requestedSection === "pekerjaan" ? "produksi" : requestedSection === "pendapatan-pengeluaran" ? "PENGELUARAN<100RB" : GENERIC_OUTLIER_TABS[0][0]);
+    setActiveTab(requestedSection === "pekerjaan" ? "produksi" : requestedSection === "pendapatan-pengeluaran" ? PENDAPATAN_PENGELUARAN_TABS[0][0] : requestedSection === "perumahan" ? PERUMAHAN_TABS[0][0] : GENERIC_OUTLIER_TABS[0][0]);
   }, [requestedSection]);
 
   // Parse and process data
@@ -737,9 +757,9 @@ export default function OutlierSE26() {
         <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-slate-50 px-4 py-4 sm:px-6 sm:py-6">
           <div className="flex flex-col gap-3">
             <div>
-              <CardTitle className="text-xl sm:text-2xl">Outlier SE2026</CardTitle>
+              <CardTitle className="text-xl sm:text-2xl">Kualitas Data</CardTitle>
               <CardDescription className="text-xs sm:text-sm mt-1">
-                Analisis data outlier dan anomali Sensus Ekonomi 2026 berdasarkan indikator pekerjaan, aset, dan kepemilikan
+                Analisis kualitas data Sensus Ekonomi 2026 berdasarkan indikator pekerjaan, pendapatan, aset, kepemilikan, dan perumahan
               </CardDescription>
             </div>
           </div>
@@ -747,21 +767,21 @@ export default function OutlierSE26() {
 
         <CardContent className="w-full p-3 sm:p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`mb-4 sm:mb-5 grid h-auto w-full gap-1.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1.5 text-xs sm:text-sm ${sectionTab === "aset" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : "max-w-2xl grid-cols-1 sm:grid-cols-2"}`}>
+            <TabsList className={`mb-4 sm:mb-5 grid h-auto w-full gap-1.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1.5 text-xs sm:text-sm ${sectionTab === "aset" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : sectionTab === "perumahan" ? "max-w-2xl grid-cols-1 sm:grid-cols-3" : sectionTab === "pendapatan-pengeluaran" ? "max-w-2xl grid-cols-1 sm:grid-cols-2" : "max-w-2xl grid-cols-1 sm:grid-cols-2"}`}>
               {sectionTab === "pekerjaan" && <TabsTrigger value="produksi" className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-violet-200 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
                 Produksi &lt; 1Juta
               </TabsTrigger>}
               {sectionTab === "pekerjaan" && <TabsTrigger value="tk-dibayar" className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-sky-200 data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-sm">
                 Tenaga Kerja dibayar
               </TabsTrigger>}
-              {(sectionTab === "aset" ? GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName !== "PENGELUARAN<100RB") : sectionTab === "pendapatan-pengeluaran" ? GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName === "PENGELUARAN<100RB") : []).map(([sheetName]) => (
+              {(sectionTab === "aset" ? GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName !== "PENGELUARAN<100RB") : sectionTab === "pendapatan-pengeluaran" ? PENDAPATAN_PENGELUARAN_TABS : sectionTab === "perumahan" ? PERUMAHAN_TABS : []).map(([sheetName]) => (
                 <TabsTrigger key={sheetName} value={sheetName} title={getOutlierTabLabel(sheetName)} className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-emerald-200 data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
                   {getOutlierTabLabel(sheetName)}
                 </TabsTrigger>
               ))}
             </TabsList>
 
-            {GENERIC_OUTLIER_TABS.map(([sheetName, description]) => (
+            {ALL_GENERIC_OUTLIER_TABS.map(([sheetName, description]) => (
               <TabsContent key={sheetName} value={sheetName} className="mt-0">
                 <OutlierGenericTab
                   spreadsheetId={SPREADSHEET_ID}

@@ -79,18 +79,19 @@ const sensusEkonomiItems = [
   { title: "Petugas", url: "/sensus-ekonomi-2026/petugas", icon: Users },
   { title: "Pelatihan", url: "/sensus-ekonomi-2026/pelatihan", icon: BookOpen },
   { title: "Monitoring Lapangan", url: "/monitoringlapangandash", icon: TrendingUp },
-  { title: "Verifikasi Akhir", url: "/sensus-ekonomi-2026/verifikasi-akhir", icon: FileCheck },
   {
-    title: "Outlier dan Anomali SE2026",
+    title: "Kualitas Data",
     url: "/sensus-ekonomi-2026/outlier",
     icon: BarChart3,
     hasSubItems: true,
     subItems: [
       { title: "Aset/Kepemilikan", url: "/sensus-ekonomi-2026/outlier?section=aset", icon: BarChart3 },
-      { title: "Pekerjaan", url: "/sensus-ekonomi-2026/outlier?section=pekerjaan", icon: BarChart3 },
       { title: "Pendapatan/Pengeluaran", url: "/sensus-ekonomi-2026/outlier?section=pendapatan-pengeluaran", icon: BarChart3 },
+      { title: "Pekerjaan", url: "/sensus-ekonomi-2026/outlier?section=pekerjaan", icon: BarChart3 },
+      { title: "Perumahan", url: "/sensus-ekonomi-2026/outlier?section=perumahan", icon: BarChart3 },
     ],
   },
+  { title: "Verifikasi Akhir", url: "/sensus-ekonomi-2026/verifikasi-akhir", icon: FileCheck },
   { title: "Monitoring Lapangan (old)", url: "/monitoringlapangan", icon: TrendingUp, conditional: "isPPK" },
 ];
 
