@@ -69,7 +69,7 @@ const PERUMAHAN_TABS = [
 ] as const;
 const PENDAPATAN_PENGELUARAN_TABS = [
   ["PENGELUARAN<100RB", "Outlier dengan pengeluaran rumah tangga per bulan di bawah Rp100.000."],
-  ["MOBIL>1", "Outlier rumah tangga yang tercatat memiliki lebih dari satu mobil."],
+  ["MOBIL>1", "Outlier keluarga punya lebih dari satu mobil, tetapi pendapatannya kurang dari Rp5 juta."],
 ] as const;
 const PEKERJAAN_TABS = [
   ["PEJABAT", "Daftar outlier pejabat yang perlu ditinjau kembali."],
@@ -100,7 +100,7 @@ const OUTLIER_TAB_LABELS: Record<string, string> = {
   BTT_LAINNYA: "BTT Lainnya",
   ATAP: "Atap",
   PENERANGAN: "Penerangan",
-  "MOBIL>1": "Mobil > 1",
+  "MOBIL>1": "Mobil > 1 & Pendapatan < 5 Juta",
   PEJABAT: "Pejabat",
 };
 
