@@ -71,10 +71,14 @@ const PENDAPATAN_PENGELUARAN_TABS = [
   ["PENGELUARAN<100RB", "Outlier dengan pengeluaran rumah tangga per bulan di bawah Rp100.000."],
   ["MOBIL>1", "Outlier rumah tangga yang tercatat memiliki lebih dari satu mobil."],
 ] as const;
+const PEKERJAAN_TABS = [
+  ["PEJABAT", "Daftar outlier pejabat yang perlu ditinjau kembali."],
+] as const;
 const ALL_GENERIC_OUTLIER_TABS = [
   ...GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName !== "PENGELUARAN<100RB"),
   ...PERUMAHAN_TABS,
   ...PENDAPATAN_PENGELUARAN_TABS,
+  ...PEKERJAAN_TABS,
 ] as const;
 
 const OUTLIER_TAB_LABELS: Record<string, string> = {
@@ -97,6 +101,7 @@ const OUTLIER_TAB_LABELS: Record<string, string> = {
   ATAP: "Atap",
   PENERANGAN: "Penerangan",
   "MOBIL>1": "Mobil > 1",
+  PEJABAT: "Pejabat",
 };
 
 const getOutlierTabLabel = (sheetName: string) => OUTLIER_TAB_LABELS[sheetName] || sheetName;
@@ -404,7 +409,7 @@ export default function OutlierSE26() {
         ? "perumahan"
       : "pekerjaan";
   const [sectionTab, setSectionTab] = useState(requestedSection);
-  const [activeTab, setActiveTab] = useState("produksi");
+  const [activeTab, setActiveTab] = useState(searchParams.get("section") === "pekerjaan" ? "PEJABAT" : "produksi");
   const [search, setSearch] = useState("");
   const [kecamatanFilter, setKecamatanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -419,8 +424,8 @@ export default function OutlierSE26() {
 
   useEffect(() => {
     setSectionTab(requestedSection);
-    setActiveTab(requestedSection === "pekerjaan" ? "produksi" : requestedSection === "pendapatan-pengeluaran" ? PENDAPATAN_PENGELUARAN_TABS[0][0] : requestedSection === "perumahan" ? PERUMAHAN_TABS[0][0] : GENERIC_OUTLIER_TABS[0][0]);
-  }, [requestedSection]);
+    setActiveTab(requestedSection === "pekerjaan" ? (searchParams.get("section") === "pekerjaan" ? "PEJABAT" : "produksi") : requestedSection === "pendapatan-pengeluaran" ? PENDAPATAN_PENGELUARAN_TABS[0][0] : requestedSection === "perumahan" ? PERUMAHAN_TABS[0][0] : GENERIC_OUTLIER_TABS[0][0]);
+  }, [requestedSection, searchParams]);
 
   // Parse and process data
   const outlierRows = useMemo(() => {
@@ -767,12 +772,15 @@ export default function OutlierSE26() {
 
         <CardContent className="w-full p-3 sm:p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`mb-4 sm:mb-5 grid h-auto w-full gap-1.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1.5 text-xs sm:text-sm ${sectionTab === "aset" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : sectionTab === "perumahan" ? "max-w-2xl grid-cols-1 sm:grid-cols-3" : sectionTab === "pendapatan-pengeluaran" ? "max-w-2xl grid-cols-1 sm:grid-cols-2" : "max-w-2xl grid-cols-1 sm:grid-cols-2"}`}>
+            <TabsList className={`mb-4 sm:mb-5 grid h-auto w-full gap-1.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1.5 text-xs sm:text-sm ${sectionTab === "aset" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : sectionTab === "perumahan" ? "max-w-2xl grid-cols-1 sm:grid-cols-3" : sectionTab === "pendapatan-pengeluaran" ? "max-w-2xl grid-cols-1 sm:grid-cols-2" : "max-w-2xl grid-cols-3"}`}>
               {sectionTab === "pekerjaan" && <TabsTrigger value="produksi" className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-violet-200 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
                 Produksi &lt; 1Juta
               </TabsTrigger>}
               {sectionTab === "pekerjaan" && <TabsTrigger value="tk-dibayar" className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-sky-200 data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-sm">
                 Tenaga Kerja dibayar
+              </TabsTrigger>}
+              {sectionTab === "pekerjaan" && <TabsTrigger value="PEJABAT" title={getOutlierTabLabel("PEJABAT")} className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-amber-200 data-[state=active]:bg-white data-[state=active]:text-amber-700 data-[state=active]:shadow-sm">
+                {getOutlierTabLabel("PEJABAT")}
               </TabsTrigger>}
               {(sectionTab === "aset" ? GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName !== "PENGELUARAN<100RB") : sectionTab === "pendapatan-pengeluaran" ? PENDAPATAN_PENGELUARAN_TABS : sectionTab === "perumahan" ? PERUMAHAN_TABS : []).map(([sheetName]) => (
                 <TabsTrigger key={sheetName} value={sheetName} title={getOutlierTabLabel(sheetName)} className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-emerald-200 data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
@@ -793,6 +801,7 @@ export default function OutlierSE26() {
                   active={activeTab === sheetName}
                   isPmlUser={isPmlUser}
                   allowedKecamatan={allowedKecamatan}
+                  canDownload={user?.role === "Pejabat Pembuat Komitmen"}
                 />
               </TabsContent>
             ))}

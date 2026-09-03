@@ -103,13 +103,13 @@ const parseSheet = (values: any[][]): ParsedSheet => {
   if (!Array.isArray(values) || values.length <= 1) return empty;
 
   const headers = (values[0] || []).map((header: any) => String(header ?? "").trim());
-  const findHeader = (needle: string) =>
-    headers.findIndex((header) => header.toLowerCase().includes(needle.toLowerCase()));
+  const findHeader = (...needles: string[]) =>
+    headers.findIndex((header) => needles.some((needle) => header.toLowerCase().includes(needle.toLowerCase())));
 
   const idslsIdx = 0;
-  const assignmentIdx = findHeader("nama_assignment");
-  const kecIdx = findHeader("kecamatan");
-  const desaIdx = findHeader("desa");
+  const assignmentIdx = findHeader("nama_assignment", "nama_art");
+  const kecIdx = findHeader("kecamatan", "nama_kec");
+  const desaIdx = findHeader("desa", "nama_desa");
   const slsIdx = findHeader("nama_sls");
   const linkIdx = findHeader("link");
   const tindakIdx = findHeader("tindak lanjut");
