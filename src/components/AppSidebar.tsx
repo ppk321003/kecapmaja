@@ -91,6 +91,7 @@ const sensusEkonomiItems = [
       { title: "Perumahan", url: "/sensus-ekonomi-2026/outlier?section=perumahan", icon: BarChart3 },
     ],
   },
+  { title: "Olah Cepat Makro", url: "/olah-cepat-makro", icon: Database },
   { title: "Verifikasi Akhir", url: "/sensus-ekonomi-2026/verifikasi-akhir", icon: FileCheck },
   { title: "Monitoring Lapangan (old)", url: "/monitoringlapangan", icon: TrendingUp, conditional: "isPPK" },
 ];
