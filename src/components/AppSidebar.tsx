@@ -80,7 +80,16 @@ const sensusEkonomiItems = [
   { title: "Pelatihan", url: "/sensus-ekonomi-2026/pelatihan", icon: BookOpen },
   { title: "Monitoring Lapangan", url: "/monitoringlapangandash", icon: TrendingUp },
   { title: "Verifikasi Akhir", url: "/sensus-ekonomi-2026/verifikasi-akhir", icon: FileCheck },
-  { title: "Outlier SE26", url: "/sensus-ekonomi-2026/outlier", icon: BarChart3 },
+  {
+    title: "Outlier dan Anomali SE2026",
+    url: "/sensus-ekonomi-2026/outlier",
+    icon: BarChart3,
+    hasSubItems: true,
+    subItems: [
+      { title: "Aset/Kepemilikan", url: "/sensus-ekonomi-2026/outlier?section=aset", icon: BarChart3 },
+      { title: "Pekerjaan", url: "/sensus-ekonomi-2026/outlier?section=pekerjaan", icon: BarChart3 },
+    ],
+  },
   { title: "Monitoring Lapangan (old)", url: "/monitoringlapangan", icon: TrendingUp, conditional: "isPPK" },
 ];
 
@@ -146,6 +155,7 @@ export function AppSidebar() {
   // State untuk track nested submenu items (for e-Dokumen only now)
   const [expandedSubItems, setExpandedSubItems] = useState<Record<string, boolean>>({
     eDokumen: currentPath.startsWith("/e-dokumen"),
+    outlier: currentPath.startsWith("/sensus-ekonomi-2026/outlier"),
   });
 
   const toggleSubItem = (itemKey: string) => {
@@ -724,22 +734,43 @@ export function AppSidebar() {
                   <SidebarGroupContent className="mt-1">
                     <SidebarMenu className="space-y-0.5 pl-2">
                       {getVisibleItems(sensusEkonomiItems).map((item) => (
-                        <SidebarMenuItem key={item.title}>
-                          <SidebarMenuButton asChild>
-                            <NavLink
-                              to={item.url}
-                              end
-                              className={({ isActive }) =>
-                                isActive
-                                  ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200"
-                                  : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"
-                              }
-                            >
-                              <item.icon className="h-3.5 w-3.5 transition-transform duration-200 text-white/80" />
-                              {open && <span>{item.title}</span>}
-                            </NavLink>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
+                        <div key={item.title}>
+                          {item.hasSubItems ? (
+                            <Collapsible open={expandedSubItems.outlier} onOpenChange={() => toggleSubItem("outlier")}>
+                              <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                  <SidebarMenuButton className="text-white/80 hover:text-white text-xs py-2 pl-4 font-medium transition-all duration-200">
+                                    <item.icon className="h-3.5 w-3.5 text-white/80" />
+                                    {open && <span>{item.title}</span>}
+                                    {open && <ChevronDown className="ml-auto h-3 w-3 text-white transition-transform duration-300" style={{ transform: expandedSubItems.outlier ? "rotate(180deg)" : "rotate(0deg)" }} />}
+                                  </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-0.5">
+                                  <SidebarMenuSub className="space-y-0.5 pl-4">
+                                    {item.subItems?.map((subItem) => (
+                                      <SidebarMenuSubItem key={subItem.title}>
+                                        <SidebarMenuSubButton asChild>
+                                          <NavLink to={subItem.url} className={({ isActive }) => isActive ? "text-white font-medium text-xs py-1.5 pl-2 transition-all duration-200" : "text-white/80 hover:text-white text-xs py-1.5 pl-2 transition-all duration-200"}>
+                                            <span>{subItem.title}</span>
+                                          </NavLink>
+                                        </SidebarMenuSubButton>
+                                      </SidebarMenuSubItem>
+                                    ))}
+                                  </SidebarMenuSub>
+                                </CollapsibleContent>
+                              </SidebarMenuItem>
+                            </Collapsible>
+                          ) : (
+                            <SidebarMenuItem>
+                              <SidebarMenuButton asChild>
+                                <NavLink to={item.url} end className={({ isActive }) => isActive ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200" : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"}>
+                                  <item.icon className="h-3.5 w-3.5 transition-transform duration-200 text-white/80" />
+                                  {open && <span>{item.title}</span>}
+                                </NavLink>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          )}
+                        </div>
                       ))}
                     </SidebarMenu>
                   </SidebarGroupContent>

@@ -36,6 +36,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import OutlierGenericTab from "./OutlierGenericTab";
 
@@ -345,6 +346,7 @@ const SortHead = ({
 );
 
 export default function OutlierSE26() {
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
   const role = String(user?.role || "").toLowerCase();
@@ -376,6 +378,8 @@ export default function OutlierSE26() {
   }, [rawData, loading, error]);
 
   // State management
+  const requestedSection = searchParams.get("section") === "aset" ? "aset" : "pekerjaan";
+  const [sectionTab, setSectionTab] = useState(requestedSection);
   const [activeTab, setActiveTab] = useState("produksi");
   const [search, setSearch] = useState("");
   const [kecamatanFilter, setKecamatanFilter] = useState("all");
@@ -388,6 +392,11 @@ export default function OutlierSE26() {
   const [rowEdits, setRowEdits] = useState<Record<number, { tindak_lanjut?: string; catatan?: string }>>({});
   const [tkRowEdits, setTkRowEdits] = useState<Record<number, { tindak_lanjut?: string; catatan?: string }>>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setSectionTab(requestedSection);
+    setActiveTab(requestedSection === "pekerjaan" ? "produksi" : GENERIC_OUTLIER_TABS[0][0]);
+  }, [requestedSection]);
 
   // Parse and process data
   const outlierRows = useMemo(() => {
@@ -726,7 +735,7 @@ export default function OutlierSE26() {
             <div>
               <CardTitle className="text-xl sm:text-2xl">Outlier SE2026</CardTitle>
               <CardDescription className="text-xs sm:text-sm mt-1">
-                Analisis data outlier Sensus Ekonomi 2026 berdasarkan produksi usaha
+                Analisis data outlier dan anomali Sensus Ekonomi 2026 berdasarkan indikator pekerjaan, aset, dan kepemilikan
               </CardDescription>
             </div>
           </div>
@@ -734,15 +743,15 @@ export default function OutlierSE26() {
 
         <CardContent className="w-full p-3 sm:p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-4 sm:mb-5 grid h-auto w-full max-w-none grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 text-xs sm:grid-cols-3 sm:text-sm lg:grid-cols-6 xl:grid-cols-9">
-              <TabsTrigger value="produksi" className="min-h-9 whitespace-normal px-2 py-1.5 text-center leading-tight">
+            <TabsList className={`mb-4 sm:mb-5 grid h-auto w-full gap-1.5 rounded-xl border border-slate-200 bg-slate-100/80 p-1.5 text-xs sm:text-sm ${sectionTab === "aset" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : "max-w-2xl grid-cols-1 sm:grid-cols-2"}`}>
+              {sectionTab === "pekerjaan" && <TabsTrigger value="produksi" className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-violet-200 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-sm">
                 Produksi &lt; 1Juta
-              </TabsTrigger>
-              <TabsTrigger value="tk-dibayar" className="min-h-9 whitespace-normal px-2 py-1.5 text-center leading-tight">
+              </TabsTrigger>}
+              {sectionTab === "pekerjaan" && <TabsTrigger value="tk-dibayar" className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-sky-200 data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-sm">
                 Tenaga Kerja dibayar
-              </TabsTrigger>
-              {GENERIC_OUTLIER_TABS.map(([sheetName]) => (
-                <TabsTrigger key={sheetName} value={sheetName} className="min-h-9 whitespace-normal px-2 py-1.5 text-center leading-tight">
+              </TabsTrigger>}
+              {sectionTab === "aset" && GENERIC_OUTLIER_TABS.map(([sheetName]) => (
+                <TabsTrigger key={sheetName} value={sheetName} title={getOutlierTabLabel(sheetName)} className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-emerald-200 data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
                   {getOutlierTabLabel(sheetName)}
                 </TabsTrigger>
               ))}
