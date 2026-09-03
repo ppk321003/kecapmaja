@@ -88,6 +88,7 @@ const sensusEkonomiItems = [
     subItems: [
       { title: "Aset/Kepemilikan", url: "/sensus-ekonomi-2026/outlier?section=aset", icon: BarChart3 },
       { title: "Pekerjaan", url: "/sensus-ekonomi-2026/outlier?section=pekerjaan", icon: BarChart3 },
+      { title: "Pendapatan/Pengeluaran", url: "/sensus-ekonomi-2026/outlier?section=pendapatan-pengeluaran", icon: BarChart3 },
     ],
   },
   { title: "Monitoring Lapangan (old)", url: "/monitoringlapangan", icon: TrendingUp, conditional: "isPPK" },

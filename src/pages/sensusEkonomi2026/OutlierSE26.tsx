@@ -378,7 +378,11 @@ export default function OutlierSE26() {
   }, [rawData, loading, error]);
 
   // State management
-  const requestedSection = searchParams.get("section") === "aset" ? "aset" : "pekerjaan";
+  const requestedSection = searchParams.get("section") === "aset"
+    ? "aset"
+    : searchParams.get("section") === "pendapatan-pengeluaran"
+      ? "pendapatan-pengeluaran"
+      : "pekerjaan";
   const [sectionTab, setSectionTab] = useState(requestedSection);
   const [activeTab, setActiveTab] = useState("produksi");
   const [search, setSearch] = useState("");
@@ -395,7 +399,7 @@ export default function OutlierSE26() {
 
   useEffect(() => {
     setSectionTab(requestedSection);
-    setActiveTab(requestedSection === "pekerjaan" ? "produksi" : GENERIC_OUTLIER_TABS[0][0]);
+    setActiveTab(requestedSection === "pekerjaan" ? "produksi" : requestedSection === "pendapatan-pengeluaran" ? "PENGELUARAN<100RB" : GENERIC_OUTLIER_TABS[0][0]);
   }, [requestedSection]);
 
   // Parse and process data
@@ -750,7 +754,7 @@ export default function OutlierSE26() {
               {sectionTab === "pekerjaan" && <TabsTrigger value="tk-dibayar" className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-sky-200 data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-sm">
                 Tenaga Kerja dibayar
               </TabsTrigger>}
-              {sectionTab === "aset" && GENERIC_OUTLIER_TABS.map(([sheetName]) => (
+              {(sectionTab === "aset" ? GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName !== "PENGELUARAN<100RB") : sectionTab === "pendapatan-pengeluaran" ? GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName === "PENGELUARAN<100RB") : []).map(([sheetName]) => (
                 <TabsTrigger key={sheetName} value={sheetName} title={getOutlierTabLabel(sheetName)} className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-emerald-200 data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
                   {getOutlierTabLabel(sheetName)}
                 </TabsTrigger>
