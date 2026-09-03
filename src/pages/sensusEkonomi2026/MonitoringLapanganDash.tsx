@@ -4298,7 +4298,7 @@ export default function MonitoringLapanganDash() {
         });
         if (!cancelled) setSe2016ByKecamatan(map);
       } catch (e) {
-        console.error('[SE2016] gagal memuat data pembagi SE2016:', e);
+        console.error('[SE2016] gagal memuat data pembanding SE2016:', e);
       }
     };
     loadSe2016();
@@ -4309,10 +4309,10 @@ export default function MonitoringLapanganDash() {
 
   // SE2016 hanya tersedia di level kecamatan
   useEffect(() => {
-    if (chartNonPertanianDivisor === "se2016" && chartKecamatanFilter !== "all") {
+    if (chartMode === "legacy" && chartNonPertanianDivisor === "se2016") {
       setChartKecamatanFilter("all");
     }
-  }, [chartNonPertanianDivisor, chartKecamatanFilter]);
+  }, [chartMode, chartNonPertanianDivisor]);
 
   const [chartProporsiSortBy, setChartProporsiSortBy] = useState<"prelist" | "wilkerstat">("prelist");
 
@@ -4663,7 +4663,7 @@ export default function MonitoringLapanganDash() {
       chartKecamatanFilter === "all"
         ? proporsiKecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
         : proporsiDesaStats
-            .filter((item) => item.kecamatan === chartKecamatanFilter)
+          .filter((item) => normalizeKecamatanKey(item.kecamatan) === normalizeKecamatanKey(chartKecamatanFilter))
             .map((item) => ({ label: item.desa, ...item }));
 
     const mapped = rows.map((item) => ({
@@ -4685,7 +4685,7 @@ export default function MonitoringLapanganDash() {
       chartKecamatanFilter === "all" || isSe2016
         ? proporsiKecamatanStats.map((item) => ({ label: item.kecamatan, ...item }))
         : proporsiDesaStats
-            .filter((item) => item.kecamatan === chartKecamatanFilter)
+          .filter((item) => normalizeKecamatanKey(item.kecamatan) === normalizeKecamatanKey(chartKecamatanFilter))
             .map((item) => ({ label: item.desa, ...item }));
 
     const withValue = rows.map((item) => {
@@ -5057,7 +5057,7 @@ export default function MonitoringLapanganDash() {
                       </div>
                       {chartMode === "legacy" && (
                         <div className="flex flex-col gap-1">
-                          <label htmlFor="chart-divisor-responden" className="text-xs font-semibold text-slate-600">Pembagi</label>
+                          <label htmlFor="chart-divisor-responden" className="text-xs font-semibold text-slate-600">Pembanding</label>
                           <select
                             id="chart-divisor-responden"
                             value={chartRespondenDivisor}
@@ -5307,7 +5307,7 @@ export default function MonitoringLapanganDash() {
                       </div>
                       {chartMode === "legacy" && (
                         <div className="flex flex-col gap-1">
-                          <label htmlFor="chart-divisor-non" className="text-xs font-semibold text-slate-600">Pembagi</label>
+                          <label htmlFor="chart-divisor-non" className="text-xs font-semibold text-slate-600">Pembanding</label>
                           <select
                             id="chart-divisor-non"
                             value={chartNonPertanianDivisor}
