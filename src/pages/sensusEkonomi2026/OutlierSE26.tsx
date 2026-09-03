@@ -37,12 +37,50 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import * as XLSX from "xlsx";
+import OutlierGenericTab from "./OutlierGenericTab";
 
 // Google Sheets ID and Sheet Names
 const SPREADSHEET_ID = "12_gOs_3ONM1E2o_SXnljRM0Sx_YMkpXIN7yTfIRi2uU";
 const PRODUKSI_SHEET = "PRODUKSI<1JT";
 const TK_DIBAYAR_SHEET = "TK-DIBAYAR-1";
 const VERIFIKASI_SPREADSHEET_ID = "1x9P3MlkJySQI9FK6mV3maik3qMnUIBW8IKwWPudAA2Y";
+const GENERIC_OUTLIER_TABS = [
+  ["AC>2", "Outlier rumah tangga yang tercatat memiliki lebih dari dua unit AC. Kondisi ini perlu ditinjau untuk memastikan jumlah kepemilikan sudah sesuai dengan kondisi rumah tangga, serta memastikan peralatan tersebut bukan aset yang digunakan untuk kegiatan usaha."],
+  ["KULKAS>2", "Outlier rumah tangga yang tercatat memiliki lebih dari dua unit kulkas. Data ini perlu diverifikasi karena jumlah kulkas yang tinggi dapat mengindikasikan peralatan untuk kegiatan usaha, sehingga seharusnya tidak seluruhnya dicatat sebagai kepemilikan rumah tangga."],
+  ["LAPTOP>2", "Outlier rumah tangga yang tercatat memiliki lebih dari dua unit laptop. Periksa kembali jumlah, status kepemilikan, dan penggunaannya untuk memastikan laptop tersebut benar-benar milik rumah tangga dan bukan inventaris kegiatan usaha."],
+  ["PENGELUARAN<100RB", "Outlier dengan pengeluaran rumah tangga per bulan di bawah Rp100.000. Nilai ini sangat rendah sehingga perlu dikonfirmasi kembali, terutama kelengkapan komponen pengeluaran dan kesesuaian periode pencatatan yang digunakan."],
+  ["LT<15", "Outlier rumah tangga dengan luas lantai kurang dari 15 meter persegi. Kondisi ini perlu dicermati untuk memastikan ukuran yang dicatat merupakan luas lantai sebenarnya dan tidak tertukar dengan luas ruangan, luas tanah, atau bagian bangunan tertentu."],
+  ["LT>300", "Outlier rumah tangga dengan luas lantai lebih dari 300 meter persegi. Verifikasi diperlukan untuk memastikan angka tersebut benar, tidak tertukar dengan luas tanah, dan tidak mencakup bangunan atau ruang yang digunakan khusus untuk kegiatan usaha."],
+  ["GAS3KG>5", "Outlier rumah tangga yang tercatat memiliki lebih dari lima tabung gas 3 kg. Jumlah ini perlu diperiksa karena dapat menunjukkan stok atau perlengkapan kegiatan usaha; apabila memang untuk usaha, jangan dicatat sebagai kepemilikan rumah tangga."],
+  ["GAS5KG>5", "Outlier rumah tangga yang tercatat memiliki lebih dari lima tabung gas 5,5 kg. Periksa kembali jumlah dan tujuan penggunaannya karena kepemilikan tersebut dapat berkaitan dengan kegiatan usaha, bukan kebutuhan rumah tangga."],
+  ["MOBIL>3", "Outlier rumah tangga yang tercatat memiliki lebih dari tiga mobil. Kondisi ini perlu diverifikasi untuk memastikan seluruh kendaraan benar-benar dimiliki rumah tangga dan tidak termasuk kendaraan usaha, kendaraan sewa, atau kendaraan milik pihak lain."],
+  ["MOTOR>4", "Outlier rumah tangga yang tercatat memiliki lebih dari empat sepeda motor. Periksa kembali kepemilikan setiap kendaraan dan pastikan kendaraan untuk operasional usaha tidak tercampur dengan kepemilikan rumah tangga."],
+  ["MOTOR<1JT", "Outlier dengan harga sepeda motor di bawah Rp1.000.000. Nilai ini perlu ditinjau karena kemungkinan salah input satuan, harga perolehan, atau kondisi kendaraan, sehingga tidak menggambarkan nilai motor yang sebenarnya."],
+  ["LAHAN>5", "Outlier rumah tangga yang tercatat memiliki lebih dari lima bidang lahan. Verifikasi diperlukan untuk memastikan setiap bidang dihitung secara terpisah, status kepemilikannya jelas, dan lahan yang digunakan untuk usaha tidak salah klasifikasi."],
+  ["LAHAN<10JT", "Outlier dengan harga lahan di bawah Rp10.000.000. Nilai tersebut perlu dikonfirmasi karena dapat terjadi kesalahan satuan, luas lahan, nilai per meter, atau nilai total lahan yang dicatat."],
+  ["RUMAH>2", "Outlier rumah tangga yang tercatat memiliki lebih dari dua rumah. Periksa kembali status kepemilikan dan keberadaan setiap rumah, serta pastikan rumah yang digunakan sebagai tempat usaha atau milik anggota keluarga lain tidak salah dicatat."],
+  ["RUMAH<10JT", "Outlier dengan harga rumah di bawah Rp10.000.000. Nilai ini perlu diverifikasi untuk memastikan tidak terjadi kesalahan satuan, kesalahan pengisian nilai total, atau tertukarnya harga bangunan dengan harga tanah."],
+] as const;
+
+const OUTLIER_TAB_LABELS: Record<string, string> = {
+  "AC>2": "AC > 2",
+  "KULKAS>2": "Kulkas > 2",
+  "LAPTOP>2": "Laptop > 2",
+  "PENGELUARAN<100RB": "Pengeluaran < 100RB",
+  "LT<15": "Luas lantai < 15",
+  "LT>300": "Luas lantai > 300",
+  "GAS3KG>5": "Gas 3 kg > 5",
+  "GAS5KG>5": "Gas 5,5 kg > 5",
+  "MOBIL>3": "Mobil > 3",
+  "MOTOR>4": "Motor > 4",
+  "MOTOR<1JT": "Motor < 1JT",
+  "LAHAN>5": "Lahan > 5",
+  "LAHAN<10JT": "Lahan < 10JT",
+  "RUMAH>2": "Rumah > 2",
+  "RUMAH<10JT": "Rumah < 10JT",
+};
+
+const getOutlierTabLabel = (sheetName: string) => OUTLIER_TAB_LABELS[sheetName] || sheetName;
 
 // Data types
 type SortKey = "idsls" | "nama_ppl" | "nama_pml" | "kecamatan" | "nama_usaha" | "nama_komersial" | "alamat" | "pendapatan" | "pengeluaran";
@@ -694,15 +732,37 @@ export default function OutlierSE26() {
 
         <CardContent className="w-full p-3 sm:p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-4 sm:mb-5 flex w-full max-w-2xl overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-1 text-xs sm:text-sm [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              <TabsTrigger value="produksi" className="whitespace-nowrap">
+            <TabsList className="mb-4 sm:mb-5 grid h-auto w-full max-w-none grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 text-xs sm:grid-cols-3 sm:text-sm lg:grid-cols-6 xl:grid-cols-9">
+              <TabsTrigger value="produksi" className="min-h-9 whitespace-normal px-2 py-1.5 text-center leading-tight">
                 Produksi &lt; 1Juta
               </TabsTrigger>
-              <TabsTrigger value="tk-dibayar" className="whitespace-nowrap">
+              <TabsTrigger value="tk-dibayar" className="min-h-9 whitespace-normal px-2 py-1.5 text-center leading-tight">
                 Tenaga Kerja dibayar
               </TabsTrigger>
+              {GENERIC_OUTLIER_TABS.map(([sheetName]) => (
+                <TabsTrigger key={sheetName} value={sheetName} className="min-h-9 whitespace-normal px-2 py-1.5 text-center leading-tight">
+                  {getOutlierTabLabel(sheetName)}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
+            {GENERIC_OUTLIER_TABS.map(([sheetName, description]) => (
+              <TabsContent key={sheetName} value={sheetName} className="mt-0">
+                <OutlierGenericTab
+                  spreadsheetId={SPREADSHEET_ID}
+                  verifikasiSpreadsheetId={VERIFIKASI_SPREADSHEET_ID}
+                  verifikasiSheetName="6-KECAP"
+                  sheetName={sheetName}
+                  title={getOutlierTabLabel(sheetName)}
+                  description={description}
+                  active={activeTab === sheetName}
+                  isPmlUser={isPmlUser}
+                  allowedKecamatan={allowedKecamatan}
+                />
+              </TabsContent>
+            ))}
+
+            {(activeTab === "produksi" || activeTab === "tk-dibayar") && (
             <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-3">
               <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -760,7 +820,9 @@ export default function OutlierSE26() {
                 <option value="100">100/hal</option>
               </select>
             </div>
+            )}
 
+            {(activeTab === "produksi" || activeTab === "tk-dibayar") && (
             <div className="mb-4 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 via-white to-sky-50 p-3 sm:p-4 shadow-sm">
               {activeTab === "produksi" ? (
                 <p className="text-xs sm:text-sm leading-6 text-slate-800">
@@ -776,6 +838,7 @@ export default function OutlierSE26() {
                 </p>
               )}
             </div>
+            )}
 
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-12 sm:py-16 text-xs sm:text-base text-slate-500">
@@ -832,14 +895,11 @@ export default function OutlierSE26() {
                           <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Tindak Lanjut
                           </TableHead>
-                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[280px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Catatan
                           </TableHead>
-                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
-                            Nama PPL
-                          </TableHead>
-                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
-                            Nama PML
+                          <TableHead className="w-[280px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                            Nama PPL / PML
                           </TableHead>
                         </TableRow>
                       </TableHeader>
@@ -889,10 +949,8 @@ export default function OutlierSE26() {
                               />
                             </TableCell>
                             <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
-                              {row.nama_ppl || "-"}
-                            </TableCell>
-                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
-                              {row.nama_pml || "-"}
+                              <div>{row.nama_ppl || "-"}</div>
+                              <div className="text-[10px] text-slate-500">{row.nama_pml || "-"}</div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -946,9 +1004,8 @@ export default function OutlierSE26() {
                           <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama Usaha</TableHead>
                           <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Link</TableHead>
                           <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Tindak Lanjut</TableHead>
-                          <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Catatan</TableHead>
-                          <TableHead className="w-[160px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PPL</TableHead>
-                          <TableHead className="w-[160px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PML</TableHead>
+                          <TableHead className="w-[280px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Catatan</TableHead>
+                          <TableHead className="w-[280px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PPL / PML</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -989,8 +1046,7 @@ export default function OutlierSE26() {
                                 className="h-8 text-xs"
                               />
                             </TableCell>
-                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.nama_ppl || "-"}</TableCell>
-                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top">{row.nama_pml || "-"}</TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top"><div>{row.nama_ppl || "-"}</div><div className="text-[10px] text-slate-500">{row.nama_pml || "-"}</div></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
