@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useGoogleSheetsData } from "@/hooks/use-google-sheets-data";
 import * as XLSX from "xlsx";
 
 const normalizeKecamatan = (value: string) =>
@@ -72,6 +73,8 @@ interface GenericRow {
   link: string;
   tindak_lanjut: string;
   catatan: string;
+  namaPpl: string;
+  namaPml: string;
 }
 
 interface ParsedSheet {
@@ -91,6 +94,8 @@ interface OutlierGenericTabProps {
   isPmlUser: boolean;
   allowedKecamatan: string[];
   canDownload: boolean;
+  verifikasiSpreadsheetId: string;
+  verifikasiSheetName: string;
 }
 
 const parseSheet = (values: any[][]): ParsedSheet => {
@@ -129,6 +134,8 @@ const parseSheet = (values: any[][]): ParsedSheet => {
       link: get(linkIdx),
       tindak_lanjut: get(tindakIdx),
       catatan: get(catatanIdx),
+      namaPpl: "-",
+      namaPml: "-",
     };
   }).filter((row) => !!row.idsls || !!row.kecamatan);
 
@@ -150,6 +157,8 @@ export default function OutlierGenericTab({
   isPmlUser,
   allowedKecamatan,
   canDownload,
+  verifikasiSpreadsheetId,
+  verifikasiSheetName,
 }: OutlierGenericTabProps) {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -161,6 +170,7 @@ export default function OutlierGenericTab({
   const [pageSize, setPageSize] = useState(20);
   const [savingRow, setSavingRow] = useState<number | null>(null);
   const [rowEdits, setRowEdits] = useState<Record<number, { tindak_lanjut?: string; catatan?: string }>>({});
+  const { data: verifikasiData } = useGoogleSheetsData({ spreadsheetId: verifikasiSpreadsheetId, sheetName: verifikasiSheetName, enabled: active });
 
   const { data, isPending, fetchStatus, error } = useQuery({
     queryKey: ["outlier-generic-sheet", spreadsheetId, sheetName],
@@ -183,6 +193,19 @@ export default function OutlierGenericTab({
 
   const loading = active && isPending && fetchStatus !== "idle";
   const parsed = data ?? { rows: [], valueHeaders: [], tindakLanjutColumn: "H", catatanColumn: "I" };
+  const personnelById = useMemo(() => {
+    const result = new Map<string, { namaPpl: string; namaPml: string }>();
+    (verifikasiData || []).forEach((row: any) => {
+      const raw = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+      const id = String(raw[0] ?? row?.idsubsls ?? "").trim();
+      if (id) result.set(id, { namaPpl: String(raw[16] ?? "").trim() || "-", namaPml: String(raw[17] ?? "").trim() || "-" });
+    });
+    return result;
+  }, [verifikasiData]);
+  const rowsWithPersonnel = useMemo(() => parsed.rows.map((row) => {
+    const personnel = personnelById.get(row.idsls);
+    return personnel ? { ...row, namaPpl: personnel.namaPpl, namaPml: personnel.namaPml } : row;
+  }), [parsed.rows, personnelById]);
 
   useEffect(() => {
     setPage(1);
@@ -207,7 +230,7 @@ export default function OutlierGenericTab({
 
   const filteredRows = useMemo(() => {
     const needle = search.toLowerCase();
-    return parsed.rows.filter((row) => {
+    return rowsWithPersonnel.filter((row) => {
       const status = rowEdits[row.rowNumber]?.tindak_lanjut ?? row.tindak_lanjut;
       const matchesRole =
         !isPmlUser ||
@@ -225,7 +248,7 @@ export default function OutlierGenericTab({
         (statusFilter === "all" || status === statusFilter)
       );
     });
-  }, [parsed.rows, search, effectiveKecamatanFilter, statusFilter, rowEdits, isPmlUser, allowedKecamatan]);
+  }, [rowsWithPersonnel, search, effectiveKecamatanFilter, statusFilter, rowEdits, isPmlUser, allowedKecamatan]);
 
   const sortedRows = useMemo(() => {
     const factor = sortDir === "asc" ? 1 : -1;
@@ -434,8 +457,11 @@ export default function OutlierGenericTab({
                   <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                     Tindak Lanjut
                   </TableHead>
-                  <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                  <TableHead className="w-[360px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                     Catatan
+                  </TableHead>
+                  <TableHead className="w-[280px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                    Nama PPL / PML
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -506,8 +532,12 @@ export default function OutlierGenericTab({
                           if (value !== row.catatan) updateRow(row, "catatan", value);
                         }}
                         placeholder="Tulis catatan..."
-                        className="h-8 text-xs"
+                        className="h-8 min-w-[340px] text-xs"
                       />
+                    </TableCell>
+                    <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
+                      <div>{row.namaPpl}</div>
+                      <div className="text-slate-500">{row.namaPml}</div>
                     </TableCell>
                   </TableRow>
                 ))}

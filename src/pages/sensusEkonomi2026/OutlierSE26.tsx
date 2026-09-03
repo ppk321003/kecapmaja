@@ -315,16 +315,18 @@ const SortHead = ({
   direction,
   onClick,
   numeric = true,
+  widthClass = "",
 }: {
   label: string;
   active: boolean;
   direction: Direction;
   onClick: () => void;
   numeric?: boolean;
+  widthClass?: string;
 }): JSX.Element => (
   <TableHead
     onClick={onClick}
-    className="cursor-pointer select-none whitespace-normal break-words px-1 sm:px-2 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-slate-700 align-middle hover:bg-slate-100 transition-colors"
+    className={`cursor-pointer select-none whitespace-normal break-words px-1 sm:px-2 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-semibold text-slate-700 align-middle hover:bg-slate-100 transition-colors ${widthClass}`}
   >
     <span className="inline-flex items-center justify-center gap-1">
       {label}
@@ -859,7 +861,7 @@ export default function OutlierSE26() {
               <>
                 <TabsContent value="produksi" className="mt-0">
                   <div className="-mx-3 w-full sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
-                    <Table className="w-full table-fixed min-w-[1200px] sm:min-w-[1400px]">
+                    <Table className="w-full table-fixed min-w-[1100px] sm:min-w-0">
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead className="w-8 sm:w-12 text-center align-middle text-xs sm:text-sm px-1 sm:px-2">
@@ -871,6 +873,7 @@ export default function OutlierSE26() {
                             direction={sortDir}
                             onClick={() => toggleSort("kecamatan")}
                             numeric={false}
+                            widthClass="w-[160px]"
                           />
                           <SortHead
                             label="Alamat"
@@ -878,8 +881,9 @@ export default function OutlierSE26() {
                             direction={sortDir}
                             onClick={() => toggleSort("alamat")}
                             numeric={false}
+                            widthClass="w-[220px]"
                           />
-                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[200px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Nama Keluarga
                           </TableHead>
                           <SortHead
@@ -888,17 +892,18 @@ export default function OutlierSE26() {
                             direction={sortDir}
                             onClick={() => toggleSort("nama_usaha")}
                             numeric={false}
+                            widthClass="w-[260px]"
                           />
-                          <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[100px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Link
                           </TableHead>
-                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Tindak Lanjut
                           </TableHead>
-                          <TableHead className="w-[280px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[300px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Catatan
                           </TableHead>
-                          <TableHead className="w-[280px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
+                          <TableHead className="w-[260px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">
                             Nama PPL / PML
                           </TableHead>
                         </TableRow>
@@ -950,7 +955,7 @@ export default function OutlierSE26() {
                             </TableCell>
                             <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm">
                               <div>{row.nama_ppl || "-"}</div>
-                              <div className="text-[10px] text-slate-500">{row.nama_pml || "-"}</div>
+                              <div className="text-slate-500">{row.nama_pml || "-"}</div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -995,17 +1000,17 @@ export default function OutlierSE26() {
 
                 <TabsContent value="tk-dibayar" className="mt-0">
                   <div className="-mx-3 w-full sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
-                    <Table className="w-full table-fixed min-w-[1200px] sm:min-w-[1300px]">
+                    <Table className="w-full table-fixed min-w-[1100px] sm:min-w-0">
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead className="w-10 text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">No</TableHead>
                           <TableHead className="w-[180px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Kecamatan</TableHead>
                           <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Alamat</TableHead>
-                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama Usaha</TableHead>
-                          <TableHead className="w-[70px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Link</TableHead>
-                          <TableHead className="w-[150px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Tindak Lanjut</TableHead>
-                          <TableHead className="w-[280px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Catatan</TableHead>
-                          <TableHead className="w-[280px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PPL / PML</TableHead>
+                          <TableHead className="w-[260px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama Usaha</TableHead>
+                          <TableHead className="w-[100px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Link</TableHead>
+                          <TableHead className="w-[220px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Tindak Lanjut</TableHead>
+                          <TableHead className="w-[300px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Catatan</TableHead>
+                          <TableHead className="w-[260px] text-center text-xs sm:text-sm px-1 sm:px-2 py-2 sm:py-3">Nama PPL / PML</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1046,7 +1051,7 @@ export default function OutlierSE26() {
                                 className="h-8 text-xs"
                               />
                             </TableCell>
-                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top"><div>{row.nama_ppl || "-"}</div><div className="text-[10px] text-slate-500">{row.nama_pml || "-"}</div></TableCell>
+                            <TableCell className="break-words px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm align-top"><div>{row.nama_ppl || "-"}</div><div className="text-slate-500">{row.nama_pml || "-"}</div></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
