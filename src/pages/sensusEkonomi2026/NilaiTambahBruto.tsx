@@ -337,8 +337,8 @@ export default function NilaiTambahBruto() {
           {(error as Error).message}
         </div>
       ) : (
-        <>
-          <Card>
+        <div className="flex flex-col">
+          <Card className="order-2">
             <CardHeader>
               <CardTitle>Peringkat Kecamatan</CardTitle>
               <p className="mt-1 text-xs text-slate-500">
@@ -472,7 +472,7 @@ export default function NilaiTambahBruto() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="order-1">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle>
@@ -693,7 +693,7 @@ export default function NilaiTambahBruto() {
               </div>
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </div>
   );
