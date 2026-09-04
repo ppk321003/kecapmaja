@@ -159,6 +159,8 @@ export default function NilaiTambahBruto() {
     | "percent"
     | "selisih"
     | "rank"
+    | "rankPdrb2025"
+    | "selisihRank"
   >("rank");
   const [detailSortDirection, setDetailSortDirection] = useState<
     "asc" | "desc"
@@ -238,7 +240,17 @@ export default function NilaiTambahBruto() {
         selisih: category.percentPdrb2025 - category.percentSe2026,
         rank: index + 1,
       }));
-    return categories.sort((left, right) => {
+    const pdrbRanks = new Map(
+      [...categories]
+        .sort((left, right) => right.pdrb2025 - left.pdrb2025)
+        .map((category, index) => [category.code, index + 1]),
+    );
+    const categoriesWithPdrbRank = categories.map((category) => ({
+      ...category,
+      rankPdrb2025: pdrbRanks.get(category.code) || 0,
+      selisihRank: (pdrbRanks.get(category.code) || 0) - category.rank,
+    }));
+    return categoriesWithPdrbRank.sort((left, right) => {
       const multiplier = detailSortDirection === "asc" ? 1 : -1;
       if (detailSort === "code")
         return (
@@ -253,6 +265,10 @@ export default function NilaiTambahBruto() {
         return (left.percentPdrb2025 - right.percentPdrb2025) * multiplier;
       if (detailSort === "selisih")
         return (left.selisih - right.selisih) * multiplier;
+      if (detailSort === "rankPdrb2025")
+        return (left.rankPdrb2025 - right.rankPdrb2025) * multiplier;
+      if (detailSort === "selisihRank")
+        return (left.selisihRank - right.selisihRank) * multiplier;
       if (detailSort === "rank") return (left.rank - right.rank) * multiplier;
       return (left.value - right.value) * multiplier;
     });
@@ -574,11 +590,45 @@ export default function NilaiTambahBruto() {
                           )}
                         </span>
                       </TableHead>
+                      <TableHead
+                        onClick={() => toggleDetailSort("rankPdrb2025")}
+                        className="cursor-pointer bg-amber-700 text-center text-white hover:bg-amber-800"
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Peringkat PDRB 2025{" "}
+                          {sortIcon(
+                            detailSort === "rankPdrb2025",
+                            detailSortDirection,
+                          )}
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        onClick={() => toggleDetailSort("selisihRank")}
+                        className="cursor-pointer bg-sky-700 text-center text-white hover:bg-sky-800"
+                        style={{ backgroundColor: "#0369a1" }}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Selisih peringkat{" "}
+                          {sortIcon(
+                            detailSort === "selisihRank",
+                            detailSortDirection,
+                          )}
+                        </span>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {rankedCategories.map((category) => (
-                      <TableRow key={category.code}>
+                      <TableRow
+                        key={category.code}
+                        className={
+                          category.selisihRank > 0
+                            ? "bg-emerald-50/50 hover:bg-emerald-100/60"
+                            : category.selisihRank < 0
+                              ? "bg-rose-50/50 hover:bg-rose-100/60"
+                              : "bg-slate-50/50 hover:bg-slate-100/60"
+                        }
+                      >
                         <TableCell className="font-semibold text-slate-700">
                           {category.code}
                         </TableCell>
@@ -606,6 +656,12 @@ export default function NilaiTambahBruto() {
                         <TableCell className="bg-amber-50 text-right font-semibold tabular-nums text-amber-950">
                           {category.selisih.toFixed(2).replace(".", ",")} %
                         </TableCell>
+                        <TableCell className="bg-amber-50 text-center font-bold text-amber-950">
+                          {category.rankPdrb2025}
+                        </TableCell>
+                        <TableCell className="bg-sky-50 text-center font-bold text-sky-950" style={{ backgroundColor: "#dbeafe" }}>
+                          {category.selisihRank > 0 ? `+${category.selisihRank}` : category.selisihRank}
+                        </TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="bg-emerald-50 font-bold">
@@ -629,6 +685,8 @@ export default function NilaiTambahBruto() {
                       <TableCell className="bg-amber-100 text-right text-amber-950">
                         0,00%
                       </TableCell>
+                      <TableCell className="bg-sky-100 text-center text-sky-950">-</TableCell>
+                      <TableCell className="bg-sky-100 text-center text-sky-950" style={{ backgroundColor: "#bfdbfe" }}>-</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
