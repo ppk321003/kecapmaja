@@ -499,8 +499,8 @@ export default function NilaiTambahBruto() {
               </Select>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <Table className="min-w-[1500px] [&_thead_th:nth-child(n+6)]:bg-amber-700 [&_thead_th:nth-child(n+6)]:hover:bg-amber-800 [&_tbody_td:nth-child(n+6)]:bg-amber-50 [&_tbody_tr:last-child_td:nth-child(n+6)]:bg-amber-100">
+              <div className="overflow-hidden rounded-lg border border-slate-200">
+                <Table className="w-full table-fixed [&_th]:break-words [&_th]:whitespace-normal [&_th]:px-2 [&_td]:break-words [&_td]:whitespace-normal [&_td]:px-2 [&_thead_th:nth-child(n+6)]:bg-amber-700 [&_thead_th:nth-child(n+6)]:hover:bg-amber-800 [&_tbody_td:nth-child(n+6)]:bg-amber-50 [&_tbody_tr:last-child_td:nth-child(n+6)]:bg-amber-100">
                   <TableHeader>
                     <TableRow className="bg-slate-800 hover:bg-slate-800">
                       <TableHead
