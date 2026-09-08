@@ -24,6 +24,7 @@ import {
   Smartphone,
   TrendingUp,
   MapPin,
+  ShieldCheck,
 } from "lucide-react";
 
 import {
@@ -89,6 +90,7 @@ const sensusEkonomiItems = [
       { title: "Pendapatan/Pengeluaran", url: "/sensus-ekonomi-2026/outlier?section=pendapatan-pengeluaran", icon: BarChart3 },
       { title: "Pekerjaan", url: "/sensus-ekonomi-2026/outlier?section=pekerjaan", icon: BarChart3 },
       { title: "Perumahan", url: "/sensus-ekonomi-2026/outlier?section=perumahan", icon: BarChart3 },
+      { title: "Cek Infrastruktur", url: "/sensus-ekonomi-2026/cek-infrastruktur", icon: ShieldCheck },
     ],
   },
   { title: "Nilai Tambah Bruto", url: "/sensus-ekonomi-2026/nilai-tambah-bruto", icon: BarChart3 },

@@ -10,6 +10,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     '/sensus-ekonomi-2026/monitoring-lapangan-dash',
     '/sensus-ekonomi-2026/verifikasi-akhir',
     '/sensus-ekonomi-2026/outlier',
+    '/sensus-ekonomi-2026/cek-infrastruktur',
   ];
 
   if (!isAuthenticated) {
