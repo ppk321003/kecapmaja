@@ -3,10 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, AlertCircle, ChevronDown, ChevronRight, ArrowUpDown, Users } from "lucide-react";
+import { Search, Loader2, AlertCircle, ChevronDown, ChevronRight, ArrowUpDown, Users, BarChart3, TrendingDown, TrendingUp } from "lucide-react";
 import { fetchAppsScriptSheetNames, fetchAppsScriptSheetRows } from "@/hooks/use-google-sheets-data";
 
 export const KELUARGA_SPREADSHEET_ID = "1sRg7Hi7xtBT00dx-61mugWlGL7H1P0gnr3jziaClJsw";
+const PERBANDINGAN_SPREADSHEET_ID = "19kzNnIJG7lkolG1KMoO1NVlGDITnEg55J6WUlU4FWWY";
+const PERBANDINGAN_SHEET_NAME = "Sheet1";
 const STACKING_SPREADSHEET_ID = "1_LNMJ2NSujoSegGQgG4jkLCR0GFHgP6PNHeQjp6WSCo";
 
 const DEFAULT_ITEMS_PER_PAGE = 20;
@@ -31,6 +33,38 @@ const readKeluargaValues = async (sheetName: string) => {
     return await fetchPublicSheetValues(KELUARGA_SPREADSHEET_ID, sheetName);
   } catch {
     return fetchAppsScriptSheetRows(KELUARGA_SPREADSHEET_ID, sheetName);
+  }
+};
+
+type ComparisonTable = {
+  headers: string[];
+  rows: string[][];
+};
+
+const readComparisonTable = async (): Promise<ComparisonTable> => {
+  try {
+    const response = await fetch(
+      `https://docs.google.com/spreadsheets/d/${PERBANDINGAN_SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(PERBANDINGAN_SHEET_NAME)}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) throw new Error(`Public Google Sheet request failed: ${response.status}`);
+    const text = await response.text();
+    const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?\s*$/s);
+    if (!match) throw new Error("Public Google Sheet response tidak valid");
+    const parsed = JSON.parse(match[1]);
+    const headers = (parsed?.table?.cols || []).map((column: any, index: number) =>
+      String(column?.label || `Kolom ${index + 1}`).trim()
+    );
+    const rows = (parsed?.table?.rows || []).map((row: any) =>
+      headers.map((_: string, index: number) => {
+        const cell = row?.c?.[index];
+        return cell && typeof cell === "object" ? String(cell.f ?? cell.v ?? "") : String(cell ?? "");
+      })
+    );
+    return { headers, rows };
+  } catch {
+    const values = await fetchAppsScriptSheetRows(PERBANDINGAN_SPREADSHEET_ID, PERBANDINGAN_SHEET_NAME);
+    return { headers: values[0] || [], rows: values.slice(1) };
   }
 };
 const readStackingValues = async () => {
@@ -1509,13 +1543,160 @@ const KeluargaSheetTable = ({ sheetName, active }: { sheetName: string; active: 
   );
 };
 
+const usePerbandinganTable = (enabled: boolean) =>
+  useQuery({
+    queryKey: ["keluarga-perbandingan", PERBANDINGAN_SPREADSHEET_ID, PERBANDINGAN_SHEET_NAME],
+    enabled,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    queryFn: readComparisonTable,
+  });
+
+const PerbandinganTable = ({ active }: { active: boolean }) => {
+  const { data, isPending, fetchStatus, error } = usePerbandinganTable(active);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [kecamatanFilter, setKecamatanFilter] = useState("all");
+  const [sortKey, setSortKey] = useState(0);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const headers = data?.headers ?? [];
+  const rows = data?.rows ?? [];
+  const visibleColumns = useMemo(() => headers.reduce<number[]>((columns, header, index) => {
+    if (header || rows.some((row) => String(row[index] ?? "").trim() !== "")) columns.push(index);
+    return columns;
+  }, []), [headers, rows]);
+  const kecamatanIndex = visibleColumns.find((index) => normalizeKey(headers[index]).includes("kecamatan")) ?? visibleColumns[1] ?? 0;
+  const selisihIndex = visibleColumns.find((index) => normalizeKey(headers[index]).includes("selisih"));
+  const percentageIndex = visibleColumns.find((index) => headers[index].includes("%") || normalizeKey(headers[index]).includes("persen"));
+
+  const formatComparisonValue = (value: string, header: string) => {
+    if (!value) return "-";
+    if (header.includes("%") || normalizeKey(header).includes("persen")) {
+      const numeric = parseNumericValue(value);
+      return `${numeric.toFixed(2).replace(".", ",")}%`;
+    }
+    if (looksNumeric(value)) return parseNumericValue(value).toLocaleString("id-ID");
+    return value;
+  };
+
+  const kecamatanOptions = useMemo(() => Array.from(new Set(rows.map((row) => row[kecamatanIndex]).filter(Boolean))).sort((a, b) => a.localeCompare(b, "id-ID")), [rows, kecamatanIndex]);
+  const filteredRows = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return rows.filter((row) => {
+      if (kecamatanFilter !== "all" && row[kecamatanIndex] !== kecamatanFilter) return false;
+      return !term || row.join(" ").toLowerCase().includes(term);
+    });
+  }, [rows, searchTerm, kecamatanFilter, kecamatanIndex]);
+  const sortedRows = useMemo(() => [...filteredRows].sort((left, right) => {
+    const leftValue = left[sortKey] ?? "";
+    const rightValue = right[sortKey] ?? "";
+    const leftNumber = parseNumericValue(leftValue);
+    const rightNumber = parseNumericValue(rightValue);
+    const bothNumeric = looksNumeric(leftValue) && looksNumeric(rightValue);
+    const comparison = bothNumeric
+      ? leftNumber - rightNumber
+      : leftValue.localeCompare(rightValue, "id-ID", { numeric: true });
+    return sortDir === "asc" ? comparison : -comparison;
+  }), [filteredRows, sortKey, sortDir]);
+  const summary = useMemo(() => {
+    const total = (index?: number) => index === undefined ? 0 : rows.reduce((sum, row) => sum + parseNumericValue(row[index]), 0);
+    const difference = total(selisihIndex);
+    const percentage = percentageIndex === undefined ? 0 : rows.length > 0
+      ? rows.reduce((sum, row) => sum + parseNumericValue(row[percentageIndex]), 0) / rows.length
+      : 0;
+    return { difference, percentage };
+  }, [rows, selisihIndex, percentageIndex]);
+
+  const totalRow = useMemo(() => {
+    const totals = new Map<number, number>();
+    visibleColumns.forEach((index) => {
+      if (index !== kecamatanIndex && index !== 0) {
+        totals.set(index, rows.reduce((sum, row) => sum + parseNumericValue(row[index]), 0));
+      }
+    });
+
+    if (percentageIndex !== undefined) {
+      const numericHeaders = headers.map((header) => normalizeKey(header));
+      const seIndex = numericHeaders.findIndex((header) => header === "se2026");
+      const ddaIndex = numericHeaders.findIndex((header) => header === "dda2026");
+      if (seIndex !== -1 && ddaIndex !== -1) {
+        const totalSe = rows.reduce((sum, row) => sum + parseNumericValue(row[seIndex]), 0);
+        const totalDda = rows.reduce((sum, row) => sum + parseNumericValue(row[ddaIndex]), 0);
+        totals.set(percentageIndex, totalDda > 0 ? (totalSe / totalDda) * 100 : 0);
+      }
+    }
+
+    return totals;
+  }, [headers, rows, visibleColumns, kecamatanIndex, percentageIndex]);
+
+  const handleSort = (index: number) => {
+    if (sortKey === index) setSortDir((previous) => previous === "asc" ? "desc" : "asc");
+    else { setSortKey(index); setSortDir("desc"); }
+  };
+
+  if (isPending && fetchStatus !== "idle") {
+    return <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-12"><Loader2 className="h-6 w-6 animate-spin text-indigo-600" /><span className="ml-2 text-slate-600">Memuat data perbandingan...</span></div>;
+  }
+  if (error) {
+    return <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 py-12 text-center text-rose-600"><AlertCircle className="h-5 w-5" /><div>Gagal memuat data perbandingan.</div><div className="text-sm text-slate-600">Pastikan spreadsheet dapat diakses oleh aplikasi.</div></div>;
+  }
+  if (visibleColumns.length === 0 || rows.length === 0) {
+    return <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-12 text-slate-500"><AlertCircle className="mr-2 h-5 w-5" />Tidak ada data perbandingan.</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-medium text-indigo-700"><BarChart3 className="h-4 w-4" />Wilayah dibandingkan</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">{rows.length.toLocaleString("id-ID")}</div>
+          <div className="text-xs text-slate-500">baris data aktif</div>
+        </div>
+        <div className="rounded-xl border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-medium text-rose-700"><TrendingDown className="h-4 w-4" />Total selisih</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">{summary.difference.toLocaleString("id-ID")}</div>
+          <div className="text-xs text-slate-500">akumulasi kolom Selisih</div>
+        </div>
+        <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-medium text-emerald-700"><TrendingUp className="h-4 w-4" />Rata-rata persentase</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">{summary.percentage.toFixed(2).replace(".", ",")}%</div>
+          <div className="text-xs text-slate-500">rata-rata seluruh wilayah</div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input placeholder="Cari kode atau kecamatan..." value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="h-10 w-full pl-10" />
+          </div>
+          <select aria-label="Filter kecamatan perbandingan" value={kecamatanFilter} onChange={(event) => setKecamatanFilter(event.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700">
+            <option value="all">Semua Kecamatan</option>
+            {kecamatanOptions.map((kecamatan) => <option key={kecamatan} value={kecamatan}>{kecamatan}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center justify-between px-4 py-3 text-sm text-slate-600"><span>Menampilkan <strong className="text-slate-800">{sortedRows.length.toLocaleString("id-ID")}</strong> data</span><span className="hidden sm:inline">Klik header untuk mengurutkan</span></div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader><TableRow className="border-b-2 border-slate-200 bg-slate-50 hover:bg-slate-50"><TableHead className="w-14 text-center font-semibold text-slate-700">No</TableHead>{visibleColumns.map((index) => <TableHead key={index} onClick={() => handleSort(index)} className="cursor-pointer whitespace-nowrap px-4 py-3 font-semibold text-slate-700 hover:bg-indigo-50"><span className="inline-flex items-center gap-1">{headers[index] || `Kolom ${index + 1}`}<ArrowUpDown className="h-3.5 w-3.5 text-slate-400" /></span></TableHead>)}</TableRow></TableHeader>
+            <TableBody>{sortedRows.map((row, rowIndex) => <TableRow key={`${row[0] ?? "row"}-${rowIndex}`} className="border-b border-slate-100 hover:bg-indigo-50/40"> <TableCell className="text-center text-slate-500">{rowIndex + 1}</TableCell>{visibleColumns.map((index) => { const value = row[index] ?? ""; const isDifference = index === selisihIndex; const numeric = parseNumericValue(value); return <TableCell key={index} className={`whitespace-nowrap px-4 py-3 ${isDifference ? (numeric < 0 ? "font-semibold text-rose-600" : "font-semibold text-emerald-600") : "text-slate-700"}`}>{formatComparisonValue(value, headers[index])}</TableCell>; })}</TableRow>)}<TableRow className="border-t-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-50"><TableCell className="text-center font-bold text-indigo-900">-</TableCell>{visibleColumns.map((index) => { const total = totalRow.get(index); const label = index === kecamatanIndex ? "JUMLAH" : total === undefined ? "" : index === percentageIndex ? `${total.toFixed(2).replace(".", ",")}%` : formatComparisonValue(String(total), headers[index]); const isDifference = index === selisihIndex; return <TableCell key={index} className={`whitespace-nowrap px-4 py-3 font-bold ${isDifference && total !== undefined ? (total < 0 ? "text-rose-700" : "text-emerald-700") : "text-indigo-900"}`}>{label}</TableCell>; })}</TableRow></TableBody>
+          </Table>
+        </div>
+        <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">Baris <strong className="text-indigo-900">JUMLAH</strong> merupakan akumulasi seluruh data yang tampil.</div>
+      </div>
+    </div>
+  );
+};
+
 const KeluargaTab = () => {
   const { data: sheetNames, isPending, fetchStatus, error } = useKeluargaSheetNames();
   const names = sheetNames ?? [];
   const [activeSheet, setActiveSheet] = useState<string>("");
 
   useEffect(() => {
-    if (names.length > 0 && !names.includes(activeSheet)) {
+    if (names.length > 0 && !names.includes(activeSheet) && activeSheet !== "PERBANDINGAN") {
       setActiveSheet(names[0]);
     }
   }, [names, activeSheet]);
@@ -1561,12 +1742,18 @@ const KeluargaTab = () => {
                   {name}
                 </TabsTrigger>
               ))}
+              <TabsTrigger value="PERBANDINGAN" className="rounded-lg px-4 py-2 text-sm font-semibold data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+                PERBANDINGAN
+              </TabsTrigger>
             </TabsList>
             {names.map((name) => (
               <TabsContent key={name} value={name} className="mt-6">
                 <KeluargaSheetTable sheetName={name} active={activeSheet === name} />
               </TabsContent>
             ))}
+            <TabsContent value="PERBANDINGAN" className="mt-6">
+              <PerbandinganTable active={activeSheet === "PERBANDINGAN"} />
+            </TabsContent>
           </Tabs>
         )}
       </div>
