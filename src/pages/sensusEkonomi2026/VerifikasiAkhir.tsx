@@ -1,6 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import {
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
   AlertCircle,
   ArrowUpDown,
   ChevronDown,
@@ -287,6 +297,114 @@ const compareValues = (
       ? aValue - bValue
       : String(aValue).localeCompare(String(bValue), "id");
   return direction === "asc" ? result : -result;
+};
+
+type QuadrantRow = {
+  kecamatan: string;
+  openDraft: number;
+  deficitNonPertanian: number;
+  deficitPertanian: number;
+  deficitKeluarga: number;
+  totalDeficit: number;
+};
+
+const KuadranTooltip = ({ active, payload, averages }: { active?: boolean; payload?: any[]; averages: { openDraft: number; totalDeficit: number } }) => {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload as QuadrantRow | undefined;
+  if (!row) return null;
+  const quadrant = row.openDraft >= averages.openDraft
+    ? row.totalDeficit >= averages.totalDeficit ? "Tinggi Open + Tinggi Defisit" : "Tinggi Open + Rendah Defisit"
+    : row.totalDeficit >= averages.totalDeficit ? "Rendah Open + Tinggi Defisit" : "Rendah Open + Rendah Defisit";
+  const items = [
+    ["Open + Draft", row.openDraft, "text-sky-700"],
+    ["Defisit Non Pertanian", row.deficitNonPertanian, "text-amber-700"],
+    ["Defisit Pertanian", row.deficitPertanian, "text-emerald-700"],
+    ["Defisit Keluarga", row.deficitKeluarga, "text-violet-700"],
+    ["Total Defisit", row.totalDeficit, "text-rose-700"],
+  ] as const;
+  return (
+    <div className="min-w-[230px] rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-xl">
+      <div className="mb-2 border-b border-slate-100 pb-2 text-sm font-bold text-slate-900">{row.kecamatan}</div>
+      <div className="space-y-1.5">
+        {items.map(([label, value, color]) => (
+          <div key={label} className="flex items-center justify-between gap-4">
+            <span className="text-slate-600">{label}</span>
+            <span className={`font-semibold ${color}`}>{formatNumber(value)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 border-t border-slate-100 pt-2 font-semibold text-slate-700">{quadrant}</div>
+    </div>
+  );
+};
+
+const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean; role: string }) => {
+  const rows = useMemo<QuadrantRow[]>(() => {
+    const allowedKecamatan = kecamatanFromRole(role.toLowerCase());
+    const grouped = new Map<string, QuadrantRow>();
+    data.forEach((row) => {
+      const kecamatan = text(row, SHEET_COLUMNS.kecamatan, "nmkec");
+      const normalizedKecamatan = normalizeKecamatan(kecamatan);
+      if (!kecamatan || (isPmlUser && !allowedKecamatan.includes(normalizedKecamatan))) return;
+      const current = grouped.get(normalizedKecamatan) || { kecamatan, openDraft: 0, deficitNonPertanian: 0, deficitPertanian: 0, deficitKeluarga: 0, totalDeficit: 0 };
+      current.openDraft += parseNumber(text(row, SHEET_COLUMNS.open, "open")) + parseNumber(text(row, SHEET_COLUMNS.draft, "draft"));
+      current.deficitNonPertanian += Math.abs(parseNumber(text(row, SHEET_COLUMNS.nonPertanian, "nonPertanian")) - parseNumber(text(row, SHEET_COLUMNS.prelistUsaha, "prelistUsaha")));
+      current.deficitPertanian += Math.abs(parseNumber(text(row, SHEET_COLUMNS.pertanian, "pertanian")) - parseNumber(text(row, SHEET_COLUMNS.utpSt2023, "utpSt2023")));
+      current.deficitKeluarga += Math.abs(parseNumber(text(row, SHEET_COLUMNS.keluarga, "keluarga")) - parseNumber(text(row, SHEET_COLUMNS.keluargaPrelist, "keluargaPrelist")));
+      current.totalDeficit = current.deficitNonPertanian + current.deficitPertanian + current.deficitKeluarga;
+      grouped.set(normalizedKecamatan, current);
+    });
+    return Array.from(grouped.values()).sort((a, b) => a.kecamatan.localeCompare(b.kecamatan, "id"));
+  }, [data, isPmlUser, role]);
+
+  const averages = useMemo(() => ({
+    openDraft: rows.length ? rows.reduce((sum, row) => sum + row.openDraft, 0) / rows.length : 0,
+    totalDeficit: rows.length ? rows.reduce((sum, row) => sum + row.totalDeficit, 0) / rows.length : 0,
+  }), [rows]);
+
+  const getQuadrant = (row: QuadrantRow) => {
+    if (row.openDraft >= averages.openDraft && row.totalDeficit >= averages.totalDeficit) return "Tinggi Open + Tinggi Defisit";
+    if (row.openDraft < averages.openDraft && row.totalDeficit >= averages.totalDeficit) return "Rendah Open + Tinggi Defisit";
+    if (row.openDraft < averages.openDraft && row.totalDeficit < averages.totalDeficit) return "Rendah Open + Rendah Defisit";
+    return "Tinggi Open + Rendah Defisit";
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base sm:text-lg">Kuadran Open + Draft vs Defisit</CardTitle>
+          <CardDescription>Rekap per kecamatan. Batas kuadran menggunakan nilai rata-rata seluruh kecamatan.</CardDescription>
+          <div className="grid gap-2 pt-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2"><span className="font-semibold text-sky-800">Sumbu X</span><div className="text-slate-600">Open + Draft</div></div>
+            <div className="rounded-md border border-amber-100 bg-amber-50 px-3 py-2"><span className="font-semibold text-amber-800">Defisit Non Pertanian</span><div className="text-slate-600">|Non Pertanian - Prelist Usaha|</div></div>
+            <div className="rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2"><span className="font-semibold text-emerald-800">Defisit Pertanian</span><div className="text-slate-600">|Pertanian - UTP Prelist|</div></div>
+            <div className="rounded-md border border-violet-100 bg-violet-50 px-3 py-2"><span className="font-semibold text-violet-800">Defisit Keluarga</span><div className="text-slate-600">|Keluarga - Keluarga Prelist|</div></div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {rows.length === 0 ? <div className="py-12 text-center text-sm text-slate-500">Belum ada data kuadran.</div> : (
+            <div className="h-[420px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 24, right: 28, bottom: 28, left: 12 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
+                  <XAxis type="number" dataKey="openDraft" name="Open + Draft" tickFormatter={formatNumber} tick={{ fontSize: 11 }} label={{ value: "Open + Draft", position: "insideBottom", offset: -16, fontSize: 12, fill: "#334155" }} />
+                  <YAxis type="number" dataKey="totalDeficit" name="Total Defisit" tickFormatter={formatNumber} tick={{ fontSize: 11 }} label={{ value: "Total Defisit", angle: -90, position: "insideLeft", offset: 0, fontSize: 12, fill: "#334155" }} />
+                  <Tooltip content={<KuadranTooltip averages={averages} />} cursor={{ strokeDasharray: "3 3" }} />
+                  <ReferenceLine x={averages.openDraft} stroke="#64748b" strokeDasharray="6 4" label="Rata-rata Open + Draft" />
+                  <ReferenceLine y={averages.totalDeficit} stroke="#64748b" strokeDasharray="6 4" label="Rata-rata Defisit" />
+                  <Scatter name="Kecamatan" data={rows} fill="#0284c7" shape="circle" label={{ dataKey: "kecamatan", position: "right", fontSize: 11, fill: "#334155" }} />
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <Card className="overflow-hidden border-slate-200 shadow-sm">
+        <div className="overflow-x-auto"><Table className="min-w-[900px]"><TableHeader><TableRow className="bg-slate-50"><TableHead>Kecamatan</TableHead><TableHead className="text-right">Open + Draft</TableHead><TableHead className="text-right">Defisit Non Pertanian (Absolut)</TableHead><TableHead className="text-right">Defisit Pertanian (Absolut)</TableHead><TableHead className="text-right">Defisit Keluarga (Absolut)</TableHead><TableHead className="text-right">Total Defisit (Absolut)</TableHead><TableHead>Kuadran</TableHead></TableRow></TableHeader><TableBody>{rows.map((row) => <TableRow key={row.kecamatan}><TableCell className="font-medium">{row.kecamatan}</TableCell><TableCell className="text-right">{formatNumber(row.openDraft)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitNonPertanian)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitPertanian)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitKeluarga)}</TableCell><TableCell className="text-right font-semibold text-rose-600">{formatNumber(row.totalDeficit)}</TableCell><TableCell><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{getQuadrant(row)}</span></TableCell></TableRow>)}</TableBody></Table></div>
+      </Card>
+    </div>
+  );
 };
 
 const SortHead = ({
@@ -1338,31 +1456,29 @@ export default function VerifikasiAkhir() {
         <CardContent className="p-3 sm:p-4 [&_table]:!w-full [&_table]:!min-w-0 [&_.overflow-auto]:!overflow-hidden [&_.overflow-x-auto]:!overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList
-              className={`mb-4 sm:mb-5 grid w-full max-w-sm text-xs sm:text-sm ${isPmlUser ? "grid-cols-1" : "grid-cols-2"}`}
+              className={`mb-4 sm:mb-5 grid w-full max-w-lg text-xs sm:text-sm ${isPmlUser ? "grid-cols-2" : "grid-cols-3"}`}
             >
               <TabsTrigger value="ppl" className="text-xs sm:text-sm">PPL ({filteredPpl.length})</TabsTrigger>
               {!isPmlUser && (
                 <TabsTrigger value="pml" className="text-xs sm:text-sm">PML ({filteredPml.length})</TabsTrigger>
               )}
+              <TabsTrigger value="kuadran" className="text-xs sm:text-sm">KUADRAN</TabsTrigger>
             </TabsList>
-            <div className="mb-4 space-y-3 sm:space-y-4">
-              <div className="flex flex-col gap-2">
-                <div className="relative w-full">
+            <div className="mb-4 flex w-full items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
+              <div className="relative min-w-[220px] flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Cari nama atau kecamatan..."
-                    className="pl-9 text-xs sm:text-sm h-9 sm:h-10"
+                    className="h-9 pl-9 text-xs sm:text-sm"
                   />
-                </div>
-                {verificationTimestamp && (
-                  <div className="text-xs sm:text-sm font-bold text-red-600 truncate">
-                    Terakhir direkam: {verificationTimestamp}
-                  </div>
-                )}
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:flex sm:flex-wrap sm:items-center">
+              {verificationTimestamp && (
+                <div className="shrink-0 text-xs font-bold text-red-600">
+                  Terakhir direkam: {verificationTimestamp}
+                </div>
+              )}
                 {isPpk && (
                   <button
                     type="button"
@@ -1370,11 +1486,10 @@ export default function VerifikasiAkhir() {
                     aria-label={`Download Excel ${activeTab.toUpperCase()}`}
                     onClick={downloadExcel}
                     disabled={loading || !!error}
-                    className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-emerald-600 bg-emerald-600 px-2 sm:px-3 text-xs sm:text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 col-span-1"
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-600 px-3 text-xs font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                    <span className="hidden sm:inline">Excel</span>
-                    <span className="sm:hidden">DL</span>
+                    <Download className="h-3.5 w-3.5 shrink-0" />
+                    <span>Excel</span>
                   </button>
                 )}
                 <select
@@ -1385,7 +1500,7 @@ export default function VerifikasiAkhir() {
                     setPplPage(1);
                     setPmlPage(1);
                   }}
-                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+                  className="h-9 shrink-0 rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-700"
                 >
                   <option value="all">Semua Kec.</option>
                   {kecamatanOptions.map((item) => (
@@ -1398,7 +1513,7 @@ export default function VerifikasiAkhir() {
                   aria-label="Jumlah baris per halaman"
                   value={pageSize}
                   onChange={(event) => setPageSize(Number(event.target.value))}
-                  className="h-9 sm:h-10 rounded-lg border border-slate-300 bg-white px-2 sm:px-3 text-xs sm:text-sm text-slate-700"
+                  className="h-9 shrink-0 rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-700"
                 >
                   {PAGE_SIZES.map((size) => (
                     <option key={size} value={size}>
@@ -1406,7 +1521,6 @@ export default function VerifikasiAkhir() {
                     </option>
                   ))}
                 </select>
-              </div>
             </div>
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-12 sm:py-16 text-xs sm:text-base text-slate-500">
@@ -1418,6 +1532,9 @@ export default function VerifikasiAkhir() {
               </div>
             ) : (
               <>
+                <TabsContent value="kuadran" className="mt-0">
+                  <KuadranTab data={data || []} isPmlUser={isPmlUser} role={String(user?.role || "")} />
+                </TabsContent>
                 <TabsContent value="ppl" className="mt-0">
                   <div className="-mx-3 sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200\">
                     <Table className="table-fixed min-w-[1400px] sm:min-w-[1610px]\">
