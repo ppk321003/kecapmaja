@@ -316,14 +316,15 @@ const QUADRANT_METRICS: Array<{ key: QuadrantMetricKey; label: string }> = [
   { key: "totalDeficit", label: "Total Defisit" },
 ];
 
-const KuadranTooltip = ({ active, payload, averages, selectedMetric }: { active?: boolean; payload?: any[]; averages: { openDraft: number; totalDeficit: number }; selectedMetric: QuadrantMetricKey }) => {
+const KuadranTooltip = ({ active, payload, averages, selectedMetric }: { active?: boolean; payload?: any[]; averages: { openDraft: number; yAverage: number }; selectedMetric: QuadrantMetricKey }) => {
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload as QuadrantRow | undefined;
   if (!row) return null;
   const selectedValue = row[selectedMetric];
+  const selectedMetricLabel = QUADRANT_METRICS.find((metric) => metric.key === selectedMetric)?.label || "Defisit";
   const quadrant = row.openDraft >= averages.openDraft
-    ? selectedValue >= averages.totalDeficit ? "Tinggi Open + Tinggi Defisit" : "Tinggi Open + Rendah Defisit"
-    : selectedValue >= averages.totalDeficit ? "Rendah Open + Tinggi Defisit" : "Rendah Open + Rendah Defisit";
+    ? selectedValue >= averages.yAverage ? "Tinggi Open + Tinggi Defisit" : "Tinggi Open + Rendah Defisit"
+    : selectedValue >= averages.yAverage ? "Rendah Open + Tinggi Defisit" : "Rendah Open + Rendah Defisit";
   const items = [
     ["Open + Draft", row.openDraft, "text-sky-700"],
     ["Defisit Non Pertanian", row.deficitNonPertanian, "text-amber-700"],
@@ -342,7 +343,7 @@ const KuadranTooltip = ({ active, payload, averages, selectedMetric }: { active?
           </div>
         ))}
       </div>
-      <div className="mt-2 border-t border-slate-100 pt-2 font-semibold text-slate-700">{quadrant}</div>
+      <div className="mt-2 border-t border-slate-100 pt-2 font-semibold text-slate-700">{quadrant} ({selectedMetricLabel})</div>
     </div>
   );
 };
@@ -396,15 +397,17 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
 
   const averages = useMemo(() => ({
     openDraft: rows.length ? rows.reduce((sum, row) => sum + row.openDraft, 0) / rows.length : 0,
-    totalDeficit: rows.length ? rows.reduce((sum, row) => sum + row[selectedMetric], 0) / rows.length : 0,
+    yAverage: rows.length ? rows.reduce((sum, row) => sum + row[selectedMetric], 0) / rows.length : 0,
   }), [rows, selectedMetric]);
+
+  const selectedMetricLabel = QUADRANT_METRICS.find((metric) => metric.key === selectedMetric)?.label || "Defisit";
 
   const getQuadrant = (row: QuadrantRow) => {
     const deficitValue = row[selectedMetric];
-    if (row.openDraft >= averages.openDraft && deficitValue >= averages.totalDeficit) return "Tinggi Open + Tinggi Defisit";
-    if (row.openDraft < averages.openDraft && deficitValue >= averages.totalDeficit) return "Rendah Open + Tinggi Defisit";
-    if (row.openDraft < averages.openDraft && deficitValue < averages.totalDeficit) return "Rendah Open + Rendah Defisit";
-    return "Tinggi Open + Rendah Defisit";
+    const level = row.openDraft >= averages.openDraft
+      ? deficitValue >= averages.yAverage ? "Tinggi Open + Tinggi Defisit" : "Tinggi Open + Rendah Defisit"
+      : deficitValue >= averages.yAverage ? "Rendah Open + Tinggi Defisit" : "Rendah Open + Rendah Defisit";
+    return `${level} (${selectedMetricLabel})`;
   };
 
   return (
@@ -412,7 +415,7 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
       <Card className="border-slate-200 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base sm:text-lg">Kuadran Open + Draft vs Defisit</CardTitle>
-          <CardDescription>Rekap per kecamatan. Batas kuadran menggunakan nilai rata-rata seluruh kecamatan.</CardDescription>
+          <CardDescription>Rekap per kecamatan. Tinggi/rendah sumbu Y mengikuti rata-rata <strong>{selectedMetricLabel}</strong> yang dipilih.</CardDescription>
           <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5"><label htmlFor="quadrant-metric" className="text-sm font-bold text-sky-900">Definisi Sumbu Y</label><span className="text-xs text-sky-700">Pilih indikator defisit untuk posisi vertikal:</span><select id="quadrant-metric" value={selectedMetric} onChange={(event) => setSelectedMetric(event.target.value as QuadrantMetricKey)} className="h-9 rounded-md border border-sky-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200">{QUADRANT_METRICS.map((metric) => <option key={metric.key} value={metric.key}>{metric.label}</option>)}</select></div>
           <div className="grid gap-2 pt-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2"><span className="font-semibold text-sky-800">Sumbu X</span><div className="text-slate-600">Open + Draft</div></div>
@@ -428,10 +431,10 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
                 <ScatterChart margin={{ top: 24, right: 28, bottom: 28, left: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
                   <XAxis type="number" dataKey="openDraft" name="Open + Draft" tickFormatter={formatNumber} tick={{ fontSize: 11 }} label={{ value: "Open + Draft", position: "insideBottom", offset: -16, fontSize: 12, fill: "#334155" }} />
-                  <YAxis type="number" dataKey={selectedMetric} name={QUADRANT_METRICS.find((metric) => metric.key === selectedMetric)?.label || "Defisit"} tickFormatter={formatNumber} tick={{ fontSize: 11 }} label={{ value: QUADRANT_METRICS.find((metric) => metric.key === selectedMetric)?.label || "Defisit", angle: -90, position: "insideLeft", offset: 0, fontSize: 12, fill: "#334155" }} />
+                  <YAxis type="number" dataKey={selectedMetric} name={selectedMetricLabel} tickFormatter={formatNumber} tick={{ fontSize: 11 }} label={{ value: selectedMetricLabel, angle: -90, position: "insideLeft", offset: 0, fontSize: 12, fill: "#334155" }} />
                   <Tooltip content={<KuadranTooltip averages={averages} selectedMetric={selectedMetric} />} cursor={{ strokeDasharray: "3 3" }} />
                   <ReferenceLine x={averages.openDraft} stroke="#64748b" strokeDasharray="6 4" label="Rata-rata Open + Draft" />
-                  <ReferenceLine y={averages.totalDeficit} stroke="#64748b" strokeDasharray="6 4" label="Rata-rata Defisit" />
+                  <ReferenceLine y={averages.yAverage} stroke="#64748b" strokeDasharray="6 4" label={`Rata-rata ${selectedMetricLabel}`} />
                   <Scatter name="Kecamatan" data={sortedRows} fill="#0284c7" shape="circle" label={{ dataKey: "kecamatan", position: "right", fontSize: 11, fill: "#334155" }} />
                 </ScatterChart>
               </ResponsiveContainer>
