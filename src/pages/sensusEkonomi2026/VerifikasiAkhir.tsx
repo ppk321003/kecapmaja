@@ -308,13 +308,22 @@ type QuadrantRow = {
   totalDeficit: number;
 };
 
-const KuadranTooltip = ({ active, payload, averages }: { active?: boolean; payload?: any[]; averages: { openDraft: number; totalDeficit: number } }) => {
+type QuadrantMetricKey = "deficitNonPertanian" | "deficitPertanian" | "deficitKeluarga" | "totalDeficit";
+const QUADRANT_METRICS: Array<{ key: QuadrantMetricKey; label: string }> = [
+  { key: "deficitNonPertanian", label: "Defisit Non Pertanian" },
+  { key: "deficitPertanian", label: "Defisit Pertanian" },
+  { key: "deficitKeluarga", label: "Defisit Keluarga" },
+  { key: "totalDeficit", label: "Total Defisit" },
+];
+
+const KuadranTooltip = ({ active, payload, averages, selectedMetric }: { active?: boolean; payload?: any[]; averages: { openDraft: number; totalDeficit: number }; selectedMetric: QuadrantMetricKey }) => {
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload as QuadrantRow | undefined;
   if (!row) return null;
+  const selectedValue = row[selectedMetric];
   const quadrant = row.openDraft >= averages.openDraft
-    ? row.totalDeficit >= averages.totalDeficit ? "Tinggi Open + Tinggi Defisit" : "Tinggi Open + Rendah Defisit"
-    : row.totalDeficit >= averages.totalDeficit ? "Rendah Open + Tinggi Defisit" : "Rendah Open + Rendah Defisit";
+    ? selectedValue >= averages.totalDeficit ? "Tinggi Open + Tinggi Defisit" : "Tinggi Open + Rendah Defisit"
+    : selectedValue >= averages.totalDeficit ? "Rendah Open + Tinggi Defisit" : "Rendah Open + Rendah Defisit";
   const items = [
     ["Open + Draft", row.openDraft, "text-sky-700"],
     ["Defisit Non Pertanian", row.deficitNonPertanian, "text-amber-700"],
@@ -339,6 +348,9 @@ const KuadranTooltip = ({ active, payload, averages }: { active?: boolean; paylo
 };
 
 const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean; role: string }) => {
+  const [selectedMetric, setSelectedMetric] = useState<QuadrantMetricKey>("totalDeficit");
+  const [sortKey, setSortKey] = useState<keyof QuadrantRow>("kecamatan");
+  const [sortDirection, setSortDirection] = useState<Direction>("asc");
   const rows = useMemo<QuadrantRow[]>(() => {
     const allowedKecamatan = kecamatanFromRole(role.toLowerCase());
     const grouped = new Map<string, QuadrantRow>();
@@ -357,15 +369,41 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
     return Array.from(grouped.values()).sort((a, b) => a.kecamatan.localeCompare(b.kecamatan, "id"));
   }, [data, isPmlUser, role]);
 
+  const sortedRows = useMemo(() => [...rows].sort((left, right) => {
+    const leftValue = left[sortKey];
+    const rightValue = right[sortKey];
+    const result = typeof leftValue === "number" && typeof rightValue === "number"
+      ? leftValue - rightValue
+      : String(leftValue).localeCompare(String(rightValue), "id", { numeric: true });
+    return sortDirection === "asc" ? result : -result;
+  }), [rows, sortKey, sortDirection]);
+
+  const totals = useMemo(() => rows.reduce((total, row) => ({
+    openDraft: total.openDraft + row.openDraft,
+    deficitNonPertanian: total.deficitNonPertanian + row.deficitNonPertanian,
+    deficitPertanian: total.deficitPertanian + row.deficitPertanian,
+    deficitKeluarga: total.deficitKeluarga + row.deficitKeluarga,
+    totalDeficit: total.totalDeficit + row.totalDeficit,
+  }), { openDraft: 0, deficitNonPertanian: 0, deficitPertanian: 0, deficitKeluarga: 0, totalDeficit: 0 }), [rows]);
+
+  const toggleSort = (key: keyof QuadrantRow) => {
+    if (sortKey === key) setSortDirection((current) => current === "asc" ? "desc" : "asc");
+    else {
+      setSortKey(key);
+      setSortDirection(typeof rows[0]?.[key] === "number" ? "desc" : "asc");
+    }
+  };
+
   const averages = useMemo(() => ({
     openDraft: rows.length ? rows.reduce((sum, row) => sum + row.openDraft, 0) / rows.length : 0,
-    totalDeficit: rows.length ? rows.reduce((sum, row) => sum + row.totalDeficit, 0) / rows.length : 0,
-  }), [rows]);
+    totalDeficit: rows.length ? rows.reduce((sum, row) => sum + row[selectedMetric], 0) / rows.length : 0,
+  }), [rows, selectedMetric]);
 
   const getQuadrant = (row: QuadrantRow) => {
-    if (row.openDraft >= averages.openDraft && row.totalDeficit >= averages.totalDeficit) return "Tinggi Open + Tinggi Defisit";
-    if (row.openDraft < averages.openDraft && row.totalDeficit >= averages.totalDeficit) return "Rendah Open + Tinggi Defisit";
-    if (row.openDraft < averages.openDraft && row.totalDeficit < averages.totalDeficit) return "Rendah Open + Rendah Defisit";
+    const deficitValue = row[selectedMetric];
+    if (row.openDraft >= averages.openDraft && deficitValue >= averages.totalDeficit) return "Tinggi Open + Tinggi Defisit";
+    if (row.openDraft < averages.openDraft && deficitValue >= averages.totalDeficit) return "Rendah Open + Tinggi Defisit";
+    if (row.openDraft < averages.openDraft && deficitValue < averages.totalDeficit) return "Rendah Open + Rendah Defisit";
     return "Tinggi Open + Rendah Defisit";
   };
 
@@ -375,6 +413,7 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
         <CardHeader className="pb-2">
           <CardTitle className="text-base sm:text-lg">Kuadran Open + Draft vs Defisit</CardTitle>
           <CardDescription>Rekap per kecamatan. Batas kuadran menggunakan nilai rata-rata seluruh kecamatan.</CardDescription>
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5"><label htmlFor="quadrant-metric" className="text-sm font-bold text-sky-900">Definisi Sumbu Y</label><span className="text-xs text-sky-700">Pilih indikator defisit untuk posisi vertikal:</span><select id="quadrant-metric" value={selectedMetric} onChange={(event) => setSelectedMetric(event.target.value as QuadrantMetricKey)} className="h-9 rounded-md border border-sky-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200">{QUADRANT_METRICS.map((metric) => <option key={metric.key} value={metric.key}>{metric.label}</option>)}</select></div>
           <div className="grid gap-2 pt-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2"><span className="font-semibold text-sky-800">Sumbu X</span><div className="text-slate-600">Open + Draft</div></div>
             <div className="rounded-md border border-amber-100 bg-amber-50 px-3 py-2"><span className="font-semibold text-amber-800">Defisit Non Pertanian</span><div className="text-slate-600">|Non Pertanian - Prelist Usaha|</div></div>
@@ -389,11 +428,11 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
                 <ScatterChart margin={{ top: 24, right: 28, bottom: 28, left: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
                   <XAxis type="number" dataKey="openDraft" name="Open + Draft" tickFormatter={formatNumber} tick={{ fontSize: 11 }} label={{ value: "Open + Draft", position: "insideBottom", offset: -16, fontSize: 12, fill: "#334155" }} />
-                  <YAxis type="number" dataKey="totalDeficit" name="Total Defisit" tickFormatter={formatNumber} tick={{ fontSize: 11 }} label={{ value: "Total Defisit", angle: -90, position: "insideLeft", offset: 0, fontSize: 12, fill: "#334155" }} />
-                  <Tooltip content={<KuadranTooltip averages={averages} />} cursor={{ strokeDasharray: "3 3" }} />
+                  <YAxis type="number" dataKey={selectedMetric} name={QUADRANT_METRICS.find((metric) => metric.key === selectedMetric)?.label || "Defisit"} tickFormatter={formatNumber} tick={{ fontSize: 11 }} label={{ value: QUADRANT_METRICS.find((metric) => metric.key === selectedMetric)?.label || "Defisit", angle: -90, position: "insideLeft", offset: 0, fontSize: 12, fill: "#334155" }} />
+                  <Tooltip content={<KuadranTooltip averages={averages} selectedMetric={selectedMetric} />} cursor={{ strokeDasharray: "3 3" }} />
                   <ReferenceLine x={averages.openDraft} stroke="#64748b" strokeDasharray="6 4" label="Rata-rata Open + Draft" />
                   <ReferenceLine y={averages.totalDeficit} stroke="#64748b" strokeDasharray="6 4" label="Rata-rata Defisit" />
-                  <Scatter name="Kecamatan" data={rows} fill="#0284c7" shape="circle" label={{ dataKey: "kecamatan", position: "right", fontSize: 11, fill: "#334155" }} />
+                  <Scatter name="Kecamatan" data={sortedRows} fill="#0284c7" shape="circle" label={{ dataKey: "kecamatan", position: "right", fontSize: 11, fill: "#334155" }} />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>
@@ -401,7 +440,7 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
         </CardContent>
       </Card>
       <Card className="overflow-hidden border-slate-200 shadow-sm">
-        <div className="overflow-x-auto"><Table className="min-w-[900px]"><TableHeader><TableRow className="bg-slate-50"><TableHead>Kecamatan</TableHead><TableHead className="text-right">Open + Draft</TableHead><TableHead className="text-right">Defisit Non Pertanian (Absolut)</TableHead><TableHead className="text-right">Defisit Pertanian (Absolut)</TableHead><TableHead className="text-right">Defisit Keluarga (Absolut)</TableHead><TableHead className="text-right">Total Defisit (Absolut)</TableHead><TableHead>Kuadran</TableHead></TableRow></TableHeader><TableBody>{rows.map((row) => <TableRow key={row.kecamatan}><TableCell className="font-medium">{row.kecamatan}</TableCell><TableCell className="text-right">{formatNumber(row.openDraft)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitNonPertanian)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitPertanian)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitKeluarga)}</TableCell><TableCell className="text-right font-semibold text-rose-600">{formatNumber(row.totalDeficit)}</TableCell><TableCell><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{getQuadrant(row)}</span></TableCell></TableRow>)}</TableBody></Table></div>
+        <div className="overflow-x-auto"><Table className="min-w-[900px]"><TableHeader><TableRow className="bg-slate-50"><TableHead className="cursor-pointer select-none" onClick={() => toggleSort("kecamatan")}>Kecamatan {sortKey === "kecamatan" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("openDraft")}>Open + Draft {sortKey === "openDraft" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitNonPertanian")}>Defisit Non Pertanian (Absolut) {sortKey === "deficitNonPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitPertanian")}>Defisit Pertanian (Absolut) {sortKey === "deficitPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitKeluarga")}>Defisit Keluarga (Absolut) {sortKey === "deficitKeluarga" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("totalDeficit")}>Total Defisit (Absolut) {sortKey === "totalDeficit" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead>Kuadran</TableHead></TableRow></TableHeader><TableBody>{sortedRows.map((row) => <TableRow key={row.kecamatan}><TableCell className="font-medium">{row.kecamatan}</TableCell><TableCell className="text-right">{formatNumber(row.openDraft)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitNonPertanian)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitPertanian)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitKeluarga)}</TableCell><TableCell className="text-right font-semibold text-rose-600">{formatNumber(row.totalDeficit)}</TableCell><TableCell><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{getQuadrant(row)}</span></TableCell></TableRow>)}<TableRow className="border-t-2 border-sky-200 bg-sky-50"><TableCell className="font-bold text-sky-900">JUMLAH</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.openDraft)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitNonPertanian)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitPertanian)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitKeluarga)}</TableCell><TableCell className="text-right font-bold text-rose-700">{formatNumber(totals.totalDeficit)}</TableCell><TableCell className="font-semibold text-sky-900">-</TableCell></TableRow></TableBody></Table></div>
       </Card>
     </div>
   );
