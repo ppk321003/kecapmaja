@@ -361,7 +361,7 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
       if (!kecamatan || (isPmlUser && !allowedKecamatan.includes(normalizedKecamatan))) return;
       const current = grouped.get(normalizedKecamatan) || { kecamatan, openDraft: 0, deficitNonPertanian: 0, deficitPertanian: 0, deficitKeluarga: 0, totalDeficit: 0 };
       current.openDraft += parseNumber(text(row, SHEET_COLUMNS.open, "open")) + parseNumber(text(row, SHEET_COLUMNS.draft, "draft"));
-      current.deficitNonPertanian += Math.abs(parseNumber(text(row, SHEET_COLUMNS.nonPertanian, "nonPertanian")) - parseNumber(text(row, SHEET_COLUMNS.prelistUsaha, "prelistUsaha")));
+      current.deficitNonPertanian += parseNumber(text(row, SHEET_COLUMNS.prelistUsaha, "prelistUsaha")) - parseNumber(text(row, SHEET_COLUMNS.nonPertanian, "nonPertanian"));
       current.deficitPertanian += Math.abs(parseNumber(text(row, SHEET_COLUMNS.pertanian, "pertanian")) - parseNumber(text(row, SHEET_COLUMNS.utpSt2023, "utpSt2023")));
       current.deficitKeluarga += Math.abs(parseNumber(text(row, SHEET_COLUMNS.keluarga, "keluarga")) - parseNumber(text(row, SHEET_COLUMNS.keluargaPrelist, "keluargaPrelist")));
       current.totalDeficit = current.deficitNonPertanian + current.deficitPertanian + current.deficitKeluarga;
@@ -419,7 +419,7 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
           <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5"><label htmlFor="quadrant-metric" className="text-sm font-bold text-sky-900">Definisi Sumbu Y</label><span className="text-xs text-sky-700">Pilih indikator defisit untuk posisi vertikal:</span><select id="quadrant-metric" value={selectedMetric} onChange={(event) => setSelectedMetric(event.target.value as QuadrantMetricKey)} className="h-9 rounded-md border border-sky-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200">{QUADRANT_METRICS.map((metric) => <option key={metric.key} value={metric.key}>{metric.label}</option>)}</select></div>
           <div className="grid gap-2 pt-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2"><span className="font-semibold text-sky-800">Sumbu X</span><div className="text-slate-600">Open + Draft</div></div>
-            <div className="rounded-md border border-amber-100 bg-amber-50 px-3 py-2"><span className="font-semibold text-amber-800">Defisit Non Pertanian</span><div className="text-slate-600">|Non Pertanian - Prelist Usaha|</div></div>
+            <div className="rounded-md border border-amber-100 bg-amber-50 px-3 py-2"><span className="font-semibold text-amber-800">Defisit Non Pertanian</span><div className="text-slate-600">Prelist Usaha - Non Pertanian</div></div>
             <div className="rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2"><span className="font-semibold text-emerald-800">Defisit Pertanian</span><div className="text-slate-600">|Pertanian - UTP Prelist|</div></div>
             <div className="rounded-md border border-violet-100 bg-violet-50 px-3 py-2"><span className="font-semibold text-violet-800">Defisit Keluarga</span><div className="text-slate-600">|Keluarga - Keluarga Prelist|</div></div>
           </div>
