@@ -362,8 +362,8 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
       const current = grouped.get(normalizedKecamatan) || { kecamatan, openDraft: 0, deficitNonPertanian: 0, deficitPertanian: 0, deficitKeluarga: 0, totalDeficit: 0 };
       current.openDraft += parseNumber(text(row, SHEET_COLUMNS.open, "open")) + parseNumber(text(row, SHEET_COLUMNS.draft, "draft"));
       current.deficitNonPertanian += parseNumber(text(row, SHEET_COLUMNS.prelistUsaha, "prelistUsaha")) - parseNumber(text(row, SHEET_COLUMNS.nonPertanian, "nonPertanian"));
-      current.deficitPertanian += Math.abs(parseNumber(text(row, SHEET_COLUMNS.pertanian, "pertanian")) - parseNumber(text(row, SHEET_COLUMNS.utpSt2023, "utpSt2023")));
-      current.deficitKeluarga += Math.abs(parseNumber(text(row, SHEET_COLUMNS.keluarga, "keluarga")) - parseNumber(text(row, SHEET_COLUMNS.keluargaPrelist, "keluargaPrelist")));
+      current.deficitPertanian += parseNumber(text(row, SHEET_COLUMNS.utpSt2023, "utpSt2023")) - parseNumber(text(row, SHEET_COLUMNS.pertanian, "pertanian"));
+      current.deficitKeluarga += parseNumber(text(row, SHEET_COLUMNS.keluargaPrelist, "keluargaPrelist")) - parseNumber(text(row, SHEET_COLUMNS.keluarga, "keluarga"));
       current.totalDeficit = current.deficitNonPertanian + current.deficitPertanian + current.deficitKeluarga;
       grouped.set(normalizedKecamatan, current);
     });
@@ -420,8 +420,8 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
           <div className="grid gap-2 pt-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2"><span className="font-semibold text-sky-800">Sumbu X</span><div className="text-slate-600">Open + Draft</div></div>
             <div className="rounded-md border border-amber-100 bg-amber-50 px-3 py-2"><span className="font-semibold text-amber-800">Defisit Non Pertanian</span><div className="text-slate-600">Prelist Usaha - Non Pertanian</div></div>
-            <div className="rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2"><span className="font-semibold text-emerald-800">Defisit Pertanian</span><div className="text-slate-600">|Pertanian - UTP Prelist|</div></div>
-            <div className="rounded-md border border-violet-100 bg-violet-50 px-3 py-2"><span className="font-semibold text-violet-800">Defisit Keluarga</span><div className="text-slate-600">|Keluarga - Keluarga Prelist|</div></div>
+            <div className="rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2"><span className="font-semibold text-emerald-800">Defisit Pertanian</span><div className="text-slate-600">UTP ST2023 - Pertanian</div></div>
+            <div className="rounded-md border border-violet-100 bg-violet-50 px-3 py-2"><span className="font-semibold text-violet-800">Defisit Keluarga</span><div className="text-slate-600">Keluarga Prelist - Keluarga</div></div>
           </div>
         </CardHeader>
         <CardContent>
