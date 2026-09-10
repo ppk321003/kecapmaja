@@ -200,8 +200,12 @@ const formatVerificationTimestamp = (date = new Date()) => {
   );
   return `${parts.hour}.${parts.minute} WIB - ${parts.weekday}, ${parts.day}/${parts.month}/${parts.year}`;
 };
-const formatPercent = (value: number, total: number) =>
-  total > 0 ? `${((value / total) * 100).toFixed(2)}%` : "0.00%";
+const formatPercent = (value: number, total: number) => {
+  if (total === 0) {
+    return value > 0 ? "100.00%" : "0.00%";
+  }
+  return `${((value / total) * 100).toFixed(2)}%`;
+};
 const normalizeKecamatan = (value: string) =>
   value.trim().toLowerCase().replace(/\s+/g, " ");
 const normalizeSheetId = (value: unknown) =>
@@ -219,7 +223,7 @@ const kecamatanFromRole = (role: string) => {
 };
 const percentClass = (value: number, total: number, alwaysRed = false) => {
   if (alwaysRed) return "text-red-600";
-  const percentage = total > 0 ? (value / total) * 100 : 0;
+  const percentage = total === 0 ? (value > 0 ? 100 : 0) : (value / total) * 100;
   return percentage >= 100
     ? "text-emerald-600"
     : percentage >= 50
