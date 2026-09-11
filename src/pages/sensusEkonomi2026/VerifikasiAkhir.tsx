@@ -926,8 +926,6 @@ export default function VerifikasiAkhir() {
         return value || "-";
       };
       const kecamatanName = asText(1);
-      const admPpl = asText(13);
-      const admPml = asText(14);
       return {
         no: asText(0),
         kecamatan: kecamatanName,
@@ -936,14 +934,12 @@ export default function VerifikasiAkhir() {
         jumlahSls: asText(4),
         slsSelesai: asText(5),
         ujiPetik: asBooleanText(6),
-        bast: asBooleanText(7),
-        bapp: asBooleanText(8),
+        bast: asText(7),
+        bapp: asText(8),
         peta: asBooleanText(9),
         anomali: asBooleanText(10),
         adaNr: asBooleanText(11),
-        banr: asBooleanText(12),
-        admPpl,
-        admPml,
+        banr: asText(12),
         normalizedKecamatan: normalizeKecamatan(kecamatanName),
       };
     });
@@ -952,7 +948,7 @@ export default function VerifikasiAkhir() {
     return rows.filter((row) => {
       const matchesSearch =
         !needle ||
-        `${row.kecamatan} ${row.namaPml} ${row.namaPpl} ${row.admPpl} ${row.admPml}`
+        `${row.kecamatan} ${row.namaPml} ${row.namaPpl} ${row.bast} ${row.bapp} ${row.banr}`
           .toLowerCase()
           .includes(needle);
       const matchesRole =
@@ -1239,8 +1235,6 @@ export default function VerifikasiAkhir() {
         "Anomali",
         "Ada NR",
         "BANR",
-        "Adm PPL",
-        "Adm PML",
       ];
       const rowsForExport = monitoringRows.map((row, index) => [
         index + 1,
@@ -1256,8 +1250,6 @@ export default function VerifikasiAkhir() {
         row.anomali,
         row.adaNr,
         row.banr,
-        row.admPpl,
-        row.admPml,
       ]);
       const worksheet = XLSX.utils.aoa_to_sheet([
         ["MONITORING ADMINISTRASI 9-LK PPL"],
@@ -1282,8 +1274,7 @@ export default function VerifikasiAkhir() {
         { wch: 12 },
         { wch: 12 },
         { wch: 12 },
-        { wch: 30 },
-        { wch: 30 },
+        { wch: 12 },
       ];
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Monitoring Administrasi");
@@ -1812,9 +1803,7 @@ export default function VerifikasiAkhir() {
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">PETA</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Anomali</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Ada NR</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BANR</TableHead>
-                          <TableHead className="min-w-[120px] w-[12%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Adm PPL</TableHead>
-                          <TableHead className="min-w-[120px] w-[12%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Adm PML</TableHead>
+                          <TableHead className="min-w-[120px] w-[12%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BANR</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1827,14 +1816,12 @@ export default function VerifikasiAkhir() {
                             <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.jumlahSls || "-"}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.slsSelesai || "-"}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.ujiPetik, true)}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.bast)}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.bapp)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.bast, "BAST")}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.bapp, "BAPP")}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.peta)}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.anomali, true)}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.adaNr, true)}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.banr, true)}</TableCell>
-                            <TableCell className="px-2 py-2 text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.admPpl, "Adm PPL")}</TableCell>
-                            <TableCell className="px-2 py-2 text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.admPml, "Adm PML")}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.banr, "BANR")}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
