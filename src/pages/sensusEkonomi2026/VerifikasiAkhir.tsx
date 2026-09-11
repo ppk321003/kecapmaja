@@ -13,6 +13,7 @@ import {
 import {
   AlertCircle,
   ArrowUpDown,
+  Check,
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
@@ -406,6 +407,26 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
 
   const selectedMetricLabel = QUADRANT_METRICS.find((metric) => metric.key === selectedMetric)?.label || "Defisit";
 
+  const renderDeficitCell = (value: number, isTotal = false) => {
+    const isNegative = value < 0;
+    const textClass = isNegative
+      ? "font-bold text-emerald-700"
+      : isTotal
+        ? "font-semibold text-rose-600"
+        : "";
+
+    return (
+      <span className={`inline-flex items-center justify-end gap-1.5 ${textClass}`}>
+        <span>{formatNumber(value)}</span>
+        {isNegative && (
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-100">
+            <Check className="h-3 w-3" />
+          </span>
+        )}
+      </span>
+    );
+  };
+
   const getQuadrant = (row: QuadrantRow) => {
     const deficitValue = row[selectedMetric];
     const level = row.openDraft >= averages.openDraft
@@ -447,7 +468,7 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
         </CardContent>
       </Card>
       <Card className="overflow-hidden border-slate-200 shadow-sm">
-        <div className="overflow-x-auto"><Table className="min-w-[900px]"><TableHeader><TableRow className="bg-slate-50"><TableHead className="cursor-pointer select-none" onClick={() => toggleSort("kecamatan")}>Kecamatan {sortKey === "kecamatan" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("openDraft")}>Open + Draft {sortKey === "openDraft" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitNonPertanian")}>Defisit Non Pertanian (Absolut) {sortKey === "deficitNonPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitPertanian")}>Defisit Pertanian (Absolut) {sortKey === "deficitPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitKeluarga")}>Defisit Keluarga (Absolut) {sortKey === "deficitKeluarga" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("totalDeficit")}>Total Defisit (Absolut) {sortKey === "totalDeficit" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead>Kuadran</TableHead></TableRow></TableHeader><TableBody>{sortedRows.map((row) => <TableRow key={row.kecamatan}><TableCell className="font-medium">{row.kecamatan}</TableCell><TableCell className="text-right">{formatNumber(row.openDraft)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitNonPertanian)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitPertanian)}</TableCell><TableCell className="text-right">{formatNumber(row.deficitKeluarga)}</TableCell><TableCell className="text-right font-semibold text-rose-600">{formatNumber(row.totalDeficit)}</TableCell><TableCell><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{getQuadrant(row)}</span></TableCell></TableRow>)}<TableRow className="border-t-2 border-sky-200 bg-sky-50"><TableCell className="font-bold text-sky-900">JUMLAH</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.openDraft)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitNonPertanian)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitPertanian)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitKeluarga)}</TableCell><TableCell className="text-right font-bold text-rose-700">{formatNumber(totals.totalDeficit)}</TableCell><TableCell className="font-semibold text-sky-900">-</TableCell></TableRow></TableBody></Table></div>
+        <div className="overflow-x-auto"><Table className="min-w-[900px]"><TableHeader><TableRow className="bg-slate-50"><TableHead className="cursor-pointer select-none" onClick={() => toggleSort("kecamatan")}>Kecamatan {sortKey === "kecamatan" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("openDraft")}>Open + Draft {sortKey === "openDraft" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitNonPertanian")}>Defisit Non Pertanian (Absolut) {sortKey === "deficitNonPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitPertanian")}>Defisit Pertanian (Absolut) {sortKey === "deficitPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitKeluarga")}>Defisit Keluarga (Absolut) {sortKey === "deficitKeluarga" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("totalDeficit")}>Total Defisit (Absolut) {sortKey === "totalDeficit" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead>Kuadran</TableHead></TableRow></TableHeader><TableBody>{sortedRows.map((row) => <TableRow key={row.kecamatan}><TableCell className="font-medium">{row.kecamatan}</TableCell><TableCell className="text-right">{formatNumber(row.openDraft)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.deficitNonPertanian)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.deficitPertanian)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.deficitKeluarga)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.totalDeficit, true)}</TableCell><TableCell><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{getQuadrant(row)}</span></TableCell></TableRow>)}<TableRow className="border-t-2 border-sky-200 bg-sky-50"><TableCell className="font-bold text-sky-900">JUMLAH</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.openDraft)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitNonPertanian)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitPertanian)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitKeluarga)}</TableCell><TableCell className="text-right font-bold text-rose-700">{formatNumber(totals.totalDeficit)}</TableCell><TableCell className="font-semibold text-sky-900">-</TableCell></TableRow></TableBody></Table></div>
       </Card>
     </div>
   );

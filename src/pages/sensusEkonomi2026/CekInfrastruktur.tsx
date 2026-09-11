@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Check, Loader2, Search, Save, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,11 @@ const SPREADSHEET_ID = "1pZie7-pHL1t4n20170pohixN46dE0I8AwVz42YAwKyY";
 const SHEET_NAME = "Sheet1";
 const STATUS_OPTIONS = ["Sudah", "Belum"];
 
+type SheetRow = {
+  rowNumber: number;
+  values: string[];
+};
+
 const normalizeKecamatan = (value: unknown) => String(value ?? "").trim().toLowerCase()
   .replace(/[.,/\\-]+/g, " ").replace(/\b(?:kecamatan|kec|kabupaten|kab|kota)\b/gi, " ")
   .replace(/\s+/g, " ").trim();
@@ -20,7 +25,7 @@ const kecamatanFromRole = (role: string) => {
   return match ? match[1].split(/\s*(?:,|;|\s+dan\s+|\s+&\s+)\s*/i).map(normalizeKecamatan).filter(Boolean) : [];
 };
 
-const readSheet = async () => {
+const readSheet = async (): Promise<{ headers: string[]; rows: SheetRow[] }> => {
   const response = await fetch(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Gagal membaca spreadsheet (${response.status})`);
   const text = await response.text();
@@ -28,7 +33,7 @@ const readSheet = async () => {
   if (!match) throw new Error("Respons spreadsheet tidak valid");
   const parsed = JSON.parse(match[1]);
   const headers = (parsed?.table?.rows?.[0]?.c || []).map((cell: any, index: number) => String(cell?.v ?? cell?.f ?? `Kolom ${index + 1}`));
-  const rows = (parsed?.table?.rows || []).slice(1).map((row: any, rowIndex: number) => ({
+  const rows: SheetRow[] = (parsed?.table?.rows || []).slice(1).map((row: any, rowIndex: number) => ({
     rowNumber: rowIndex + 2,
     values: headers.map((_: string, index: number) => String(row?.c?.[index]?.f ?? row?.c?.[index]?.v ?? "")),
   }));
@@ -46,23 +51,28 @@ const CekInfrastruktur = () => {
   const role = String(user?.role || "");
   const isPml = role.toLowerCase().startsWith("pml ");
   const allowedKecamatan = useMemo(() => kecamatanFromRole(role), [role]);
-  const { data, isPending, error } = useQuery({ queryKey: ["cek-infrastruktur", SPREADSHEET_ID, SHEET_NAME], queryFn: readSheet, staleTime: 1000 * 60 * 2 });
+  const { data, isPending, error } = useQuery<{ headers: string[]; rows: SheetRow[] }>({
+    queryKey: ["cek-infrastruktur", SPREADSHEET_ID, SHEET_NAME],
+    queryFn: readSheet,
+    staleTime: 1000 * 60 * 2,
+  });
+  const rows: SheetRow[] = data?.rows ?? [];
 
-  const kecamatanOptions = useMemo(() => Array.from(new Set((data?.rows || [])
-    .map((row) => row.values[0])
+  const kecamatanOptions = useMemo<string[]>(() => Array.from(new Set(rows
+    .map((row) => String(row.values[0] ?? ""))
     .filter((value) => value.trim() !== "")
     .filter((value) => !isPml || allowedKecamatan.length === 0 || allowedKecamatan.includes(normalizeKecamatan(value))))
-  ).sort((left, right) => left.localeCompare(right, "id-ID")), [data?.rows, isPml, allowedKecamatan]);
+  ).sort((left: string, right: string) => left.localeCompare(right, "id-ID")), [rows, isPml, allowedKecamatan]);
 
   const visibleRows = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return (data?.rows || []).filter((row) => {
-      const kecamatan = normalizeKecamatan(row.values[0]);
+    return rows.filter((row) => {
+      const kecamatan = normalizeKecamatan(String(row.values[0] ?? ""));
       const roleAllowed = !isPml || allowedKecamatan.length === 0 || allowedKecamatan.includes(kecamatan);
       const selectedKecamatan = kecamatanFilter === "all" || kecamatan === normalizeKecamatan(kecamatanFilter);
       return roleAllowed && selectedKecamatan && (!needle || row.values.join(" ").toLowerCase().includes(needle));
     });
-  }, [data?.rows, search, kecamatanFilter, isPml, allowedKecamatan]);
+  }, [rows, search, kecamatanFilter, isPml, allowedKecamatan]);
 
   const updateCell = async (rowNumber: number, column: number, value: string) => {
     const current = data?.rows.find((row) => row.rowNumber === rowNumber)?.values || [];
