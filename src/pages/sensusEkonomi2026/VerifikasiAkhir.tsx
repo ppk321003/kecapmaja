@@ -17,6 +17,9 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
+  ExternalLink,
+  Link2,
+  X,
   Download,
   Loader2,
   Save,
@@ -358,12 +361,11 @@ const KuadranTab = ({ data, isPmlUser, role }: { data: any[]; isPmlUser: boolean
   const [sortKey, setSortKey] = useState<keyof QuadrantRow>("kecamatan");
   const [sortDirection, setSortDirection] = useState<Direction>("asc");
   const rows = useMemo<QuadrantRow[]>(() => {
-    const allowedKecamatan = kecamatanFromRole(role.toLowerCase());
     const grouped = new Map<string, QuadrantRow>();
     data.forEach((row) => {
       const kecamatan = text(row, SHEET_COLUMNS.kecamatan, "nmkec");
       const normalizedKecamatan = normalizeKecamatan(kecamatan);
-      if (!kecamatan || (isPmlUser && !allowedKecamatan.includes(normalizedKecamatan))) return;
+      if (!kecamatan) return;
       const current = grouped.get(normalizedKecamatan) || { kecamatan, openDraft: 0, deficitNonPertanian: 0, deficitPertanian: 0, deficitKeluarga: 0, totalDeficit: 0 };
       current.openDraft += parseNumber(text(row, SHEET_COLUMNS.open, "open")) + parseNumber(text(row, SHEET_COLUMNS.draft, "draft"));
       current.deficitNonPertanian += parseNumber(text(row, SHEET_COLUMNS.prelistUsaha, "prelistUsaha")) - parseNumber(text(row, SHEET_COLUMNS.nonPertanian, "nonPertanian"));
@@ -838,12 +840,17 @@ export default function VerifikasiAkhir() {
     spreadsheetId: SPREADSHEET_ID,
     sheetName: PETA_SHEET_NAME,
   });
+  const { data: monitoringAdminData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: "9-LK PPL",
+  });
   const [activeTab, setActiveTab] = useState("ppl");
   const [search, setSearch] = useState("");
   const [kecamatan, setKecamatan] = useState("all");
   const [pageSize, setPageSize] = useState(20);
   const [pplPage, setPplPage] = useState(1);
   const [pmlPage, setPmlPage] = useState(1);
+  const [monitoringPage, setMonitoringPage] = useState(1);
   const [pplSort, setPplSort] = useState<SortKey>("nama");
   const [pmlSort, setPmlSort] = useState<SortKey>("nama");
   const [pplDirection, setPplDirection] = useState<Direction>("asc");
@@ -904,6 +911,58 @@ export default function VerifikasiAkhir() {
     });
     return next;
   }, [petaData]);
+
+  const monitoringRows = useMemo(() => {
+    const allowedKecamatan = kecamatanFromRole(
+      String(user?.role || "").toLowerCase(),
+    );
+    const rows = (monitoringAdminData || []).map((row: any) => {
+      const raw = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+      const asText = (index: number) => String(raw[index] ?? "").trim();
+      const asBooleanText = (index: number) => {
+        const value = String(raw[index] ?? "").trim().toLowerCase();
+        if (["true", "1", "yes", "ya", "y"].includes(value)) return "Ya";
+        if (["false", "0", "no", "tidak", "n"].includes(value)) return "Belum";
+        return value || "-";
+      };
+      const kecamatanName = asText(1);
+      const admPpl = asText(13);
+      const admPml = asText(14);
+      return {
+        no: asText(0),
+        kecamatan: kecamatanName,
+        namaPml: asText(2),
+        namaPpl: asText(3),
+        jumlahSls: asText(4),
+        slsSelesai: asText(5),
+        ujiPetik: asBooleanText(6),
+        bast: asBooleanText(7),
+        bapp: asBooleanText(8),
+        peta: asBooleanText(9),
+        anomali: asBooleanText(10),
+        adaNr: asBooleanText(11),
+        banr: asBooleanText(12),
+        admPpl,
+        admPml,
+        normalizedKecamatan: normalizeKecamatan(kecamatanName),
+      };
+    });
+
+    const needle = search.trim().toLowerCase();
+    return rows.filter((row) => {
+      const matchesSearch =
+        !needle ||
+        `${row.kecamatan} ${row.namaPml} ${row.namaPpl} ${row.admPpl} ${row.admPml}`
+          .toLowerCase()
+          .includes(needle);
+      const matchesRole =
+        !isPmlUser ||
+        allowedKecamatan.includes(row.normalizedKecamatan);
+      const matchesKecamatan =
+        kecamatan === "all" || row.kecamatan === kecamatan;
+      return matchesSearch && matchesRole && matchesKecamatan;
+    });
+  }, [monitoringAdminData, search, kecamatan, isPmlUser, user?.role]);
 
   useEffect(() => {
     const timestamp = String(timestampData?.[0] ?? "").trim();
@@ -1036,15 +1095,20 @@ export default function VerifikasiAkhir() {
     };
   }, [data, isPmlUser, user?.role]);
 
-  const kecamatanOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          [...pplRows, ...pmlRows].map((row) => row.kecamatan).filter(Boolean),
-        ),
-      ).sort((a, b) => a.localeCompare(b, "id")),
-    [pplRows, pmlRows],
-  );
+  const kecamatanOptions = useMemo(() => {
+    const allowedKecamatan = kecamatanFromRole(
+      String(user?.role || "").toLowerCase(),
+    );
+    const values = [...pplRows, ...pmlRows, ...monitoringRows]
+      .map((row) => row.kecamatan)
+      .filter(Boolean)
+      .filter((kecamatanName) =>
+        !isPmlUser ||
+        allowedKecamatan.includes(normalizeKecamatan(kecamatanName)),
+      );
+
+    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, "id"));
+  }, [pplRows, pmlRows, monitoringRows, isPmlUser, user?.role]);
   const filterRows = <T extends { nama: string; kecamatan: string }>(
     rows: T[],
   ) =>
@@ -1081,6 +1145,7 @@ export default function VerifikasiAkhir() {
     });
   const pplTotalPages = Math.max(1, Math.ceil(filteredPpl.length / pageSize));
   const pmlTotalPages = Math.max(1, Math.ceil(filteredPml.length / pageSize));
+  const monitoringTotalPages = Math.max(1, Math.ceil(monitoringRows.length / pageSize));
   const visiblePpl = filteredPpl.slice(
     (pplPage - 1) * pageSize,
     pplPage * pageSize,
@@ -1089,10 +1154,15 @@ export default function VerifikasiAkhir() {
     (pmlPage - 1) * pageSize,
     pmlPage * pageSize,
   );
+  const visibleMonitoring = monitoringRows.slice(
+    (monitoringPage - 1) * pageSize,
+    monitoringPage * pageSize,
+  );
 
   useEffect(() => {
     setPplPage(1);
     setPmlPage(1);
+    setMonitoringPage(1);
   }, [search, kecamatan, pageSize]);
   const toggleSort = (tab: "ppl" | "pml", key: SortKey) => {
     if (tab === "ppl") {
@@ -1153,6 +1223,76 @@ export default function VerifikasiAkhir() {
   >;
   const downloadExcel = () => {
     const isPpl = activeTab === "ppl";
+    const isMonitoring = activeTab === "monitoring-administrasi";
+    if (isMonitoring) {
+      const headers = [
+        "No",
+        "Kecamatan",
+        "Nama PML",
+        "Nama PPL",
+        "Jumlah SLS",
+        "SLS Selesai",
+        "Uji Petik",
+        "BAST",
+        "BAPP",
+        "PETA",
+        "Anomali",
+        "Ada NR",
+        "BANR",
+        "Adm PPL",
+        "Adm PML",
+      ];
+      const rowsForExport = monitoringRows.map((row, index) => [
+        index + 1,
+        row.kecamatan,
+        row.namaPml,
+        row.namaPpl,
+        row.jumlahSls,
+        row.slsSelesai,
+        row.ujiPetik,
+        row.bast,
+        row.bapp,
+        row.peta,
+        row.anomali,
+        row.adaNr,
+        row.banr,
+        row.admPpl,
+        row.admPml,
+      ]);
+      const worksheet = XLSX.utils.aoa_to_sheet([
+        ["MONITORING ADMINISTRASI 9-LK PPL"],
+        ["Tanggal Export", new Date().toLocaleString("id-ID")],
+        ["Filter Kecamatan", kecamatan === "all" ? "Semua Kecamatan" : kecamatan],
+        ["Pencarian", search || "-"],
+        [],
+        headers,
+        ...rowsForExport,
+      ]);
+      worksheet["!cols"] = [
+        { wch: 6 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 30 },
+        { wch: 30 },
+      ];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Monitoring Administrasi");
+      XLSX.writeFile(
+        workbook,
+        `Monitoring_Administrasi_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      return;
+    }
     const rows = isPpl ? filteredPpl : filteredPml;
     const actionColumns: ActionColumn[] = isPpl ? ["S", "T", "U", "V"] : ["W", "X", "Y"];
     const actionLabels = isPpl
@@ -1230,6 +1370,61 @@ export default function VerifikasiAkhir() {
   );
   const getMetricGroup = (key: MetricKey) =>
     groups.find((group) => group.keys.includes(key));
+  const renderStatusBadge = (value: string, dashInsteadOfX = false) => {
+    const normalized = String(value ?? "").trim();
+    if (normalized === "Ya") {
+      return (
+        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-100">
+          <Check className="h-3 w-3" strokeWidth={3} />
+        </span>
+      );
+    }
+    if (normalized === "Belum") {
+      if (dashInsteadOfX) {
+        return (
+          <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-1.5 py-0.5 text-slate-500">
+            -
+          </span>
+        );
+      }
+      return (
+        <span className="inline-flex items-center justify-center gap-1 rounded-full bg-rose-100 px-1.5 py-0.5 text-rose-700">
+          <X className="h-3 w-3" strokeWidth={3} />
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-1.5 py-0.5 text-slate-500">
+        -
+      </span>
+    );
+  };
+
+  const renderMonitoringLink = (url: string, label: string) => {
+    const trimmed = String(url ?? "").trim();
+    if (!trimmed) {
+      return (
+        <span className="inline-flex items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium italic text-slate-500 leading-none">
+          link belum tersedia
+        </span>
+      );
+    }
+
+    const href = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-700 transition-colors hover:bg-sky-100 hover:text-sky-800"
+        title={label}
+      >
+        <Link2 className="h-3.5 w-3.5" strokeWidth={2.5} />
+        <span className="sr-only">{label}</span>
+      </a>
+    );
+  };
+
   const renderMetricCell = (row: Metrics, key: MetricKey, detail = false) => {
     const percentages =
       key === "open"
@@ -1523,12 +1718,13 @@ export default function VerifikasiAkhir() {
         <CardContent className="p-3 sm:p-4 [&_table]:!w-full [&_table]:!min-w-0 [&_.overflow-auto]:!overflow-hidden [&_.overflow-x-auto]:!overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList
-              className={`mb-4 sm:mb-5 grid w-full max-w-lg text-xs sm:text-sm ${isPmlUser ? "grid-cols-2" : "grid-cols-3"}`}
+              className={`mb-4 sm:mb-5 grid w-full max-w-2xl text-xs sm:text-sm ${isPmlUser ? "grid-cols-3" : "grid-cols-4"}`}
             >
               <TabsTrigger value="ppl" className="text-xs sm:text-sm">PPL ({filteredPpl.length})</TabsTrigger>
               {!isPmlUser && (
                 <TabsTrigger value="pml" className="text-xs sm:text-sm">PML ({filteredPml.length})</TabsTrigger>
               )}
+              <TabsTrigger value="monitoring-administrasi" className="text-xs sm:text-sm">Monitoring Administrasi</TabsTrigger>
               <TabsTrigger value="kuadran" className="text-xs sm:text-sm">KUADRAN</TabsTrigger>
             </TabsList>
             <div className="mb-4 flex w-full items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
@@ -1599,6 +1795,59 @@ export default function VerifikasiAkhir() {
               </div>
             ) : (
               <>
+                <TabsContent value="monitoring-administrasi" className="mt-0">
+                  <div className="-mx-3 sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
+                    <Table className="w-full table-auto border-separate border-spacing-0">
+                      <TableHeader>
+                        <TableRow className="bg-slate-50">
+                          <TableHead className="min-w-[40px] w-[40px] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">No</TableHead>
+                          <TableHead className="min-w-[120px] w-[12%] text-left align-middle text-[10px] sm:text-xs font-bold text-slate-700">Kecamatan</TableHead>
+                          <TableHead className="min-w-[140px] w-[14%] text-left align-middle text-[10px] sm:text-xs font-bold text-slate-700">Nama PML</TableHead>
+                          <TableHead className="min-w-[140px] w-[14%] text-left align-middle text-[10px] sm:text-xs font-bold text-slate-700">Nama PPL</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Jumlah SLS</TableHead>
+                          <TableHead className="min-w-[90px] w-[9%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">SLS Selesai</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Uji Petik</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BAST</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BAPP</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">PETA</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Anomali</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Ada NR</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BANR</TableHead>
+                          <TableHead className="min-w-[120px] w-[12%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Adm PPL</TableHead>
+                          <TableHead className="min-w-[120px] w-[12%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Adm PML</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {visibleMonitoring.map((row, index) => (
+                          <TableRow key={`${row.kecamatan}-${row.namaPpl}-${index}`} className="border-b hover:bg-slate-50">
+                            <TableCell className="text-center text-[10px] sm:text-xs text-slate-500">{(monitoringPage - 1) * pageSize + index + 1}</TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-800">{row.kecamatan || "-"}</TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-800">{row.namaPml || "-"}</TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-800">{row.namaPpl || "-"}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.jumlahSls || "-"}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.slsSelesai || "-"}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.ujiPetik, true)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.bast)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.bapp)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.peta)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.anomali, true)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.adaNr, true)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.banr, true)}</TableCell>
+                            <TableCell className="px-2 py-2 text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.admPpl, "Adm PPL")}</TableCell>
+                            <TableCell className="px-2 py-2 text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.admPml, "Adm PML")}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <Pagination
+                    page={monitoringPage}
+                    totalPages={monitoringTotalPages}
+                    onPage={setMonitoringPage}
+                    count={monitoringRows.length}
+                    pageSize={pageSize}
+                  />
+                </TabsContent>
                 <TabsContent value="kuadran" className="mt-0">
                   <KuadranTab data={data || []} isPmlUser={isPmlUser} role={String(user?.role || "")} />
                 </TabsContent>
