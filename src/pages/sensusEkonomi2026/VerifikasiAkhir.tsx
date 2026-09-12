@@ -1867,7 +1867,7 @@ export default function VerifikasiAkhir() {
               {!isPmlUser && (
                 <TabsTrigger value="pml" className="text-xs sm:text-sm">PML ({filteredPml.length})</TabsTrigger>
               )}
-              <TabsTrigger value="termin-2" className="text-xs sm:text-sm">Termin-2</TabsTrigger>
+              <TabsTrigger value="termin-2" className="text-xs sm:text-sm">ADMINISTRASI</TabsTrigger>
               <TabsTrigger value="kuadran" className="text-xs sm:text-sm">KUADRAN</TabsTrigger>
             </TabsList>
             <div className="mb-4 flex w-full items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
