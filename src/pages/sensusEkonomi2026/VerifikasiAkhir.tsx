@@ -101,7 +101,9 @@ type SortKey =
   | "flagPml"
   | "pjKec"
   | "ketuaSe2026"
-  | "ppk";
+  | "ppk"
+  | "linkAdministrasi"
+  | "linkBanr";
 type Direction = "asc" | "desc";
 
 type Metrics = Record<MetricKey, number>;
@@ -123,6 +125,7 @@ type PplRow = Metrics & {
   nama: string;
   kecamatan: string;
   linkAdministrasi: string;
+  linkBanr: string;
   details: DetailRow[];
   actionRows: ActionRecord[];
 };
@@ -136,6 +139,7 @@ type PmlRow = Metrics & {
   nama: string;
   kecamatan: string;
   linkAdministrasi: string;
+  linkBanr: string;
   children: PmlChild[];
   actionRows: ActionRecord[];
 };
@@ -293,12 +297,12 @@ const compareValues = (
 
   const aValue = isActionKey
     ? getActionSortValue(a, key, overrides)
-    : key === "nama" || key === "kecamatan"
+      : key === "nama" || key === "kecamatan" || key === "linkAdministrasi" || key === "linkBanr"
       ? String(a[key]).toLowerCase()
       : Number(a[key]);
   const bValue = isActionKey
     ? getActionSortValue(b, key, overrides)
-    : key === "nama" || key === "kecamatan"
+      : key === "nama" || key === "kecamatan" || key === "linkAdministrasi" || key === "linkBanr"
       ? String(b[key]).toLowerCase()
       : Number(b[key]);
 
@@ -885,6 +889,20 @@ export default function VerifikasiAkhir() {
     });
     return matches;
   }, [pmlBanrData]);
+  const monitoringBanrLinks = useMemo(() => {
+    const links = new Map<string, string>();
+    (monitoringAdminData || []).forEach((row: any) => {
+      const raw = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+      const kecamatanName = normalizeKecamatan(String(raw[1] ?? ""));
+      const link = String(raw[14] ?? "").trim();
+      if (!kecamatanName || !link) return;
+      [raw[2], raw[3]].forEach((name) => {
+        const normalizedName = normalizeKecamatan(String(name ?? ""));
+        if (normalizedName) links.set(`${normalizedName}|${kecamatanName}`, link);
+      });
+    });
+    return links;
+  }, [monitoringAdminData]);
   const petaMatchedIds = useMemo(() => {
     const next = new Set<string>();
     (petaData || []).forEach((row: any) => {
@@ -1068,6 +1086,8 @@ export default function VerifikasiAkhir() {
       const kec = text(row, SHEET_COLUMNS.kecamatan, "nmkec");
       const linkPpl = text(row, 27, "link_administrasi_ppl");
       const linkPml = text(row, 28, "link_administrasi_pml");
+      const linkBanrPpl = monitoringBanrLinks.get(`${normalizeKecamatan(namaPpl)}|${normalizeKecamatan(kec)}`) || "";
+      const linkBanrPml = monitoringBanrLinks.get(`${normalizeKecamatan(namaPml)}|${normalizeKecamatan(kec)}`) || "";
       const allowedKecamatan = kecamatanFromRole(
         String(user?.role || "").toLowerCase(),
       );
@@ -1115,10 +1135,12 @@ export default function VerifikasiAkhir() {
           nama: namaPpl,
           kecamatan: kec,
           linkAdministrasi: linkPpl,
+          linkBanr: linkBanrPpl,
           details: [],
           actionRows: [],
         };
         if (!current.linkAdministrasi && linkPpl) current.linkAdministrasi = linkPpl;
+        if (!current.linkBanr && linkBanrPpl) current.linkBanr = linkBanrPpl;
         addMetricObject(current, detailMetrics);
         current.details.push(detail);
         current.actionRows.push(pplAction);
@@ -1132,10 +1154,12 @@ export default function VerifikasiAkhir() {
           nama: namaPml,
           kecamatan: kec,
           linkAdministrasi: linkPml,
+          linkBanr: linkBanrPml,
           children: [],
           actionRows: [],
         };
         if (!current.linkAdministrasi && linkPml) current.linkAdministrasi = linkPml;
+        if (!current.linkBanr && linkBanrPml) current.linkBanr = linkBanrPml;
         addMetricObject(current, detailMetrics);
         current.actionRows.push(pmlAction);
         const child = current.children.find(
@@ -1160,7 +1184,7 @@ export default function VerifikasiAkhir() {
       pplRows: Array.from(pplMap.values()),
       pmlRows: Array.from(pmlMap.values()),
     };
-  }, [data, isPmlUser, user?.role]);
+  }, [data, isPmlUser, monitoringBanrLinks, user?.role]);
 
   const kecamatanOptions = useMemo(() => {
     const allowedKecamatan = kecamatanFromRole(
@@ -1604,6 +1628,8 @@ export default function VerifikasiAkhir() {
           ? "w-[60px] sm:w-[76px] min-w-[60px] sm:min-w-[76px] max-w-[60px] sm:max-w-[76px]"
           : key === "nonPertanianWilkerstat"
             ? "w-[50px] sm:w-[60px] min-w-[50px] sm:min-w-[60px] max-w-[50px] sm:max-w-[60px]"
+        : key === "jumlahAssignment"
+          ? "w-[44px] sm:w-[58px] min-w-[44px] sm:min-w-[58px] max-w-[44px] sm:max-w-[58px]"
         : COMPACT_METRIC_KEYS.has(key)
           ? "w-[60px] sm:w-[88px] min-w-[60px] sm:min-w-[88px] max-w-[60px] sm:max-w-[88px]"
           : "w-[70px] sm:w-[104px] min-w-[70px] sm:min-w-[104px] max-w-[70px] sm:max-w-[104px]";
@@ -1648,7 +1674,7 @@ export default function VerifikasiAkhir() {
   };
 
   const renderMetrics = (
-    row: Metrics & Partial<{ actionRows: ActionRecord[]; kecamatan: string; idsubsls: string }>,
+    row: Metrics & Partial<{ actionRows: ActionRecord[]; kecamatan: string; idsubsls: string; linkAdministrasi: string; linkBanr: string }>,
     detail = false,
     actionRecords?: ActionRecord[],
   ) => {
@@ -1740,7 +1766,10 @@ export default function VerifikasiAkhir() {
           />
         )}
         <TableCell className="w-[3%] text-center text-[10px] sm:text-xs">
-          {renderAdministrationLink(detail ? "" : (row as any).linkAdministrasi || "")}
+          {renderAdministrationLink(detail ? "" : row.linkAdministrasi || "")}
+        </TableCell>
+        <TableCell className="w-[3%] text-center text-[10px] sm:text-xs">
+          {renderAdministrationLink(detail ? "" : row.linkBanr || "")}
         </TableCell>
       </>
     );
@@ -1773,7 +1802,7 @@ export default function VerifikasiAkhir() {
   const renderColumnGroup = (actionCount: number) => (
     <colgroup>
       <col className="w-[3%]" />
-      <col className="w-[14%]" />
+      <col className="w-[22%]" />
       {groups.flatMap((group) => group.keys).map((key) => (
         <col
           key={key}
@@ -1791,6 +1820,7 @@ export default function VerifikasiAkhir() {
       {Array.from({ length: actionCount }, (_, index) => (
         <col key={`action-col-${index}`} className={index === actionCount - 1 ? "w-[6%]" : "w-[3%]"} />
       ))}
+      <col className="w-[3%]" />
       <col className="w-[3%]" />
     </colgroup>
   );
@@ -2001,10 +2031,10 @@ export default function VerifikasiAkhir() {
                             AKSI KAB
                           </TableHead>
                           <TableHead
-                            rowSpan={2}
-                            className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-bold text-sky-900"
+                            colSpan={2}
+                            className="border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-bold text-sky-900"
                           >
-                            Link Administrasi
+                            Link
                           </TableHead>
                         </TableRow>
                         <TableRow>
@@ -2052,6 +2082,22 @@ export default function VerifikasiAkhir() {
                             numeric={false}
                             className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-violet-900"
                           />
+                          <SortHead
+                            label="Adm"
+                            active={pplSort === "linkAdministrasi"}
+                            direction={pplDirection}
+                            onClick={() => toggleSort("ppl", "linkAdministrasi")}
+                            numeric={false}
+                            className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-sky-900"
+                          />
+                          <SortHead
+                            label="BANR"
+                            active={pplSort === "linkBanr"}
+                            direction={pplDirection}
+                            onClick={() => toggleSort("ppl", "linkBanr")}
+                            numeric={false}
+                            className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-sky-900"
+                          />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2098,9 +2144,8 @@ export default function VerifikasiAkhir() {
                                     <TableCell />
                                     <TableCell className="break-words text-[10px] sm:text-sm text-slate-600">
                                       <div className="pl-6 sm:pl-9 italic text-slate-700">{detail.nmsls || "-"}</div>
-                                      <div className="pl-6 sm:pl-9 text-slate-400">{detail.desa || detail.kecamatan || "-"}</div>
-                                      <div className="mt-0.5 text-[8px] sm:text-[11px] text-slate-400">
-                                        {detail.idsubsls || "-"}
+                                      <div className="pl-6 sm:pl-9 text-slate-400">
+                                        {detail.desa || detail.kecamatan || "-"} | {detail.idsubsls || "-"}
                                       </div>
                                     </TableCell>
                                     {renderMetrics(detail, true)}
@@ -2162,10 +2207,10 @@ export default function VerifikasiAkhir() {
                             AKSI KAB
                           </TableHead>
                           <TableHead
-                            rowSpan={2}
-                            className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-bold text-sky-900"
+                            colSpan={2}
+                            className="border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-bold text-sky-900"
                           >
-                            Link Administrasi
+                            Link
                           </TableHead>
                         </TableRow>
                         <TableRow>
@@ -2204,6 +2249,22 @@ export default function VerifikasiAkhir() {
                             onClick={() => toggleSort("pml", "ppk")}
                             numeric={false}
                             className="border border-violet-200 bg-violet-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-violet-900"
+                          />
+                          <SortHead
+                            label="Adm"
+                            active={pmlSort === "linkAdministrasi"}
+                            direction={pmlDirection}
+                            onClick={() => toggleSort("pml", "linkAdministrasi")}
+                            numeric={false}
+                            className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-sky-900"
+                          />
+                          <SortHead
+                            label="BANR"
+                            active={pmlSort === "linkBanr"}
+                            direction={pmlDirection}
+                            onClick={() => toggleSort("pml", "linkBanr")}
+                            numeric={false}
+                            className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-sky-900"
                           />
                         </TableRow>
                       </TableHeader>
