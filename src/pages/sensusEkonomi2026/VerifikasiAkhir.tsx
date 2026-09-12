@@ -122,6 +122,7 @@ type PplRow = Metrics & {
   id: string;
   nama: string;
   kecamatan: string;
+  linkAdministrasi: string;
   details: DetailRow[];
   actionRows: ActionRecord[];
 };
@@ -134,6 +135,7 @@ type PmlRow = Metrics & {
   id: string;
   nama: string;
   kecamatan: string;
+  linkAdministrasi: string;
   children: PmlChild[];
   actionRows: ActionRecord[];
 };
@@ -826,6 +828,7 @@ function KabupatenActions({
 
 export default function VerifikasiAkhir() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { data, loading, error } = useGoogleSheetsData({
     spreadsheetId: SPREADSHEET_ID,
     sheetName: SHEET_NAME,
@@ -862,6 +865,9 @@ export default function VerifikasiAkhir() {
   const [expandedPpl, setExpandedPpl] = useState<Set<string>>(new Set());
   const [expandedPml, setExpandedPml] = useState<Set<string>>(new Set());
   const [actionOverrides, setActionOverrides] = useState<
+    Record<string, string>
+  >({});
+  const [monitoringOverrides, setMonitoringOverrides] = useState<
     Record<string, string>
   >({});
   const [verificationTimestamp, setVerificationTimestamp] = useState("");
@@ -930,7 +936,7 @@ export default function VerifikasiAkhir() {
     const allowedKecamatan = kecamatanFromRole(
       String(user?.role || "").toLowerCase(),
     );
-    const rows = (monitoringAdminData || []).map((row: any) => {
+    const rows = (monitoringAdminData || []).map((row: any, index) => {
       const raw = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
       const asText = (index: number) => String(raw[index] ?? "").trim();
       const asBooleanText = (index: number) => {
@@ -940,7 +946,9 @@ export default function VerifikasiAkhir() {
         return value || "-";
       };
       const kecamatanName = asText(1);
+      const rowNumber = index + 3;
       return {
+        rowNumber,
         no: asText(0),
         kecamatan: kecamatanName,
         namaPml: asText(2),
@@ -948,14 +956,14 @@ export default function VerifikasiAkhir() {
         jumlahSls: asText(4),
         slsSelesai: asText(5),
         ujiPetik: asBooleanText(6),
-        bast: asText(7),
-        bapp: asText(8),
-        super: asText(13),
+        bast: monitoringOverrides[`${rowNumber}:H`] ?? asText(7),
+        bapp: monitoringOverrides[`${rowNumber}:I`] ?? asText(8),
+        super: monitoringOverrides[`${rowNumber}:N`] ?? asText(13),
         peta: asBooleanText(9),
         anomali: asBooleanText(10),
         adaNr: asBooleanText(11),
         noBanr: pmlBanrByName.get(asText(2).toLowerCase()) || "",
-        banr: asText(12),
+        banr: monitoringOverrides[`${rowNumber}:M`] ?? asText(12),
         normalizedKecamatan: normalizeKecamatan(kecamatanName),
       };
     });
@@ -974,7 +982,48 @@ export default function VerifikasiAkhir() {
         kecamatan === "all" || row.kecamatan === kecamatan;
       return matchesSearch && matchesRole && matchesKecamatan;
     });
-  }, [monitoringAdminData, pmlBanrByName, search, kecamatan, isPmlUser, user?.role]);
+  }, [monitoringAdminData, monitoringOverrides, pmlBanrByName, search, kecamatan, isPmlUser, user?.role]);
+
+  const toggleMonitoringStatus = async (
+    rowNumber: number,
+    column: "H" | "I" | "M" | "N",
+    currentValue: string,
+  ) => {
+    if (!isPpk || !rowNumber) return;
+    const nextValue = isTrueFlag(currentValue) ? "FALSE" : "TRUE";
+    try {
+      const { error: updateError } = await supabase.functions.invoke(
+        "google-sheets",
+        {
+          body: {
+            spreadsheetId: SPREADSHEET_ID,
+            operation: "batch-update",
+            updates: [
+              {
+                range: `'9-LK PPL'!${column}${rowNumber}`,
+                values: [[nextValue]],
+              },
+            ],
+          },
+        },
+      );
+      if (updateError) throw updateError;
+      setMonitoringOverrides((current) => ({
+        ...current,
+        [`${rowNumber}:${column}`]: nextValue,
+      }));
+      toast({
+        title: "Status Termin-2 tersimpan",
+        description: `${column}${rowNumber} diubah menjadi ${nextValue}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Gagal menyimpan status Termin-2",
+        description: err?.message || "Update Google Sheets gagal.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     const timestamp = String(timestampData?.[0] ?? "").trim();
@@ -1017,6 +1066,8 @@ export default function VerifikasiAkhir() {
       const namaPpl = text(row, SHEET_COLUMNS.namaPpl, "nama_ppl");
       const namaPml = text(row, SHEET_COLUMNS.namaPml, "nama_pml");
       const kec = text(row, SHEET_COLUMNS.kecamatan, "nmkec");
+      const linkPpl = text(row, 27, "link_administrasi_ppl");
+      const linkPml = text(row, 28, "link_administrasi_pml");
       const allowedKecamatan = kecamatanFromRole(
         String(user?.role || "").toLowerCase(),
       );
@@ -1063,9 +1114,11 @@ export default function VerifikasiAkhir() {
           id: key,
           nama: namaPpl,
           kecamatan: kec,
+          linkAdministrasi: linkPpl,
           details: [],
           actionRows: [],
         };
+        if (!current.linkAdministrasi && linkPpl) current.linkAdministrasi = linkPpl;
         addMetricObject(current, detailMetrics);
         current.details.push(detail);
         current.actionRows.push(pplAction);
@@ -1078,9 +1131,11 @@ export default function VerifikasiAkhir() {
           id: key,
           nama: namaPml,
           kecamatan: kec,
+          linkAdministrasi: linkPml,
           children: [],
           actionRows: [],
         };
+        if (!current.linkAdministrasi && linkPml) current.linkAdministrasi = linkPml;
         addMetricObject(current, detailMetrics);
         current.actionRows.push(pmlAction);
         const child = current.children.find(
@@ -1247,6 +1302,7 @@ export default function VerifikasiAkhir() {
         "BAST",
         "BAPP",
         "Super",
+        "BANR",
         "PETA",
         "Anomali",
         "Jumlah NR",
@@ -1262,6 +1318,7 @@ export default function VerifikasiAkhir() {
         row.bast,
         row.bapp,
         row.super,
+        row.banr,
         row.peta,
         row.anomali,
         row.adaNr,
@@ -1414,6 +1471,26 @@ export default function VerifikasiAkhir() {
     );
   };
 
+  const renderEditableMonitoringStatus = (
+    value: string,
+    rowNumber: number,
+    column: "H" | "I" | "M" | "N",
+  ) => {
+    const status = isTrueFlag(value) ? "Ya" : "Belum";
+    const content = renderStatusBadge(status);
+    if (!isPpk) return content;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleMonitoringStatus(rowNumber, column, value)}
+        title={`Ubah ${column === "H" ? "BAST" : column === "I" ? "BAPP" : column === "M" ? "BANR" : "Super"}`}
+        className="inline-flex rounded-full focus:outline-none focus:ring-2 focus:ring-sky-300"
+      >
+        {content}
+      </button>
+    );
+  };
+
   const renderMonitoringLink = (url: string, label: string) => {
     const trimmed = String(url ?? "").trim();
     if (!trimmed || /^about:blank(?:#.*)?$/i.test(trimmed)) {
@@ -1435,6 +1512,26 @@ export default function VerifikasiAkhir() {
       >
         <Link2 className="h-3.5 w-3.5" strokeWidth={2.5} />
         <span className="sr-only">{label}</span>
+      </a>
+    );
+  };
+
+  const renderAdministrationLink = (url: string) => {
+    const trimmed = String(url ?? "").trim();
+    if (!trimmed || /^about:blank(?:#.*)?$/i.test(trimmed)) {
+      return <span className="text-slate-400">-</span>;
+    }
+    const href = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-700 transition-colors hover:bg-sky-100 hover:text-sky-800"
+        title="Link Administrasi"
+      >
+        <Link2 className="h-3.5 w-3.5" strokeWidth={2.5} />
+        <span className="sr-only">Link Administrasi</span>
       </a>
     );
   };
@@ -1642,6 +1739,9 @@ export default function VerifikasiAkhir() {
             }
           />
         )}
+        <TableCell className="w-[3%] text-center text-[10px] sm:text-xs">
+          {renderAdministrationLink(detail ? "" : (row as any).linkAdministrasi || "")}
+        </TableCell>
       </>
     );
   };
@@ -1691,6 +1791,7 @@ export default function VerifikasiAkhir() {
       {Array.from({ length: actionCount }, (_, index) => (
         <col key={`action-col-${index}`} className={index === actionCount - 1 ? "w-[6%]" : "w-[3%]"} />
       ))}
+      <col className="w-[3%]" />
     </colgroup>
   );
 
@@ -1821,6 +1922,7 @@ export default function VerifikasiAkhir() {
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BAST</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BAPP</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Super</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BANR</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">PETA</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Anomali</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Jumlah NR</TableHead>
@@ -1839,9 +1941,10 @@ export default function VerifikasiAkhir() {
                             <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.jumlahSls || "-"}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.slsSelesai || "-"}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.ujiPetik, true)}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderLinkStatus(row.bast)}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderLinkStatus(row.bapp)}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderLinkStatus(row.super)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.bast, row.rowNumber, "H")}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.bapp, row.rowNumber, "I")}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.super, row.rowNumber, "N")}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.banr, row.rowNumber, "M")}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.peta)}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.anomali, true)}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.adaNr, true)}</TableCell>
@@ -1896,6 +1999,12 @@ export default function VerifikasiAkhir() {
                             className="border border-violet-200 bg-violet-100 text-center text-[10px] sm:text-xs font-bold text-violet-900"
                           >
                             AKSI KAB
+                          </TableHead>
+                          <TableHead
+                            rowSpan={2}
+                            className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-bold text-sky-900"
+                          >
+                            Link Administrasi
                           </TableHead>
                         </TableRow>
                         <TableRow>
@@ -2051,6 +2160,12 @@ export default function VerifikasiAkhir() {
                             className="border border-violet-200 bg-violet-100 text-center text-[10px] sm:text-xs font-bold text-violet-900"
                           >
                             AKSI KAB
+                          </TableHead>
+                          <TableHead
+                            rowSpan={2}
+                            className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-bold text-sky-900"
+                          >
+                            Link Administrasi
                           </TableHead>
                         </TableRow>
                         <TableRow>
