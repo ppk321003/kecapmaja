@@ -844,6 +844,10 @@ export default function VerifikasiAkhir() {
     spreadsheetId: SPREADSHEET_ID,
     sheetName: "9-LK PPL",
   });
+  const { data: pmlBanrData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: "10-PML",
+  });
   const [activeTab, setActiveTab] = useState("ppl");
   const [search, setSearch] = useState("");
   const [kecamatan, setKecamatan] = useState("all");
@@ -865,6 +869,16 @@ export default function VerifikasiAkhir() {
     useState(false);
   const isPmlUser = String(user?.role || "").toLowerCase().startsWith("pml ");
   const isPpk = user?.role === "Pejabat Pembuat Komitmen";
+  const pmlBanrByName = useMemo(() => {
+    const matches = new Map<string, string>();
+    (pmlBanrData || []).forEach((row: any) => {
+      const raw = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+      const namaPml = String(raw[1] ?? "").trim().toLowerCase();
+      const noBanr = String(raw[2] ?? "").trim();
+      if (namaPml && noBanr) matches.set(namaPml, noBanr);
+    });
+    return matches;
+  }, [pmlBanrData]);
   const petaMatchedIds = useMemo(() => {
     const next = new Set<string>();
     (petaData || []).forEach((row: any) => {
@@ -936,9 +950,11 @@ export default function VerifikasiAkhir() {
         ujiPetik: asBooleanText(6),
         bast: asText(7),
         bapp: asText(8),
+        super: asText(13),
         peta: asBooleanText(9),
         anomali: asBooleanText(10),
         adaNr: asBooleanText(11),
+        noBanr: pmlBanrByName.get(asText(2).toLowerCase()) || "",
         banr: asText(12),
         normalizedKecamatan: normalizeKecamatan(kecamatanName),
       };
@@ -958,7 +974,7 @@ export default function VerifikasiAkhir() {
         kecamatan === "all" || row.kecamatan === kecamatan;
       return matchesSearch && matchesRole && matchesKecamatan;
     });
-  }, [monitoringAdminData, search, kecamatan, isPmlUser, user?.role]);
+  }, [monitoringAdminData, pmlBanrByName, search, kecamatan, isPmlUser, user?.role]);
 
   useEffect(() => {
     const timestamp = String(timestampData?.[0] ?? "").trim();
@@ -1219,40 +1235,40 @@ export default function VerifikasiAkhir() {
   >;
   const downloadExcel = () => {
     const isPpl = activeTab === "ppl";
-    const isMonitoring = activeTab === "monitoring-administrasi";
+    const isMonitoring = activeTab === "termin-2";
     if (isMonitoring) {
       const headers = [
         "No",
         "Kecamatan",
-        "Nama PML",
-        "Nama PPL",
+        "Nama Petugas",
         "Jumlah SLS",
         "SLS Selesai",
         "Uji Petik",
         "BAST",
         "BAPP",
+        "Super",
         "PETA",
         "Anomali",
-        "Ada NR",
-        "BANR",
+        "Jumlah NR",
+        "No BANR",
       ];
       const rowsForExport = monitoringRows.map((row, index) => [
         index + 1,
         row.kecamatan,
-        row.namaPml,
-        row.namaPpl,
+        `${row.namaPpl}\n${row.namaPml}`,
         row.jumlahSls,
         row.slsSelesai,
         row.ujiPetik,
         row.bast,
         row.bapp,
+        row.super,
         row.peta,
         row.anomali,
         row.adaNr,
-        row.banr,
+        row.noBanr,
       ]);
       const worksheet = XLSX.utils.aoa_to_sheet([
-        ["MONITORING ADMINISTRASI 9-LK PPL"],
+        ["TERMIN-2"],
         ["Tanggal Export", new Date().toLocaleString("id-ID")],
         ["Filter Kecamatan", kecamatan === "all" ? "Semua Kecamatan" : kecamatan],
         ["Pencarian", search || "-"],
@@ -1277,10 +1293,10 @@ export default function VerifikasiAkhir() {
         { wch: 12 },
       ];
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Monitoring Administrasi");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Termin-2");
       XLSX.writeFile(
         workbook,
-        `Monitoring_Administrasi_${new Date().toISOString().slice(0, 10)}.xlsx`,
+        `Termin-2_${new Date().toISOString().slice(0, 10)}.xlsx`,
       );
       return;
     }
@@ -1391,9 +1407,16 @@ export default function VerifikasiAkhir() {
     );
   };
 
+  const renderLinkStatus = (value: string) => {
+    const trimmed = String(value ?? "").trim();
+    return renderStatusBadge(
+      trimmed && !/^about:blank(?:#.*)?$/i.test(trimmed) ? "Ya" : "Belum",
+    );
+  };
+
   const renderMonitoringLink = (url: string, label: string) => {
     const trimmed = String(url ?? "").trim();
-    if (!trimmed) {
+    if (!trimmed || /^about:blank(?:#.*)?$/i.test(trimmed)) {
       return (
         <span className="inline-flex items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium italic text-slate-500 leading-none">
           link belum tersedia
@@ -1643,7 +1666,6 @@ export default function VerifikasiAkhir() {
       >
         <TableCell />
         <TableCell className="px-3 py-3 text-slate-900">{label}</TableCell>
-        <TableCell />
         {renderMetrics(total, true)}
       </TableRow>
     );
@@ -1652,7 +1674,6 @@ export default function VerifikasiAkhir() {
     <colgroup>
       <col className="w-[3%]" />
       <col className="w-[14%]" />
-      <col className="w-[9%]" />
       {groups.flatMap((group) => group.keys).map((key) => (
         <col
           key={key}
@@ -1715,7 +1736,7 @@ export default function VerifikasiAkhir() {
               {!isPmlUser && (
                 <TabsTrigger value="pml" className="text-xs sm:text-sm">PML ({filteredPml.length})</TabsTrigger>
               )}
-              <TabsTrigger value="monitoring-administrasi" className="text-xs sm:text-sm">Monitoring Administrasi</TabsTrigger>
+              <TabsTrigger value="termin-2" className="text-xs sm:text-sm">Termin-2</TabsTrigger>
               <TabsTrigger value="kuadran" className="text-xs sm:text-sm">KUADRAN</TabsTrigger>
             </TabsList>
             <div className="mb-4 flex w-full items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
@@ -1786,24 +1807,24 @@ export default function VerifikasiAkhir() {
               </div>
             ) : (
               <>
-                <TabsContent value="monitoring-administrasi" className="mt-0">
+                <TabsContent value="termin-2" className="mt-0">
                   <div className="-mx-3 sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
                     <Table className="w-full table-auto border-separate border-spacing-0">
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead className="min-w-[40px] w-[40px] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">No</TableHead>
                           <TableHead className="min-w-[120px] w-[12%] text-left align-middle text-[10px] sm:text-xs font-bold text-slate-700">Kecamatan</TableHead>
-                          <TableHead className="min-w-[140px] w-[14%] text-left align-middle text-[10px] sm:text-xs font-bold text-slate-700">Nama PML</TableHead>
-                          <TableHead className="min-w-[140px] w-[14%] text-left align-middle text-[10px] sm:text-xs font-bold text-slate-700">Nama PPL</TableHead>
+                          <TableHead className="min-w-[180px] w-[18%] text-left align-middle text-[10px] sm:text-xs font-bold text-slate-700">Nama Petugas</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Jumlah SLS</TableHead>
                           <TableHead className="min-w-[90px] w-[9%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">SLS Selesai</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Uji Petik</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BAST</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BAPP</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Super</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">PETA</TableHead>
                           <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Anomali</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Ada NR</TableHead>
-                          <TableHead className="min-w-[120px] w-[12%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BANR</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Jumlah NR</TableHead>
+                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">No BANR</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1811,17 +1832,20 @@ export default function VerifikasiAkhir() {
                           <TableRow key={`${row.kecamatan}-${row.namaPpl}-${index}`} className="border-b hover:bg-slate-50">
                             <TableCell className="text-center text-[10px] sm:text-xs text-slate-500">{(monitoringPage - 1) * pageSize + index + 1}</TableCell>
                             <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-800">{row.kecamatan || "-"}</TableCell>
-                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-800">{row.namaPml || "-"}</TableCell>
-                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-800">{row.namaPpl || "-"}</TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-800">
+                              <div>{row.namaPpl || "-"}</div>
+                              <div>{row.namaPml || "-"}</div>
+                            </TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.jumlahSls || "-"}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.slsSelesai || "-"}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.ujiPetik, true)}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.bast, "BAST")}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.bapp, "BAPP")}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderLinkStatus(row.bast)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderLinkStatus(row.bapp)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderLinkStatus(row.super)}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.peta)}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.anomali, true)}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.adaNr, true)}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderMonitoringLink(row.banr, "BANR")}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{row.noBanr || "-"}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1852,18 +1876,10 @@ export default function VerifikasiAkhir() {
                           </TableHead>
                           <SortHead
                             rowSpan={2}
-                            label="Nama PPL"
+                            label="Nama PPL / Kecamatan"
                             active={pplSort === "nama"}
                             direction={pplDirection}
                             onClick={() => toggleSort("ppl", "nama")}
-                            numeric={false}
-                          />
-                          <SortHead
-                            rowSpan={2}
-                            label="Kecamatan"
-                            active={pplSort === "kecamatan"}
-                            direction={pplDirection}
-                            onClick={() => toggleSort("ppl", "kecamatan")}
                             numeric={false}
                           />
                           {groups.map((group) => (
@@ -1950,17 +1966,17 @@ export default function VerifikasiAkhir() {
                                     })
                                   }
                                 >
-                                  <span className="inline-flex items-center gap-1 sm:gap-2 break-words">
+                                  <span className="inline-flex items-start gap-1 sm:gap-2 break-words">
                                     {expanded ? (
                                       <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                                     ) : (
                                       <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                                     )}
-                                    {row.nama}
+                                    <span>
+                                      <div>{row.nama}</div>
+                                      <div className="font-normal text-slate-400">{row.kecamatan || "-"}</div>
+                                    </span>
                                   </span>
-                                </TableCell>
-                                <TableCell className="break-words px-1.5 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm">
-                                  {row.kecamatan || "-"}
                                 </TableCell>
                                 {renderMetrics(row)}
                               </TableRow>
@@ -1971,11 +1987,9 @@ export default function VerifikasiAkhir() {
                                     className="bg-slate-50"
                                   >
                                     <TableCell />
-                                    <TableCell className="break-words pl-6 sm:pl-9 text-[10px] sm:text-sm italic text-slate-700">
-                                      {detail.nmsls || "-"}
-                                    </TableCell>
                                     <TableCell className="break-words text-[10px] sm:text-sm text-slate-600">
-                                      <div>{detail.desa || detail.kecamatan || "-"}</div>
+                                      <div className="pl-6 sm:pl-9 italic text-slate-700">{detail.nmsls || "-"}</div>
+                                      <div className="pl-6 sm:pl-9 text-slate-400">{detail.desa || detail.kecamatan || "-"}</div>
                                       <div className="mt-0.5 text-[8px] sm:text-[11px] text-slate-400">
                                         {detail.idsubsls || "-"}
                                       </div>
@@ -2017,18 +2031,10 @@ export default function VerifikasiAkhir() {
                           </TableHead>
                           <SortHead
                             rowSpan={2}
-                            label="Nama PML"
+                            label="Nama PML / Kecamatan"
                             active={pmlSort === "nama"}
                             direction={pmlDirection}
                             onClick={() => toggleSort("pml", "nama")}
-                            numeric={false}
-                          />
-                          <SortHead
-                            rowSpan={2}
-                            label="Kecamatan"
-                            active={pmlSort === "kecamatan"}
-                            direction={pmlDirection}
-                            onClick={() => toggleSort("pml", "kecamatan")}
                             numeric={false}
                           />
                           {groups.map((group) => (
@@ -2107,17 +2113,17 @@ export default function VerifikasiAkhir() {
                                     })
                                   }
                                 >
-                                  <span className="inline-flex items-center gap-1 sm:gap-2 break-words">
+                                  <span className="inline-flex items-start gap-1 sm:gap-2 break-words">
                                     {expanded ? (
                                       <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                                     ) : (
                                       <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                                     )}
-                                    {row.nama}
+                                    <span>
+                                      <div>{row.nama}</div>
+                                      <div className="font-normal text-slate-400">{row.kecamatan || "-"}</div>
+                                    </span>
                                   </span>
-                                </TableCell>
-                                <TableCell className="break-words px-1.5 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm">
-                                  {row.kecamatan || "-"}
                                 </TableCell>
                                 {renderMetrics(row)}
                               </TableRow>
@@ -2125,13 +2131,9 @@ export default function VerifikasiAkhir() {
                                 row.children.map((child) => (
                                   <TableRow key={`${row.id}-${child.nama}`} className="bg-slate-50">
                                     <TableCell />
-                                    <TableCell className="break-words pl-6 sm:pl-9 text-[10px] sm:text-sm italic text-slate-700">
-                                      <span className="inline-flex items-center gap-1 sm:gap-2">
-                                        {child.nama || "-"}
-                                      </span>
-                                    </TableCell>
                                     <TableCell className="break-words text-[10px] sm:text-sm text-slate-600">
-                                      {row.kecamatan || "-"}
+                                      <div className="pl-6 sm:pl-9 italic text-slate-700">{child.nama || "-"}</div>
+                                      <div className="pl-6 sm:pl-9 text-slate-400">{row.kecamatan || "-"}</div>
                                     </TableCell>
                                     {renderMetrics(child, true, child.pplActionRows)}
                                   </TableRow>
