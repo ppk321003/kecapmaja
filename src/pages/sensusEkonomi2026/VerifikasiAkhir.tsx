@@ -571,8 +571,8 @@ const KuadranTab = ({ data, se2016Data, isPmlUser, role }: { data: any[]; se2016
       <Card
         className="overflow-hidden border-slate-200 shadow-sm"
         onClick={(event) => {
-          const targetText = (event.target as HTMLElement).textContent || "";
-          if (targetText.includes("% Penambahan/Pengurangan")) {
+          const header = (event.target as HTMLElement).closest("th");
+          if (header?.textContent?.includes("% Penambahan/Pengurangan")) {
             toggleSort("persenPerubahan");
           }
         }}
