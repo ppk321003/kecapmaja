@@ -114,6 +114,21 @@ type NonResponseSortKey =
   | "keberadaanUsaha"
   | "keberadaanKeluarga"
   | "alasanNonRespon";
+type MonitoringSortKey =
+  | "no"
+  | "kecamatan"
+  | "namaPetugas"
+  | "jumlahSls"
+  | "slsSelesai"
+  | "ujiPetik"
+  | "bast"
+  | "bapp"
+  | "super"
+  | "peta"
+  | "anomali"
+  | "adaNr"
+  | "jumlahNr"
+  | "noBanr";
 type Direction = "asc" | "desc";
 
 type Metrics = Record<MetricKey, number>;
@@ -896,6 +911,8 @@ export default function VerifikasiAkhir() {
   const [pmlDirection, setPmlDirection] = useState<Direction>("asc");
   const [nonResponseSort, setNonResponseSort] = useState<NonResponseSortKey>("kecamatan");
   const [nonResponseDirection, setNonResponseDirection] = useState<Direction>("asc");
+  const [monitoringSort, setMonitoringSort] = useState<MonitoringSortKey>("kecamatan");
+  const [monitoringDirection, setMonitoringDirection] = useState<Direction>("asc");
   const [expandedPpl, setExpandedPpl] = useState<Set<string>>(new Set());
   const [expandedPml, setExpandedPml] = useState<Set<string>>(new Set());
   const [actionOverrides, setActionOverrides] = useState<
@@ -1009,9 +1026,9 @@ export default function VerifikasiAkhir() {
         super: monitoringOverrides[`${rowNumber}:N`] ?? asText(13),
         peta: asBooleanText(9),
         anomali: asBooleanText(10),
-        adaNr: asBooleanText(11),
+        adaNr: monitoringOverrides[`${rowNumber}:L`] ?? asBooleanText(11),
+        jumlahNr: asText(12),
         noBanr: pmlBanrByName.get(asText(2).toLowerCase()) || "",
-        banr: monitoringOverrides[`${rowNumber}:M`] ?? asText(12),
         normalizedKecamatan: normalizeKecamatan(kecamatanName),
       };
     });
@@ -1020,7 +1037,7 @@ export default function VerifikasiAkhir() {
     return rows.filter((row) => {
       const matchesSearch =
         !needle ||
-        `${row.kecamatan} ${row.namaPml} ${row.namaPpl} ${row.bast} ${row.bapp} ${row.banr}`
+        `${row.kecamatan} ${row.namaPml} ${row.namaPpl} ${row.bast} ${row.bapp}`
           .toLowerCase()
           .includes(needle);
       const matchesRole =
@@ -1029,8 +1046,45 @@ export default function VerifikasiAkhir() {
       const matchesKecamatan =
         kecamatan === "all" || row.kecamatan === kecamatan;
       return matchesSearch && matchesRole && matchesKecamatan;
+    }).sort((a, b) => {
+      const numericKeys: MonitoringSortKey[] = ["no", "jumlahSls", "slsSelesai", "jumlahNr"];
+      const aValue = numericKeys.includes(monitoringSort)
+        ? parseNumber(a[monitoringSort])
+        : monitoringSort === "namaPetugas"
+          ? `${a.namaPpl} ${a.namaPml}`.toLowerCase()
+          : String(a[monitoringSort] ?? "").toLowerCase();
+      const bValue = numericKeys.includes(monitoringSort)
+        ? parseNumber(b[monitoringSort])
+        : monitoringSort === "namaPetugas"
+          ? `${b.namaPpl} ${b.namaPml}`.toLowerCase()
+          : String(b[monitoringSort] ?? "").toLowerCase();
+      const result =
+        typeof aValue === "number" && typeof bValue === "number"
+          ? aValue - bValue
+          : String(aValue).localeCompare(String(bValue), "id");
+      return monitoringDirection === "asc" ? result : -result;
     });
-  }, [monitoringAdminData, monitoringOverrides, pmlBanrByName, search, kecamatan, isPmlUser, user?.role]);
+  }, [monitoringAdminData, monitoringOverrides, pmlBanrByName, search, kecamatan, isPmlUser, user?.role, monitoringSort, monitoringDirection]);
+  const monitoringOverallRows = useMemo(
+    () =>
+      (monitoringAdminData || []).map((row: any) => {
+        const raw = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+        const value = (index: number) => String(raw[index] ?? "").trim();
+        return {
+          jumlahSls: value(4),
+          slsSelesai: value(5),
+          ujiPetik: value(6),
+          bast: value(7),
+          bapp: value(8),
+          super: value(13),
+          peta: value(9),
+          anomali: value(10),
+          adaNr: value(11),
+          jumlahNr: value(12),
+        };
+      }),
+    [monitoringAdminData],
+  );
 
   const filteredNonResponse = useMemo(() => {
     const allowedKecamatan = kecamatanFromRole(
@@ -1087,7 +1141,7 @@ export default function VerifikasiAkhir() {
 
   const toggleMonitoringStatus = async (
     rowNumber: number,
-    column: "H" | "I" | "M" | "N",
+    column: "H" | "I" | "L" | "M" | "N",
     currentValue: string,
   ) => {
     if (!isPpk || !rowNumber) return;
@@ -1370,6 +1424,13 @@ export default function VerifikasiAkhir() {
     );
     setNonResponsePage(1);
   };
+  const toggleMonitoringSort = (key: MonitoringSortKey) => {
+    setMonitoringSort(key);
+    setMonitoringDirection((current) =>
+      monitoringSort === key ? (current === "asc" ? "desc" : "asc") : "asc",
+    );
+    setMonitoringPage(1);
+  };
 
   const groupClass = {
     neutral: "bg-slate-100",
@@ -1469,9 +1530,9 @@ export default function VerifikasiAkhir() {
         "BAST",
         "BAPP",
         "Super",
-        "BANR",
         "PETA",
         "Anomali",
+        "BANR",
         "Jumlah NR",
         "No BANR",
       ];
@@ -1485,10 +1546,10 @@ export default function VerifikasiAkhir() {
         row.bast,
         row.bapp,
         row.super,
-        row.banr,
         row.peta,
         row.anomali,
         row.adaNr,
+        row.jumlahNr,
         row.noBanr,
       ]);
       const worksheet = XLSX.utils.aoa_to_sheet([
@@ -1641,7 +1702,7 @@ export default function VerifikasiAkhir() {
   const renderEditableMonitoringStatus = (
     value: string,
     rowNumber: number,
-    column: "H" | "I" | "M" | "N",
+    column: "H" | "I" | "L" | "M" | "N",
   ) => {
     const status = isTrueFlag(value) ? "Ya" : "Belum";
     const content = renderStatusBadge(status);
@@ -1650,7 +1711,7 @@ export default function VerifikasiAkhir() {
       <button
         type="button"
         onClick={() => toggleMonitoringStatus(rowNumber, column, value)}
-        title={`Ubah ${column === "H" ? "BAST" : column === "I" ? "BAPP" : column === "M" ? "BANR" : "Super"}`}
+        title={`Ubah ${column === "H" ? "BAST" : column === "I" ? "BAPP" : column === "L" ? "BANR" : column === "M" ? "Jumlah NR" : "Super"}`}
         className="inline-flex rounded-full focus:outline-none focus:ring-2 focus:ring-sky-300"
       >
         {content}
@@ -1944,6 +2005,33 @@ export default function VerifikasiAkhir() {
       </TableRow>
     );
   };
+  const renderMonitoringTotalRow = (
+    rows: Array<Record<string, unknown>>,
+    label: string,
+    className: string,
+  ) => {
+    const sum = (key: string) =>
+      rows.reduce((total, row) => total + parseNumber(row[key]), 0);
+    const countTrue = (key: string) =>
+      rows.reduce((total, row) => total + (isTrueFlag(row[key]) ? 1 : 0), 0);
+    return (
+      <TableRow className={`border-t-2 border-slate-300 ${className} font-bold`}>
+        <TableCell />
+        <TableCell colSpan={2} className="px-3 py-3 text-slate-900">{label}</TableCell>
+        <TableCell className="text-center">{formatNumber(sum("jumlahSls"))}</TableCell>
+        <TableCell className="text-center">{formatNumber(sum("slsSelesai"))}</TableCell>
+        <TableCell className="text-center">{formatNumber(countTrue("ujiPetik"))}</TableCell>
+        <TableCell className="text-center">{formatNumber(countTrue("bast"))}</TableCell>
+        <TableCell className="text-center">{formatNumber(countTrue("bapp"))}</TableCell>
+        <TableCell className="text-center">{formatNumber(countTrue("super"))}</TableCell>
+        <TableCell className="text-center">{formatNumber(countTrue("peta"))}</TableCell>
+        <TableCell className="text-center">{formatNumber(countTrue("anomali"))}</TableCell>
+        <TableCell className="text-center">{formatNumber(countTrue("adaNr"))}</TableCell>
+        <TableCell className="text-center">{formatNumber(sum("jumlahNr"))}</TableCell>
+        <TableCell />
+      </TableRow>
+    );
+  };
   const renderColumnGroup = (actionCount: number, includeBanr: boolean) => (
     <colgroup>
       <col className="w-[3%]" />
@@ -2089,20 +2177,20 @@ export default function VerifikasiAkhir() {
                     <Table className="w-full table-auto border-separate border-spacing-0">
                       <TableHeader>
                         <TableRow className="bg-slate-50">
-                          <TableHead className="min-w-[40px] w-[40px] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">No</TableHead>
-                          <TableHead className="min-w-[120px] w-[12%] text-left align-middle text-[10px] sm:text-xs font-bold text-slate-700">Kecamatan</TableHead>
-                          <TableHead className="min-w-[180px] w-[18%] text-left align-middle text-[10px] sm:text-xs font-bold text-slate-700">Nama Petugas</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Jumlah SLS</TableHead>
-                          <TableHead className="min-w-[90px] w-[9%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">SLS Selesai</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Uji Petik</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BAST</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BAPP</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Super</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">BANR</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">PETA</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Anomali</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">Jumlah NR</TableHead>
-                          <TableHead className="min-w-[80px] w-[8%] text-center align-middle text-[10px] sm:text-xs font-bold text-slate-700">No BANR</TableHead>
+                          <SortHead label="No" active={monitoringSort === "no"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("no")} className="min-w-[40px] w-[40px]" />
+                          <SortHead label="Kecamatan" active={monitoringSort === "kecamatan"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("kecamatan")} numeric={false} className="min-w-[120px] w-[12%]" />
+                          <SortHead label="Nama Petugas" active={monitoringSort === "namaPetugas"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("namaPetugas")} numeric={false} className="min-w-[180px] w-[18%]" />
+                          <SortHead label="Jumlah SLS" active={monitoringSort === "jumlahSls"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("jumlahSls")} className="min-w-[80px] w-[8%]" />
+                          <SortHead label="SLS Selesai" active={monitoringSort === "slsSelesai"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("slsSelesai")} className="min-w-[90px] w-[9%]" />
+                          <SortHead label="Uji Petik" active={monitoringSort === "ujiPetik"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("ujiPetik")} className="min-w-[80px] w-[8%]" />
+                          <SortHead label="BAST" active={monitoringSort === "bast"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("bast")} className="min-w-[80px] w-[8%]" />
+                          <SortHead label="BAPP" active={monitoringSort === "bapp"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("bapp")} className="min-w-[80px] w-[8%]" />
+                          <SortHead label="Super" active={monitoringSort === "super"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("super")} className="min-w-[80px] w-[8%]" />
+                          <SortHead label="PETA" active={monitoringSort === "peta"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("peta")} className="min-w-[80px] w-[8%]" />
+                          <SortHead label="Anomali" active={monitoringSort === "anomali"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("anomali")} className="min-w-[80px] w-[8%]" />
+                          <SortHead label="BANR" active={monitoringSort === "adaNr"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("adaNr")} className="min-w-[80px] w-[8%]" />
+                          <SortHead label="Jumlah NR" active={monitoringSort === "jumlahNr"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("jumlahNr")} className="min-w-[80px] w-[8%]" />
+                          <SortHead label="No BANR" active={monitoringSort === "noBanr"} direction={monitoringDirection} onClick={() => toggleMonitoringSort("noBanr")} numeric={false} className="min-w-[80px] w-[8%]" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2120,13 +2208,23 @@ export default function VerifikasiAkhir() {
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.bast, row.rowNumber, "H")}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.bapp, row.rowNumber, "I")}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.super, row.rowNumber, "N")}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.banr, row.rowNumber, "M")}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.peta)}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.anomali, true)}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.adaNr, true)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.adaNr, row.rowNumber, "L")}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">
+                              {parseNumber(row.jumlahNr) !== 0 ? (
+                                <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-red-600 px-1 font-bold text-white">
+                                  {row.jumlahNr}
+                                </span>
+                              ) : (
+                                row.jumlahNr || "-"
+                              )}
+                            </TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{row.noBanr || "-"}</TableCell>
                           </TableRow>
                         ))}
+                        {renderMonitoringTotalRow(visibleMonitoring, "Jumlah sesuai tampilan", "bg-slate-100")}
+                        {renderMonitoringTotalRow(monitoringOverallRows, "Jumlah keseluruhan", "bg-slate-200")}
                       </TableBody>
                     </Table>
                   </div>
