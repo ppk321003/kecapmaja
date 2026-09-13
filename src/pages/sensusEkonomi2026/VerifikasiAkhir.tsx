@@ -1020,7 +1020,7 @@ export default function VerifikasiAkhir() {
         namaPpl: asText(3),
         jumlahSls: asText(4),
         slsSelesai: asText(5),
-        ujiPetik: asBooleanText(6),
+        ujiPetik: monitoringOverrides[`${rowNumber}:G`] ?? asBooleanText(6),
         bast: monitoringOverrides[`${rowNumber}:H`] ?? asText(7),
         bapp: monitoringOverrides[`${rowNumber}:I`] ?? asText(8),
         super: monitoringOverrides[`${rowNumber}:N`] ?? asText(13),
@@ -1141,7 +1141,7 @@ export default function VerifikasiAkhir() {
 
   const toggleMonitoringStatus = async (
     rowNumber: number,
-    column: "H" | "I" | "L" | "M" | "N",
+    column: "G" | "H" | "I" | "L" | "M" | "N",
     currentValue: string,
   ) => {
     if (!isPpk || !rowNumber) return;
@@ -1702,7 +1702,7 @@ export default function VerifikasiAkhir() {
   const renderEditableMonitoringStatus = (
     value: string,
     rowNumber: number,
-    column: "H" | "I" | "L" | "M" | "N",
+    column: "G" | "H" | "I" | "L" | "M" | "N",
   ) => {
     const status = isTrueFlag(value) ? "Ya" : "Belum";
     const content = renderStatusBadge(status);
@@ -1711,7 +1711,7 @@ export default function VerifikasiAkhir() {
       <button
         type="button"
         onClick={() => toggleMonitoringStatus(rowNumber, column, value)}
-        title={`Ubah ${column === "H" ? "BAST" : column === "I" ? "BAPP" : column === "L" ? "BANR" : column === "M" ? "Jumlah NR" : "Super"}`}
+        title={`Ubah ${column === "G" ? "Uji Petik" : column === "H" ? "BAST" : column === "I" ? "BAPP" : column === "L" ? "BANR" : column === "M" ? "Jumlah NR" : "Super"}`}
         className="inline-flex rounded-full focus:outline-none focus:ring-2 focus:ring-sky-300"
       >
         {content}
@@ -2204,7 +2204,7 @@ export default function VerifikasiAkhir() {
                             </TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.jumlahSls || "-"}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs text-slate-700">{row.slsSelesai || "-"}</TableCell>
-                            <TableCell className="text-center text-[10px] sm:text-xs">{renderStatusBadge(row.ujiPetik, true)}</TableCell>
+                            <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.ujiPetik, row.rowNumber, "G")}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.bast, row.rowNumber, "H")}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.bapp, row.rowNumber, "I")}</TableCell>
                             <TableCell className="text-center text-[10px] sm:text-xs">{renderEditableMonitoringStatus(row.super, row.rowNumber, "N")}</TableCell>
