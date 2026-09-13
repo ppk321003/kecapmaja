@@ -1768,9 +1768,11 @@ export default function VerifikasiAkhir() {
         <TableCell className="w-[3%] text-center text-[10px] sm:text-xs">
           {renderAdministrationLink(detail ? "" : row.linkAdministrasi || "")}
         </TableCell>
-        <TableCell className="w-[3%] text-center text-[10px] sm:text-xs">
-          {renderAdministrationLink(detail ? "" : row.linkBanr || "")}
-        </TableCell>
+        {activeTab === "pml" && (
+          <TableCell className="w-[3%] text-center text-[10px] sm:text-xs">
+            {renderAdministrationLink(detail ? "" : row.linkBanr || "")}
+          </TableCell>
+        )}
       </>
     );
   };
@@ -1799,7 +1801,7 @@ export default function VerifikasiAkhir() {
       </TableRow>
     );
   };
-  const renderColumnGroup = (actionCount: number) => (
+  const renderColumnGroup = (actionCount: number, includeBanr: boolean) => (
     <colgroup>
       <col className="w-[3%]" />
       <col className="w-[22%]" />
@@ -1821,7 +1823,7 @@ export default function VerifikasiAkhir() {
         <col key={`action-col-${index}`} className={index === actionCount - 1 ? "w-[6%]" : "w-[3%]"} />
       ))}
       <col className="w-[3%]" />
-      <col className="w-[3%]" />
+      {includeBanr && <col className="w-[3%]" />}
     </colgroup>
   );
 
@@ -1998,7 +2000,7 @@ export default function VerifikasiAkhir() {
                 <TabsContent value="ppl" className="mt-0">
                   <div className="-mx-3 sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200\">
                     <Table className="table-fixed min-w-[1400px] sm:min-w-[1610px]\">
-                      <>{renderColumnGroup(4)}</>
+                      <>{renderColumnGroup(4, false)}</>
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead
@@ -2031,7 +2033,7 @@ export default function VerifikasiAkhir() {
                             AKSI KAB
                           </TableHead>
                           <TableHead
-                            colSpan={2}
+                            colSpan={1}
                             className="border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-bold text-sky-900"
                           >
                             Link
@@ -2087,14 +2089,6 @@ export default function VerifikasiAkhir() {
                             active={pplSort === "linkAdministrasi"}
                             direction={pplDirection}
                             onClick={() => toggleSort("ppl", "linkAdministrasi")}
-                            numeric={false}
-                            className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-sky-900"
-                          />
-                          <SortHead
-                            label="BANR"
-                            active={pplSort === "linkBanr"}
-                            direction={pplDirection}
-                            onClick={() => toggleSort("ppl", "linkBanr")}
                             numeric={false}
                             className="w-[3%] border border-sky-200 bg-sky-100 px-1 text-center text-[10px] sm:text-xs font-semibold text-sky-900"
                           />
@@ -2174,7 +2168,7 @@ export default function VerifikasiAkhir() {
                 <TabsContent value="pml" className="mt-0">
                   <div className="-mx-3 sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200\">
                     <Table className="table-fixed min-w-[1400px] sm:min-w-[1610px]\">
-                      <>{renderColumnGroup(3)}</>
+                      <>{renderColumnGroup(3, true)}</>
                       <TableHeader>
                         <TableRow className="bg-slate-50">
                           <TableHead
