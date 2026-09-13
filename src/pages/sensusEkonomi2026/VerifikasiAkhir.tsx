@@ -355,7 +355,10 @@ const compareValues = (
 type QuadrantRow = {
   kecamatan: string;
   openDraft: number;
+  nonPertanianBaseline: number;
+  nonPertanianActual: number;
   deficitNonPertanian: number;
+  persenPerubahan: number;
   deficitPertanian: number;
   deficitKeluarga: number;
   totalDeficit: number;
@@ -427,18 +430,25 @@ const KuadranTab = ({ data, se2016Data, isPmlUser, role }: { data: any[]; se2016
       const kecamatan = text(row, SHEET_COLUMNS.kecamatan, "nmkec");
       const normalizedKecamatan = normalizeKecamatan(kecamatan);
       if (!kecamatan) return;
-      const current = grouped.get(normalizedKecamatan) || { kecamatan, openDraft: 0, deficitNonPertanian: quadrantSource === "se2016" ? (se2016ByKecamatan.get(normalizedKecamatan) || 0) : 0, deficitPertanian: 0, deficitKeluarga: 0, totalDeficit: 0 };
+      const current = grouped.get(normalizedKecamatan) || { kecamatan, openDraft: 0, nonPertanianBaseline: quadrantSource === "se2016" ? (se2016ByKecamatan.get(normalizedKecamatan) || 0) : 0, nonPertanianActual: 0, deficitNonPertanian: quadrantSource === "se2016" ? (se2016ByKecamatan.get(normalizedKecamatan) || 0) : 0, persenPerubahan: 0, deficitPertanian: 0, deficitKeluarga: 0, totalDeficit: 0 };
       current.openDraft += parseNumber(text(row, SHEET_COLUMNS.open, "open")) + parseNumber(text(row, SHEET_COLUMNS.draft, "draft"));
       const nonPertanian = parseNumber(text(row, SHEET_COLUMNS.nonPertanian, "nonPertanian"));
+      current.nonPertanianActual += nonPertanian;
       current.deficitNonPertanian += quadrantSource === "se2016"
         ? -nonPertanian
         : parseNumber(text(row, SHEET_COLUMNS.prelistUsaha, "prelistUsaha")) - nonPertanian;
+      if (quadrantSource === "prelist") current.nonPertanianBaseline += parseNumber(text(row, SHEET_COLUMNS.prelistUsaha, "prelistUsaha"));
       current.deficitPertanian += parseNumber(text(row, SHEET_COLUMNS.utpSt2023, "utpSt2023")) - parseNumber(text(row, SHEET_COLUMNS.pertanian, "pertanian"));
       current.deficitKeluarga += parseNumber(text(row, SHEET_COLUMNS.keluargaPrelist, "keluargaPrelist")) - parseNumber(text(row, SHEET_COLUMNS.keluarga, "keluarga"));
       current.totalDeficit = current.deficitNonPertanian + current.deficitPertanian + current.deficitKeluarga;
       grouped.set(normalizedKecamatan, current);
     });
-    return Array.from(grouped.values()).sort((a, b) => a.kecamatan.localeCompare(b.kecamatan, "id"));
+    return Array.from(grouped.values()).map((row) => ({
+      ...row,
+      persenPerubahan: row.nonPertanianBaseline > 0
+        ? (row.nonPertanianActual - row.nonPertanianBaseline) / row.nonPertanianBaseline * 100
+        : 0,
+    })).sort((a, b) => a.kecamatan.localeCompare(b.kecamatan, "id"));
   }, [data, quadrantSource, se2016ByKecamatan, isPmlUser, role]);
 
   const sortedRows = useMemo(() => [...rows].sort((left, right) => {
@@ -452,11 +462,16 @@ const KuadranTab = ({ data, se2016Data, isPmlUser, role }: { data: any[]; se2016
 
   const totals = useMemo(() => rows.reduce((total, row) => ({
     openDraft: total.openDraft + row.openDraft,
+    nonPertanianBaseline: total.nonPertanianBaseline + row.nonPertanianBaseline,
+    nonPertanianActual: total.nonPertanianActual + row.nonPertanianActual,
     deficitNonPertanian: total.deficitNonPertanian + row.deficitNonPertanian,
     deficitPertanian: total.deficitPertanian + row.deficitPertanian,
     deficitKeluarga: total.deficitKeluarga + row.deficitKeluarga,
     totalDeficit: total.totalDeficit + row.totalDeficit,
-  }), { openDraft: 0, deficitNonPertanian: 0, deficitPertanian: 0, deficitKeluarga: 0, totalDeficit: 0 }), [rows]);
+  }), { openDraft: 0, nonPertanianBaseline: 0, nonPertanianActual: 0, deficitNonPertanian: 0, deficitPertanian: 0, deficitKeluarga: 0, totalDeficit: 0 }), [rows]);
+  const totalPersenPerubahan = totals.nonPertanianBaseline > 0
+    ? (totals.nonPertanianActual - totals.nonPertanianBaseline) / totals.nonPertanianBaseline * 100
+    : 0;
   const signedTotals = useMemo(() => ({
     surplus: rows.reduce((total, row) => ({
       openDraft: total.openDraft + (row.openDraft < 0 ? row.openDraft : 0),
@@ -518,6 +533,9 @@ const KuadranTab = ({ data, se2016Data, isPmlUser, role }: { data: any[]; se2016
       : deficitValue >= averages.yAverage ? "Rendah Open + Tinggi Defisit" : "Rendah Open + Rendah Defisit";
     return `${level} (${selectedMetricLabel})`;
   };
+  const formatChangePercent = (value: number) => `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+  const changePercentClass = (value: number) =>
+    value > 0 ? "font-semibold text-emerald-700" : value < 0 ? "font-semibold text-rose-700" : "text-slate-700";
 
   return (
     <div className="space-y-4">
@@ -551,7 +569,7 @@ const KuadranTab = ({ data, se2016Data, isPmlUser, role }: { data: any[]; se2016
         </CardContent>
       </Card>
       <Card className="overflow-hidden border-slate-200 shadow-sm">
-        <div className="overflow-x-auto"><Table className="min-w-[900px]"><TableHeader><TableRow className="bg-slate-50"><TableHead className="cursor-pointer select-none" onClick={() => toggleSort("kecamatan")}>Kecamatan {sortKey === "kecamatan" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("openDraft")}>Open + Draft {sortKey === "openDraft" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitNonPertanian")}>{nonPertanianLabel} (Absolut) {sortKey === "deficitNonPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead>{quadrantSource === "prelist" && <><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitPertanian")}>Defisit Pertanian (Absolut) {sortKey === "deficitPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitKeluarga")}>Defisit Keluarga (Absolut) {sortKey === "deficitKeluarga" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("totalDeficit")}>Total Defisit (Absolut) {sortKey === "totalDeficit" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead></>}<TableHead>Kuadran</TableHead></TableRow></TableHeader><TableBody>{sortedRows.map((row) => <TableRow key={row.kecamatan}><TableCell className="font-medium">{row.kecamatan}</TableCell><TableCell className="text-right">{formatNumber(row.openDraft)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.deficitNonPertanian)}</TableCell>{quadrantSource === "prelist" && <><TableCell className="text-right">{renderDeficitCell(row.deficitPertanian)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.deficitKeluarga)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.totalDeficit, true)}</TableCell></>}<TableCell><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{getQuadrant(row)}</span></TableCell></TableRow>)}<TableRow className="border-t-2 border-sky-200 bg-sky-50"><TableCell className="font-bold text-sky-900">JUMLAH</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.openDraft)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitNonPertanian)}</TableCell>{quadrantSource === "prelist" && <><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitPertanian)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitKeluarga)}</TableCell><TableCell className="text-right font-bold text-rose-700">{formatNumber(totals.totalDeficit)}</TableCell></>}<TableCell className="font-semibold text-sky-900">-</TableCell></TableRow><TableRow className="bg-emerald-50"><TableCell className="font-semibold text-emerald-800">Surplus</TableCell><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.openDraft)}</TableCell><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.deficitNonPertanian)}</TableCell>{quadrantSource === "prelist" && <><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.deficitPertanian)}</TableCell><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.deficitKeluarga)}</TableCell><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.totalDeficit)}</TableCell></>}<TableCell className="text-xs italic text-emerald-800">Nilai negatif</TableCell></TableRow><TableRow className="bg-rose-50"><TableCell className="font-semibold text-rose-800">Defisit</TableCell><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.openDraft)}</TableCell><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.deficitNonPertanian)}</TableCell>{quadrantSource === "prelist" && <><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.deficitPertanian)}</TableCell><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.deficitKeluarga)}</TableCell><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.totalDeficit)}</TableCell></>}<TableCell className="text-xs italic text-rose-800">Nilai positif</TableCell></TableRow></TableBody></Table></div>
+        <div className="overflow-x-auto"><Table className="min-w-[1050px]"><TableHeader><TableRow className="bg-slate-50"><TableHead className="cursor-pointer select-none" onClick={() => toggleSort("kecamatan")}>Kecamatan {sortKey === "kecamatan" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("openDraft")}>Open + Draft {sortKey === "openDraft" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitNonPertanian")}>{nonPertanianLabel} (Absolut) {sortKey === "deficitNonPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="text-right">% Penambahan/Pengurangan</TableHead>{quadrantSource === "prelist" && <><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitPertanian")}>Defisit Pertanian (Absolut) {sortKey === "deficitPertanian" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("deficitKeluarga")}>Defisit Keluarga (Absolut) {sortKey === "deficitKeluarga" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead><TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("totalDeficit")}>Total Defisit (Absolut) {sortKey === "totalDeficit" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</TableHead></>}<TableHead>Kuadran</TableHead></TableRow></TableHeader><TableBody>{sortedRows.map((row) => <TableRow key={row.kecamatan}><TableCell className="font-medium">{row.kecamatan}</TableCell><TableCell className="text-right">{formatNumber(row.openDraft)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.deficitNonPertanian)}</TableCell><TableCell className={`text-right ${changePercentClass(row.persenPerubahan)}`}>{formatChangePercent(row.persenPerubahan)}</TableCell>{quadrantSource === "prelist" && <><TableCell className="text-right">{renderDeficitCell(row.deficitPertanian)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.deficitKeluarga)}</TableCell><TableCell className="text-right">{renderDeficitCell(row.totalDeficit, true)}</TableCell></>}<TableCell><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{getQuadrant(row)}</span></TableCell></TableRow>)}<TableRow className="border-t-2 border-sky-200 bg-sky-50"><TableCell className="font-bold text-sky-900">JUMLAH</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.openDraft)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitNonPertanian)}</TableCell><TableCell className={`text-right font-bold ${changePercentClass(totalPersenPerubahan)}`}>{formatChangePercent(totalPersenPerubahan)}</TableCell>{quadrantSource === "prelist" && <><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitPertanian)}</TableCell><TableCell className="text-right font-bold text-sky-900">{formatNumber(totals.deficitKeluarga)}</TableCell><TableCell className="text-right font-bold text-rose-700">{formatNumber(totals.totalDeficit)}</TableCell></>}<TableCell className="font-semibold text-sky-900">-</TableCell></TableRow><TableRow className="bg-emerald-50"><TableCell className="font-semibold text-emerald-800">Surplus</TableCell><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.openDraft)}</TableCell><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.deficitNonPertanian)}</TableCell><TableCell className="text-right font-semibold text-emerald-800">-</TableCell>{quadrantSource === "prelist" && <><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.deficitPertanian)}</TableCell><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.deficitKeluarga)}</TableCell><TableCell className="text-right font-semibold text-emerald-800">{formatNumber(signedTotals.surplus.totalDeficit)}</TableCell></>}<TableCell className="text-xs italic text-emerald-800">Nilai negatif</TableCell></TableRow><TableRow className="bg-rose-50"><TableCell className="font-semibold text-rose-800">Defisit</TableCell><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.openDraft)}</TableCell><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.deficitNonPertanian)}</TableCell><TableCell className="text-right font-semibold text-rose-800">-</TableCell>{quadrantSource === "prelist" && <><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.deficitPertanian)}</TableCell><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.deficitKeluarga)}</TableCell><TableCell className="text-right font-semibold text-rose-800">{formatNumber(signedTotals.deficit.totalDeficit)}</TableCell></>}<TableCell className="text-xs italic text-rose-800">Nilai positif</TableCell></TableRow></TableBody></Table></div>
       </Card>
     </div>
   );
