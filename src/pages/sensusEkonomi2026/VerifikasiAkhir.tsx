@@ -104,6 +104,16 @@ type SortKey =
   | "ppk"
   | "linkAdministrasi"
   | "linkBanr";
+type NonResponseSortKey =
+  | "kecamatan"
+  | "namaPpl"
+  | "namaPml"
+  | "desa"
+  | "sls"
+  | "namaAssignment"
+  | "keberadaanUsaha"
+  | "keberadaanKeluarga"
+  | "alasanNonRespon";
 type Direction = "asc" | "desc";
 
 type Metrics = Record<MetricKey, number>;
@@ -142,6 +152,19 @@ type PmlRow = Metrics & {
   linkBanr: string;
   children: PmlChild[];
   actionRows: ActionRecord[];
+};
+type NonResponseRow = {
+  id: string;
+  idsubsls: string;
+  namaAssignment: string;
+  keberadaanUsaha: string;
+  keberadaanKeluarga: string;
+  alasanNonRespon: string;
+  kecamatan: string;
+  desa: string;
+  sls: string;
+  namaPpl: string;
+  namaPml: string;
 };
 
 const SHEET_COLUMNS = {
@@ -855,6 +878,10 @@ export default function VerifikasiAkhir() {
     spreadsheetId: SPREADSHEET_ID,
     sheetName: "10-PML",
   });
+  const { data: nonResponseData } = useGoogleSheetsData({
+    spreadsheetId: SPREADSHEET_ID,
+    sheetName: "8-NR",
+  });
   const [activeTab, setActiveTab] = useState("ppl");
   const [search, setSearch] = useState("");
   const [kecamatan, setKecamatan] = useState("all");
@@ -862,10 +889,13 @@ export default function VerifikasiAkhir() {
   const [pplPage, setPplPage] = useState(1);
   const [pmlPage, setPmlPage] = useState(1);
   const [monitoringPage, setMonitoringPage] = useState(1);
+  const [nonResponsePage, setNonResponsePage] = useState(1);
   const [pplSort, setPplSort] = useState<SortKey>("nama");
   const [pmlSort, setPmlSort] = useState<SortKey>("nama");
   const [pplDirection, setPplDirection] = useState<Direction>("asc");
   const [pmlDirection, setPmlDirection] = useState<Direction>("asc");
+  const [nonResponseSort, setNonResponseSort] = useState<NonResponseSortKey>("kecamatan");
+  const [nonResponseDirection, setNonResponseDirection] = useState<Direction>("asc");
   const [expandedPpl, setExpandedPpl] = useState<Set<string>>(new Set());
   const [expandedPml, setExpandedPml] = useState<Set<string>>(new Set());
   const [actionOverrides, setActionOverrides] = useState<
@@ -1001,6 +1031,59 @@ export default function VerifikasiAkhir() {
       return matchesSearch && matchesRole && matchesKecamatan;
     });
   }, [monitoringAdminData, monitoringOverrides, pmlBanrByName, search, kecamatan, isPmlUser, user?.role]);
+
+  const filteredNonResponse = useMemo(() => {
+    const allowedKecamatan = kecamatanFromRole(
+      String(user?.role || "").toLowerCase(),
+    );
+    const needle = search.trim().toLowerCase();
+    const rows = (nonResponseData || []).map((row: any, index): NonResponseRow => {
+      const raw = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+      const value = (column: number) => String(raw[column] ?? "").trim();
+      return {
+        id: `${value(0)}-${index}`,
+        idsubsls: value(0),
+        namaAssignment: value(1),
+        keberadaanUsaha: value(2),
+        keberadaanKeluarga: value(3),
+        alasanNonRespon: value(4),
+        kecamatan: value(5),
+        desa: value(6),
+        sls: value(7),
+        namaPpl: value(8),
+        namaPml: value(9),
+      };
+    });
+    return rows
+      .filter((row) => {
+        const matchesRole =
+          !isPmlUser || allowedKecamatan.includes(normalizeKecamatan(row.kecamatan));
+        const matchesKecamatan =
+          kecamatan === "all" || row.kecamatan === kecamatan;
+        const matchesSearch =
+          !needle ||
+          [
+            row.idsubsls,
+            row.namaAssignment,
+            row.keberadaanUsaha,
+            row.keberadaanKeluarga,
+            row.alasanNonRespon,
+            row.kecamatan,
+            row.desa,
+            row.sls,
+            row.namaPpl,
+            row.namaPml,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(needle);
+        return matchesRole && matchesKecamatan && matchesSearch;
+      })
+      .sort((a, b) => {
+        const result = a[nonResponseSort].localeCompare(b[nonResponseSort], "id");
+        return nonResponseDirection === "asc" ? result : -result;
+      });
+  }, [nonResponseData, nonResponseSort, nonResponseDirection, search, kecamatan, isPmlUser, user?.role]);
 
   const toggleMonitoringStatus = async (
     rowNumber: number,
@@ -1190,8 +1273,12 @@ export default function VerifikasiAkhir() {
     const allowedKecamatan = kecamatanFromRole(
       String(user?.role || "").toLowerCase(),
     );
+    const nonResponseKecamatan = (nonResponseData || []).map((row: any) =>
+      String(row?.__rawRow?.[5] ?? "").trim(),
+    );
     const values = [...pplRows, ...pmlRows, ...monitoringRows]
       .map((row) => row.kecamatan)
+      .concat(nonResponseKecamatan)
       .filter(Boolean)
       .filter((kecamatanName) =>
         !isPmlUser ||
@@ -1199,7 +1286,7 @@ export default function VerifikasiAkhir() {
       );
 
     return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, "id"));
-  }, [pplRows, pmlRows, monitoringRows, isPmlUser, user?.role]);
+  }, [pplRows, pmlRows, monitoringRows, nonResponseData, isPmlUser, user?.role]);
   const filterRows = <T extends { nama: string; kecamatan: string }>(
     rows: T[],
   ) =>
@@ -1237,6 +1324,7 @@ export default function VerifikasiAkhir() {
   const pplTotalPages = Math.max(1, Math.ceil(filteredPpl.length / pageSize));
   const pmlTotalPages = Math.max(1, Math.ceil(filteredPml.length / pageSize));
   const monitoringTotalPages = Math.max(1, Math.ceil(monitoringRows.length / pageSize));
+  const nonResponseTotalPages = Math.max(1, Math.ceil(filteredNonResponse.length / pageSize));
   const visiblePpl = filteredPpl.slice(
     (pplPage - 1) * pageSize,
     pplPage * pageSize,
@@ -1249,11 +1337,16 @@ export default function VerifikasiAkhir() {
     (monitoringPage - 1) * pageSize,
     monitoringPage * pageSize,
   );
+  const visibleNonResponse = filteredNonResponse.slice(
+    (nonResponsePage - 1) * pageSize,
+    nonResponsePage * pageSize,
+  );
 
   useEffect(() => {
     setPplPage(1);
     setPmlPage(1);
     setMonitoringPage(1);
+    setNonResponsePage(1);
   }, [search, kecamatan, pageSize]);
   const toggleSort = (tab: "ppl" | "pml", key: SortKey) => {
     if (tab === "ppl") {
@@ -1269,6 +1362,13 @@ export default function VerifikasiAkhir() {
       );
       setPmlPage(1);
     }
+  };
+  const toggleNonResponseSort = (key: NonResponseSortKey) => {
+    setNonResponseSort(key);
+    setNonResponseDirection((current) =>
+      nonResponseSort === key ? (current === "asc" ? "desc" : "asc") : "asc",
+    );
+    setNonResponsePage(1);
   };
 
   const groupClass = {
@@ -1315,6 +1415,49 @@ export default function VerifikasiAkhir() {
   const downloadExcel = () => {
     const isPpl = activeTab === "ppl";
     const isMonitoring = activeTab === "termin-2";
+    const isNonResponse = activeTab === "non-respon";
+    if (isNonResponse) {
+      const headers = [
+        "No",
+        "Kecamatan",
+        "Nama Petugas",
+        "Desa",
+        "SLS",
+        "ID SLS",
+        "Nama Assignment",
+        "Keberadaan Usaha",
+        "Keberadaan Keluarga",
+        "Alasan Non Respon",
+      ];
+      const rowsForExport = filteredNonResponse.map((row, index) => [
+        index + 1,
+        row.kecamatan,
+        `${row.namaPpl}\n${row.namaPml}`,
+        row.desa,
+        row.sls,
+        row.idsubsls,
+        row.namaAssignment,
+        row.keberadaanUsaha,
+        row.keberadaanKeluarga,
+        row.alasanNonRespon,
+      ]);
+      const worksheet = XLSX.utils.aoa_to_sheet([
+        ["NON RESPON"],
+        ["Tanggal Export", new Date().toLocaleString("id-ID")],
+        ["Filter Kecamatan", kecamatan === "all" ? "Semua Kecamatan" : kecamatan],
+        ["Pencarian", search || "-"],
+        [],
+        headers,
+        ...rowsForExport,
+      ]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Non Respon");
+      XLSX.writeFile(
+        workbook,
+        `Non_Respon_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      return;
+    }
     if (isMonitoring) {
       const headers = [
         "No",
@@ -1863,12 +2006,13 @@ export default function VerifikasiAkhir() {
         <CardContent className="p-3 sm:p-4 [&_table]:!w-full [&_table]:!min-w-0 [&_.overflow-auto]:!overflow-hidden [&_.overflow-x-auto]:!overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList
-              className={`mb-4 sm:mb-5 grid w-full max-w-2xl text-xs sm:text-sm ${isPmlUser ? "grid-cols-3" : "grid-cols-4"}`}
+              className={`mb-4 sm:mb-5 grid w-full max-w-2xl text-xs sm:text-sm ${isPmlUser ? "grid-cols-4" : "grid-cols-5"}`}
             >
               <TabsTrigger value="ppl" className="text-xs sm:text-sm">PPL ({filteredPpl.length})</TabsTrigger>
               {!isPmlUser && (
                 <TabsTrigger value="pml" className="text-xs sm:text-sm">PML ({filteredPml.length})</TabsTrigger>
               )}
+              <TabsTrigger value="non-respon" className="text-xs sm:text-sm">NON RESPON ({filteredNonResponse.length})</TabsTrigger>
               <TabsTrigger value="termin-2" className="text-xs sm:text-sm">ADMINISTRASI</TabsTrigger>
               <TabsTrigger value="kuadran" className="text-xs sm:text-sm">KUADRAN</TabsTrigger>
             </TabsList>
@@ -1991,6 +2135,54 @@ export default function VerifikasiAkhir() {
                     totalPages={monitoringTotalPages}
                     onPage={setMonitoringPage}
                     count={monitoringRows.length}
+                    pageSize={pageSize}
+                  />
+                </TabsContent>
+                <TabsContent value="non-respon" className="mt-0">
+                  <div className="-mx-3 sm:mx-0 overflow-x-auto rounded-none sm:rounded-lg border-0 sm:border border-slate-200">
+                    <Table className="w-full min-w-[1200px] table-fixed border-separate border-spacing-0">
+                      <TableHeader>
+                        <TableRow className="bg-slate-50">
+                          <TableHead className="w-[4%] text-center text-[10px] sm:text-xs font-bold text-slate-700">No</TableHead>
+                          <SortHead label="Kecamatan" active={nonResponseSort === "kecamatan"} direction={nonResponseDirection} onClick={() => toggleNonResponseSort("kecamatan")} numeric={false} className="w-[14%]" />
+                          <SortHead label="Nama Petugas" active={nonResponseSort === "namaPpl"} direction={nonResponseDirection} onClick={() => toggleNonResponseSort("namaPpl")} numeric={false} className="w-[18%]" />
+                          <SortHead label="IDSLS / SLS" active={nonResponseSort === "sls"} direction={nonResponseDirection} onClick={() => toggleNonResponseSort("sls")} numeric={false} className="w-[17%]" />
+                          <SortHead label="Nama Assignment" active={nonResponseSort === "namaAssignment"} direction={nonResponseDirection} onClick={() => toggleNonResponseSort("namaAssignment")} numeric={false} className="w-[17%]" />
+                          <SortHead label="Keberadaan Usaha" active={nonResponseSort === "keberadaanUsaha"} direction={nonResponseDirection} onClick={() => toggleNonResponseSort("keberadaanUsaha")} numeric={false} className="w-[14%]" />
+                          <SortHead label="Keberadaan Keluarga" active={nonResponseSort === "keberadaanKeluarga"} direction={nonResponseDirection} onClick={() => toggleNonResponseSort("keberadaanKeluarga")} numeric={false} className="w-[14%]" />
+                          <SortHead label="Alasan Non Respon" active={nonResponseSort === "alasanNonRespon"} direction={nonResponseDirection} onClick={() => toggleNonResponseSort("alasanNonRespon")} numeric={false} className="w-[15%]" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {visibleNonResponse.map((row, index) => (
+                          <TableRow key={row.id} className="border-b hover:bg-slate-50">
+                            <TableCell className="text-center text-[10px] sm:text-xs text-slate-500">{(nonResponsePage - 1) * pageSize + index + 1}</TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-800">
+                              <div>{row.kecamatan || "-"}</div>
+                              <div className="font-normal text-slate-400">{row.desa || "-"}</div>
+                            </TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-800">
+                              <div>{row.namaPpl || "-"}</div>
+                              <div className="font-normal text-slate-400">{row.namaPml || "-"}</div>
+                            </TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-700">
+                              <div className="break-all text-slate-500">{row.idsubsls || "-"}</div>
+                              <div>{row.sls || "-"}</div>
+                            </TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-700">{row.namaAssignment || "-"}</TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-700">{row.keberadaanUsaha || "-"}</TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-700">{row.keberadaanKeluarga || "-"}</TableCell>
+                            <TableCell className="break-words px-2 py-2 text-[10px] sm:text-xs text-slate-700">{row.alasanNonRespon || "-"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <Pagination
+                    page={nonResponsePage}
+                    totalPages={nonResponseTotalPages}
+                    onPage={setNonResponsePage}
+                    count={filteredNonResponse.length}
                     pageSize={pageSize}
                   />
                 </TabsContent>
