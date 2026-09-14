@@ -1811,22 +1811,34 @@ export default function VerifikasiAkhir() {
     );
   };
 
-  const renderAdministrationLink = (url: string) => {
+  const renderAdministrationLink = (url: string, disabled = false) => {
     const trimmed = String(url ?? "").trim();
     if (!trimmed || /^about:blank(?:#.*)?$/i.test(trimmed)) {
       return <span className="text-slate-400">-</span>;
     }
     const href = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const isDisabled = disabled;
     return (
       <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-700 transition-colors hover:bg-sky-100 hover:text-sky-800"
-        title="Link Administrasi"
+        href={isDisabled ? undefined : href}
+        target={isDisabled ? undefined : "_blank"}
+        rel={isDisabled ? undefined : "noopener noreferrer"}
+        aria-disabled={isDisabled}
+        onClick={(event) => {
+          if (isDisabled) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
+        className={`inline-flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${
+          isDisabled
+            ? "pointer-events-none cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+            : "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:text-sky-800"
+        }`}
+        title={isDisabled ? "Link dinonaktifkan sampai kolom PPK terisi" : "Link Administrasi"}
       >
         <Link2 className="h-3.5 w-3.5" strokeWidth={2.5} />
-        <span className="sr-only">Link Administrasi</span>
+        <span className="sr-only">{isDisabled ? "Link Administrasi dinonaktifkan" : "Link Administrasi"}</span>
       </a>
     );
   };
@@ -2037,7 +2049,10 @@ export default function VerifikasiAkhir() {
           />
         )}
         <TableCell className="w-[3%] text-center text-[10px] sm:text-xs">
-          {renderAdministrationLink(detail ? "" : row.linkAdministrasi || "")}
+          {renderAdministrationLink(
+            detail ? "" : row.linkAdministrasi || "",
+            actionValue(row.actionRows || [], activeTab === "pml" ? "Y" : "V", actionOverrides) === "",
+          )}
         </TableCell>
         {activeTab === "pml" && (
           <TableCell className="w-[3%] text-center text-[10px] sm:text-xs">
