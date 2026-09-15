@@ -1003,6 +1003,18 @@ export default function VerifikasiAkhir() {
     });
     return matches;
   }, [pmlBanrData]);
+  const pmlAdministrationLinkByName = useMemo(() => {
+    const links = new Map<string, string>();
+    (pmlBanrData || []).forEach((row: any) => {
+      const raw = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+      const namaPml = String(raw[1] ?? "").trim();
+      const link = String(raw[48] ?? "").trim();
+      if (namaPml && link) {
+        links.set(normalizeKecamatan(namaPml), link);
+      }
+    });
+    return links;
+  }, [pmlBanrData]);
   const monitoringBanrLinks = useMemo(() => {
     const links = new Map<string, string>();
     (monitoringAdminData || []).forEach((row: any) => {
@@ -1290,6 +1302,7 @@ export default function VerifikasiAkhir() {
       const kec = text(row, SHEET_COLUMNS.kecamatan, "nmkec");
       const linkPpl = text(row, 27, "link_administrasi_ppl");
       const linkPml = text(row, 28, "link_administrasi_pml");
+      const linkAdminPmlFromSheet = pmlAdministrationLinkByName.get(normalizeKecamatan(namaPml)) || linkPml;
       const linkBanrPpl = monitoringBanrLinks.get(`${normalizeKecamatan(namaPpl)}|${normalizeKecamatan(kec)}`) || "";
       const linkBanrPml = monitoringBanrLinks.get(`${normalizeKecamatan(namaPml)}|${normalizeKecamatan(kec)}`) || "";
       const allowedKecamatan = kecamatanFromRole(
@@ -1357,12 +1370,12 @@ export default function VerifikasiAkhir() {
           id: key,
           nama: namaPml,
           kecamatan: kec,
-          linkAdministrasi: linkPml,
+          linkAdministrasi: linkAdminPmlFromSheet,
           linkBanr: linkBanrPml,
           children: [],
           actionRows: [],
         };
-        if (!current.linkAdministrasi && linkPml) current.linkAdministrasi = linkPml;
+        if (!current.linkAdministrasi && linkAdminPmlFromSheet) current.linkAdministrasi = linkAdminPmlFromSheet;
         if (!current.linkBanr && linkBanrPml) current.linkBanr = linkBanrPml;
         addMetricObject(current, detailMetrics);
         current.actionRows.push(pmlAction);
@@ -1388,7 +1401,7 @@ export default function VerifikasiAkhir() {
       pplRows: Array.from(pplMap.values()),
       pmlRows: Array.from(pmlMap.values()),
     };
-  }, [data, isPmlUser, monitoringBanrLinks, user?.role]);
+  }, [data, isPmlUser, monitoringBanrLinks, pmlAdministrationLinkByName, user?.role]);
 
   const kecamatanOptions = useMemo(() => {
     const allowedKecamatan = kecamatanFromRole(
@@ -2179,9 +2192,7 @@ export default function VerifikasiAkhir() {
               className={`mb-4 sm:mb-5 grid w-full max-w-2xl text-xs sm:text-sm ${isPmlUser ? "grid-cols-4" : "grid-cols-5"}`}
             >
               <TabsTrigger value="ppl" className="text-xs sm:text-sm">PPL ({filteredPpl.length})</TabsTrigger>
-              {!isPmlUser && (
-                <TabsTrigger value="pml" className="text-xs sm:text-sm">PML ({filteredPml.length})</TabsTrigger>
-              )}
+              <TabsTrigger value="pml" className="text-xs sm:text-sm">PML ({filteredPml.length})</TabsTrigger>
               <TabsTrigger value="non-respon" className="text-xs sm:text-sm">NON RESPON ({filteredNonResponse.length})</TabsTrigger>
               <TabsTrigger value="termin-2" className="text-xs sm:text-sm">ADMINISTRASI</TabsTrigger>
               <TabsTrigger value="kuadran" className="text-xs sm:text-sm">KUADRAN</TabsTrigger>
