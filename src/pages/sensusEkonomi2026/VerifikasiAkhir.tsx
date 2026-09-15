@@ -993,6 +993,8 @@ export default function VerifikasiAkhir() {
     useState(false);
   const isPmlUser = String(user?.role || "").toLowerCase().startsWith("pml ");
   const isPpk = user?.role === "Pejabat Pembuat Komitmen";
+  const isOperator = String(user?.role || "").trim().toLowerCase() === "operator";
+  const canEditMonitoringStatus = isPpk || isOperator;
   const pmlBanrByName = useMemo(() => {
     const matches = new Map<string, string>();
     (pmlBanrData || []).forEach((row: any) => {
@@ -1236,7 +1238,7 @@ export default function VerifikasiAkhir() {
     column: "G" | "H" | "I" | "L" | "M" | "N",
     currentValue: string,
   ) => {
-    if (!isPpk || !rowNumber) return;
+    if (!canEditMonitoringStatus || !rowNumber) return;
     const nextValue = isTrueFlag(currentValue) ? "FALSE" : "TRUE";
     try {
       const { error: updateError } = await supabase.functions.invoke(
@@ -1823,7 +1825,7 @@ export default function VerifikasiAkhir() {
   ) => {
     const status = isTrueFlag(value) ? "Ya" : "Belum";
     const content = renderStatusBadge(status);
-    if (!isPpk) return content;
+    if (!canEditMonitoringStatus) return content;
     return (
       <button
         type="button"
