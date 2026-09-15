@@ -1015,6 +1015,19 @@ export default function VerifikasiAkhir() {
     });
     return links;
   }, [pmlBanrData]);
+  const pmlBanrLinkByName = useMemo(() => {
+    const links = new Map<string, string>();
+    (data || []).forEach((row: any) => {
+      const namaPml = text(row, SHEET_COLUMNS.namaPml, "nama_pml");
+      const kecamatan = text(row, SHEET_COLUMNS.kecamatan, "nmkec");
+      const linkBanr = String(row?.__rawRow?.[28] ?? "").trim();
+      const key = `${normalizeKecamatan(namaPml)}|${normalizeKecamatan(kecamatan)}`;
+      if (namaPml && kecamatan && linkBanr && !links.has(key)) {
+        links.set(key, linkBanr);
+      }
+    });
+    return links;
+  }, [data]);
   const monitoringBanrLinks = useMemo(() => {
     const links = new Map<string, string>();
     (monitoringAdminData || []).forEach((row: any) => {
@@ -1296,6 +1309,33 @@ export default function VerifikasiAkhir() {
   const { pplRows, pmlRows } = useMemo(() => {
     const pplMap = new Map<string, PplRow>();
     const pmlMap = new Map<string, PmlRow>();
+    const allowedKecamatan = kecamatanFromRole(
+      String(user?.role || "").toLowerCase(),
+    );
+    (nonResponseData || []).forEach((row: any) => {
+      const raw = Array.isArray(row?.__rawRow) ? row.__rawRow : [];
+      const namaPml = String(raw[9] ?? "").trim();
+      const kec = String(raw[5] ?? "").trim();
+      if (!namaPml || !kec) return;
+      if (isPmlUser && !allowedKecamatan.includes(normalizeKecamatan(kec))) return;
+      const key = `${normalizeKecamatan(namaPml)}|${normalizeKecamatan(kec)}`;
+      const linkBanr = pmlBanrLinkByName.get(key) || "";
+      const current = pmlMap.get(key);
+      if (current) {
+        if (!current.linkBanr && linkBanr) current.linkBanr = linkBanr;
+        return;
+      }
+      pmlMap.set(key, {
+        ...emptyMetrics(),
+        id: key,
+        nama: namaPml,
+        kecamatan: kec,
+        linkAdministrasi: pmlAdministrationLinkByName.get(normalizeKecamatan(namaPml)) || "",
+        linkBanr,
+        children: [],
+        actionRows: [],
+      });
+    });
     (data || []).forEach((row: any, index) => {
       const namaPpl = text(row, SHEET_COLUMNS.namaPpl, "nama_ppl");
       const namaPml = text(row, SHEET_COLUMNS.namaPml, "nama_pml");
@@ -1304,10 +1344,7 @@ export default function VerifikasiAkhir() {
       const linkPml = text(row, 28, "link_administrasi_pml");
       const linkAdminPmlFromSheet = pmlAdministrationLinkByName.get(normalizeKecamatan(namaPml)) || linkPml;
       const linkBanrPpl = monitoringBanrLinks.get(`${normalizeKecamatan(namaPpl)}|${normalizeKecamatan(kec)}`) || "";
-      const linkBanrPml = monitoringBanrLinks.get(`${normalizeKecamatan(namaPml)}|${normalizeKecamatan(kec)}`) || "";
-      const allowedKecamatan = kecamatanFromRole(
-        String(user?.role || "").toLowerCase(),
-      );
+      const linkBanrPml = pmlBanrLinkByName.get(`${normalizeKecamatan(namaPml)}|${normalizeKecamatan(kec)}`) || "";
       if (
         isPmlUser &&
         !allowedKecamatan.includes(normalizeKecamatan(kec))
@@ -1364,7 +1401,7 @@ export default function VerifikasiAkhir() {
         pplMap.set(key, current);
       }
       if (namaPml) {
-        const key = `${namaPml.toLowerCase()}|${kec.toLowerCase()}`;
+        const key = `${normalizeKecamatan(namaPml)}|${normalizeKecamatan(kec)}`;
         const current = pmlMap.get(key) || {
           ...emptyMetrics(),
           id: key,
@@ -1401,7 +1438,7 @@ export default function VerifikasiAkhir() {
       pplRows: Array.from(pplMap.values()),
       pmlRows: Array.from(pmlMap.values()),
     };
-  }, [data, isPmlUser, monitoringBanrLinks, pmlAdministrationLinkByName, user?.role]);
+  }, [data, nonResponseData, isPmlUser, monitoringBanrLinks, pmlAdministrationLinkByName, pmlBanrLinkByName, user?.role]);
 
   const kecamatanOptions = useMemo(() => {
     const allowedKecamatan = kecamatanFromRole(
@@ -1856,6 +1893,15 @@ export default function VerifikasiAkhir() {
     );
   };
 
+  const renderBanrLink = (value: string, disabled = false) => {
+    const trimmed = String(value ?? "").trim();
+    if (!trimmed) return <span className="text-slate-400">-</span>;
+    if (!/^https?:\/\//i.test(trimmed)) {
+      return <span className="italic text-emerald-600">no NR</span>;
+    }
+    return renderAdministrationLink(trimmed, disabled);
+  };
+
   const renderMetricCell = (row: Metrics, key: MetricKey, detail = false) => {
     const percentages =
       key === "open"
@@ -2069,7 +2115,10 @@ export default function VerifikasiAkhir() {
         </TableCell>
         {activeTab === "pml" && (
           <TableCell className="w-[3%] text-center text-[10px] sm:text-xs">
-            {renderAdministrationLink(detail ? "" : row.linkBanr || "")}
+            {renderBanrLink(
+              detail ? "" : row.linkBanr || "",
+              actionValue(row.actionRows || [], "Y", actionOverrides) === "",
+            )}
           </TableCell>
         )}
       </>
