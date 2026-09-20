@@ -142,101 +142,23 @@ const formatTanggalIndonesia = (date: Date | null): string => {
   return `${day} ${month} ${year}`;
 };
 
-// Fungsi untuk mendapatkan nomor urut berikutnya
+// Nomor urut berikutnya (terpusat, selalu melanjutkan data yang sudah ada)
 const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<number> => {
-  try {
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: targetId,
-        operation: "read",
-        range: "KuitansiPerjalananDinas!A:A"
-      }
-    });
-
-    if (error) {
-      console.error("Error fetching sequence numbers:", error);
-      throw new Error("Gagal mengambil nomor urut terakhir");
-    }
-
-    const values = data?.values || [];
-    
-    if (values.length <= 1) {
-      return 1;
-    }
-
-    const sequenceNumbers = values
-      .slice(1)
-      .map((row: any[]) => {
-        const value = row[0];
-        if (typeof value === 'string' && value.trim() !== '') {
-          const num = parseInt(value);
-          return isNaN(num) ? 0 : num;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-
-    if (sequenceNumbers.length === 0) {
-      return 1;
-    }
-
-    return Math.max(...sequenceNumbers) + 1;
-  } catch (error) {
-    console.error("Error generating sequence number:", error);
-    throw error;
-  }
+  return getNextSequenceNumberFromSheet({
+    spreadsheetId: targetId,
+    sheetName: 'KuitansiPerjalananDinas',
+    column: 'A',
+  });
 };
 
-// Fungsi untuk generate ID kuitansi (kui-yymmxxx)
+// Generate ID kuitansi (kui-yymmNNN) dari kolom B
 const generateKuitansiId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<string> => {
-  try {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `kui-${year}${month}`;
-
-    // Ambil semua data untuk mencari nomor terakhir di bulan ini
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: targetId,
-        operation: "read",
-        range: "KuitansiPerjalananDinas!B:B"
-      }
-    });
-
-    if (error) {
-      console.error("Error fetching kuitansi IDs:", error);
-      throw new Error("Gagal mengambil ID kuitansi terakhir");
-    }
-
-    const values = data?.values || [];
-    
-    if (values.length <= 1) {
-      return `${prefix}001`;
-    }
-
-    // Filter ID yang sesuai dengan prefix bulan ini
-    const currentMonthIds = values
-      .slice(1)
-      .map((row: any[]) => row[0])
-      .filter((id: string) => id && id.startsWith(prefix))
-      .map((id: string) => {
-        const numStr = id.replace(prefix, '');
-        const num = parseInt(numStr);
-        return isNaN(num) ? 0 : num;
-      })
-      .filter(num => num > 0);
-
-    if (currentMonthIds.length === 0) {
-      return `${prefix}001`;
-    }
-
-    const nextNum = Math.max(...currentMonthIds) + 1;
-    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
-  } catch (error) {
-    console.error("Error generating kuitansi ID:", error);
-    throw error;
-  }
+  return generateNextDocumentId({
+    spreadsheetId: targetId,
+    sheetName: 'KuitansiPerjalananDinas',
+    prefix: monthlyPrefix('kui'),
+    column: 'B',
+  });
 };
 
 const KuitansiPerjalananDinas = () => {
