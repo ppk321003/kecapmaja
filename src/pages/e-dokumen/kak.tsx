@@ -171,69 +171,14 @@ const getNextSequenceNumber = async (targetId: string): Promise<number> => {
   }
 };
 
-// Fungsi untuk mendapatkan ID KAK berikutnya
+// Fungsi untuk mendapatkan ID KAK berikutnya (kak-yymmNNN, kolom B)
 const getNextKakId = async (targetId: string): Promise<string> => {
-  try {
-    // Baca data terakhir dari spreadsheet untuk mendapatkan nomor urut terakhir
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: targetId,
-        operation: "read",
-        range: "KerangkaAcuanKerja!B:B" // Sekarang ID KAK ada di kolom B
-      }
-    });
-
-    if (error) {
-      console.error("Error fetching last KAK ID:", error);
-      throw new Error("Gagal mengambil ID KAK terakhir");
-    }
-
-    const values = data?.values || [];
-    
-    // Filter hanya ID yang sesuai format kak-yymmxxx
-    const kakIds = values
-      .slice(1) // Skip header
-      .flat()
-      .filter((id: string) => id && id.startsWith('kak-'))
-      .map((id: string) => {
-        const match = id.match(/kak-(\d{2})(\d{2})(\d{3})/);
-        if (match) {
-          return {
-            year: parseInt(match[1]),
-            month: parseInt(match[2]),
-            sequence: parseInt(match[3])
-          };
-        }
-        return null;
-      })
-      .filter(Boolean);
-
-    const now = new Date();
-    const currentYear = now.getFullYear() % 100; // 2 digit terakhir tahun
-    const currentMonth = now.getMonth() + 1; // Bulan 1-12
-
-    // Cari sequence terakhir untuk bulan dan tahun ini
-    const currentMonthIds = kakIds.filter((id: any) => 
-      id.year === currentYear && id.month === currentMonth
-    );
-
-    let nextSequence = 1;
-    if (currentMonthIds.length > 0) {
-      const lastSequence = Math.max(...currentMonthIds.map((id: any) => id.sequence));
-      nextSequence = lastSequence + 1;
-    }
-
-    // Format: kak-yymmxxx
-    const yearStr = currentYear.toString().padStart(2, '0');
-    const monthStr = currentMonth.toString().padStart(2, '0');
-    const sequenceStr = nextSequence.toString().padStart(3, '0');
-
-    return `kak-${yearStr}${monthStr}${sequenceStr}`;
-  } catch (error) {
-    console.error("Error generating KAK ID:", error);
-    // Fallback: gunakan timestamp jika gagal
-    return `kak-${Date.now()}`;
-  }
+  return generateNextDocumentId({
+    spreadsheetId: targetId,
+    sheetName: 'KerangkaAcuanKerja',
+    prefix: monthlyPrefix('kak'),
+    column: 'B',
+  });
 };
 
 // Komponen Select dengan Search yang lebih baik
