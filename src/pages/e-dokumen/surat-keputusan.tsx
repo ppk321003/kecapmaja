@@ -1,3 +1,4 @@
+import { generateNextDocumentId, getNextSequenceNumberFromSheet, monthlyPrefix } from "@/utils/document-id";
 import React, { useState, useEffect, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -742,110 +743,19 @@ const useSubmitSKToSheets = (targetSheetId: string = DEFAULT_TARGET_SPREADSHEET_
   return { submitData, isSubmitting };
 };
 
-// FUNGSI YANG DIPERBAIKI: Mendapatkan nomor urut berikutnya dengan benar
+// Nomor urut berikutnya (terpusat, selalu melanjutkan data yang sudah ada)
 const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<number> => {
-  try {
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: targetId,
-        operation: "read",
-        range: `${SHEET_NAME}!A:A`
-      }
-    });
-
-    if (error) throw error;
-
-    const values = data?.values || [];
-    
-    // Jika hanya header atau kosong
-    if (values.length <= 1) return 1;
-
-    // Ambil semua nilai dari kolom A, skip header
-    const sequenceNumbers = values
-      .slice(1)
-      .map((row: any[]) => {
-        const value = row[0];
-        if (!value) return 0;
-        
-        // Coba parse sebagai number
-        if (typeof value === 'string') {
-          const trimmed = value.trim();
-          if (trimmed === '') return 0;
-          const num = parseInt(trimmed);
-          return isNaN(num) ? 0 : num;
-        } else if (typeof value === 'number') {
-          return value;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-
-    if (sequenceNumbers.length === 0) return 1;
-
-    // Cari nilai maksimum dan tambah 1
-    const maxNumber = Math.max(...sequenceNumbers);
-    return maxNumber + 1;
-  } catch (error) {
-    console.error("Error generating sequence number:", error);
-    throw error;
-  }
+  return getNextSequenceNumberFromSheet({ spreadsheetId: targetId, sheetName: SHEET_NAME, column: 'A' });
 };
 
-// FUNGSI YANG DIPERBAIKI: Generate ID surat keputusan yang benar
+// Generate ID surat keputusan (sk-yymmNNN) — selalu lanjut dari ID tertinggi
 const generateSKId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<string> => {
-  try {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `sk-${year}${month}`;
-
-    // Ambil semua ID yang sudah ada
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: targetId,
-        operation: "read",
-        range: `${SHEET_NAME}!A:A` // Kolom A adalah ID
-      }
-    });
-
-    if (error) throw error;
-
-    const values = data?.values || [];
-    
-    // Jika hanya header atau kosong
-    if (values.length <= 1) return `${prefix}001`;
-
-    // Ambil semua ID dari bulan ini
-    const currentMonthIds = values
-      .slice(1) // Skip header
-      .map((row: any[]) => {
-        const id = row[0];
-        if (!id || typeof id !== 'string') return null;
-        
-        // Cek apakah ID sesuai dengan pattern bulan ini
-        if (id.startsWith(prefix)) {
-          // Ekstrak angka dari format sk-yymmxxx
-          const numStr = id.replace(prefix, '');
-          const num = parseInt(numStr);
-          return isNaN(num) ? 0 : num;
-        }
-        return null;
-      })
-      .filter((num): num is number => num !== null && num > 0);
-
-    // Jika tidak ada ID untuk bulan ini
-    if (currentMonthIds.length === 0) return `${prefix}001`;
-
-    // Cari nilai maksimum dan tambah 1
-    const maxNumber = Math.max(...currentMonthIds);
-    const nextNumber = maxNumber + 1;
-    
-    // Format dengan leading zeros
-    return `${prefix}${nextNumber.toString().padStart(3, '0')}`;
-  } catch (error) {
-    console.error("Error generating SK ID:", error);
-    throw error;
-  }
+  return generateNextDocumentId({
+    spreadsheetId: targetId,
+    sheetName: SHEET_NAME,
+    prefix: monthlyPrefix('sk'),
+    column: 'A',
+  });
 };
 
 // Fungsi untuk mengubah teks menjadi format PROPER (Huruf Kapital Setiap Kata)

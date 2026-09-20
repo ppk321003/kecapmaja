@@ -1,3 +1,4 @@
+import { generateNextDocumentId, getNextSequenceNumberFromSheet, monthlyPrefix } from "@/utils/document-id";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -109,105 +110,19 @@ const useSubmitTransportLokalToSheets = (targetSheetId: string = DEFAULT_TARGET_
   return { submitData, isSubmitting };
 };
 
-// Fungsi untuk mendapatkan nomor urut berikutnya
+// Nomor urut berikutnya (kolom A)
 const getNextSequenceNumber = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<number> => {
-  try {
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: targetId,
-        operation: "read",
-        range: `${SHEET_NAME}!A:A`
-      }
-    });
-
-    if (error) {
-      console.error("Error fetching sequence numbers:", error);
-      throw new Error("Gagal mengambil nomor urut terakhir");
-    }
-
-    const values = data?.values || [];
-    
-    if (values.length <= 1) {
-      return 1;
-    }
-
-    const sequenceNumbers = values
-      .slice(1)
-      .map((row: any[]) => {
-        const value = row[0];
-        if (typeof value === 'string' && value.trim() !== '') {
-          const num = parseInt(value);
-          return isNaN(num) ? 0 : num;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-
-    if (sequenceNumbers.length === 0) {
-      return 1;
-    }
-
-    return Math.max(...sequenceNumbers) + 1;
-  } catch (error) {
-    console.error("Error generating sequence number:", error);
-    throw error;
-  }
+  return getNextSequenceNumberFromSheet({ spreadsheetId: targetId, sheetName: SHEET_NAME, column: 'A' });
 };
 
-// Fungsi untuk generate ID transport lokal (trl-yymmxxx)
+// Generate ID transport lokal (trl-yymmNNN) dari kolom B
 const generateTransportLokalId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): Promise<string> => {
-  try {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `trl-${year}${month}`;
-
-    // Ambil semua data untuk mencari nomor terakhir di bulan ini
-    const { data, error } = await supabase.functions.invoke("google-sheets", {
-      body: {
-        spreadsheetId: targetId,
-        operation: "read",
-        range: `${SHEET_NAME}!A:A`
-      }
-    });
-
-    if (error) {
-      console.error("Error fetching transport lokal IDs:", error);
-      throw new Error("Gagal mengambil ID transport lokal terakhir");
-    }
-
-    const values = data?.values || [];
-    
-    if (values.length <= 1) {
-      return `${prefix}001`;
-    }
-
-    // Filter ID yang sesuai dengan prefix bulan ini
-    const currentMonthIds = values
-      .slice(1)
-      .map((row: any[]) => {
-        const id = row[0];
-        if (!id || typeof id !== 'string') return null;
-        return id;
-      })
-      .filter((id: string | null) => id && id.startsWith(prefix))
-      .map((id: string) => {
-        const numStr = id.replace(prefix, '');
-        const num = parseInt(numStr);
-        return isNaN(num) ? 0 : num;
-      })
-      .filter(num => num > 0);
-
-    if (currentMonthIds.length === 0) {
-      return `${prefix}001`;
-    }
-
-    const nextNum = Math.max(...currentMonthIds) + 1;
-    return `${prefix}${nextNum.toString().padStart(3, '0')}`;
-  } catch (error) {
-    console.error("Error generating transport lokal ID:", error);
-    throw error;
-  }
+  return generateNextDocumentId({
+    spreadsheetId: targetId,
+    sheetName: SHEET_NAME,
+    prefix: monthlyPrefix('trl'),
+    column: 'B',
+  });
 };
 
 const formatTanggalIndonesia = (date: Date | null): string => {
