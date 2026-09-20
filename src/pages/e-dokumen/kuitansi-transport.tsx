@@ -660,58 +660,21 @@ const KuitansiTransportLokal = () => {
   const { submitData: submitTransportLokal } = useSubmitTransportLokalToSheets(targetTransportLokalSheetId);
 
   const getNextSequenceNumber = useCallback(async (): Promise<number> => {
-    const values = await fetchSheetData(
-      CONSTANTS.SPREADSHEET.TARGET_ID,
-      `${CONSTANTS.SHEET_NAMES.KUITANSI}!A:A`
-    );
-
-    if (values.length <= 1) return 1;
-
-    const sequenceNumbers = values
-      .slice(1)
-      .map((row: any[]) => {
-        const value = row[0];
-        if (typeof value === 'string' && value.trim() !== '') {
-          const num = parseInt(value);
-          return isNaN(num) ? 0 : num;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-
-    return sequenceNumbers.length === 0 ? 1 : Math.max(...sequenceNumbers) + 1;
-  }, [fetchSheetData, CONSTANTS]);
+    return getNextSequenceNumberFromSheet({
+      spreadsheetId: CONSTANTS.SPREADSHEET.TARGET_ID,
+      sheetName: CONSTANTS.SHEET_NAMES.KUITANSI,
+      column: 'A',
+    });
+  }, [CONSTANTS]);
 
   const generateKuitansiId = useCallback(async (): Promise<string> => {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `ku-${year}${month}`;
-
-    const values = await fetchSheetData(
-      CONSTANTS.SPREADSHEET.TARGET_ID,
-      `${CONSTANTS.SHEET_NAMES.KUITANSI}!B:B`
-    );
-
-    if (values.length <= 1) return `${prefix}001`;
-
-    const currentMonthIds = values
-      .slice(1)
-      .map((row: any[]) => row[0])
-      .filter((id: string) => id && id.startsWith(prefix))
-      .map((id: string) => {
-        const match = id.match(/ku-(\d{2})(\d{2})(\d{3})/);
-        if (match) {
-          const sequence = parseInt(match[3]);
-          return isNaN(sequence) ? 0 : sequence;
-        }
-        return 0;
-      })
-      .filter(num => num > 0);
-
-    const nextSequence = currentMonthIds.length === 0 ? 1 : Math.max(...currentMonthIds) + 1;
-    return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
-  }, [fetchSheetData, CONSTANTS]);
+    return generateNextDocumentId({
+      spreadsheetId: CONSTANTS.SPREADSHEET.TARGET_ID,
+      sheetName: CONSTANTS.SHEET_NAMES.KUITANSI,
+      prefix: monthlyPrefix('ku'),
+      column: 'B',
+    });
+  }, [CONSTANTS]);
 
   const submitData = useCallback(async (data: any[]) => {
     setIsSubmitting(true);
