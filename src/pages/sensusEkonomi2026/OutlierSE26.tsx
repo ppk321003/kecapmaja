@@ -782,7 +782,7 @@ export default function OutlierSE26() {
               {sectionTab === "pekerjaan" && <TabsTrigger value="PEJABAT" title={getOutlierTabLabel("PEJABAT")} className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-amber-200 data-[state=active]:bg-white data-[state=active]:text-amber-700 data-[state=active]:shadow-sm">
                 {getOutlierTabLabel("PEJABAT")}
               </TabsTrigger>}
-              {(sectionTab === "aset" ? GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName !== "PENGELUARAN<100RB") : sectionTab === "pendapatan-pengeluaran" ? PENDAPATAN_PENGELUARAN_TABS : sectionTab === "perumahan" ? PERUMAHAN_TABS : []).map(([sheetName]) => (
+              {((sectionTab === "aset" ? GENERIC_OUTLIER_TABS.filter(([sheetName]) => sheetName !== "PENGELUARAN<100RB") : sectionTab === "pendapatan-pengeluaran" ? PENDAPATAN_PENGELUARAN_TABS : sectionTab === "perumahan" ? PERUMAHAN_TABS : []) as unknown as [string, string][]).map(([sheetName]) => (
                 <TabsTrigger key={sheetName} value={sheetName} title={getOutlierTabLabel(sheetName)} className="min-h-10 whitespace-normal rounded-lg border border-transparent px-2 py-1.5 text-center leading-tight transition-colors hover:bg-white/70 data-[state=active]:border-emerald-200 data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
                   {getOutlierTabLabel(sheetName)}
                 </TabsTrigger>
