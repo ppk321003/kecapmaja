@@ -978,16 +978,12 @@ export default function Dashboard() {
     try {
       setLoading(true);
       console.log(`[Dashboard.fetchDashboardData] user.satker=${user?.satker}, userDataSheetId=${userDataSheetId}, satkerContext=${!!satkerContext}`);
-      const {
-        data: tugasResponse,
-        error
-      } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: userDataSheetId,
-          operation: "read",
-          range: "Sheet1"
-        }
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      const tugasResponse = await readSheetValues({
+        spreadsheetId: userDataSheetId,
+        range: "Sheet1"
       });
+      const error = null as any;
       if (error) throw error;
       const rows = tugasResponse?.values || [];
       console.log("Total rows fetched:", rows.length);
