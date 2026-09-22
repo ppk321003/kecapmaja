@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { readSheetValues } from '@/lib/sheets-read';
 
 /**
  * Utilitas terpusat untuk generate ID dokumen & nomor urut ke Google Sheets.
