@@ -146,37 +146,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       let userRows: string[][] = [];
-      let fallbackUsed = false;
+      const fallbackUsed = false;
 
+      // Login membaca daftar pengguna LANGSUNG dari Google Sheets (tanpa Supabase).
       try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: USERS_SPREADSHEET_ID,
-            operation: "read",
-            range: "user!A:F"
-          }
+        const { values } = await readSheetValues({
+          spreadsheetId: USERS_SPREADSHEET_ID,
+          range: 'user!A:F',
         });
-
-        if (error) {
-          console.warn("[AuthContext.login] Supabase Edge Function failed, trying public sheet fallback:", error);
-          throw error;
-        }
-
-        if (data?.values && data.values.length > 1) {
-          userRows = data.values;
-        } else {
-          throw new Error('No user rows returned from Supabase');
-        }
-      } catch (supabaseError) {
-        try {
-          userRows = await readUserSheetFallback();
-          fallbackUsed = true;
-          console.warn('[AuthContext.login] Using PPK emergency login fallback from public Google Sheet.', supabaseError);
-        } catch (fallbackErr) {
-          console.error('[AuthContext.login] Both Supabase and public sheet fallback failed:', fallbackErr);
-          setIsLoading(false);
-          return false;
-        }
+        userRows = values || [];
+      } catch (readError) {
+        console.error('[AuthContext.login] Gagal membaca sheet user:', readError);
+        setIsLoading(false);
+        return false;
       }
 
       if (userRows.length <= 1) {
