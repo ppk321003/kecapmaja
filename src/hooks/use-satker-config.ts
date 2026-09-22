@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchAppsScriptSheetRows } from '@/hooks/use-google-sheets-data';
 import { supabase } from '@/integrations/supabase/client';
+import { readSheetValues } from '@/lib/sheets-read';
 
 const MASTER_CONFIG_SPREADSHEET_ID = "1CBpS-rhb5pSSHFoleUoRa8D8CGeMh61tCoF82S0W0cQ";
 const CONFIG_SHEET_NAME = 'satker_config';
@@ -46,15 +47,11 @@ export function useSatkerConfig() {
       let rows: string[][] = [];
 
       try {
-        const { data, error } = await supabase.functions.invoke('google-sheets', {
-          body: {
-            spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
-            operation: 'read',
-            range: `${CONFIG_SHEET_NAME}!A:AB`,
-          },
+        // Dibaca langsung dari Google Sheets (tanpa Supabase)
+        const data = await readSheetValues({
+          spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
+          range: `${CONFIG_SHEET_NAME}!A:AB`,
         });
-
-        if (error) throw error;
         rows = Array.isArray(data?.values) ? data.values : [];
       } catch (readError) {
         console.warn('[useSatkerConfig] Edge Function read failed, trying Apps Script fallback', readError);
