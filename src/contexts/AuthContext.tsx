@@ -20,33 +20,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const USERS_SPREADSHEET_ID = "1kVxQHL3TPfDKJ1ZnZ_fxJECGctc1UBjU_8E--9UK938";
 const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-const PPK_ROLE = "Pejabat Pembuat Komitmen";
-
-async function readUserSheetFallback(): Promise<string[][]> {
-  const publicUrl = `https://docs.google.com/spreadsheets/d/${USERS_SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=user`;
-  const response = await fetch(publicUrl, { cache: 'no-store' });
-
-  if (!response.ok) {
-    throw new Error(`Public sheet fetch failed: ${response.status}`);
-  }
-
-  const text = await response.text();
-  const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?\s*$/s);
-
-  if (!match) {
-    throw new Error('Public sheet response is not in the expected Google Visualization format');
-  }
-
-  const parsed = JSON.parse(match[1]);
-  const rows = parsed?.table?.rows ?? [];
-
-  return rows.map((row: any) => (row?.c ?? []).map((cell: any) => {
-    if (cell && typeof cell === 'object') {
-      return cell.f ?? cell.v ?? '';
-    }
-    return cell ?? '';
-  }));
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
