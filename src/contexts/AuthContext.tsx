@@ -151,28 +151,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const foundUser = users.find(
         (u: { username: string; password: string; role: string; satker: string }) =>
           u.username.toLowerCase() === username.toLowerCase() &&
-          u.password === password &&
-          (!fallbackUsed || u.role === PPK_ROLE)
+          u.password === password
       );
 
       if (foundUser) {
         console.log('[AuthContext.login] User found:', {
           username: foundUser.username,
           role: foundUser.role,
-          satker: foundUser.satker,
-          fallbackUsed
+          satker: foundUser.satker
         });
-
-        if (fallbackUsed && foundUser.role !== PPK_ROLE) {
-          setIsLoading(false);
-          return false;
-        }
 
         setUser({ username: foundUser.username, role: foundUser.role, satker: foundUser.satker });
 
         const loginTimestamp = new Date().toISOString();
         try {
-          if (!fallbackUsed) {
+          {
             await supabase.functions.invoke("google-sheets", {
               body: {
                 spreadsheetId: USERS_SPREADSHEET_ID,
