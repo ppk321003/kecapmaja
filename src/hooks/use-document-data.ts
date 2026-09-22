@@ -10,15 +10,11 @@ export function useDocumentData({ sheetId, sheetName }: UseDocumentDataProps) {
   return useQuery({
     queryKey: ["document-data", sheetId, sheetName],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: sheetId,
-          operation: "read",
-          range: sheetName,
-        },
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      const data = await readSheetValues({
+        spreadsheetId: sheetId,
+        range: sheetName,
       });
-
-      if (error) throw error;
 
       const rows = data?.values || [];
       if (rows.length <= 1) return [];
