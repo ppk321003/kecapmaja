@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
+import { readSheetValues } from '@/lib/sheets-read';
 
 interface HonorRow {
   // Identitas Penerima
@@ -160,16 +161,12 @@ export const useHonorData = () => {
         }
 
         // Fetch data kegiatan dari spreadsheet
-        const { data, error: fetchError } = await supabase.functions.invoke(
-          'google-sheets',
-          {
-            body: {
-              spreadsheetId: entriKegiatanSheetId,
-              operation: 'read',
-              range: 'Sheet1!A:W'
-            }
-          }
-        );
+        // Dibaca langsung dari Google Sheets (tanpa Supabase)
+        const data = await readSheetValues({
+          spreadsheetId: entriKegiatanSheetId,
+          range: 'Sheet1!A:W'
+        });
+        const fetchError = null as any;
 
         if (fetchError) {
           setError(`Gagal memuat data: ${fetchError.message}`);

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { readSheetValues } from '@/lib/sheets-read';
 
 interface User {
   username: string;
@@ -19,33 +20,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const USERS_SPREADSHEET_ID = "1kVxQHL3TPfDKJ1ZnZ_fxJECGctc1UBjU_8E--9UK938";
 const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-const PPK_ROLE = "Pejabat Pembuat Komitmen";
-
-async function readUserSheetFallback(): Promise<string[][]> {
-  const publicUrl = `https://docs.google.com/spreadsheets/d/${USERS_SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=user`;
-  const response = await fetch(publicUrl, { cache: 'no-store' });
-
-  if (!response.ok) {
-    throw new Error(`Public sheet fetch failed: ${response.status}`);
-  }
-
-  const text = await response.text();
-  const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?\s*$/s);
-
-  if (!match) {
-    throw new Error('Public sheet response is not in the expected Google Visualization format');
-  }
-
-  const parsed = JSON.parse(match[1]);
-  const rows = parsed?.table?.rows ?? [];
-
-  return rows.map((row: any) => (row?.c ?? []).map((cell: any) => {
-    if (cell && typeof cell === 'object') {
-      return cell.f ?? cell.v ?? '';
-    }
-    return cell ?? '';
-  }));
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
@@ -146,37 +120,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       let userRows: string[][] = [];
-      let fallbackUsed = false;
 
+
+      // Login membaca daftar pengguna LANGSUNG dari Google Sheets (tanpa Supabase).
       try {
-        const { data, error } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: USERS_SPREADSHEET_ID,
-            operation: "read",
-            range: "user!A:F"
-          }
+        const { values } = await readSheetValues({
+          spreadsheetId: USERS_SPREADSHEET_ID,
+          range: 'user!A:F',
         });
-
-        if (error) {
-          console.warn("[AuthContext.login] Supabase Edge Function failed, trying public sheet fallback:", error);
-          throw error;
-        }
-
-        if (data?.values && data.values.length > 1) {
-          userRows = data.values;
-        } else {
-          throw new Error('No user rows returned from Supabase');
-        }
-      } catch (supabaseError) {
-        try {
-          userRows = await readUserSheetFallback();
-          fallbackUsed = true;
-          console.warn('[AuthContext.login] Using PPK emergency login fallback from public Google Sheet.', supabaseError);
-        } catch (fallbackErr) {
-          console.error('[AuthContext.login] Both Supabase and public sheet fallback failed:', fallbackErr);
-          setIsLoading(false);
-          return false;
-        }
+        userRows = values || [];
+      } catch (readError) {
+        console.error('[AuthContext.login] Gagal membaca sheet user:', readError);
+        setIsLoading(false);
+        return false;
       }
 
       if (userRows.length <= 1) {
@@ -195,28 +151,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const foundUser = users.find(
         (u: { username: string; password: string; role: string; satker: string }) =>
           u.username.toLowerCase() === username.toLowerCase() &&
-          u.password === password &&
-          (!fallbackUsed || u.role === PPK_ROLE)
+          u.password === password
       );
 
       if (foundUser) {
         console.log('[AuthContext.login] User found:', {
           username: foundUser.username,
           role: foundUser.role,
-          satker: foundUser.satker,
-          fallbackUsed
+          satker: foundUser.satker
         });
-
-        if (fallbackUsed && foundUser.role !== PPK_ROLE) {
-          setIsLoading(false);
-          return false;
-        }
 
         setUser({ username: foundUser.username, role: foundUser.role, satker: foundUser.satker });
 
         const loginTimestamp = new Date().toISOString();
         try {
-          if (!fallbackUsed) {
+          {
             await supabase.functions.invoke("google-sheets", {
               body: {
                 spreadsheetId: USERS_SPREADSHEET_ID,

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { readSheetValues } from '@/lib/sheets-read';
 
 interface KuitansiData {
   [key: string]: any;
@@ -23,15 +24,11 @@ export const useKuitansiData = (spreadsheetId: string | null | undefined) => {
         setLoading(true);
         setError(null);
         
-        const { data: response, error: err } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: spreadsheetId,
-            operation: "read",
-            range: "Sheet1!A:X" // Range A:X as requested
-          }
+        // Dibaca langsung dari Google Sheets (tanpa Supabase)
+        const response = await readSheetValues({
+          spreadsheetId: spreadsheetId,
+          range: "Sheet1!A:X"
         });
-
-        if (err) throw err;
 
         const rows = response?.values || [];
         

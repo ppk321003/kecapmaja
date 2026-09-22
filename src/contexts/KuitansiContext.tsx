@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { readSheetValues } from "@/lib/sheets-read";
 
 export interface Kuitansi {
   [key: string]: any;
@@ -76,16 +77,12 @@ export const KuitansiProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(true);
       console.log("Loading kuitansi from sheet:", sheetId);
       
-      const { data, error } = await supabase.functions.invoke(
-        "google-sheets",
-        {
-          body: {
-            operation: "read",
-            spreadsheetId: sheetId,
-            range: "Sheet1!A1:H1000",
-          },
-        }
-      );
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      const data = await readSheetValues({
+        spreadsheetId: sheetId,
+        range: "Sheet1!A1:H1000",
+      });
+      const error = null as any;
 
       if (error) {
         console.error("Error loading kuitansi:", error);

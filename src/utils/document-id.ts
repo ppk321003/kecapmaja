@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { readSheetValues } from '@/lib/sheets-read';
 
 /**
  * Utilitas terpusat untuk generate ID dokumen & nomor urut ke Google Sheets.
@@ -23,18 +23,14 @@ async function readColumn(
   const col = COLUMN_LETTER.test(column.toUpperCase()) ? column.toUpperCase() : 'A';
   const range = `${sheetName}!${col}:${col}`;
 
-  const { data, error } = await supabase.functions.invoke('google-sheets', {
-    body: {
-      spreadsheetId,
-      operation: 'read',
-      range,
-      valueRenderOption: 'UNFORMATTED_VALUE',
-    },
+  // Dibaca langsung dari Google Sheets (tanpa Supabase).
+  const { values: read } = await readSheetValues({
+    spreadsheetId,
+    range,
+    unformatted: true,
   });
 
-  if (error) throw error;
-
-  const values: any[][] = (data as any)?.values || [];
+  const values: any[][] = read || [];
   // JANGAN skip baris pertama: header otomatis terfilter karena tidak cocok pola.
   return values.map((row) => (row?.[0] === undefined || row?.[0] === null ? '' : String(row[0]).trim()));
 }
