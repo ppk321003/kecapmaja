@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       let userRows: string[][] = [];
-      const fallbackUsed = false;
+
 
       // Login membaca daftar pengguna LANGSUNG dari Google Sheets (tanpa Supabase).
       try {
