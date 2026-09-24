@@ -234,23 +234,22 @@ export default function AkiToBendahara() {
       let sheetData = null;
       let error = null;
 
-      // Coba setiap range sampai berhasil
+      // Coba setiap range sampai berhasil (dibaca langsung dari Google Sheets)
       for (const range of rangesToTry) {
         console.log(`🔍 Mencoba range: ${range}`);
-        const result = await supabase.functions.invoke("google-sheets", {
-          body: {
+        try {
+          const result = await readSheetValues({
             spreadsheetId: dynamicSheetId,
-            operation: "read",
             range: range
+          });
+          if (result.values) {
+            sheetData = result;
+            console.log(`✅ Berhasil dengan range: ${range}`);
+            break;
           }
-        });
-        if (!result.error && result.data?.values) {
-          sheetData = result.data;
-          console.log(`✅ Berhasil dengan range: ${range}`);
-          break;
-        } else {
-          error = result.error;
-          console.log(`❌ Gagal dengan range: ${range}`, result.error);
+        } catch (err) {
+          error = err;
+          console.log(`❌ Gagal dengan range: ${range}`, err);
         }
       }
       if (!sheetData) {

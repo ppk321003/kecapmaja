@@ -2088,25 +2088,24 @@ const KarierKu: React.FC = () => {
       let data, error;
       let successfulSheetName = null;
       
-      // Try multiple sheet names
+      // Try multiple sheet names (dibaca langsung dari Google Sheets)
       for (const sheetName of SHEET_NAMES) {
-        const result = await supabase.functions.invoke("google-sheets", {
-          body: {
+        try {
+          const result = await readSheetValues({
             spreadsheetId: spreadsheetId,
-            operation: "read",
             range: `${sheetName}!A:V`
+          });
+          if (result.values && result.values.length > 1) {
+            data = result;
+            error = null;
+            successfulSheetName = sheetName;
+            console.log(`[KarierKu] Successfully read from sheet: ${sheetName}`);
+            break;
           }
-        });
-        
-        if (!result.error && result.data?.values && result.data.values.length > 1) {
-          data = result.data;
-          error = null;
-          successfulSheetName = sheetName;
-          console.log(`[KarierKu] Successfully read from sheet: ${sheetName}`);
-          break;
-        } else {
+          console.log(`[KarierKu] Sheet kosong: ${sheetName}, trying next...`);
+        } catch (err) {
           console.log(`[KarierKu] Failed to read from sheet: ${sheetName}, trying next...`);
-          error = result.error;
+          error = err;
         }
       }
       

@@ -223,15 +223,12 @@ export default function EntriPengelola() {
       // Fetch foto mapping dari MASTER.ORGANIK
       let fotoMap: Record<string, string> = {};
       try {
-        const { data: organikData, error: organikError } = await supabase.functions.invoke("google-sheets", {
-          body: {
-            spreadsheetId: masterSpreadsheetId,
-            operation: "read",
-            range: "MASTER.ORGANIK"
-          }
+        const organikData = await readSheetValues({
+          spreadsheetId: masterSpreadsheetId,
+          range: "MASTER.ORGANIK"
         });
         
-        if (!organikError && organikData?.values && organikData.values.length > 0) {
+        if (organikData?.values && organikData.values.length > 0) {
           const headers = organikData.values[0];
           fotoMap = organikData.values.slice(1).reduce((acc: Record<string, string>, row: any) => {
             // Create object from headers
@@ -263,15 +260,10 @@ export default function EntriPengelola() {
         console.warn('Could not fetch foto from MASTER.ORGANIK:', err);
       }
       
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: masterSpreadsheetId,
-          operation: "read",
-          range: "MASTER.PENGELOLA"
-        }
+      const data = await readSheetValues({
+        spreadsheetId: masterSpreadsheetId,
+        range: "MASTER.PENGELOLA"
       });
-      
-      if (error) throw error;
       
       const rows = data.values || [];
       if (rows.length === 0) {
@@ -344,15 +336,10 @@ export default function EntriPengelola() {
       setLoadingOrganik(true);
       console.log('[fetchOrganik] Starting with masterSpreadsheetId:', masterSpreadsheetId?.substring(0, 30) + '...');
       
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: masterSpreadsheetId,
-          operation: "read",
-          range: "MASTER.ORGANIK"
-        }
+      const data = await readSheetValues({
+        spreadsheetId: masterSpreadsheetId,
+        range: "MASTER.ORGANIK"
       });
-      
-      if (error) throw error;
       
       const rows = data.values || [];
       console.log('[fetchOrganik] Received rows:', rows.length, 'First row:', rows[0]);
@@ -419,15 +406,10 @@ export default function EntriPengelola() {
       setLoadingMitra(true);
       console.log('[fetchMitra] Starting with masterSpreadsheetId:', masterSpreadsheetId?.substring(0, 30) + '...');
       
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: masterSpreadsheetId,
-          operation: "read",
-          range: "MASTER.MITRA"
-        }
+      const data = await readSheetValues({
+        spreadsheetId: masterSpreadsheetId,
+        range: "MASTER.MITRA"
       });
-      
-      if (error) throw error;
 
       const rows = data.values || [];
       console.log('[fetchMitra] Received rows:', rows.length, 'First row:', rows[0]);
