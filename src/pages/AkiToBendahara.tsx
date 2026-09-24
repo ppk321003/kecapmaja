@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { readSheetValues } from "@/lib/sheets-read";
 import { Badge } from "@/components/ui/badge";
 import { utils, writeFile } from 'xlsx';
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
