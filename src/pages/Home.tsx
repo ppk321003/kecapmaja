@@ -4,7 +4,7 @@ import { FileText, BarChart3, Users, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Cake, Heart, ChevronLeft, ChevronRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { readSheetValues } from "@/lib/sheets-read";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
@@ -84,15 +84,11 @@ export default function Home() {
         masterOrganikSheetId: masterOrganikSheetId?.substring(0, 30) + '...'
       });
       
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: masterOrganikSheetId,
-          operation: "read",
-          range: "MASTER.ORGANIK"
-        }
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      const data = await readSheetValues({
+        spreadsheetId: masterOrganikSheetId,
+        range: "MASTER.ORGANIK",
       });
-
-      if (error) throw error;
 
       const rows = data.values || [];
       if (rows.length <= 1) {
