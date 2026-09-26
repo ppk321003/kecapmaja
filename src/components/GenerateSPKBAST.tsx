@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
+import { readSheetValues } from '@/lib/sheets-read';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function GenerateSPKBAST() {
