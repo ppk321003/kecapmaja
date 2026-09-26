@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readSheetValues } from "@/lib/sheets-read";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 
@@ -66,15 +67,11 @@ export default function EntriSBML() {
   const fetchSBML = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: userSheetId,
-          operation: "read",
-          range: "Sheet1"
-        }
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      const data = await readSheetValues({
+        spreadsheetId: userSheetId,
+        range: "Sheet1"
       });
-      
-      if (error) throw error;
       
       const rows = data.values || [];
       const sbmlList = rows.slice(1).map((row: any[], index: number) => ({

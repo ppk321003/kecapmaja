@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Download, ExternalLink, Filter, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readSheetValues } from "@/lib/sheets-read";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DownloadRekapHonor from "@/components/DownloadRekapHonor";
@@ -109,20 +110,11 @@ export default function DownloadSPKBAST() {
       for (const range of rangesToTry) {
         try {
           console.log(`Mencoba range: ${range}`);
-          const {
-            data: sheetResponse,
-            error
-          } = await supabase.functions.invoke("google-sheets", {
-            body: {
-              spreadsheetId: SPK_SPREADSHEET_ID,
-              operation: "read",
-              range: range
-            }
+          // Dibaca langsung dari Google Sheets (tanpa Supabase)
+          const sheetResponse = await readSheetValues({
+            spreadsheetId: SPK_SPREADSHEET_ID,
+            range: range
           });
-          if (error) {
-            console.log(`Error dengan range ${range}:`, error);
-            continue;
-          }
           const rows = sheetResponse?.values || [];
           console.log(`Range ${range} berhasil, jumlah rows:`, rows.length);
           if (rows.length > 0) {

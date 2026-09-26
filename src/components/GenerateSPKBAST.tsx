@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
+import { readSheetValues } from '@/lib/sheets-read';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function GenerateSPKBAST() {
@@ -54,15 +55,14 @@ export default function GenerateSPKBAST() {
     // Fetch preview data untuk confirmation
     setLoadingPreview(true);
     try {
-      const { data: sheetResponse, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      let sheetResponse;
+      try {
+        sheetResponse = await readSheetValues({
           spreadsheetId: spreadsheetId,
-          operation: "read",
           range: "Sheet1!A:Z"
-        }
-      });
-
-      if (error) {
+        });
+      } catch (error) {
         toast({
           title: "❌ Error",
           description: "Gagal membaca data dari spreadsheet",
