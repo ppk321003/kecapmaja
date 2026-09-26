@@ -972,17 +972,14 @@ export default function EntriTarget() {
 
   const loadDataFromSpreadsheet = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('google-sheets', {
-        body: {
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      let data;
+      try {
+        data = await readSheetValues({
           spreadsheetId: userDataSheetId,
-          operation: 'read',
           range: 'Sheet1!A:W'
-        }
-      });
-      if (error) {
+        });
+      } catch (error) {
         console.error('Error loading from spreadsheet:', error);
         toast({
           title: "Error",
@@ -1417,14 +1414,10 @@ export default function EntriTarget() {
 
   const saveActivityToSpreadsheet = async (activity: Activity, targetPeriod: string, targetYear: string): Promise<number | null> => {
     try {
-      const {
-        data: existingData
-      } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          spreadsheetId: userDataSheetId,
-          operation: 'read',
-          range: 'Sheet1!A:A'
-        }
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      const existingData = await readSheetValues({
+        spreadsheetId: userDataSheetId,
+        range: 'Sheet1!A:A'
       });
       const nextRowIndex = existingData?.values ? existingData.values.length + 1 : 2;
       const nextNo = existingData?.values ? existingData.values.length : 1;
