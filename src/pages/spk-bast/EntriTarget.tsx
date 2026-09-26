@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
+import { readSheetValues } from "@/lib/sheets-read";
 
 // =============================================
 // FUNGSI UTILITY BARU UNTUK KONSISTENSI
@@ -866,20 +867,11 @@ export default function EntriTarget() {
     if (!user?.role) return;
     try {
       setLoadingActivityOptions(true);
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          spreadsheetId: '1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8',
-          operation: 'read',
-          range: 'Sheet1!A:F'
-        }
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      const data = await readSheetValues({
+        spreadsheetId: '1G9E1CxP_ohSgc7mRl0GY_xPmvKGxylQh3asKM4aWwL8',
+        range: 'Sheet1!A:F'
       });
-      if (error) {
-        console.error('Error loading activity options:', error);
-        return;
-      }
       if (!data?.values || data.values.length <= 1) {
         setActivityOptions([]);
         return;
@@ -909,21 +901,12 @@ export default function EntriTarget() {
     try {
       setLoadingKoordinatorOptions(true);
       console.log('[EntriTarget] Loading koordinator options from satker sheet:', masterOrganikSheetId);
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('google-sheets', {
-        body: {
-          spreadsheetId: masterOrganikSheetId,
-          operation: 'read',
-          range: 'MASTER.ORGANIK!A:D'
-        }
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      const data = await readSheetValues({
+        spreadsheetId: masterOrganikSheetId,
+        range: 'MASTER.ORGANIK!A:D'
       });
-      console.log('[EntriTarget] Google Sheets response - error:', error, 'data rows:', data?.values?.length);
-      if (error) {
-        console.error('Error loading koordinator options:', error);
-        return;
-      }
+      console.log('[EntriTarget] Google Sheets response - data rows:', data?.values?.length);
       if (!data?.values || data.values.length <= 1) {
         console.warn('[EntriTarget] No data received or only header row');
         setKoordinatorOptions([]);
