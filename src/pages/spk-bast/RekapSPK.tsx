@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, Search, XCircle, ArrowUpDown, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readSheetValues } from "@/lib/sheets-read";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -182,14 +183,11 @@ export default function RekapSPKBAST() {
         console.log('[RekapSPK.fetchSBMLData] sbmlSheetId not ready, using fallback');
       }
 
-      const { data: sbmlResponse, error } = await supabase.functions.invoke("google-sheets", {
-        body: {
-          spreadsheetId: sbmlSheetId,
-          operation: "read",
-          range: "MASTER.SBML"
-        }
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
+      const sbmlResponse = await readSheetValues({
+        spreadsheetId: sbmlSheetId,
+        range: "MASTER.SBML"
       });
-      if (error) throw error;
       
       const rows = sbmlResponse?.values || [];
       if (rows.length > 1) {
@@ -363,12 +361,13 @@ export default function RekapSPKBAST() {
       const cleanedPeriodeFilter = cleanPeriode(periodeFilter);
       console.log("🔍 Fetching data untuk periode:", cleanedPeriodeFilter);
 
+      // Dibaca langsung dari Google Sheets (tanpa Supabase)
       const [tugasResult, masterResult] = await Promise.all([
-        callEdgeFunction("read", {
+        readSheetValues({
           spreadsheetId: userSheetId,
           range: "Sheet1"
         }),
-        callEdgeFunction("read", {
+        readSheetValues({
           spreadsheetId: masterMitraSheetId,
           range: "MASTER.MITRA"
         })
