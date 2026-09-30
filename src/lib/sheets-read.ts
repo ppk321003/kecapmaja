@@ -20,6 +20,8 @@ export interface ReadSheetOptions {
   unformatted?: boolean;
   /** Matikan fallback ke Supabase bila pembacaan langsung gagal */
   noFallback?: boolean;
+  /** Dahulukan Sheets API melalui Supabase untuk metadata/header yang tidak tersedia di gviz */
+  preferSupabase?: boolean;
 }
 
 const columnLettersToIndex = (letters: string): number => {
@@ -143,6 +145,19 @@ async function readViaGviz(options: ReadSheetOptions): Promise<string[][]> {
  * langsung gagal (misal sheet tidak publik).
  */
 export async function readSheetValues(options: ReadSheetOptions): Promise<{ values: string[][] }> {
+  if (options.preferSupabase) {
+    const { data, error } = await supabase.functions.invoke('google-sheets', {
+      body: {
+        spreadsheetId: options.spreadsheetId,
+        operation: 'read',
+        range: options.range,
+        ...(options.unformatted ? { valueRenderOption: 'UNFORMATTED_VALUE' } : {}),
+      },
+    });
+    if (error) throw error;
+    return { values: ((data as any)?.values || []) as string[][] };
+  }
+
   try {
     const values = await readViaGviz(options);
     return { values };

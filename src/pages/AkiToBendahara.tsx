@@ -2,13 +2,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Search, Filter, Loader2, X, RefreshCw, ExternalLink, Download } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { readSheetValues } from "@/lib/sheets-read";
 import { Badge } from "@/components/ui/badge";
 import { utils, writeFile } from 'xlsx';
@@ -53,6 +52,7 @@ export default function AkiToBendahara() {
   const [kegiatanSearchTerm, setKegiatanSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasInitializedDefaultPeriod = useRef(false);
   const { toast } = useToast();
 
   // Get user role from localStorage
@@ -218,7 +218,7 @@ export default function AkiToBendahara() {
     }
   };
 
-  // Fetch data dari Google Sheets menggunakan Supabase function - DIPERBAIKI
+  // Fetch data dari Google Sheets melalui helper pembacaan sheet.
   const fetchDataFromSheets = async () => {
     try {
       setIsLoading(true);
@@ -240,7 +240,8 @@ export default function AkiToBendahara() {
         try {
           const result = await readSheetValues({
             spreadsheetId: dynamicSheetId,
-            range: range
+            range,
+            preferSupabase: true,
           });
           if (result.values) {
             sheetData = result;
@@ -274,22 +275,22 @@ export default function AkiToBendahara() {
           console.log(`📝 Processing row ${index}:`, row);
 
           // Cari index kolom secara dinamis berdasarkan header
-          const getColumnIndex = (possibleHeaders: string[]) => {
+          const getColumnIndex = (possibleHeaders: string[], fallbackIndex: number) => {
             for (const header of possibleHeaders) {
               const index = headers.findIndex((h: string) => 
                 h && h.toString().toLowerCase().includes(header.toLowerCase())
               );
               if (index !== -1) return index;
             }
-            return -1;
+            return fallbackIndex;
           };
 
-          const noIndex = getColumnIndex(['no', 'nomor']) || 0;
-          const bulanIndex = getColumnIndex(['bulan']) || 1;
-          const tahunIndex = getColumnIndex(['tahun']) || 2;
-          const namaIndex = getColumnIndex(['nama', 'petugas', 'nama petugas']) || 3;
-          const bankIndex = getColumnIndex(['bank', 'nama bank']) || 4;
-          const rekeningIndex = getColumnIndex(['rekening', 'no rekening', 'norek']) || 5;
+          const noIndex = getColumnIndex(['no', 'nomor'], 0);
+          const bulanIndex = getColumnIndex(['bulan'], 1);
+          const tahunIndex = getColumnIndex(['tahun'], 2);
+          const namaIndex = getColumnIndex(['nama', 'petugas', 'nama petugas'], 3);
+          const bankIndex = getColumnIndex(['bank', 'nama bank'], 4);
+          const rekeningIndex = getColumnIndex(['rekening', 'no rekening', 'norek'], 5);
           
           const rowData: DataRow = {
             no: parseInt(row[noIndex]) || index + 1,
@@ -303,21 +304,20 @@ export default function AkiToBendahara() {
           // Tambahkan kolom kegiatan dinamis (mulai dari kolom 6 atau setelah no rekening)
           const startKegiatanIndex = Math.max(rekeningIndex + 1, 6);
           headers.slice(startKegiatanIndex).forEach((header: string, colIndex: number) => {
-            if (header && header.trim() !== '') {
-              const value = row[startKegiatanIndex + colIndex];
-              // Handle berbagai format nilai
-              if (value) {
-                if (typeof value === 'number') {
-                  rowData[header] = value;
-                } else if (typeof value === 'string') {
-                  const numericValue = parseFloat(value.replace(/[^\d.-]/g, ''));
-                  rowData[header] = isNaN(numericValue) ? 0 : numericValue;
-                } else {
-                  rowData[header] = 0;
-                }
+            const kegiatanName = header?.trim() || `Kegiatan ${colIndex + 1}`;
+            const value = row[startKegiatanIndex + colIndex];
+            // Handle berbagai format nilai
+            if (value) {
+              if (typeof value === 'number') {
+                rowData[kegiatanName] = value;
+              } else if (typeof value === 'string') {
+                const numericValue = parseFloat(value.replace(/[^\d.-]/g, ''));
+                rowData[kegiatanName] = isNaN(numericValue) ? 0 : numericValue;
               } else {
-                rowData[header] = 0;
+                rowData[kegiatanName] = 0;
               }
+            } else {
+              rowData[kegiatanName] = 0;
             }
           });
           console.log(`✅ Processed row ${index}:`, rowData);
@@ -325,6 +325,28 @@ export default function AkiToBendahara() {
         });
 
       console.log('🎉 Data berhasil diproses:', processedData);
+      if (!hasInitializedDefaultPeriod.current) {
+        const baseColumns = ['no', 'bulan', 'tahun', 'namaPetugas', 'namaBank', 'noRekening'];
+        const hasPositiveActivity = (item: DataRow) => Object.entries(item).some(([key, value]) =>
+          !baseColumns.includes(key) && typeof value === 'number' && value > 0
+        );
+        const hasCurrentPeriodData = processedData.some(item =>
+          item.bulan === currentMonthName && item.tahun === Number(currentYear) && hasPositiveActivity(item)
+        );
+
+        if (!hasCurrentPeriodData) {
+          const latestPeriodRow = processedData
+            .filter(hasPositiveActivity)
+            .sort((left, right) =>
+              right.tahun - left.tahun || bulanOptions.indexOf(right.bulan) - bulanOptions.indexOf(left.bulan)
+            )[0];
+          if (latestPeriodRow) {
+            setSelectedBulan(latestPeriodRow.bulan);
+            setSelectedTahun(String(latestPeriodRow.tahun));
+          }
+        }
+        hasInitializedDefaultPeriod.current = true;
+      }
       setData(processedData);
 
       // Extract semua kegiatan yang pernah ada (tidak peduli nilai)
