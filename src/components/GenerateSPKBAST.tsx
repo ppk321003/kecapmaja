@@ -8,6 +8,7 @@ import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 import { readSheetValues } from '@/lib/sheets-read';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function GenerateSPKBAST() {
   const { user } = useAuth();
