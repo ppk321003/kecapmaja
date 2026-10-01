@@ -17,8 +17,9 @@ export default function GenerateSPKBAST() {
   const [spreadsheetId, setSpreadsheetId] = useState<string>('');
   const [folderId, setFolderId] = useState<string>('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [periodeList, setPeriodeList] = useState<Array<{ periode: string; count: number }>>([]);
+  const [periodeList, setPeriodeList] = useState<Array<{ periode: string; count: number; total: number }>>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [selectedPeriode, setSelectedPeriode] = useState<string>('ALL');
 
   // Only show for Pejabat Pembuat Komitmen
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
