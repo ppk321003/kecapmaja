@@ -224,6 +224,15 @@ export default function GenerateSPKBAST() {
     }
   };
 
+  // Rincian yang ditampilkan mengikuti pilihan periode
+  const visiblePeriodeList = selectedPeriode === 'ALL'
+    ? periodeList
+    : periodeList.filter((item) => item.periode === selectedPeriode);
+  const totalKirimPPK = visiblePeriodeList.reduce((sum, item) => sum + item.count, 0);
+  const totalKegiatan = visiblePeriodeList.reduce((sum, item) => sum + item.total, 0);
+  const hasMismatch = totalKirimPPK !== totalKegiatan;
+
+
   return (
     <>
       <Button
