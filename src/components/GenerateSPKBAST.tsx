@@ -252,22 +252,64 @@ export default function GenerateSPKBAST() {
               </AlertDescription>
             </Alert>
 
+            {periodeList.length > 1 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Pilih periode yang akan di-generate:</p>
+                <Select value={selectedPeriode} onValueChange={setSelectedPeriode}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih periode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Semua Periode ({periodeList.length} bulan)</SelectItem>
+                    {periodeList.map((item) => (
+                      <SelectItem key={item.periode} value={item.periode}>
+                        {item.periode} saja ({item.count} data)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-3">
-              <p className="text-sm font-medium">Periode dan jumlah data yang akan di-generate:</p>
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2 max-h-48 overflow-y-auto">
-                {periodeList.map((item) => (
-                  <div key={item.periode} className="flex justify-between items-center text-sm">
-                    <span className="font-medium text-gray-700">{item.periode}</span>
-                    <span className="bg-green-100 text-green-800 font-semibold px-3 py-1 rounded-full text-xs">
-                      {item.count} data
-                    </span>
+              <p className="text-sm font-medium">Rincian per periode:</p>
+              <div className="bg-gray-50 p-4 rounded-lg space-y-3 max-h-56 overflow-y-auto">
+                {visiblePeriodeList.map((item) => (
+                  <div key={item.periode} className="space-y-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-medium text-gray-700">{item.periode}</span>
+                      <span className="bg-green-100 text-green-800 font-semibold px-3 py-1 rounded-full text-xs">
+                        {item.count} data
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>Jumlah kegiatan</span>
+                      <strong>{item.total}</strong>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>Sudah kirim ke PPK</span>
+                      <strong className={item.count !== item.total ? "text-amber-700" : "text-green-700"}>
+                        {item.count}
+                      </strong>
+                    </div>
                   </div>
                 ))}
               </div>
               <p className="text-xs text-gray-600">
-                Total: <strong>{periodeList.reduce((sum, item) => sum + item.count, 0)} dokumen</strong> akan dibuat
+                Total: <strong>{totalKirimPPK} dokumen</strong> akan dibuat dari <strong>{totalKegiatan} kegiatan</strong>
               </p>
             </div>
+
+            {hasMismatch && (
+              <Alert className="bg-amber-50 border-amber-300">
+                <AlertCircle className="h-4 w-4 text-amber-700" />
+                <AlertDescription className="text-amber-800 text-sm">
+                  <strong>⚠️ Perhatian:</strong> Terdapat <strong>{totalKegiatan - totalKirimPPK}</strong> dari{" "}
+                  <strong>{totalKegiatan}</strong> kegiatan yang belum berstatus "Kirim ke PPK". Hanya kegiatan yang
+                  sudah dikirim ke PPK yang akan dibuatkan dokumen SPK & BAST.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <Alert className="bg-blue-50 border-blue-200">
               <AlertDescription className="text-blue-800 text-sm">
@@ -275,6 +317,7 @@ export default function GenerateSPKBAST() {
               </AlertDescription>
             </Alert>
           </div>
+
 
           <DialogFooter className="gap-2">
             <Button
