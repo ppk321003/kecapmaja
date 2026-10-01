@@ -89,16 +89,20 @@ export default function GenerateSPKBAST() {
       const statusIdx = headers.indexOf('Status');
       const keteranganIdx = headers.indexOf('Keterangan');
 
-      // Group data by periode with "Kirim ke PPK" status
+      // Hitung total kegiatan dan kegiatan yang sudah "Kirim ke PPK" per periode
       const periodeMap = new Map<string, number>();
-      
+      const totalMap = new Map<string, number>();
+
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         const status = row[statusIdx]?.toString().trim() || '';
         const keterangan = row[keteranganIdx]?.toString().trim() || '';
+        const periode = row[periodeIdx]?.toString().trim() || '';
+        if (!periode) continue;
+        if (status === 'Generated') continue;
 
-        if (status !== 'Generated' && keterangan === 'Kirim ke PPK') {
-          const periode = row[periodeIdx]?.toString().trim() || '-';
+        totalMap.set(periode, (totalMap.get(periode) || 0) + 1);
+        if (keterangan === 'Kirim ke PPK') {
           periodeMap.set(periode, (periodeMap.get(periode) || 0) + 1);
         }
       }
@@ -115,10 +119,11 @@ export default function GenerateSPKBAST() {
 
       // Convert to array and sort by periode (reverse)
       const periodeArray = Array.from(periodeMap.entries())
-        .map(([periode, count]) => ({ periode, count }))
+        .map(([periode, count]) => ({ periode, count, total: totalMap.get(periode) || count }))
         .sort((a, b) => b.periode.localeCompare(a.periode));
 
       setPeriodeList(periodeArray);
+      setSelectedPeriode('ALL');
       setShowConfirmation(true);
     } catch (error) {
       console.error('Error:', error);
