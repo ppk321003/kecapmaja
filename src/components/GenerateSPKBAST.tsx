@@ -180,6 +180,10 @@ export default function GenerateSPKBAST() {
       } else {
         console.warn('⚠️ masterMitraSheetId is empty or not provided - master data may fallback to default sheet');
       }
+      if (selectedPeriode && selectedPeriode !== 'ALL') {
+        body.periode = selectedPeriode;
+        console.log('✅ periode added to request body:', selectedPeriode);
+      }
 
       const { data, error } = await supabase.functions.invoke("generate-spk-bast", {
         body
