@@ -8,6 +8,7 @@ import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 import { readSheetValues } from '@/lib/sheets-read';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function GenerateSPKBAST() {
   const { user } = useAuth();
@@ -17,8 +18,9 @@ export default function GenerateSPKBAST() {
   const [spreadsheetId, setSpreadsheetId] = useState<string>('');
   const [folderId, setFolderId] = useState<string>('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [periodeList, setPeriodeList] = useState<Array<{ periode: string; count: number }>>([]);
+  const [periodeList, setPeriodeList] = useState<Array<{ periode: string; count: number; total: number }>>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [selectedPeriode, setSelectedPeriode] = useState<string>('ALL');
 
   // Only show for Pejabat Pembuat Komitmen
   const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
@@ -88,16 +90,20 @@ export default function GenerateSPKBAST() {
       const statusIdx = headers.indexOf('Status');
       const keteranganIdx = headers.indexOf('Keterangan');
 
-      // Group data by periode with "Kirim ke PPK" status
+      // Hitung total kegiatan dan kegiatan yang sudah "Kirim ke PPK" per periode
       const periodeMap = new Map<string, number>();
-      
+      const totalMap = new Map<string, number>();
+
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         const status = row[statusIdx]?.toString().trim() || '';
         const keterangan = row[keteranganIdx]?.toString().trim() || '';
+        const periode = row[periodeIdx]?.toString().trim() || '';
+        if (!periode) continue;
+        if (status === 'Generated') continue;
 
-        if (status !== 'Generated' && keterangan === 'Kirim ke PPK') {
-          const periode = row[periodeIdx]?.toString().trim() || '-';
+        totalMap.set(periode, (totalMap.get(periode) || 0) + 1);
+        if (keterangan === 'Kirim ke PPK') {
           periodeMap.set(periode, (periodeMap.get(periode) || 0) + 1);
         }
       }
@@ -114,10 +120,11 @@ export default function GenerateSPKBAST() {
 
       // Convert to array and sort by periode (reverse)
       const periodeArray = Array.from(periodeMap.entries())
-        .map(([periode, count]) => ({ periode, count }))
+        .map(([periode, count]) => ({ periode, count, total: totalMap.get(periode) || count }))
         .sort((a, b) => b.periode.localeCompare(a.periode));
 
       setPeriodeList(periodeArray);
+      setSelectedPeriode('ALL');
       setShowConfirmation(true);
     } catch (error) {
       console.error('Error:', error);
@@ -174,6 +181,10 @@ export default function GenerateSPKBAST() {
       } else {
         console.warn('⚠️ masterMitraSheetId is empty or not provided - master data may fallback to default sheet');
       }
+      if (selectedPeriode && selectedPeriode !== 'ALL') {
+        body.periode = selectedPeriode;
+        console.log('✅ periode added to request body:', selectedPeriode);
+      }
 
       const { data, error } = await supabase.functions.invoke("generate-spk-bast", {
         body
@@ -213,6 +224,15 @@ export default function GenerateSPKBAST() {
     }
   };
 
+  // Rincian yang ditampilkan mengikuti pilihan periode
+  const visiblePeriodeList = selectedPeriode === 'ALL'
+    ? periodeList
+    : periodeList.filter((item) => item.periode === selectedPeriode);
+  const totalKirimPPK = visiblePeriodeList.reduce((sum, item) => sum + item.count, 0);
+  const totalKegiatan = visiblePeriodeList.reduce((sum, item) => sum + item.total, 0);
+  const hasMismatch = totalKirimPPK !== totalKegiatan;
+
+
   return (
     <>
       <Button
@@ -242,22 +262,64 @@ export default function GenerateSPKBAST() {
               </AlertDescription>
             </Alert>
 
+            {periodeList.length > 1 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Pilih periode yang akan di-generate:</p>
+                <Select value={selectedPeriode} onValueChange={setSelectedPeriode}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih periode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Semua Periode ({periodeList.length} bulan)</SelectItem>
+                    {periodeList.map((item) => (
+                      <SelectItem key={item.periode} value={item.periode}>
+                        {item.periode} saja ({item.count} data)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-3">
-              <p className="text-sm font-medium">Periode dan jumlah data yang akan di-generate:</p>
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2 max-h-48 overflow-y-auto">
-                {periodeList.map((item) => (
-                  <div key={item.periode} className="flex justify-between items-center text-sm">
-                    <span className="font-medium text-gray-700">{item.periode}</span>
-                    <span className="bg-green-100 text-green-800 font-semibold px-3 py-1 rounded-full text-xs">
-                      {item.count} data
-                    </span>
+              <p className="text-sm font-medium">Rincian per periode:</p>
+              <div className="bg-gray-50 p-4 rounded-lg space-y-3 max-h-56 overflow-y-auto">
+                {visiblePeriodeList.map((item) => (
+                  <div key={item.periode} className="space-y-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-medium text-gray-700">{item.periode}</span>
+                      <span className="bg-green-100 text-green-800 font-semibold px-3 py-1 rounded-full text-xs">
+                        {item.count} data
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>Jumlah kegiatan</span>
+                      <strong>{item.total}</strong>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>Sudah kirim ke PPK</span>
+                      <strong className={item.count !== item.total ? "text-amber-700" : "text-green-700"}>
+                        {item.count}
+                      </strong>
+                    </div>
                   </div>
                 ))}
               </div>
               <p className="text-xs text-gray-600">
-                Total: <strong>{periodeList.reduce((sum, item) => sum + item.count, 0)} dokumen</strong> akan dibuat
+                Total: <strong>{totalKirimPPK} dokumen</strong> akan dibuat dari <strong>{totalKegiatan} kegiatan</strong>
               </p>
             </div>
+
+            {hasMismatch && (
+              <Alert className="bg-amber-50 border-amber-300">
+                <AlertCircle className="h-4 w-4 text-amber-700" />
+                <AlertDescription className="text-amber-800 text-sm">
+                  <strong>⚠️ Perhatian:</strong> Terdapat <strong>{totalKegiatan - totalKirimPPK}</strong> dari{" "}
+                  <strong>{totalKegiatan}</strong> kegiatan yang belum berstatus "Kirim ke PPK". Hanya kegiatan yang
+                  sudah dikirim ke PPK yang akan dibuatkan dokumen SPK & BAST.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <Alert className="bg-blue-50 border-blue-200">
               <AlertDescription className="text-blue-800 text-sm">
@@ -265,6 +327,7 @@ export default function GenerateSPKBAST() {
               </AlertDescription>
             </Alert>
           </div>
+
 
           <DialogFooter className="gap-2">
             <Button
