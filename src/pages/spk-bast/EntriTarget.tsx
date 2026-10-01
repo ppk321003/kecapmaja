@@ -594,6 +594,8 @@ export default function EntriTarget() {
         ...prev,
         [targetPeriodKey]: [...(prev[targetPeriodKey] || []), duplicatedActivity]
       }));
+      // Sinkronkan indeks baris dengan kondisi sheet
+      await loadDataFromSpreadsheet();
       toast({
         title: "Duplikat berhasil",
         description: `Kegiatan berhasil diduplikat ke ${duplicateTargetPeriod} ${duplicateTargetYear}`
@@ -1141,6 +1143,8 @@ export default function EntriTarget() {
           ...prev,
           [periodKey]: [...(prev[periodKey] || []), newActivity]
         }));
+        // Sinkronkan indeks baris dengan kondisi sheet
+        await loadDataFromSpreadsheet();
         toast({
           title: "Kegiatan berhasil ditambahkan",
           description: `Kegiatan "${data.namaKegiatan}" telah ditambahkan.`
