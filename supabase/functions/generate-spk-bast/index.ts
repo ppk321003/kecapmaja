@@ -17,7 +17,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { spreadsheetId, folderId, templateSpkId, satkerId, masterMitraSheetId } = await req.json().catch(() => ({}));
+    const { spreadsheetId, folderId, templateSpkId, satkerId, masterMitraSheetId, periode } = await req.json().catch(() => ({}));
 
     if (!spreadsheetId) {
       return new Response(
