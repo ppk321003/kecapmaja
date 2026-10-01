@@ -1158,20 +1158,72 @@ export default function EntriTarget() {
       });
     }
   };
+  // PERBAIKAN: Cari nomor baris riil di sheet berdasarkan isi baris (bukan indeks yang bisa usang)
+  const findActivityRowIndexInSheet = async (activity: Activity): Promise<number | null> => {
+    const norm = (v: any) => (v ?? '').toString().trim().toLowerCase();
+    const periode = `${selectedPeriod} ${selectedYear}`;
+    const jenisPekerjaan = activity.jobType || selectedJobType || '';
+
+    // Dibaca langsung dari Google Sheets (tanpa Supabase)
+    const data = await readSheetValues({
+      spreadsheetId: userDataSheetId,
+      range: 'Sheet1!A:W'
+    });
+    const rows = data?.values || [];
+    if (rows.length <= 1) return null;
+
+    const matches: number[] = [];
+    const fallbackMatches: number[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const rowPeriode = norm(row[2]);
+      const rowJenis = norm(row[3]);
+      const rowKegiatan = norm(row[4]);
+      const rowNomorSK = norm(row[5]);
+      if (rowPeriode !== norm(periode)) continue;
+      if (rowKegiatan !== norm(activity.namaKegiatan)) continue;
+
+      // Kriteria utama: Periode + Jenis Pekerjaan + Nama Kegiatan + Nomor SK
+      if (rowJenis === norm(jenisPekerjaan) && rowNomorSK === norm(activity.nomorSK)) {
+        matches.push(i + 1); // nomor baris sheet (header = baris 1)
+      } else {
+        // Kriteria cadangan: Periode + Nama Kegiatan
+        fallbackMatches.push(i + 1);
+      }
+    }
+
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) {
+      // Ada duplikat identik: pilih baris yang paling dekat dengan indeks lokal bila ada
+      if (activity.spreadsheetRowIndex && matches.includes(activity.spreadsheetRowIndex)) {
+        return activity.spreadsheetRowIndex;
+      }
+      return matches[0];
+    }
+    if (fallbackMatches.length === 1) return fallbackMatches[0];
+    return null;
+  };
   const handleDeleteActivity = async (id: number) => {
     const activityToDelete = activities.find(activity => activity.id === id);
     if (!activityToDelete) return;
     const confirmed = await confirmDelete(`Apakah Anda yakin ingin menghapus kegiatan "${activityToDelete.namaKegiatan}"?`);
     if (!confirmed) return;
     try {
-      if (activityToDelete.spreadsheetRowIndex) {
-        await deleteActivityFromSpreadsheet(activityToDelete.spreadsheetRowIndex);
+      // Validasi & pencarian baris dinamis sebelum hapus
+      const rowIndex = await findActivityRowIndexInSheet(activityToDelete);
+      if (!rowIndex) {
+        toast({
+          title: "Baris tidak ditemukan",
+          description: `Kegiatan "${activityToDelete.namaKegiatan}" tidak ditemukan di spreadsheet. Data dimuat ulang untuk sinkronisasi.`,
+          variant: "destructive"
+        });
+        await loadDataFromSpreadsheet();
+        return;
       }
-      const updatedActivities = activities.filter(activity => activity.id !== id);
-      setActivitiesByPeriod(prev => ({
-        ...prev,
-        [periodKey]: updatedActivities
-      }));
+      await deleteActivityFromSpreadsheet(rowIndex);
+
+      // Muat ulang data agar seluruh indeks baris sinkron dengan kondisi sheet
+      await loadDataFromSpreadsheet();
       toast({
         title: "Kegiatan berhasil dihapus",
         description: `Kegiatan "${activityToDelete.namaKegiatan}" telah dihapus.`
