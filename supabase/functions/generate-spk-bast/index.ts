@@ -73,6 +73,10 @@ serve(async (req: Request) => {
     } else {
       console.warn('⚠️ masterMitraSheetId not set - Apps Script will use default master sheet');
     }
+    if (periode && String(periode).trim()) {
+      appsScriptUrl.searchParams.set("periode", String(periode).trim());
+      console.log(`✅ Added periode filter to URL: ${periode}`);
+    }
 
     // Make server-side request to Apps Script (no CORS issues on server)
     appsScriptUrl.searchParams.set("action", "generate");
