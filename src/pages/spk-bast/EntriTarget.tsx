@@ -1934,7 +1934,7 @@ export default function EntriTarget() {
                                 <Button variant="ghost" size="icon" className={cn("h-8 w-8 hover:bg-green-600/10", activity.dikirimKePPK?.includes("Kirim ke PPK") ? "text-green-600 hover:text-green-600" : "text-green-400 hover:text-green-600")} onClick={() => handleSendToPPK(activity.id)} title={activity.dikirimKePPK?.includes("Kirim ke PPK") ? "Batalkan Kirim ke PPK" : "Kirim ke PPK"} disabled={activity.workers.length === 0}>
                                   <Send className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteActivity(activity.id)} title="Hapus Kegiatan">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteTarget({ id: activity.id, namaKegiatan: activity.namaKegiatan })} title="Hapus Kegiatan">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                                 <Popover open={showDuplicatePopover && duplicatingActivity?.id === activity.id} onOpenChange={open => {
