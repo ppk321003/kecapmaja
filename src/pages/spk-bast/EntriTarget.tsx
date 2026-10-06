@@ -19,6 +19,7 @@ import { id } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { useMitraStatistik } from "@/hooks/use-database";
@@ -630,16 +631,18 @@ export default function EntriTarget() {
     setDuplicateTargetYear("");
   };
 
-  // Fungsi konfirmasi delete dengan sweet alert
-  const confirmDelete = (message: string): Promise<boolean> => {
-    return new Promise(resolve => {
-      if (window.confirm(message)) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    });
-  };
+  // State target hapus untuk dialog konfirmasi (pengganti window.confirm)
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    namaKegiatan: string;
+  } | null>(null);
+  const [isDeletingActivity, setIsDeletingActivity] = useState(false);
+  const [deleteWorkerTarget, setDeleteWorkerTarget] = useState<{
+    activityId: number;
+    workerId: number;
+    nama: string;
+  } | null>(null);
+  const [isDeletingWorker, setIsDeletingWorker] = useState(false);
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
     if (!dateStr || dateStr.toString().trim() === '') {
       return new Date();
@@ -1214,8 +1217,6 @@ export default function EntriTarget() {
   const handleDeleteActivity = async (id: number) => {
     const activityToDelete = activities.find(activity => activity.id === id);
     if (!activityToDelete) return;
-    const confirmed = await confirmDelete(`Apakah Anda yakin ingin menghapus kegiatan "${activityToDelete.namaKegiatan}"?`);
-    if (!confirmed) return;
     try {
       // Validasi & pencarian baris dinamis sebelum hapus
       const rowIndex = await findActivityRowIndexInSheet(activityToDelete);
@@ -1371,8 +1372,6 @@ export default function EntriTarget() {
     const activity = activities.find(a => a.id === activityId);
     const workerToDelete = activity?.workers.find(w => w.id === workerId);
     if (!workerToDelete) return;
-    const confirmed = await confirmDelete(`Apakah Anda yakin ingin menghapus petugas "${workerToDelete.nama}" dari kegiatan ini?`);
-    if (!confirmed) return;
     try {
       const updatedActivities = activities.map(activity => activity.id === activityId ? {
         ...activity,
@@ -1939,7 +1938,7 @@ export default function EntriTarget() {
                                 <Button variant="ghost" size="icon" className={cn("h-8 w-8 hover:bg-green-600/10", activity.dikirimKePPK?.includes("Kirim ke PPK") ? "text-green-600 hover:text-green-600" : "text-green-400 hover:text-green-600")} onClick={() => handleSendToPPK(activity.id)} title={activity.dikirimKePPK?.includes("Kirim ke PPK") ? "Batalkan Kirim ke PPK" : "Kirim ke PPK"} disabled={activity.workers.length === 0}>
                                   <Send className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteActivity(activity.id)} title="Hapus Kegiatan">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteTarget({ id: activity.id, namaKegiatan: activity.namaKegiatan })} title="Hapus Kegiatan">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                                 <Popover open={showDuplicatePopover && duplicatingActivity?.id === activity.id} onOpenChange={open => {
@@ -2050,7 +2049,7 @@ export default function EntriTarget() {
                                   <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-600 hover:text-blue-600 hover:bg-blue-600/10" onClick={() => handleEditWorker(activity.id, worker)} title="Edit Petugas">
                                     <Pencil className="h-3 w-3" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteWorker(activity.id, worker.id)} title="Hapus Petugas">
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteWorkerTarget({ activityId: activity.id, workerId: worker.id, nama: worker.nama })} title="Hapus Petugas">
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
@@ -2380,5 +2379,69 @@ export default function EntriTarget() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => {
+        if (!open) setDeleteTarget(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus Kegiatan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus kegiatan "{deleteTarget?.namaKegiatan}"? Data yang dihapus tidak dapat dikembalikan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingActivity}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeletingActivity}
+              onClick={async e => {
+                e.preventDefault();
+                if (!deleteTarget) return;
+                setIsDeletingActivity(true);
+                try {
+                  await handleDeleteActivity(deleteTarget.id);
+                } finally {
+                  setIsDeletingActivity(false);
+                  setDeleteTarget(null);
+                }
+              }}>
+              {isDeletingActivity ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteWorkerTarget} onOpenChange={open => {
+        if (!open) setDeleteWorkerTarget(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus Petugas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus petugas "{deleteWorkerTarget?.nama}" dari kegiatan ini?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingWorker}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeletingWorker}
+              onClick={async e => {
+                e.preventDefault();
+                if (!deleteWorkerTarget) return;
+                setIsDeletingWorker(true);
+                try {
+                  await handleDeleteWorker(deleteWorkerTarget.activityId, deleteWorkerTarget.workerId);
+                } finally {
+                  setIsDeletingWorker(false);
+                  setDeleteWorkerTarget(null);
+                }
+              }}>
+              {isDeletingWorker ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 }
