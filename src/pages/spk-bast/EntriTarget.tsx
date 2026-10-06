@@ -631,16 +631,12 @@ export default function EntriTarget() {
     setDuplicateTargetYear("");
   };
 
-  // Fungsi konfirmasi delete dengan sweet alert
-  const confirmDelete = (message: string): Promise<boolean> => {
-    return new Promise(resolve => {
-      if (window.confirm(message)) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    });
-  };
+  // State target hapus untuk dialog konfirmasi (pengganti window.confirm)
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    namaKegiatan: string;
+  } | null>(null);
+  const [isDeletingActivity, setIsDeletingActivity] = useState(false);
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
     if (!dateStr || dateStr.toString().trim() === '') {
       return new Date();
