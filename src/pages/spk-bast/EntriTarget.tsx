@@ -1366,8 +1366,6 @@ export default function EntriTarget() {
     const activity = activities.find(a => a.id === activityId);
     const workerToDelete = activity?.workers.find(w => w.id === workerId);
     if (!workerToDelete) return;
-    const confirmed = await confirmDelete(`Apakah Anda yakin ingin menghapus petugas "${workerToDelete.nama}" dari kegiatan ini?`);
-    if (!confirmed) return;
     try {
       const updatedActivities = activities.map(activity => activity.id === activityId ? {
         ...activity,
