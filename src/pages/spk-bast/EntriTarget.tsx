@@ -2043,7 +2043,7 @@ export default function EntriTarget() {
                                   <Button variant="ghost" size="icon" className="h-6 w-6 text-blue-600 hover:text-blue-600 hover:bg-blue-600/10" onClick={() => handleEditWorker(activity.id, worker)} title="Edit Petugas">
                                     <Pencil className="h-3 w-3" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteWorker(activity.id, worker.id)} title="Hapus Petugas">
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteWorkerTarget({ activityId: activity.id, workerId: worker.id, nama: worker.nama })} title="Hapus Petugas">
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
