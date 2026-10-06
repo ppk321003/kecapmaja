@@ -637,6 +637,12 @@ export default function EntriTarget() {
     namaKegiatan: string;
   } | null>(null);
   const [isDeletingActivity, setIsDeletingActivity] = useState(false);
+  const [deleteWorkerTarget, setDeleteWorkerTarget] = useState<{
+    activityId: number;
+    workerId: number;
+    nama: string;
+  } | null>(null);
+  const [isDeletingWorker, setIsDeletingWorker] = useState(false);
   const parseDateFromSpreadsheet = (dateStr: string): Date => {
     if (!dateStr || dateStr.toString().trim() === '') {
       return new Date();
