@@ -2375,5 +2375,37 @@ export default function EntriTarget() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => {
+        if (!open) setDeleteTarget(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus Kegiatan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus kegiatan "{deleteTarget?.namaKegiatan}"? Data yang dihapus tidak dapat dikembalikan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingActivity}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeletingActivity}
+              onClick={async e => {
+                e.preventDefault();
+                if (!deleteTarget) return;
+                setIsDeletingActivity(true);
+                try {
+                  await handleDeleteActivity(deleteTarget.id);
+                } finally {
+                  setIsDeletingActivity(false);
+                  setDeleteTarget(null);
+                }
+              }}>
+              {isDeletingActivity ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 }
