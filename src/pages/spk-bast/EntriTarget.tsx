@@ -1211,8 +1211,6 @@ export default function EntriTarget() {
   const handleDeleteActivity = async (id: number) => {
     const activityToDelete = activities.find(activity => activity.id === id);
     if (!activityToDelete) return;
-    const confirmed = await confirmDelete(`Apakah Anda yakin ingin menghapus kegiatan "${activityToDelete.namaKegiatan}"?`);
-    if (!confirmed) return;
     try {
       // Validasi & pencarian baris dinamis sebelum hapus
       const rowIndex = await findActivityRowIndexInSheet(activityToDelete);
