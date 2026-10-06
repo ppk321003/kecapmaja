@@ -2411,5 +2411,37 @@ export default function EntriTarget() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!deleteWorkerTarget} onOpenChange={open => {
+        if (!open) setDeleteWorkerTarget(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus Petugas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus petugas "{deleteWorkerTarget?.nama}" dari kegiatan ini?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingWorker}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeletingWorker}
+              onClick={async e => {
+                e.preventDefault();
+                if (!deleteWorkerTarget) return;
+                setIsDeletingWorker(true);
+                try {
+                  await handleDeleteWorker(deleteWorkerTarget.activityId, deleteWorkerTarget.workerId);
+                } finally {
+                  setIsDeletingWorker(false);
+                  setDeleteWorkerTarget(null);
+                }
+              }}>
+              {isDeletingWorker ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 }
