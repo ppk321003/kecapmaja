@@ -61,7 +61,15 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command>
+        <Command
+          filter={(itemValue, search) => {
+            // Pencocokan substring persis (bukan fuzzy) agar hasil search tepat
+            const normalizedValue = itemValue.toLowerCase().trim();
+            const normalizedSearch = search.toLowerCase().trim();
+            if (!normalizedSearch) return 1;
+            return normalizedValue.includes(normalizedSearch) ? 1 : 0;
+          }}
+        >
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
