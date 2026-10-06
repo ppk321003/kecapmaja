@@ -37,12 +37,16 @@ const cleanNumberValue = (value: any): number => {
   const stringValue = value.toString().trim();
   if (stringValue === '') return 0;
 
-  // Hilangkan semua karakter non-numeric kecuali titik, koma, dan minus
-  const cleanValue = stringValue.replace(/[^\d,.-]/g, '') // Hapus karakter non-numeric
-  .replace(',', '.') // Ubah koma menjadi titik
-  .replace(/(\..*)\./g, '$1'); // Hapus titik duplikat
+  if (typeof value === 'number') return isNaN(value) ? 0 : value;
 
-  const numberValue = parseFloat(cleanValue);
+  // Format Indonesia: titik = pemisah ribuan, koma = desimal (128.000 -> 128000; 1.250,5 -> 1250.5)
+  let s = stringValue.replace(/[^\d,.-]/g, '');
+  if (s.includes(',')) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
+    s = s.replace(/\./g, '');
+  }
+  const numberValue = parseFloat(s);
   return isNaN(numberValue) ? 0 : numberValue;
 };
 
