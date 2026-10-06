@@ -25,6 +25,31 @@ export function useDocumentData({ sheetId, sheetName }: UseDocumentDataProps) {
         headers.forEach((header: string, index: number) => {
           obj[header] = row[index] || "";
         });
+
+        // Fallback untuk sheet yang menyimpan tanggal pengajuan pada kolom L
+        // tanpa memiliki header yang sesuai dengan key yang digunakan UI.
+        const tanggalPengajuan = obj["Tanggal Pengajuan"] || obj["Tanggal pengajuan"] || row[11];
+        if (tanggalPengajuan) {
+          obj["Tanggal Pengajuan"] = tanggalPengajuan;
+        }
+
+        // Lembur menggunakan kolom D sebagai tanggal surat tugas lembur,
+        // sedangkan header sel tersebut tidak memiliki label.
+        if (sheetName === "Lembur") {
+          const tanggalSuratTugasLembur = obj["Tanggal Surat Tugas Lembur"] || row[3];
+          if (tanggalSuratTugasLembur) {
+            obj["Tanggal Surat Tugas Lembur"] = tanggalSuratTugasLembur;
+          }
+        }
+
+        // Surat Keputusan menyimpan nomor SK pada kolom C dengan header no_sk.
+        if (sheetName === "SuratKeputusan") {
+          const nomorSk = obj["no_sk"] || obj["Nomor SK"] || row[2];
+          if (nomorSk) {
+            obj["no_sk"] = nomorSk;
+          }
+        }
+
         return obj;
       });
 
