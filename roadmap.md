@@ -1,6 +1,6 @@
 # Administrasi Meeting
 
-- [ ] Resolve secure per-user Google Sheets runtime without Supabase. Blocked: the available Vite App User Connector requires server-side authenticated storage; its provided implementation uses Supabase, prohibited by the brief. No external runtime has been configured.
+- [ ] Configure Supabase accounts and secure per-user Google Sheets access. Supabase is now authorized for accounts and sheet access; meeting data stays in Sheets. Blocked: Google Sheets App User Connector client is not configured.
 - [ ] Implement meeting identity, people Excel import and activity roles, unlimited classes, Fullboard accommodation and room assignment.
 - [ ] Implement non-destructive Sheets initialization and acknowledged CRUD with stable IDs.
 - [ ] Implement shared-source previews and all selected Excel/PDF documents.
