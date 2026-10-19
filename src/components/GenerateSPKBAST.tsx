@@ -22,73 +22,122 @@ export default function GenerateSPKBAST() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [selectedPeriode, setSelectedPeriode] = useState<string>('ALL');
 
-  // Only show for Pejabat Pembuat Komitmen
-  const isPPK = user?.role === 'Pejabat Pembuat Komitmen';
-  if (!isPPK) {
-    return null;
-  }
-
   useEffect(() => {
-    // Get spreadsheet ID dan output folder ID dari satker config
-    if (satkerConfig) {
-      const id = satkerConfig.getUserSatkerSheetId('entrikegiatan');
-      const outputFolderId = satkerConfig.getUserSatkerSheetId('spkoutput');
-      if (id) {
-        setSpreadsheetId(id);
-        console.log('📊 Spreadsheet ID dari config:', id.substring(0, 20) + '...');
-      }
-      if (outputFolderId) {
-        setFolderId(outputFolderId);
-        console.log('📊 Output folder ID dari config:', outputFolderId.substring(0, 20) + '...');
+    const id = satkerConfig?.getUserSatkerSheetId('entrikegiatan') || '';
+    const outputFolderId = satkerConfig?.getUserSatkerSheetId('spkoutput') || '';
+    setSpreadsheetId(id);
+    setFolderId(outputFolderId);
+    if (id) {
+      console.log('📊 Spreadsheet ID dari config:', id.substring(0, 20) + '...');
+    }
+    if (outputFolderId) {
+      console.log('📊 Output folder ID dari config:', outputFolderId.substring(0, 20) + '...');
+    }
+  }, [satkerConfig, user?.satker]);
+
+  const normalizeCell = (value: unknown): string =>
+    String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
+
+  const findHeaderIndex = (headers: unknown[], expected: string[]): number => {
+    const normalizedHeaders = headers.map(normalizeCell);
+    return normalizedHeaders.findIndex(header =>
+      expected.some(name => header === normalizeCell(name))
+    );
+  };
+
+  const findPeriodColumnIndex = (headers: unknown[], rows: string[][]): number => {
+    const headerIndex = findHeaderIndex(headers, ['Periode (Bulan) SPK', 'Periode']);
+    if (headerIndex >= 0) return headerIndex;
+
+    const periodPattern = /^[\p{L}.]+\s+\d{4}$/u;
+    let bestIndex = -1;
+    let bestMatches = 0;
+    const columnCount = Math.max(headers.length, ...rows.slice(1, 101).map(row => row.length));
+
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      const matches = rows.slice(1, 101).reduce((count, row) =>
+        count + (periodPattern.test(String(row[columnIndex] ?? '').trim()) ? 1 : 0), 0);
+      if (matches > bestMatches) {
+        bestIndex = columnIndex;
+        bestMatches = matches;
       }
     }
-  }, [satkerConfig]);
+
+    return bestIndex;
+  };
 
   const handleGenerate = async () => {
     if (!spreadsheetId) {
       toast({
         title: "❌ Error",
-        description: "Spreadsheet ID tidak ditemukan. Pastikan config satker sudah benar.",
+        description: `ID spreadsheet Entri Kegiatan untuk satker ${user?.satker || '(tidak diketahui)'} tidak ditemukan. Periksa kolom entrikegiatan_sheet_id (kolom E) pada satker_config.`,
         variant: "destructive"
       });
       return;
     }
 
-    // Fetch preview data untuk confirmation
     setLoadingPreview(true);
     try {
-      // Dibaca langsung dari Google Sheets (tanpa Supabase)
-      let sheetResponse;
-      try {
-        sheetResponse = await readSheetValues({
-          spreadsheetId: spreadsheetId,
-          range: "Sheet1!A:Z"
-        });
-      } catch (error) {
-        toast({
-          title: "❌ Error",
-          description: "Gagal membaca data dari spreadsheet",
-          variant: "destructive"
-        });
-        setLoadingPreview(false);
-        return;
+      const rangesToTry = ["Sheet1!A:Z", "", "OUTPUT!A:Z"];
+      let rows: string[][] = [];
+      let headerRow: string[] = [];
+      let periodColumnIndex = -1;
+      let missingHeaders: string[] = [];
+      const readErrors: string[] = [];
+
+      for (const range of rangesToTry) {
+        try {
+          const sheetResponse = await readSheetValues({
+            spreadsheetId,
+            range
+          });
+          const candidateRows = sheetResponse?.values || [];
+          if (candidateRows.length <= 1) continue;
+
+          const candidateHeaders = candidateRows[0] || [];
+          const candidatePeriodIndex = findPeriodColumnIndex(candidateHeaders, candidateRows);
+          const hasStatus = findHeaderIndex(candidateHeaders, ['Status']) >= 0;
+          const hasKeterangan = findHeaderIndex(candidateHeaders, ['Keterangan']) >= 0;
+          const hasPeriode = candidatePeriodIndex >= 0;
+          if (hasStatus && hasKeterangan && hasPeriode) {
+            rows = candidateRows;
+            headerRow = candidateHeaders;
+            periodColumnIndex = candidatePeriodIndex;
+            break;
+          }
+
+          if (!headerRow.length) {
+            headerRow = candidateHeaders;
+            missingHeaders = [
+              ...(!hasStatus ? ['Status'] : []),
+              ...(!hasKeterangan ? ['Keterangan'] : []),
+              ...(!hasPeriode ? ['Periode (Bulan) SPK'] : [])
+            ];
+          }
+        } catch (error) {
+          readErrors.push(`${range}: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
 
-      const rows = sheetResponse?.values || [];
-      if (rows.length <= 1) {
+      if (rows.length === 0 && headerRow.length > 0) {
+        throw new Error(
+          `Header wajib tidak ditemukan pada spreadsheet satker ${user?.satker || '(tidak diketahui)'}: ${missingHeaders.join(', ')}. Header terbaca: ${headerRow.filter(Boolean).join(' | ')}`
+        );
+      }
+      if (rows.length === 0 && readErrors.length > 0) {
+        throw new Error(`Gagal membaca spreadsheet satker ${user?.satker || '(tidak diketahui)'}. ${readErrors.join('; ')}`);
+      }
+      if (rows.length === 0) {
         toast({
           title: "ℹ️ Info",
-          description: "Tidak ada data untuk di-generate",
+          description: `Tidak ada baris data pada spreadsheet Entri Kegiatan satker ${user?.satker || '(tidak diketahui)'}. Periksa kembali ID pada kolom entrikegiatan_sheet_id.`,
           variant: "default"
         });
-        setLoadingPreview(false);
         return;
       }
 
-      const headers = rows[0];
-      const periodeIdx = headers.indexOf('Periode (Bulan) SPK');
-      const statusIdx = headers.indexOf('Status');
-      const keteranganIdx = headers.indexOf('Keterangan');
+      const statusIdx = findHeaderIndex(headerRow, ['Status']);
+      const keteranganIdx = findHeaderIndex(headerRow, ['Keterangan']);
 
       // Hitung total kegiatan dan kegiatan yang sudah "Kirim ke PPK" per periode
       const periodeMap = new Map<string, number>();
@@ -96,14 +145,14 @@ export default function GenerateSPKBAST() {
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
-        const status = row[statusIdx]?.toString().trim() || '';
-        const keterangan = row[keteranganIdx]?.toString().trim() || '';
-        const periode = row[periodeIdx]?.toString().trim() || '';
+        const status = normalizeCell(row[statusIdx]);
+        const keterangan = normalizeCell(row[keteranganIdx]);
+        const periode = row[periodColumnIndex]?.toString().trim() || '';
         if (!periode) continue;
-        if (status === 'Generated') continue;
+        if (status === 'generated') continue;
 
         totalMap.set(periode, (totalMap.get(periode) || 0) + 1);
-        if (keterangan === 'Kirim ke PPK') {
+        if (keterangan === 'kirim ke ppk') {
           periodeMap.set(periode, (periodeMap.get(periode) || 0) + 1);
         }
       }
@@ -111,10 +160,9 @@ export default function GenerateSPKBAST() {
       if (periodeMap.size === 0) {
         toast({
           title: "ℹ️ Info",
-          description: "Tidak ada data dengan status 'Kirim ke PPK' untuk di-generate",
+          description: `Tidak ada data 'Kirim ke PPK' pada spreadsheet satker ${user?.satker || '(tidak diketahui)'}. Spreadsheet yang dibaca berasal dari kolom entrikegiatan_sheet_id; pastikan ID pada satker_config mengarah ke sheet Entri Kegiatan yang benar dan nilai kolom Keterangan tepat 'Kirim ke PPK'.`,
           variant: "default"
         });
-        setLoadingPreview(false);
         return;
       }
 
@@ -130,7 +178,7 @@ export default function GenerateSPKBAST() {
       console.error('Error:', error);
       toast({
         title: "❌ Error",
-        description: "Terjadi kesalahan saat memproses",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat memproses",
         variant: "destructive"
       });
     } finally {
@@ -232,6 +280,10 @@ export default function GenerateSPKBAST() {
   const totalKegiatan = visiblePeriodeList.reduce((sum, item) => sum + item.total, 0);
   const hasMismatch = totalKirimPPK !== totalKegiatan;
 
+  // Only show for Pejabat Pembuat Komitmen
+  if (user?.role !== 'Pejabat Pembuat Komitmen') {
+    return null;
+  }
 
   return (
     <>
