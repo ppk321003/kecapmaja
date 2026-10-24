@@ -35,6 +35,7 @@ export interface SatkerConfig {
   spkoutput_folder_id?: string;
   template_spk_id?: string;
   pulsa_id?: string;
+  kalender_sheet_id?: string;
 }
 
 /**
@@ -50,7 +51,7 @@ export function useSatkerConfig() {
         // Dibaca langsung dari Google Sheets (tanpa Supabase)
         const data = await readSheetValues({
           spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
-          range: `${CONFIG_SHEET_NAME}!A:AB`,
+          range: `${CONFIG_SHEET_NAME}!A:AC`,
         });
         rows = Array.isArray(data?.values) ? data.values : [];
       } catch (readError) {
@@ -112,6 +113,7 @@ export function useSatkerConfig() {
           spkoutput_folder_id: row[25]?.trim() || '',
           template_spk_id: row[26]?.trim() || '',
           pulsa_id: row[27]?.trim() || '',
+          kalender_sheet_id: row[28]?.trim() || '',
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({

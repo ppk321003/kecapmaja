@@ -25,6 +25,7 @@ import {
   TrendingUp,
   MapPin,
   ShieldCheck,
+  CalendarDays,
 } from "lucide-react";
 
 import {
@@ -51,6 +52,7 @@ import { useSatkerConfig } from "@/hooks/use-satker-config";
 const topLevelItems = [
   { title: "Beranda", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Kalender Kerja", url: "/kalender-kerja", icon: CalendarDays },
 ];
 
 // MENU GROUP: KEUANGAN
