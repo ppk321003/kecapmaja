@@ -14,6 +14,7 @@ import { Layout } from "./components/Layout";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
+import KalenderKerja from "./pages/KalenderKerja";
 import AkiToBendahara from "./pages/AkiToBendahara";
 import BlockTanggal from "./pages/BlockTanggal";
 import LaporSupervisi from "./pages/LaporSupervisi";
@@ -102,6 +103,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Layout><Home /></Layout></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+            <Route path="/kalender-kerja" element={<ProtectedRoute><Layout><KalenderKerja /></Layout></ProtectedRoute>} />
             <Route path="/usulan-pencairan" element={<ProtectedRoute><Layout><UsulanPencairan /></Layout></ProtectedRoute>} />
             <Route path="/aki-to-bendahara" element={<ProtectedRoute><Layout><AkiToBendahara /></Layout></ProtectedRoute>} />
             <Route path="/BlockTanggal" element={<ProtectedRoute><Layout><BlockTanggal /></Layout></ProtectedRoute>} />

@@ -1,0 +1,486 @@
+import { useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { CalendarDays, Plus, Pencil, Trash2, AlertTriangle, Grid3x3, GanttChart, CalendarRange, LayoutDashboard, Check, ChevronsUpDown, X } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
+import { readSheetValues } from '@/lib/sheets-read';
+import { supabase } from '@/integrations/supabase/client';
+import { useOrganikBPS } from '@/hooks/use-database';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import {
+  KALENDER_SHEET, FUNGSI_OPTIONS, TAHAPAN_OPTIONS, Jadwal, parseRows, countPerDay, dayKey, findOverlaps,
+  inYear, canAdd, canModify, buildStatus, joinOrganik, toIsoDate, toDdMmYyyy, newId, parseTanggal,
+} from '@/lib/kalender-kerja';
+
+const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const HARI = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+const OTHER = '__lainnya__';
+
+type View = 'heatmap' | 'gantt' | 'kalender' | 'ringkasan';
+
+const heatClass = (n: number) =>
+  n === 0 ? 'bg-muted' : n === 1 ? 'bg-primary/25' : n === 2 ? 'bg-primary/50' : n === 3 ? 'bg-primary/75' : 'bg-primary';
+
+const fmtRange = (j: Jadwal) =>
+  j.tanggal_mulai.getTime() === j.tanggal_selesai.getTime()
+    ? toDdMmYyyy(j.tanggal_mulai)
+    : `${toDdMmYyyy(j.tanggal_mulai)} – ${toDdMmYyyy(j.tanggal_selesai)}`;
+
+async function writeSheet(spreadsheetId: string, operation: 'append' | 'update', range: string, values: string[][]) {
+  const { error, data } = await supabase.functions.invoke('google-sheets', { body: { spreadsheetId, operation, range, values } });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+}
+
+interface FormState {
+  id?: string; rowNumber?: number; status?: string;
+  fungsi: string; nama_kegiatan: string; tahapan: string; tanggal_mulai: string; tanggal_selesai: string;
+  penanggung_jawab: string; keterangan: string; organik: string[];
+}
+const emptyForm = (): FormState => ({ fungsi: '', nama_kegiatan: '', tahapan: '', tanggal_mulai: '', tanggal_selesai: '', penanggung_jawab: '', keterangan: '', organik: [] });
+
+export default function KalenderKerja() {
+  const { user } = useAuth();
+  const satker = useSatkerConfigContext();
+  const sheetId = satker?.getUserSatkerConfig()?.kalender_sheet_id || '';
+  const qc = useQueryClient();
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [fungsiFilter, setFungsiFilter] = useState('semua');
+  const [view, setView] = useState<View>('heatmap');
+  const [detailDay, setDetailDay] = useState<{ title: string; items: Jadwal[] } | null>(null);
+  const [form, setForm] = useState<FormState | null>(null);
+  const [toDelete, setToDelete] = useState<Jadwal | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const { data: all = [], isLoading, error } = useQuery({
+    queryKey: ['kalender-kerja', sheetId],
+    enabled: !!sheetId,
+    queryFn: async () => parseRows((await readSheetValues({ spreadsheetId: sheetId, range: `${KALENDER_SHEET}!A:J` })).values),
+    staleTime: 60_000,
+  });
+
+  const fungsiList = useMemo(() => Array.from(new Set([...FUNGSI_OPTIONS, ...all.map((j) => j.fungsi).filter(Boolean)])), [all]);
+  const items = useMemo(
+    () => all.filter((j) => inYear(j, year) && (fungsiFilter === 'semua' || j.fungsi === fungsiFilter)),
+    [all, year, fungsiFilter],
+  );
+  const perDay = useMemo(() => countPerDay(items, year), [items, year]);
+  const role = user?.role ?? '';
+  const allowAdd = canAdd(role);
+
+  const openDay = (d: Date) => setDetailDay({ title: d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), items: perDay.get(dayKey(d)) ?? [] });
+  const openEdit = (j: Jadwal) => setForm({
+    id: j.id, rowNumber: j.rowNumber, status: j.status, fungsi: j.fungsi, nama_kegiatan: j.nama_kegiatan, tahapan: j.tahapan,
+    tanggal_mulai: toIsoDate(j.tanggal_mulai), tanggal_selesai: toIsoDate(j.tanggal_selesai), penanggung_jawab: j.penanggung_jawab,
+    keterangan: j.keterangan, organik: j.organik,
+  });
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ['kalender-kerja', sheetId] });
+
+  const save = async () => {
+    if (!form) return;
+    if (!form.fungsi.trim() || !form.nama_kegiatan.trim() || !form.tanggal_mulai) {
+      toast.error('Fungsi, Nama Kegiatan, dan Tanggal Mulai wajib diisi');
+      return;
+    }
+    const selesai = form.tanggal_selesai || form.tanggal_mulai;
+    if (parseTanggal(selesai)! < parseTanggal(form.tanggal_mulai)!) {
+      toast.error('Tanggal selesai tidak boleh sebelum tanggal mulai');
+      return;
+    }
+    setSaving(true);
+    try {
+      const isEdit = !!form.rowNumber;
+      const row = [
+        form.id || newId(), form.fungsi.trim(), form.nama_kegiatan.trim(), form.tahapan.trim(), form.tanggal_mulai, selesai,
+        form.penanggung_jawab.trim(), form.keterangan.trim(), joinOrganik(form.organik), buildStatus(isEdit ? 'diedit' : 'ditambahkan', role),
+      ];
+      if (isEdit) await writeSheet(sheetId, 'update', `${KALENDER_SHEET}!A${form.rowNumber}:J${form.rowNumber}`, [row]);
+      else await writeSheet(sheetId, 'append', `${KALENDER_SHEET}!A:J`, [row]);
+      toast.success(isEdit ? 'Kegiatan diperbarui' : 'Kegiatan ditambahkan');
+      setForm(null);
+      refresh();
+    } catch (e: any) {
+      toast.error('Gagal menyimpan: ' + (e?.message ?? e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const doDelete = async () => {
+    if (!toDelete) return;
+    try {
+      await writeSheet(sheetId, 'update', `${KALENDER_SHEET}!J${toDelete.rowNumber}`, [[buildStatus('dihapus', role)]]);
+      toast.success('Kegiatan dihapus');
+      setToDelete(null);
+      setDetailDay(null);
+      refresh();
+    } catch (e: any) {
+      toast.error('Gagal menghapus: ' + (e?.message ?? e));
+    }
+  };
+
+  if (satker?.isLoading) return <div className="p-6 text-muted-foreground">Memuat konfigurasi…</div>;
+  if (!sheetId)
+    return (
+      <Card className="m-6"><CardContent className="p-6 text-muted-foreground">
+        Spreadsheet Kalender Kerja untuk satker Anda belum diatur. Isi kolom <b>kalender</b> (AC) pada sheet satker_config.
+      </CardContent></Card>
+    );
+
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+
+  return (
+    <div className="space-y-4 p-4 md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-6 w-6 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold">Kalender Kerja</h1>
+            <p className="text-sm text-muted-foreground">Agenda kegiatan seluruh Fungsi dalam satu tahun</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={String(year)} onValueChange={(v) => setYear(+v)}>
+            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+            <SelectContent>{years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={fungsiFilter} onValueChange={setFungsiFilter}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="semua">Semua Fungsi</SelectItem>
+              {fungsiList.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {allowAdd && <Button onClick={() => setForm(emptyForm())}><Plus className="mr-1 h-4 w-4" />Tambah</Button>}
+        </div>
+      </div>
+
+      <ToggleGroup type="single" value={view} onValueChange={(v) => v && setView(v as View)} className="justify-start flex-wrap">
+        <ToggleGroupItem value="heatmap"><Grid3x3 className="mr-1 h-4 w-4" />Heatmap</ToggleGroupItem>
+        <ToggleGroupItem value="gantt"><GanttChart className="mr-1 h-4 w-4" />Timeline</ToggleGroupItem>
+        <ToggleGroupItem value="kalender"><CalendarRange className="mr-1 h-4 w-4" />Kalender Bulanan</ToggleGroupItem>
+        <ToggleGroupItem value="ringkasan"><LayoutDashboard className="mr-1 h-4 w-4" />Ringkasan & Overlap</ToggleGroupItem>
+      </ToggleGroup>
+
+      {isLoading ? <div className="text-muted-foreground">Memuat jadwal…</div>
+        : error ? <div className="text-destructive">Gagal memuat data: {String((error as Error).message)}</div>
+        : (
+          <>
+            {view === 'heatmap' && <HeatmapView year={year} perDay={perDay} onDay={openDay} />}
+            {view === 'gantt' && <GanttView year={year} items={items} onItem={(j) => setDetailDay({ title: j.nama_kegiatan, items: [j] })} />}
+            {view === 'kalender' && <MonthView year={year} perDay={perDay} onDay={openDay} />}
+            {view === 'ringkasan' && <SummaryView year={year} items={items} perDay={perDay} onItem={(j) => setDetailDay({ title: j.nama_kegiatan, items: [j] })} />}
+          </>
+        )}
+
+      <Sheet open={!!detailDay} onOpenChange={(o) => !o && setDetailDay(null)}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+          <SheetHeader><SheetTitle>{detailDay?.title}</SheetTitle></SheetHeader>
+          <div className="mt-4 space-y-3">
+            {detailDay?.items.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada kegiatan.</p>}
+            {detailDay?.items.map((j) => (
+              <Card key={j.id}><CardContent className="space-y-2 p-4 text-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-semibold">{j.nama_kegiatan}</div>
+                  <Badge variant="secondary">{j.fungsi}</Badge>
+                </div>
+                {j.tahapan && <div className="text-muted-foreground">Tahapan: {j.tahapan}</div>}
+                <div>{fmtRange(j)}</div>
+                {j.penanggung_jawab && <div>PIC: {j.penanggung_jawab}</div>}
+                {j.keterangan && <div className="text-muted-foreground">{j.keterangan}</div>}
+                {j.organik.length > 0 && <div className="flex flex-wrap gap-1">{j.organik.map((o) => <Badge key={o} variant="outline">{o}</Badge>)}</div>}
+                {j.status && <div className="text-xs italic text-muted-foreground">{j.status}</div>}
+                {canModify(role, j) && (
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" variant="outline" onClick={() => { setDetailDay(null); openEdit(j); }}><Pencil className="mr-1 h-3 w-3" />Edit</Button>
+                    <Button size="sm" variant="destructive" onClick={() => setToDelete(j)}><Trash2 className="mr-1 h-3 w-3" />Hapus</Button>
+                  </div>
+                )}
+              </CardContent></Card>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {form && <JadwalForm form={form} setForm={setForm} fungsiList={fungsiList} saving={saving} onSave={save} />}
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus kegiatan?</AlertDialogTitle>
+            <AlertDialogDescription>"{toDelete?.nama_kegiatan}" tidak akan tampil lagi. Arsipnya tetap tersimpan di spreadsheet.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={doDelete}>Hapus</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function Legend() {
+  return (
+    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      Sepi {[0, 1, 2, 3, 4].map((n) => <span key={n} className={cn('h-3 w-3 rounded-sm', heatClass(n))} />)} Padat
+    </div>
+  );
+}
+
+function HeatmapView({ year, perDay, onDay }: { year: number; perDay: Map<string, Jadwal[]>; onDay: (d: Date) => void }) {
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0"><CardTitle className="text-base">Peta Kepadatan {year}</CardTitle><Legend /></CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="border-separate border-spacing-0.5 text-xs">
+          <thead><tr><th />{Array.from({ length: 31 }, (_, i) => <th key={i} className="w-6 font-normal text-muted-foreground">{i + 1}</th>)}</tr></thead>
+          <tbody>
+            {BULAN.map((b, m) => {
+              const days = new Date(year, m + 1, 0).getDate();
+              return (
+                <tr key={b}>
+                  <td className="pr-2 font-medium">{b}</td>
+                  {Array.from({ length: 31 }, (_, i) => {
+                    if (i >= days) return <td key={i} />;
+                    const d = new Date(year, m, i + 1);
+                    const n = perDay.get(dayKey(d))?.length ?? 0;
+                    const weekend = d.getDay() === 0 || d.getDay() === 6;
+                    return (
+                      <td key={i}>
+                        <button title={`${i + 1} ${b}: ${n} kegiatan`} onClick={() => onDay(d)}
+                          className={cn('flex h-6 w-6 items-center justify-center rounded-sm transition hover:ring-2 hover:ring-ring', heatClass(n), n >= 3 && 'text-primary-foreground', weekend && n === 0 && 'opacity-50')}>
+                          {n > 0 ? n : ''}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function GanttView({ year, items, onItem }: { year: number; items: Jadwal[]; onItem: (j: Jadwal) => void }) {
+  const start = new Date(year, 0, 1).getTime();
+  const total = new Date(year + 1, 0, 1).getTime() - start;
+  const pct = (d: Date) => Math.min(100, Math.max(0, ((d.getTime() - start) / total) * 100));
+  const groups = useMemo(() => {
+    const g = new Map<string, Jadwal[]>();
+    [...items].sort((a, b) => a.tanggal_mulai.getTime() - b.tanggal_mulai.getTime()).forEach((j) => g.set(j.fungsi || '-', [...(g.get(j.fungsi || '-') ?? []), j]));
+    return [...g.entries()];
+  }, [items]);
+  const DAY = 86_400_000;
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">Timeline {year}</CardTitle></CardHeader>
+      <CardContent className="overflow-x-auto">
+        <div className="min-w-[800px]">
+          <div className="ml-48 grid grid-cols-12 border-b text-xs text-muted-foreground">{BULAN.map((b) => <div key={b} className="border-l px-1">{b}</div>)}</div>
+          {groups.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Belum ada kegiatan.</p>}
+          {groups.map(([f, list]) => (
+            <div key={f} className="border-b py-2">
+              <div className="mb-1 text-sm font-semibold">{f}</div>
+              {list.map((j) => {
+                const l = pct(j.tanggal_mulai);
+                const w = Math.max(0.4, pct(new Date(j.tanggal_selesai.getTime() + DAY)) - l);
+                return (
+                  <div key={j.id} className="flex items-center">
+                    <div className="w-48 truncate pr-2 text-xs" title={j.nama_kegiatan}>{j.nama_kegiatan}</div>
+                    <div className="relative h-5 flex-1 bg-muted/40">
+                      <button onClick={() => onItem(j)} title={`${j.nama_kegiatan} (${fmtRange(j)})`}
+                        className="absolute top-0.5 h-4 rounded bg-primary hover:opacity-80" style={{ left: `${l}%`, width: `${w}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MonthView({ year, perDay, onDay }: { year: number; perDay: Map<string, Jadwal[]>; onDay: (d: Date) => void }) {
+  const [month, setMonth] = useState(new Date().getFullYear() === year ? new Date().getMonth() : 0);
+  const first = new Date(year, month, 1);
+  const offset = (first.getDay() + 6) % 7;
+  const days = new Date(year, month + 1, 0).getDate();
+  const cells = [...Array(offset).fill(null), ...Array.from({ length: days }, (_, i) => new Date(year, month, i + 1))];
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <Button variant="outline" size="sm" disabled={month === 0} onClick={() => setMonth(month - 1)}>‹</Button>
+        <CardTitle className="text-base">{BULAN_PANJANG[month]} {year}</CardTitle>
+        <Button variant="outline" size="sm" disabled={month === 11} onClick={() => setMonth(month + 1)}>›</Button>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-7 gap-1 text-xs">
+          {HARI.map((h) => <div key={h} className="text-center font-medium text-muted-foreground">{h}</div>)}
+          {cells.map((d, i) => {
+            if (!d) return <div key={i} />;
+            const list = perDay.get(dayKey(d)) ?? [];
+            return (
+              <button key={i} onClick={() => onDay(d)} className={cn('min-h-24 rounded-md border p-1 text-left hover:bg-accent', list.length > 1 && 'border-primary')}>
+                <div className="font-semibold">{d.getDate()}</div>
+                {list.slice(0, 3).map((j) => <div key={j.id} className="mt-0.5 truncate rounded bg-primary/15 px-1">{j.nama_kegiatan}</div>)}
+                {list.length > 3 && <div className="text-muted-foreground">+{list.length - 3} lainnya</div>}
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jadwal[]; perDay: Map<string, Jadwal[]>; onItem: (j: Jadwal) => void }) {
+  const perMonth = BULAN.map((_, m) => new Set([...perDay.entries()].filter(([k]) => +k.slice(5, 7) === m + 1).flatMap(([, v]) => v.map((j) => j.id))).size);
+  const max = Math.max(1, ...perMonth);
+  const busiest = perMonth.indexOf(Math.max(...perMonth));
+  const peak = [...perDay.entries()].sort((a, b) => b[1].length - a[1].length)[0];
+  const ov = findOverlaps(items).filter(([a, b]) => a.fungsi !== b.fungsi || true);
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Kpi label="Total kegiatan" value={items.length} />
+        <Kpi label="Bulan tersibuk" value={items.length ? BULAN_PANJANG[busiest] : '-'} />
+        <Kpi label="Tanggal terpadat" value={peak ? `${toDdMmYyyy(new Date(peak[0]))} (${peak[1].length})` : '-'} />
+        <Kpi label="Pasangan overlap" value={ov.length} />
+      </div>
+      <Card>
+        <CardHeader><CardTitle className="text-base">Kegiatan per bulan {year}</CardTitle></CardHeader>
+        <CardContent className="flex h-40 items-end gap-2">
+          {perMonth.map((n, m) => (
+            <div key={m} className="flex flex-1 flex-col items-center gap-1 text-xs">
+              <span>{n}</span>
+              <div className="w-full rounded-t bg-primary" style={{ height: `${(n / max) * 100}px` }} />
+              <span className="text-muted-foreground">{BULAN[m]}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" />Kegiatan yang tumpang tindih</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {ov.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada kegiatan yang bentrok.</p>}
+          {ov.slice(0, 50).map(([a, b]) => (
+            <div key={a.id + b.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm">
+              <button className="underline-offset-2 hover:underline" onClick={() => onItem(a)}><Badge variant="secondary" className="mr-1">{a.fungsi}</Badge>{a.nama_kegiatan}</button>
+              <span className="text-muted-foreground">×</span>
+              <button className="underline-offset-2 hover:underline" onClick={() => onItem(b)}><Badge variant="secondary" className="mr-1">{b.fungsi}</Badge>{b.nama_kegiatan}</button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function Kpi({ label, value }: { label: string; value: string | number }) {
+  return <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">{label}</div><div className="text-xl font-bold">{value}</div></CardContent></Card>;
+}
+
+function SelectOrType({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+  const [custom, setCustom] = useState(!!value && !options.includes(value));
+  return (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <Select value={custom ? OTHER : value || undefined} onValueChange={(v) => { if (v === OTHER) { setCustom(true); onChange(''); } else { setCustom(false); onChange(v); } }}>
+        <SelectTrigger><SelectValue placeholder={`Pilih ${label.toLowerCase()}`} /></SelectTrigger>
+        <SelectContent>
+          {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+          <SelectItem value={OTHER}>Lainnya (ketik sendiri)…</SelectItem>
+        </SelectContent>
+      </Select>
+      {custom && <Input autoFocus placeholder={`Ketik ${label.toLowerCase()}`} value={value} onChange={(e) => onChange(e.target.value)} />}
+    </div>
+  );
+}
+
+function OrganikPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const { data } = useOrganikBPS();
+  const names = useMemo(() => Array.from(new Set(data.map((o) => o.name).filter(Boolean))), [data]);
+  const toggle = (n: string) => onChange(value.includes(n) ? value.filter((x) => x !== n) : [...value, n]);
+  return (
+    <div className="space-y-1">
+      <Label>Organik Terlibat (opsional)</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="w-full justify-between font-normal">
+            {value.length ? `${value.length} pegawai dipilih` : 'Pilih pegawai'}<ChevronsUpDown className="h-4 w-4 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+          <Command filter={(v, s) => (v.toLowerCase().includes(s.trim().toLowerCase()) ? 1 : 0)}>
+            <CommandInput placeholder="Cari nama…" />
+            <CommandList>
+              <CommandEmpty>Tidak ditemukan.</CommandEmpty>
+              {names.map((n) => (
+                <CommandItem key={n} value={n} onSelect={() => toggle(n)}>
+                  <Check className={cn('mr-2 h-4 w-4', value.includes(n) ? 'opacity-100' : 'opacity-0')} />{n}
+                </CommandItem>
+              ))}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {value.map((n) => <Badge key={n} variant="secondary" className="gap-1">{n}<button onClick={() => toggle(n)}><X className="h-3 w-3" /></button></Badge>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JadwalForm({ form, setForm, fungsiList, saving, onSave }: {
+  form: FormState; setForm: (f: FormState | null) => void; fungsiList: string[]; saving: boolean; onSave: () => void;
+}) {
+  const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm({ ...form, [k]: v });
+  return (
+    <Dialog open onOpenChange={(o) => !o && setForm(null)}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader><DialogTitle>{form.rowNumber ? 'Edit Kegiatan' : 'Tambah Kegiatan'}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <SelectOrType label="Fungsi" value={form.fungsi} options={fungsiList} onChange={(v) => set('fungsi', v)} />
+          <div className="space-y-1"><Label>Nama Kegiatan</Label><Input value={form.nama_kegiatan} onChange={(e) => set('nama_kegiatan', e.target.value)} /></div>
+          <SelectOrType label="Tahapan" value={form.tahapan} options={TAHAPAN_OPTIONS} onChange={(v) => set('tahapan', v)} />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1"><Label>Tanggal Mulai</Label><Input type="date" value={form.tanggal_mulai} onChange={(e) => set('tanggal_mulai', e.target.value)} /></div>
+            <div className="space-y-1"><Label>Tanggal Selesai</Label><Input type="date" value={form.tanggal_selesai} min={form.tanggal_mulai} onChange={(e) => set('tanggal_selesai', e.target.value)} /></div>
+          </div>
+          <p className="text-xs text-muted-foreground">Kosongkan tanggal selesai jika kegiatan hanya 1 hari.</p>
+          <div className="space-y-1"><Label>Penanggung Jawab</Label><Input value={form.penanggung_jawab} onChange={(e) => set('penanggung_jawab', e.target.value)} /></div>
+          <OrganikPicker value={form.organik} onChange={(v) => set('organik', v)} />
+          <div className="space-y-1"><Label>Keterangan</Label><Textarea value={form.keterangan} onChange={(e) => set('keterangan', e.target.value)} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setForm(null)}>Batal</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
