@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, Plus, Pencil, Trash2, AlertTriangle, Grid3x3, GanttChart, CalendarRange, LayoutDashboard, Check, ChevronsUpDown, X } from 'lucide-react';
+import { CalendarDays, Plus, Pencil, Trash2, AlertTriangle, Grid3x3, GanttChart, CalendarRange, LayoutDashboard, Check, ChevronsUpDown, X, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { readSheetValues } from '@/lib/sheets-read';
@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   KALENDER_SHEET, FUNGSI_OPTIONS, TAHAPAN_OPTIONS, Jadwal, parseRows, countPerDay, dayKey, findOverlaps,
-  inYear, canAdd, canModify, buildStatus, joinOrganik, toIsoDate, toDdMmYyyy, newId, parseTanggal,
+  inYear, canAdd, isAdminRole, canModify, buildStatus, joinOrganik, toIsoDate, toDdMmYyyy, newId, parseTanggal,
 } from '@/lib/kalender-kerja';
 
 const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -31,10 +31,13 @@ const BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', '
 const HARI = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 const OTHER = '__lainnya__';
 
-type View = 'heatmap' | 'gantt' | 'kalender' | 'ringkasan';
+type View = 'heatmap' | 'gantt' | 'kalender' | 'ringkasan' | 'rekap';
 
 const heatClass = (n: number) =>
-  n === 0 ? 'bg-muted' : n === 1 ? 'bg-primary/25' : n === 2 ? 'bg-primary/50' : n === 3 ? 'bg-primary/75' : 'bg-primary';
+  n === 0 ? 'bg-muted/50' : n === 1 ? 'bg-red-100 text-red-800' : n === 2 ? 'bg-red-200 text-red-900' : n === 3 ? 'bg-red-500 text-white' : 'bg-red-700 text-white font-bold';
+
+/** "Fungsi Sosial" -> "Sosial" */
+const fungsiFromRole = (role: string) => role.replace(/^\s*fungsi\s*/i, '').trim();
 
 const fmtRange = (j: Jadwal) =>
   j.tanggal_mulai.getTime() === j.tanggal_selesai.getTime()
@@ -167,7 +170,7 @@ export default function KalenderKerja() {
               {fungsiList.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
             </SelectContent>
           </Select>
-          {allowAdd && <Button onClick={() => setForm(emptyForm())}><Plus className="mr-1 h-4 w-4" />Tambah</Button>}
+          {allowAdd && <Button onClick={() => setForm({ ...emptyForm(), fungsi: isAdminRole(role) ? '' : fungsiFromRole(role) })}><Plus className="mr-1 h-4 w-4" />Tambah</Button>}
         </div>
       </div>
 
@@ -176,6 +179,7 @@ export default function KalenderKerja() {
         <ToggleGroupItem value="gantt"><GanttChart className="mr-1 h-4 w-4" />Timeline</ToggleGroupItem>
         <ToggleGroupItem value="kalender"><CalendarRange className="mr-1 h-4 w-4" />Kalender Bulanan</ToggleGroupItem>
         <ToggleGroupItem value="ringkasan"><LayoutDashboard className="mr-1 h-4 w-4" />Ringkasan & Overlap</ToggleGroupItem>
+        <ToggleGroupItem value="rekap"><Users className="mr-1 h-4 w-4" />Rekap Karyawan</ToggleGroupItem>
       </ToggleGroup>
 
       {isLoading ? <div className="text-muted-foreground">Memuat jadwal…</div>
@@ -186,6 +190,7 @@ export default function KalenderKerja() {
             {view === 'gantt' && <GanttView year={year} items={items} onItem={(j) => setDetailDay({ title: j.nama_kegiatan, items: [j] })} />}
             {view === 'kalender' && <MonthView year={year} perDay={perDay} onDay={openDay} />}
             {view === 'ringkasan' && <SummaryView year={year} items={items} perDay={perDay} onItem={(j) => setDetailDay({ title: j.nama_kegiatan, items: [j] })} />}
+            {view === 'rekap' && <RekapView year={year} items={items} onItem={(j) => setDetailDay({ title: j.nama_kegiatan, items: [j] })} />}
           </>
         )}
 
@@ -204,7 +209,14 @@ export default function KalenderKerja() {
                 <div>{fmtRange(j)}</div>
                 {j.penanggung_jawab && <div>PIC: {j.penanggung_jawab}</div>}
                 {j.keterangan && <div className="text-muted-foreground">{j.keterangan}</div>}
-                {j.organik.length > 0 && <div className="flex flex-wrap gap-1">{j.organik.map((o) => <Badge key={o} variant="outline">{o}</Badge>)}</div>}
+                {j.organik.length > 0 && (
+                  <div className="rounded-md bg-muted/40 p-2">
+                    <div className="mb-1 text-xs font-medium text-muted-foreground">Organik Terlibat ({j.organik.length})</div>
+                    <ol className="grid grid-cols-1 gap-x-3 gap-y-0.5 text-xs sm:grid-cols-2">
+                      {j.organik.map((o, i) => <li key={o} className="flex gap-1"><span className="w-5 shrink-0 text-right text-muted-foreground">{i + 1}.</span><span>{o}</span></li>)}
+                    </ol>
+                  </div>
+                )}
                 {j.status && <div className="text-xs italic text-muted-foreground">{j.status}</div>}
                 {canModify(role, j) && (
                   <div className="flex gap-2 pt-1">
@@ -218,7 +230,8 @@ export default function KalenderKerja() {
         </SheetContent>
       </Sheet>
 
-      {form && <JadwalForm form={form} setForm={setForm} fungsiList={fungsiList} saving={saving} onSave={save} />}
+      {form && <JadwalForm form={form} setForm={setForm} saving={saving} onSave={save}
+        fungsiList={isAdminRole(role) ? fungsiList : Array.from(new Set([fungsiFromRole(role), form.fungsi].filter(Boolean)))} />}
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
@@ -265,7 +278,7 @@ function HeatmapView({ year, perDay, onDay }: { year: number; perDay: Map<string
                     return (
                       <td key={i}>
                         <button title={`${i + 1} ${b}: ${n} kegiatan`} onClick={() => onDay(d)}
-                          className={cn('flex h-6 w-6 items-center justify-center rounded-sm transition hover:ring-2 hover:ring-ring', heatClass(n), n >= 3 && 'text-primary-foreground', weekend && n === 0 && 'opacity-50')}>
+                          className={cn('flex h-6 w-6 items-center justify-center rounded-sm transition hover:ring-2 hover:ring-ring', heatClass(n), weekend && n === 0 && 'opacity-50')}>
                           {n > 0 ? n : ''}
                         </button>
                       </td>
@@ -482,5 +495,62 @@ function JadwalForm({ form, setForm, fungsiList, saving, onSave }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const normName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onItem: (j: Jadwal) => void }) {
+  const { data } = useOrganikBPS();
+  const [q, setQ] = useState('');
+  const rows = useMemo(() => {
+    const DAY = 86_400_000;
+    const yStart = new Date(year, 0, 1).getTime(), yEnd = new Date(year, 11, 31).getTime();
+    const list = data.filter((o) => o.name).map((o) => {
+      const key = normName(o.name);
+      const keg = items.filter((j) => j.organik.some((n) => normName(n) === key) || (j.penanggung_jawab && normName(j.penanggung_jawab) === key));
+      const days = new Set<number>();
+      keg.forEach((j) => {
+        for (let t = Math.max(j.tanggal_mulai.getTime(), yStart); t <= Math.min(j.tanggal_selesai.getTime(), yEnd); t += DAY) days.add(Math.round(t / DAY));
+      });
+      return { o, keg, hari: days.size, pic: keg.filter((j) => normName(j.penanggung_jawab) === key).length };
+    });
+    return list.sort((a, b) => b.keg.length - a.keg.length || b.hari - a.hari || a.o.name.localeCompare(b.o.name));
+  }, [data, items, year]);
+  const shown = rows.filter((r) => r.o.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const beban = (n: number) => n === 0 ? { t: 'Belum ada', c: 'bg-muted text-muted-foreground' } : n <= 3 ? { t: 'Ideal', c: 'bg-green-100 text-green-800' } : n <= 6 ? { t: 'Sedang', c: 'bg-yellow-100 text-yellow-800' } : { t: 'Tinggi', c: 'bg-red-100 text-red-800' };
+  return (
+    <Card>
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+        <CardTitle className="text-base">Rekap Karyawan {year} ({rows.length} pegawai)</CardTitle>
+        <Input className="w-60" placeholder="Cari nama pegawai…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b text-left text-xs text-muted-foreground">
+            <th className="p-2">No</th><th className="p-2">Nama</th><th className="p-2 text-center">Kegiatan</th><th className="p-2 text-center">Sbg PIC</th><th className="p-2 text-center">Hari Sibuk</th><th className="p-2">Beban</th><th className="p-2">Daftar Kegiatan</th>
+          </tr></thead>
+          <tbody>
+            {shown.map((r, i) => {
+              const b = beban(r.keg.length);
+              return (
+                <tr key={r.o.id + i} className="border-b align-top">
+                  <td className="p-2 text-muted-foreground">{i + 1}</td>
+                  <td className="p-2"><div className="font-medium">{r.o.name}</div>{r.o.jabatan && <div className="text-xs text-muted-foreground">{r.o.jabatan}</div>}</td>
+                  <td className="p-2 text-center font-semibold">{r.keg.length}</td>
+                  <td className="p-2 text-center">{r.pic}</td>
+                  <td className="p-2 text-center">{r.hari}</td>
+                  <td className="p-2"><span className={cn('rounded px-2 py-0.5 text-xs', b.c)}>{b.t}</span></td>
+                  <td className="p-2"><div className="flex flex-wrap gap-1">
+                    {r.keg.map((j) => <button key={j.id} onClick={() => onItem(j)}><Badge variant="outline" className="font-normal hover:bg-accent">{j.nama_kegiatan}</Badge></button>)}
+                  </div></td>
+                </tr>
+              );
+            })}
+            {shown.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Tidak ada pegawai.</td></tr>}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
   );
 }
