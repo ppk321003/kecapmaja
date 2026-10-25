@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, Plus, Pencil, Trash2, AlertTriangle, Grid3x3, GanttChart, CalendarRange, LayoutDashboard, Check, ChevronsUpDown, X, Users } from 'lucide-react';
+import { CalendarDays, Plus, Pencil, Trash2, AlertTriangle, Grid3x3, GanttChart, CalendarRange, LayoutDashboard, Check, ChevronsUpDown, X, Users, ArrowUp, ArrowDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { readSheetValues } from '@/lib/sheets-read';
@@ -115,8 +115,8 @@ export default function KalenderKerja() {
       ];
       if (isEdit) await writeSheet(sheetId, 'update', `${KALENDER_SHEET}!A${form.rowNumber}:J${form.rowNumber}`, [row]);
       else await writeSheet(sheetId, 'append', `${KALENDER_SHEET}!A:J`, [row]);
-      toast.success(isEdit ? 'Kegiatan diperbarui' : 'Kegiatan ditambahkan');
       setForm(null);
+      toast.success(isEdit ? 'Kegiatan diperbarui' : 'Kegiatan ditambahkan');
       refresh();
     } catch (e: any) {
       toast.error('Gagal menyimpan: ' + (e?.message ?? e));
@@ -369,45 +369,38 @@ function MonthView({ year, perDay, onDay }: { year: number; perDay: Map<string, 
 }
 
 function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jadwal[]; perDay: Map<string, Jadwal[]>; onItem: (j: Jadwal) => void }) {
+  const DAY = 86_400_000;
+  const yStart = new Date(year, 0, 1).getTime();
+  const yEnd = new Date(year, 11, 31, 23, 59, 59).getTime();
   const perMonth = BULAN.map((_, m) => new Set([...perDay.entries()].filter(([k]) => +k.slice(5, 7) === m + 1).flatMap(([, v]) => v.map((j) => j.id))).size);
   const max = Math.max(1, ...perMonth);
   const busiest = perMonth.indexOf(Math.max(...perMonth));
-  const peak = [...perDay.entries()].sort((a, b) => b[1].length - a[1].length)[0];
-  const ov = findOverlaps(items).filter(([a, b]) => a.fungsi !== b.fungsi || true);
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-4">
-        <Kpi label="Total kegiatan" value={items.length} />
-        <Kpi label="Bulan tersibuk" value={items.length ? BULAN_PANJANG[busiest] : '-'} />
-        <Kpi label="Tanggal terpadat" value={peak ? `${toDdMmYyyy(new Date(peak[0]))} (${peak[1].length})` : '-'} />
-        <Kpi label="Pasangan overlap" value={ov.length} />
-      </div>
-      <Card>
-        <CardHeader><CardTitle className="text-base">Kegiatan per bulan {year}</CardTitle></CardHeader>
-        <CardContent className="flex h-40 items-end gap-2">
-          {perMonth.map((n, m) => (
-            <div key={m} className="flex flex-1 flex-col items-center gap-1 text-xs">
-              <span>{n}</span>
-              <div className="w-full rounded-t bg-primary" style={{ height: `${(n / max) * 100}px` }} />
-              <span className="text-muted-foreground">{BULAN[m]}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" />Kegiatan yang tumpang tindih</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {ov.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada kegiatan yang bentrok.</p>}
-          {ov.slice(0, 50).map(([a, b]) => (
-            <div key={a.id + b.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm">
-              <button className="underline-offset-2 hover:underline" onClick={() => onItem(a)}><Badge variant="secondary" className="mr-1">{a.fungsi}</Badge>{a.nama_kegiatan}</button>
-              <span className="text-muted-foreground">×</span>
-              <button className="underline-offset-2 hover:underline" onClick={() => onItem(b)}><Badge variant="secondary" className="mr-1">{b.fungsi}</Badge>{b.nama_kegiatan}</button>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
+  const top5 = [...perDay.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 5);
+  const peak = top5[0];
+  const ov = findOverlaps(items);
+  const hariBentrok = [...perDay.values()].filter((v) => v.length >= 2).length;
+  const totalOrangHari = items.reduce((s, j) => {
+    const d0 = Math.max(j.tanggal_mulai.getTime(), yStart);
+    const d1 = Math.min(j.tanggal_selesai.getTime(), yEnd);
+    return s + (Math.floor((d1 - d0) / DAY) + 1) * Math.max(1, j.organik.length);
+  }, 0);
+  const perFungsi = useMemo(() => {
+    const m = new Map<string, { keg: number; hari: Set<string>; ov: number }>();
+    items.forEach((j) => {
+      const e = m.get(j.fungsi || '-') ?? { keg: 0, hari: new Set<string>(), ov: 0 };
+      e.keg++;
+      for (let t = j.tanggal_mulai.getTime(); t <= j.tanggal_selesai.getTime(); t += DAY) e.hari.add(dayKey(new Date(t)));
+      m.set(j.fungsi || '-', e);
+    });
+    findOverlaps(items).forEach(([a, b]) => {
+      const ea = m.get(a.fungsi || '-');
+      const eb = m.get(b.fungsi || '-');
+      if (ea) ea.ov++;
+      if (eb) eb.ov++;
+    });
+    return [...m.entries()].sort((a, b) => b[1].keg - a[1].keg);
+  }, [items]);
+...
   );
 }
 
