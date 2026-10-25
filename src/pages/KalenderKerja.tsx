@@ -31,10 +31,13 @@ const BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', '
 const HARI = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 const OTHER = '__lainnya__';
 
-type View = 'heatmap' | 'gantt' | 'kalender' | 'ringkasan';
+type View = 'heatmap' | 'gantt' | 'kalender' | 'ringkasan' | 'rekap';
 
 const heatClass = (n: number) =>
-  n === 0 ? 'bg-muted' : n === 1 ? 'bg-primary/25' : n === 2 ? 'bg-primary/50' : n === 3 ? 'bg-primary/75' : 'bg-primary';
+  n === 0 ? 'bg-muted/50' : n === 1 ? 'bg-red-100 text-red-800' : n === 2 ? 'bg-red-200 text-red-900' : n === 3 ? 'bg-red-500 text-white' : 'bg-red-700 text-white font-bold';
+
+/** "Fungsi Sosial" -> "Sosial" */
+const fungsiFromRole = (role: string) => role.replace(/^\s*fungsi\s*/i, '').trim();
 
 const fmtRange = (j: Jadwal) =>
   j.tanggal_mulai.getTime() === j.tanggal_selesai.getTime()
@@ -167,7 +170,7 @@ export default function KalenderKerja() {
               {fungsiList.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
             </SelectContent>
           </Select>
-          {allowAdd && <Button onClick={() => setForm(emptyForm())}><Plus className="mr-1 h-4 w-4" />Tambah</Button>}
+          {allowAdd && <Button onClick={() => setForm({ ...emptyForm(), fungsi: isAdminRole(role) ? '' : fungsiFromRole(role) })}><Plus className="mr-1 h-4 w-4" />Tambah</Button>}
         </div>
       </div>
 
@@ -176,6 +179,7 @@ export default function KalenderKerja() {
         <ToggleGroupItem value="gantt"><GanttChart className="mr-1 h-4 w-4" />Timeline</ToggleGroupItem>
         <ToggleGroupItem value="kalender"><CalendarRange className="mr-1 h-4 w-4" />Kalender Bulanan</ToggleGroupItem>
         <ToggleGroupItem value="ringkasan"><LayoutDashboard className="mr-1 h-4 w-4" />Ringkasan & Overlap</ToggleGroupItem>
+        <ToggleGroupItem value="rekap"><Users className="mr-1 h-4 w-4" />Rekap Karyawan</ToggleGroupItem>
       </ToggleGroup>
 
       {isLoading ? <div className="text-muted-foreground">Memuat jadwal…</div>
@@ -186,6 +190,7 @@ export default function KalenderKerja() {
             {view === 'gantt' && <GanttView year={year} items={items} onItem={(j) => setDetailDay({ title: j.nama_kegiatan, items: [j] })} />}
             {view === 'kalender' && <MonthView year={year} perDay={perDay} onDay={openDay} />}
             {view === 'ringkasan' && <SummaryView year={year} items={items} perDay={perDay} onItem={(j) => setDetailDay({ title: j.nama_kegiatan, items: [j] })} />}
+            {view === 'rekap' && <RekapView year={year} items={items} onItem={(j) => setDetailDay({ title: j.nama_kegiatan, items: [j] })} />}
           </>
         )}
 
@@ -204,7 +209,14 @@ export default function KalenderKerja() {
                 <div>{fmtRange(j)}</div>
                 {j.penanggung_jawab && <div>PIC: {j.penanggung_jawab}</div>}
                 {j.keterangan && <div className="text-muted-foreground">{j.keterangan}</div>}
-                {j.organik.length > 0 && <div className="flex flex-wrap gap-1">{j.organik.map((o) => <Badge key={o} variant="outline">{o}</Badge>)}</div>}
+                {j.organik.length > 0 && (
+                  <div className="rounded-md bg-muted/40 p-2">
+                    <div className="mb-1 text-xs font-medium text-muted-foreground">Organik Terlibat ({j.organik.length})</div>
+                    <ol className="grid grid-cols-1 gap-x-3 gap-y-0.5 text-xs sm:grid-cols-2">
+                      {j.organik.map((o, i) => <li key={o} className="flex gap-1"><span className="w-5 shrink-0 text-right text-muted-foreground">{i + 1}.</span><span>{o}</span></li>)}
+                    </ol>
+                  </div>
+                )}
                 {j.status && <div className="text-xs italic text-muted-foreground">{j.status}</div>}
                 {canModify(role, j) && (
                   <div className="flex gap-2 pt-1">
@@ -218,7 +230,8 @@ export default function KalenderKerja() {
         </SheetContent>
       </Sheet>
 
-      {form && <JadwalForm form={form} setForm={setForm} fungsiList={fungsiList} saving={saving} onSave={save} />}
+      {form && <JadwalForm form={form} setForm={setForm} saving={saving} onSave={save}
+        fungsiList={isAdminRole(role) ? fungsiList : Array.from(new Set([fungsiFromRole(role), form.fungsi].filter(Boolean)))} />}
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
