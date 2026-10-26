@@ -140,6 +140,37 @@ export function findOverlaps(items: Jadwal[]): [Jadwal, Jadwal][] {
   return res;
 }
 
+export interface OverlapGroup {
+  items: Jadwal[];
+  start: Date;
+  end: Date;
+}
+
+/** Maximal groups of activities that share at least one overlapping date. */
+export function findOverlapGroups(items: Jadwal[]): OverlapGroup[] {
+  const starts = [...new Set(items.map((item) => item.tanggal_mulai.getTime()))].sort((a, b) => a - b);
+  const groups = new Map<string, Jadwal[]>();
+
+  starts.forEach((start) => {
+    const active = items.filter((item) => item.tanggal_mulai.getTime() <= start && item.tanggal_selesai.getTime() >= start);
+    if (active.length < 2) return;
+    const key = active.map((item) => item.id).sort().join('|');
+    groups.set(key, active);
+  });
+
+  const candidates = [...groups.values()];
+  return candidates
+    .filter((group) => !candidates.some((other) =>
+      group.length < other.length && group.every((item) => other.some((candidate) => candidate.id === item.id)),
+    ))
+    .map((group) => ({
+      items: group,
+      start: new Date(Math.max(...group.map((item) => item.tanggal_mulai.getTime()))),
+      end: new Date(Math.min(...group.map((item) => item.tanggal_selesai.getTime()))),
+    }))
+    .sort((a, b) => a.start.getTime() - b.start.getTime() || b.items.length - a.items.length);
+}
+
 export const inYear = (it: Jadwal, year: number) =>
   it.tanggal_mulai.getFullYear() <= year && it.tanggal_selesai.getFullYear() >= year;
 

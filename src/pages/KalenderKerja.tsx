@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   KALENDER_SHEET, FUNGSI_OPTIONS, TAHAPAN_OPTIONS, Jadwal, parseRows, countPerDay, dayKey, findOverlaps,
-  inYear, canAdd, isAdminRole, canModify, buildStatus, joinOrganik, toIsoDate, toDdMmYyyy, newId, parseTanggal,
+  findOverlapGroups, inYear, canAdd, isAdminRole, canModify, buildStatus, joinOrganik, toIsoDate, toDdMmYyyy, newId, parseTanggal,
 } from '@/lib/kalender-kerja';
 
 const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -34,7 +34,40 @@ const OTHER = '__lainnya__';
 type View = 'heatmap' | 'gantt' | 'kalender' | 'ringkasan' | 'rekap';
 
 const heatClass = (n: number) =>
-  n === 0 ? 'bg-muted/50' : n === 1 ? 'bg-red-100 text-red-800' : n === 2 ? 'bg-red-200 text-red-900' : n === 3 ? 'bg-red-500 text-white' : 'bg-red-700 text-white font-bold';
+  n <= 0 ? 'bg-muted/50 text-muted-foreground'
+    : n === 1 ? 'bg-green-100 text-green-800'
+      : n === 2 ? 'bg-green-200 text-green-900'
+        : n === 3 ? 'bg-amber-200 text-amber-950'
+          : n === 4 ? 'bg-orange-300 text-orange-950'
+            : n === 5 ? 'bg-rose-200 text-rose-950'
+              : n === 6 ? 'bg-rose-400 text-rose-950'
+                : 'bg-red-800 text-white font-semibold';
+
+const FUNGSI_COLORS: Record<string, { label: string; soft: string; solid: string }> = {
+  sosial: { label: 'Fungsi Sosial', soft: 'border-sky-300 bg-sky-100 text-sky-900', solid: 'bg-sky-500' },
+  neraca: { label: 'Fungsi Neraca', soft: 'border-amber-300 bg-amber-100 text-amber-900', solid: 'bg-amber-500' },
+  nerwilis: { label: 'Fungsi Neraca', soft: 'border-amber-300 bg-amber-100 text-amber-900', solid: 'bg-amber-500' },
+  produksi: { label: 'Fungsi Produksi', soft: 'border-emerald-300 bg-emerald-100 text-emerald-900', solid: 'bg-emerald-500' },
+  distribusi: { label: 'Fungsi Distribusi', soft: 'border-violet-300 bg-violet-100 text-violet-900', solid: 'bg-violet-500' },
+  ipds: { label: 'Fungsi IPDS', soft: 'border-cyan-300 bg-cyan-100 text-cyan-900', solid: 'bg-cyan-500' },
+  umum: { label: 'Fungsi Umum', soft: 'border-slate-300 bg-slate-100 text-slate-800', solid: 'bg-slate-500' },
+};
+const fungsiColor = (fungsi: string, variant: 'soft' | 'solid' = 'soft') => {
+  const key = fungsi.replace(/^\s*fungsi\s*/i, '').trim().toLowerCase();
+  return FUNGSI_COLORS[key]?.[variant] ?? (variant === 'solid' ? 'bg-gray-500' : 'border-gray-300 bg-gray-100 text-gray-800');
+};
+const fungsiDisplayName = (fungsi: string) => {
+  const key = fungsi.replace(/^\s*fungsi\s*/i, '').trim().toLowerCase();
+  return FUNGSI_COLORS[key]?.label ?? fungsi;
+};
+const FUNGSI_LEGEND = [
+  ['Sosial', 'sosial'],
+  ['Neraca', 'neraca'],
+  ['Produksi', 'produksi'],
+  ['Distribusi', 'distribusi'],
+  ['IPDS', 'ipds'],
+  ['Umum', 'umum'],
+] as const;
 
 /** "Fungsi Sosial" -> "Sosial" */
 const fungsiFromRole = (role: string) => role.replace(/^\s*fungsi\s*/i, '').trim();
@@ -203,17 +236,22 @@ export default function KalenderKerja() {
               <Card key={j.id}><CardContent className="space-y-2 p-4 text-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div className="font-semibold">{j.nama_kegiatan}</div>
-                  <Badge variant="secondary">{j.fungsi}</Badge>
+                  <Badge variant="outline" className={cn('shrink-0', fungsiColor(j.fungsi))}>{fungsiDisplayName(j.fungsi)}</Badge>
                 </div>
                 {j.tahapan && <div className="text-muted-foreground">Tahapan: {j.tahapan}</div>}
                 <div>{fmtRange(j)}</div>
                 {j.penanggung_jawab && <div>PIC: {j.penanggung_jawab}</div>}
                 {j.keterangan && <div className="text-muted-foreground">{j.keterangan}</div>}
                 {j.organik.length > 0 && (
-                  <div className="rounded-md bg-muted/40 p-2">
+                  <div className="min-w-0 rounded-md bg-muted/40 p-2">
                     <div className="mb-1 text-xs font-medium text-muted-foreground">Organik Terlibat ({j.organik.length})</div>
                     <ol className="grid grid-cols-1 gap-x-3 gap-y-0.5 text-xs sm:grid-cols-2">
-                      {j.organik.map((o, i) => <li key={o} className="flex gap-1"><span className="w-5 shrink-0 text-right text-muted-foreground">{i + 1}.</span><span>{o}</span></li>)}
+                      {j.organik.map((o, i) => (
+                        <li key={o} className="flex min-w-0 gap-1">
+                          <span className="w-5 shrink-0 text-right text-muted-foreground">{i + 1}.</span>
+                          <span className="min-w-0 truncate" title={o}>{o}</span>
+                        </li>
+                      ))}
                     </ol>
                   </div>
                 )}
@@ -251,8 +289,15 @@ export default function KalenderKerja() {
 
 function Legend() {
   return (
-    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-      Sepi {[0, 1, 2, 3, 4].map((n) => <span key={n} className={cn('h-3 w-3 rounded-sm', heatClass(n))} />)} Padat
+    <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground" aria-label="Kegiatan per hari: 0 netral, 1 hijau halus, 2 hijau, 3 kuning, 4 oranye, 5 merah halus, 6 merah tegas, 7 atau lebih merah bata">
+      <span className="mr-1">Sepi</span>
+      {Array.from({ length: 8 }, (_, n) => (
+        <span key={n} title={n === 7 ? '7 atau lebih kegiatan' : `${n} kegiatan`}
+          className={cn('flex h-5 w-5 items-center justify-center rounded-sm text-[10px]', heatClass(n))}>
+          {n}
+        </span>
+      ))}
+      <span className="ml-1">Padat (7+)</span>
     </div>
   );
 }
@@ -262,14 +307,18 @@ function HeatmapView({ year, perDay, onDay }: { year: number; perDay: Map<string
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0"><CardTitle className="text-base">Peta Kepadatan {year}</CardTitle><Legend /></CardHeader>
       <CardContent className="overflow-x-auto">
-        <table className="border-separate border-spacing-0.5 text-xs">
-          <thead><tr><th />{Array.from({ length: 31 }, (_, i) => <th key={i} className="w-6 font-normal text-muted-foreground">{i + 1}</th>)}</tr></thead>
+        <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-0.5 text-xs">
+          <colgroup>
+            <col className="w-10" />
+            {Array.from({ length: 31 }, (_, i) => <col key={i} />)}
+          </colgroup>
+          <thead><tr><th />{Array.from({ length: 31 }, (_, i) => <th key={i} className="font-normal text-muted-foreground">{i + 1}</th>)}</tr></thead>
           <tbody>
             {BULAN.map((b, m) => {
               const days = new Date(year, m + 1, 0).getDate();
               return (
                 <tr key={b}>
-                  <td className="pr-2 font-medium">{b}</td>
+                  <td className="pr-2 font-medium xl:text-sm">{b}</td>
                   {Array.from({ length: 31 }, (_, i) => {
                     if (i >= days) return <td key={i} />;
                     const d = new Date(year, m, i + 1);
@@ -278,7 +327,7 @@ function HeatmapView({ year, perDay, onDay }: { year: number; perDay: Map<string
                     return (
                       <td key={i}>
                         <button title={`${i + 1} ${b}: ${n} kegiatan`} onClick={() => onDay(d)}
-                          className={cn('flex h-6 w-6 items-center justify-center rounded-sm transition hover:ring-2 hover:ring-ring', heatClass(n), weekend && n === 0 && 'opacity-50')}>
+                          className={cn('flex h-[clamp(1.5rem,3vw,3rem)] w-full items-center justify-center rounded-sm transition hover:ring-2 hover:ring-ring', heatClass(n), weekend && n === 0 && 'opacity-50')}>
                           {n > 0 ? n : ''}
                         </button>
                       </td>
@@ -313,7 +362,9 @@ function GanttView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
           {groups.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Belum ada kegiatan.</p>}
           {groups.map(([f, list]) => (
             <div key={f} className="border-b py-2">
-              <div className="mb-1 text-sm font-semibold">{f}</div>
+              <div className="mb-1">
+                <Badge variant="outline" className={cn('font-semibold', fungsiColor(f))}>{fungsiDisplayName(f)}</Badge>
+              </div>
               {list.map((j) => {
                 const l = pct(j.tanggal_mulai);
                 const w = Math.max(0.4, pct(new Date(j.tanggal_selesai.getTime() + DAY)) - l);
@@ -322,7 +373,8 @@ function GanttView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
                     <div className="w-48 truncate pr-2 text-xs" title={j.nama_kegiatan}>{j.nama_kegiatan}</div>
                     <div className="relative h-5 flex-1 bg-muted/40">
                       <button onClick={() => onItem(j)} title={`${j.nama_kegiatan} (${fmtRange(j)})`}
-                        className="absolute top-0.5 h-4 rounded bg-primary hover:opacity-80" style={{ left: `${l}%`, width: `${w}%` }} />
+                        aria-label={`${fungsiDisplayName(j.fungsi)}: ${j.nama_kegiatan} (${fmtRange(j)})`}
+                        className={cn('absolute top-0.5 h-4 rounded hover:opacity-80', fungsiColor(j.fungsi, 'solid'))} style={{ left: `${l}%`, width: `${w}%` }} />
                     </div>
                   </div>
                 );
@@ -357,7 +409,7 @@ function MonthView({ year, perDay, onDay }: { year: number; perDay: Map<string, 
             return (
               <button key={i} onClick={() => onDay(d)} className={cn('min-h-24 rounded-md border p-1 text-left hover:bg-accent', list.length > 1 && 'border-primary')}>
                 <div className="font-semibold">{d.getDate()}</div>
-                {list.slice(0, 3).map((j) => <div key={j.id} className="mt-0.5 truncate rounded bg-primary/15 px-1">{j.nama_kegiatan}</div>)}
+                {list.slice(0, 3).map((j) => <div key={j.id} title={fungsiDisplayName(j.fungsi)} className={cn('mt-0.5 truncate rounded border px-1', fungsiColor(j.fungsi))}>{j.nama_kegiatan}</div>)}
                 {list.length > 3 && <div className="text-muted-foreground">+{list.length - 3} lainnya</div>}
               </button>
             );
@@ -370,20 +422,24 @@ function MonthView({ year, perDay, onDay }: { year: number; perDay: Map<string, 
 
 function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jadwal[]; perDay: Map<string, Jadwal[]>; onItem: (j: Jadwal) => void }) {
   const DAY = 86_400_000;
-  const yStart = new Date(year, 0, 1).getTime();
-  const yEnd = new Date(year, 11, 31, 23, 59, 59).getTime();
-  const perMonth = BULAN.map((_, m) => new Set([...perDay.entries()].filter(([k]) => +k.slice(5, 7) === m + 1).flatMap(([, v]) => v.map((j) => j.id))).size);
+  const perMonthByFungsi = BULAN.map(() => new Map<string, Set<string>>());
+  perDay.forEach((dayItems, key) => {
+    const month = Number(key.slice(5, 7)) - 1;
+    dayItems.forEach((j) => {
+      const fungsi = j.fungsi || '-';
+      const ids = perMonthByFungsi[month].get(fungsi) ?? new Set<string>();
+      ids.add(j.id);
+      perMonthByFungsi[month].set(fungsi, ids);
+    });
+  });
+  const perMonth = perMonthByFungsi.map((counts) => [...counts.values()].reduce((sum, ids) => sum + ids.size, 0));
   const max = Math.max(1, ...perMonth);
   const busiest = perMonth.indexOf(Math.max(...perMonth));
   const top5 = [...perDay.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 5);
   const peak = top5[0];
   const ov = findOverlaps(items);
+  const overlapGroups = findOverlapGroups(items);
   const hariBentrok = [...perDay.values()].filter((v) => v.length >= 2).length;
-  const totalOrangHari = items.reduce((s, j) => {
-    const d0 = Math.max(j.tanggal_mulai.getTime(), yStart);
-    const d1 = Math.min(j.tanggal_selesai.getTime(), yEnd);
-    return s + (Math.floor((d1 - d0) / DAY) + 1) * Math.max(1, j.organik.length);
-  }, 0);
   const perFungsi = useMemo(() => {
     const m = new Map<string, { keg: number; hari: Set<string>; ov: number }>();
     items.forEach((j) => {
@@ -402,23 +458,34 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
   }, [items]);
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Total kegiatan" value={items.length} />
         <Kpi label="Bulan tersibuk" value={items.length ? BULAN_PANJANG[busiest] : '-'} />
         <Kpi label="Tanggal terpadat" value={peak ? `${toDdMmYyyy(new Date(peak[0]))} (${peak[1].length} keg.)` : '-'} />
-        <Kpi label="Hari ≥2 kegiatan" value={hariBentrok} />
-        <Kpi label="Pasangan bentrok" value={ov.length} />
-        <Kpi label="Total orang-hari" value={totalOrangHari.toLocaleString('id-ID')} />
+        <Kpi label="Hari dengan overlap" value={hariBentrok} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle className="text-base">Kegiatan per bulan {year}</CardTitle></CardHeader>
+          <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-base">Kegiatan per bulan {year}</CardTitle>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {FUNGSI_LEGEND.map(([label, key]) => (
+                <span key={key} className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <span className={cn('h-2.5 w-2.5 rounded-sm', fungsiColor(key, 'solid'))} />{label}
+                </span>
+              ))}
+            </div>
+          </CardHeader>
           <CardContent className="flex h-40 items-end gap-2">
             {perMonth.map((n, m) => (
               <div key={m} className="flex flex-1 flex-col items-center gap-1 text-xs">
                 <span>{n}</span>
-                <div className="w-full rounded-t bg-primary" style={{ height: `${(n / max) * 100}px` }} />
+                <div className="flex w-full flex-col justify-end overflow-hidden rounded-t" style={{ height: '100px' }} title={`${BULAN_PANJANG[m]}: ${n} kegiatan`}>
+                  {[...perMonthByFungsi[m].entries()].map(([fungsi, ids]) => (
+                    <div key={fungsi} className={fungsiColor(fungsi, 'solid')} style={{ height: `${(ids.size / max) * 100}px` }} title={`${fungsiDisplayName(fungsi)}: ${ids.size}`} />
+                  ))}
+                </div>
                 <span className="text-muted-foreground">{BULAN[m]}</span>
               </div>
             ))}
@@ -435,7 +502,7 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
                   <span className="font-medium">{d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="hidden max-w-[240px] flex-wrap justify-end gap-1 sm:flex">
-                      {v.slice(0, 2).map((j) => <Badge key={j.id} variant="secondary" className="max-w-[110px] truncate font-normal">{j.nama_kegiatan}</Badge>)}
+                      {v.slice(0, 2).map((j) => <Badge key={j.id} variant="outline" title={fungsiDisplayName(j.fungsi)} className={cn('max-w-[110px] truncate font-normal', fungsiColor(j.fungsi))}>{j.nama_kegiatan}</Badge>)}
                       {v.length > 2 && <span className="text-xs text-muted-foreground">+{v.length - 2}</span>}
                     </div>
                     <span className={cn('rounded px-2 py-0.5 text-xs font-semibold', v.length >= 3 ? 'bg-red-700 text-white' : v.length === 2 ? 'bg-red-200 text-red-900' : 'bg-red-100 text-red-800')}>{v.length} kegiatan</span>
@@ -452,12 +519,12 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
         <CardContent className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b text-left text-xs text-muted-foreground">
-              <th className="p-2">Fungsi</th><th className="p-2 text-center">Kegiatan</th><th className="p-2 text-center">Hari aktif</th><th className="p-2 text-center">Terlibat bentrok</th>
+              <th className="p-2">Fungsi</th><th className="p-2 text-center">Kegiatan</th><th className="p-2 text-center">Hari aktif</th><th className="p-2 text-center">Terlibat overlap</th>
             </tr></thead>
             <tbody>
               {perFungsi.map(([f, s]) => (
                 <tr key={f} className="border-b">
-                  <td className="p-2 font-medium">{f}</td>
+                  <td className="p-2"><Badge variant="outline" className={cn('font-medium', fungsiColor(f))}>{fungsiDisplayName(f)}</Badge></td>
                   <td className="p-2 text-center font-semibold">{s.keg}</td>
                   <td className="p-2 text-center">{s.hari.size}</td>
                   <td className="p-2 text-center">{s.ov > 0 ? <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-800">{s.ov}×</span> : '-'}</td>
@@ -471,44 +538,59 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" />Kegiatan yang tumpang tindih ({ov.length})</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" />Kelompok kegiatan overlap ({overlapGroups.length})</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          {ov.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada kegiatan yang bentrok.</p>}
-          {ov.slice(0, 50).map(([a, b]) => {
-            const s = a.tanggal_mulai > b.tanggal_mulai ? a.tanggal_mulai : b.tanggal_mulai;
-            const e = a.tanggal_selesai < b.tanggal_selesai ? a.tanggal_selesai : b.tanggal_selesai;
-            const dur = Math.round((e.getTime() - s.getTime()) / DAY) + 1;
-            const same = a.fungsi === b.fungsi;
-            const orgGabung = new Set([...a.organik, ...b.organik].map(normName)).size;
-            const bulanSet = new Set<number>();
-            for (let t = s.getTime(); t <= e.getTime(); t += DAY) bulanSet.add(new Date(t).getMonth());
-            return (
-              <div key={a.id + b.id} className="space-y-2 rounded-md border p-3">
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <button className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-left hover:bg-accent" onClick={() => onItem(a)}>
-                    <Badge variant="secondary">{a.fungsi}</Badge>
-                    <span className="font-medium">{a.nama_kegiatan}</span>
-                    <span className="text-xs text-muted-foreground">{fmtRange(a)}</span>
-                  </button>
-                  <span className="font-bold text-destructive">×</span>
-                  <button className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-left hover:bg-accent" onClick={() => onItem(b)}>
-                    <Badge variant="secondary">{b.fungsi}</Badge>
-                    <span className="font-medium">{b.nama_kegiatan}</span>
-                    <span className="text-xs text-muted-foreground">{fmtRange(b)}</span>
-                  </button>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                  <Badge variant={same ? 'outline' : 'destructive'}>{same ? 'Dalam 1 Fungsi' : 'Antar-Fungsi'}</Badge>
-                  <span className="font-medium text-foreground">Masa bentrok: {s.getTime() === e.getTime() ? toDdMmYyyy(s) : `${toDdMmYyyy(s)} – ${toDdMmYyyy(e)}`}</span>
-                  <span>· {dur} hari</span>
-                  <span>· {Array.from(bulanSet).sort((x, y) => x - y).map((m) => BULAN_PANJANG[m]).join(', ')}</span>
-                  <span>· {orgGabung} organik terdampak</span>
-                </div>
-              </div>
-            );
-          })}
-          {ov.length > 50 && <p className="text-xs text-muted-foreground">Menampilkan 50 dari {ov.length} pasangan bentrok.</p>}
+        <CardContent>
+          {overlapGroups.length === 0 ? <p className="text-sm text-muted-foreground">Tidak ada kegiatan overlap.</p> : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-muted-foreground">
+                    <th className="p-2">Kegiatan yang overlap</th>
+                    <th className="p-2">Periode overlap</th>
+                    <th className="p-2 text-center">Durasi</th>
+                    <th className="p-2">Bulan</th>
+                    <th className="p-2 text-center">Organik pada ≥2 kegiatan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overlapGroups.slice(0, 50).map((group) => {
+                    const { items: groupItems, start: s, end: e } = group;
+                    const dur = Math.round((e.getTime() - s.getTime()) / DAY) + 1;
+                    const organikFrequency = new Map<string, number>();
+                    groupItems.forEach((item) => {
+                      new Set(item.organik.map(normName).filter(Boolean)).forEach((name) =>
+                        organikFrequency.set(name, (organikFrequency.get(name) ?? 0) + 1),
+                      );
+                    });
+                    const organikOverlap = [...organikFrequency.values()].filter((frequency) => frequency >= 2).length;
+                    const bulanSet = new Set<number>();
+                    for (let t = s.getTime(); t <= e.getTime(); t += DAY) bulanSet.add(new Date(t).getMonth());
+                    return (
+                      <tr key={groupItems.map((item) => item.id).sort().join('|')} className="border-b last:border-0">
+                        <td className="p-2 align-top">
+                          <div className="flex min-w-56 flex-col items-start gap-2">
+                            {groupItems.map((j) => (
+                              <button key={j.id} className="flex w-full flex-col items-start gap-1 rounded-md p-1 text-left hover:bg-accent" onClick={() => onItem(j)}>
+                                <Badge variant="outline" className={cn('font-normal', fungsiColor(j.fungsi))}>{fungsiDisplayName(j.fungsi)}</Badge>
+                                <span className="font-medium">{j.nama_kegiatan}</span>
+                                <span className="text-xs text-muted-foreground">{fmtRange(j)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap p-2 font-medium">{s.getTime() === e.getTime() ? toDdMmYyyy(s) : `${toDdMmYyyy(s)} – ${toDdMmYyyy(e)}`}</td>
+                        <td className="p-2 text-center">{dur} hari</td>
+                        <td className="p-2 text-muted-foreground">{Array.from(bulanSet).sort((x, y) => x - y).map((m) => BULAN_PANJANG[m]).join(', ')}</td>
+                        <td className="p-2 text-center">{organikOverlap}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {overlapGroups.length > 50 && <p className="pt-2 text-xs text-muted-foreground">Menampilkan 50 dari {overlapGroups.length} kelompok overlap.</p>}
         </CardContent>
       </Card>
     </div>
@@ -636,7 +718,6 @@ function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
     });
   }, [filtered, sortKey, sortAsc]);
   const toggleSort = (k: SortKey) => { if (k === sortKey) setSortAsc(!sortAsc); else { setSortKey(k); setSortAsc(k === 'nama'); } };
-  const beban = (n: number) => n === 0 ? { t: 'Belum ada', c: 'bg-muted text-muted-foreground' } : n <= 3 ? { t: 'Ideal', c: 'bg-green-100 text-green-800' } : n <= 6 ? { t: 'Sedang', c: 'bg-yellow-100 text-yellow-800' } : { t: 'Tinggi', c: 'bg-red-100 text-red-800' };
   const th = (k: SortKey, label: string, center?: boolean) => (
     <th className={cn('p-2', center && 'text-center')}>
       <button className={cn('inline-flex items-center gap-1', sortKey === k ? 'text-foreground' : 'hover:text-foreground')} onClick={() => toggleSort(k)}>
@@ -660,12 +741,10 @@ function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
               {th('keg', 'Kegiatan', true)}
               {th('pic', 'Sbg PIC', true)}
               {th('hari', 'Hari Sibuk', true)}
-              <th className="p-2">Beban</th>
               <th className="p-2">Daftar Kegiatan</th>
             </tr></thead>
             <tbody>
               {shown.map((r, i) => {
-                const b = beban(r.keg.length);
                 return (
                   <tr key={r.o.id + i} className="border-b align-top">
                     <td className="p-2 text-muted-foreground">{i + 1}</td>
@@ -673,9 +752,8 @@ function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
                     <td className="p-2 text-center font-semibold">{r.keg.length}</td>
                     <td className="p-2 text-center">{r.pic}</td>
                     <td className="p-2 text-center">{r.hari}</td>
-                    <td className="p-2"><span className={cn('rounded px-2 py-0.5 text-xs', b.c)}>{b.t}</span></td>
                     <td className="p-2"><div className="flex flex-wrap items-center gap-1">
-                      {r.keg.slice(0, 3).map((j) => <button key={j.id} onClick={() => onItem(j)}><Badge variant="outline" className="font-normal hover:bg-accent">{j.nama_kegiatan}</Badge></button>)}
+                      {r.keg.slice(0, 3).map((j) => <button key={j.id} onClick={() => onItem(j)}><Badge variant="outline" className={cn('font-normal hover:opacity-80', fungsiColor(j.fungsi))}>{j.nama_kegiatan}</Badge></button>)}
                       {r.keg.length > 3 && (
                         <Button size="sm" variant="secondary" className="h-6 px-2 text-xs" onClick={() => setEmp({ name: r.o.name, keg: r.keg, hari: r.hari, pic: r.pic })}>
                           +{r.keg.length - 3} lainnya
@@ -685,7 +763,7 @@ function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
                   </tr>
                 );
               })}
-              {shown.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Tidak ada pegawai.</td></tr>}
+              {shown.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Tidak ada pegawai.</td></tr>}
             </tbody>
           </table>
         </CardContent>
@@ -696,20 +774,21 @@ function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
           <DialogHeader><DialogTitle>Daftar Kegiatan — {emp?.name}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">{emp?.keg.length ?? 0} kegiatan · {emp?.hari ?? 0} hari sibuk · {emp?.pic ?? 0}× sebagai PIC</p>
           <div className="space-y-2">
-            {emp?.keg.slice().sort((a, b) => a.tanggal_mulai.getTime() - b.tanggal_mulai.getTime()).map((j) => (
-              <div key={j.id} className="rounded-md border p-2 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">{j.nama_kegiatan}</span>
-                  <Badge variant="secondary">{j.fungsi}</Badge>
+            {emp?.keg.slice().sort((a, b) => a.tanggal_mulai.getTime() - b.tanggal_mulai.getTime()).map((j, index) => (
+              <div key={j.id} className="flex gap-3 rounded-md border p-3 text-sm">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">{index + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">{j.nama_kegiatan}</span>
+                    <Badge variant="outline" className={cn('shrink-0', fungsiColor(j.fungsi))}>{fungsiDisplayName(j.fungsi)}</Badge>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>{fmtRange(j)}</span>
+                    {j.tahapan && <span>· {j.tahapan}</span>}
+                    {normName(j.penanggung_jawab) === normName(emp.name) && <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-foreground">Sebagai PIC</span>}
+                  </div>
+                  <Button size="sm" variant="ghost" className="mt-1 h-6 px-2 text-xs" onClick={() => { setEmp(null); onItem(j); }}>Lihat rincian</Button>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>{fmtRange(j)}</span>
-                  {j.tahapan && <span>· {j.tahapan}</span>}
-                  {j.penanggung_jawab && <span>· PIC: {j.penanggung_jawab}</span>}
-                  {normName(j.penanggung_jawab) === normName(emp.name) && <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-foreground">Sebagai PIC</span>}
-                </div>
-                {j.organik.length > 0 && <div className="mt-1 text-xs text-muted-foreground">Organik ({j.organik.length}): {j.organik.join(', ')}</div>}
-                <Button size="sm" variant="ghost" className="mt-1 h-6 px-2 text-xs" onClick={() => { setEmp(null); onItem(j); }}>Lihat rincian</Button>
               </div>
             ))}
           </div>
