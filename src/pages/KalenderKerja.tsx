@@ -435,8 +435,12 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
   const perMonth = perMonthByFungsi.map((counts) => [...counts.values()].reduce((sum, ids) => sum + ids.size, 0));
   const max = Math.max(1, ...perMonth);
   const busiest = perMonth.indexOf(Math.max(...perMonth));
-  const top5 = [...perDay.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 5);
-  const peak = top5[0];
+  const activeMonths = perMonth.filter((count) => count > 0).length;
+  const top5Months = perMonth
+    .map((count, month) => ({ count, month }))
+    .filter(({ count }) => count > 0)
+    .sort((a, b) => b.count - a.count || a.month - b.month)
+    .slice(0, 5);
   const overlapByMonth = BULAN.map((_, month) => {
     const monthStart = new Date(year, month, 1);
     const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
@@ -454,9 +458,9 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
   }).filter(({ groups }) => groups.length > 0);
   const hariBentrok = [...perDay.values()].filter((v) => v.length >= 2).length;
   const perFungsi = useMemo(() => {
-    const m = new Map<string, { keg: number; hari: Set<string>; ov: number }>();
+    const m = new Map<string, { keg: number; hari: Set<string>; ov: Map<string, Jadwal> }>();
     items.forEach((j) => {
-      const e = m.get(j.fungsi || '-') ?? { keg: 0, hari: new Set<string>(), ov: 0 };
+      const e = m.get(j.fungsi || '-') ?? { keg: 0, hari: new Set<string>(), ov: new Map<string, Jadwal>() };
       e.keg++;
       for (let t = j.tanggal_mulai.getTime(); t <= j.tanggal_selesai.getTime(); t += DAY) e.hari.add(dayKey(new Date(t)));
       m.set(j.fungsi || '-', e);
@@ -464,8 +468,8 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
     findOverlaps(items).forEach(([a, b]) => {
       const ea = m.get(a.fungsi || '-');
       const eb = m.get(b.fungsi || '-');
-      if (ea) ea.ov++;
-      if (eb) eb.ov++;
+      ea?.ov.set(a.id, a);
+      eb?.ov.set(b.id, b);
     });
     return [...m.entries()].sort((a, b) => b[1].keg - a[1].keg);
   }, [items]);
@@ -473,8 +477,8 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Total kegiatan" value={items.length} />
-        <Kpi label="Bulan tersibuk" value={items.length ? BULAN_PANJANG[busiest] : '-'} />
-        <Kpi label="Tanggal terpadat" value={peak ? `${toDdMmYyyy(new Date(peak[0]))} (${peak[1].length} keg.)` : '-'} />
+        <Kpi label="Bulan aktif" value={`${activeMonths} bulan`} />
+        <Kpi label="Bulan terpadat" value={top5Months.length ? `${BULAN_PANJANG[busiest]} (${perMonth[busiest]} keg.)` : '-'} />
         <Kpi label="Hari dengan overlap" value={hariBentrok} />
       </div>
 
@@ -505,20 +509,22 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-base">5 tanggal terpadat</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">5 bulan terpadat</CardTitle></CardHeader>
           <CardContent className="space-y-1.5 text-sm">
-            {top5.length === 0 && <p className="text-muted-foreground">Belum ada data.</p>}
-            {top5.map(([k, v]) => {
-              const d = new Date(k);
+            {top5Months.length === 0 && <p className="text-muted-foreground">Belum ada data.</p>}
+            {top5Months.map(({ month, count }) => {
               return (
-                <div key={k} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-1.5">
-                  <span className="font-medium">{d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="hidden max-w-[240px] flex-wrap justify-end gap-1 sm:flex">
-                      {v.slice(0, 2).map((j) => <Badge key={j.id} variant="outline" title={fungsiDisplayName(j.fungsi)} className={cn('max-w-[110px] truncate font-normal', fungsiColor(j.fungsi))}>{j.nama_kegiatan}</Badge>)}
-                      {v.length > 2 && <span className="text-xs text-muted-foreground">+{v.length - 2}</span>}
+                <div key={month} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+                  <span className="font-medium">{BULAN_PANJANG[month]}</span>
+                  <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                    <div className="hidden flex-wrap justify-end gap-1 sm:flex">
+                      {[...perMonthByFungsi[month].entries()].map(([fungsi, ids]) => (
+                        <Badge key={fungsi} variant="outline" title={fungsiDisplayName(fungsi)} className={cn('font-normal', fungsiColor(fungsi))}>
+                          {fungsiDisplayName(fungsi).replace(/^Fungsi\s*/i, '')}: {ids.size}
+                        </Badge>
+                      ))}
                     </div>
-                    <span className={cn('rounded px-2 py-0.5 text-xs font-semibold', v.length >= 3 ? 'bg-red-700 text-white' : v.length === 2 ? 'bg-red-200 text-red-900' : 'bg-red-100 text-red-800')}>{v.length} kegiatan</span>
+                    <span className="shrink-0 rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{count} kegiatan</span>
                   </div>
                 </div>
               );
@@ -532,7 +538,7 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
         <CardContent className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b text-left text-xs text-muted-foreground">
-              <th className="p-2">Fungsi</th><th className="p-2 text-center">Kegiatan</th><th className="p-2 text-center">Hari aktif</th><th className="p-2 text-center">Terlibat overlap</th>
+              <th className="p-2">Fungsi</th><th className="p-2 text-center">Kegiatan</th><th className="p-2 text-center">Hari aktif</th><th className="p-2">Nama Kegiatan</th>
             </tr></thead>
             <tbody>
               {perFungsi.map(([f, s]) => (
@@ -540,7 +546,17 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
                   <td className="p-2"><Badge variant="outline" className={cn('font-medium', fungsiColor(f))}>{fungsiDisplayName(f)}</Badge></td>
                   <td className="p-2 text-center font-semibold">{s.keg}</td>
                   <td className="p-2 text-center">{s.hari.size}</td>
-                  <td className="p-2 text-center">{s.ov > 0 ? <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-800">{s.ov}×</span> : '-'}</td>
+                  <td className="p-2">
+                    {s.ov.size === 0 ? '-' : (
+                      <ol className="list-decimal space-y-1 pl-5">
+                        {[...s.ov.values()].map((j) => (
+                          <li key={j.id}>
+                            <button type="button" className="text-left hover:text-primary hover:underline" onClick={() => onItem(j)}>{j.nama_kegiatan}</button>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </td>
                 </tr>
               ))}
               {perFungsi.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">Belum ada data.</td></tr>}
