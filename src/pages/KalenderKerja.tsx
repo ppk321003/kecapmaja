@@ -179,7 +179,7 @@ export default function KalenderKerja() {
       </CardContent></Card>
     );
 
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+  const years = Array.from({ length: 10 }, (_, i) => 2026 + i);
 
   return (
     <div className="space-y-4 p-4 md:p-6">
