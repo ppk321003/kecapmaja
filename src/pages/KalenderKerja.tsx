@@ -589,7 +589,7 @@ function JadwalForm({ form, setForm, fungsiList, saving, onSave }: {
             <div className="space-y-1"><Label>Tanggal Selesai</Label><Input type="date" value={form.tanggal_selesai} min={form.tanggal_mulai} onChange={(e) => set('tanggal_selesai', e.target.value)} /></div>
           </div>
           <p className="text-xs text-muted-foreground">Kosongkan tanggal selesai jika kegiatan hanya 1 hari.</p>
-          <div className="space-y-1"><Label>Penanggung Jawab</Label><Input value={form.penanggung_jawab} onChange={(e) => set('penanggung_jawab', e.target.value)} /></div>
+          <PenanggungJawabPicker value={form.penanggung_jawab} onChange={(v) => set('penanggung_jawab', v)} />
           <OrganikPicker value={form.organik} onChange={(v) => set('organik', v)} />
           <div className="space-y-1"><Label>Keterangan</Label><Textarea value={form.keterangan} onChange={(e) => set('keterangan', e.target.value)} /></div>
         </div>
@@ -604,9 +604,14 @@ function JadwalForm({ form, setForm, fungsiList, saving, onSave }: {
 
 const normName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
+type SortKey = 'nama' | 'keg' | 'pic' | 'hari';
+
 function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onItem: (j: Jadwal) => void }) {
   const { data } = useOrganikBPS();
   const [q, setQ] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('keg');
+  const [sortAsc, setSortAsc] = useState(false);
+  const [emp, setEmp] = useState<{ name: string; keg: Jadwal[]; hari: number; pic: number } | null>(null);
   const rows = useMemo(() => {
     const DAY = 86_400_000;
     const yStart = new Date(year, 0, 1).getTime(), yEnd = new Date(year, 11, 31).getTime();
@@ -621,40 +626,135 @@ function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
     });
     return list.sort((a, b) => b.keg.length - a.keg.length || b.hari - a.hari || a.o.name.localeCompare(b.o.name));
   }, [data, items, year]);
-  const shown = rows.filter((r) => r.o.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const filtered = useMemo(() => rows.filter((r) => r.o.name.toLowerCase().includes(q.trim().toLowerCase())), [rows, q]);
+  const shown = useMemo(() => {
+    const val = (r: (typeof rows)[number]) => (sortKey === 'nama' ? r.o.name : sortKey === 'keg' ? r.keg.length : sortKey === 'pic' ? r.pic : r.hari);
+    return [...filtered].sort((a, b) => {
+      const va = val(a), vb = val(b);
+      const d = typeof va === 'string' ? (va as string).localeCompare(vb as string) : (va as number) - (vb as number);
+      return d !== 0 ? (sortAsc ? d : -d) : a.o.name.localeCompare(b.o.name);
+    });
+  }, [filtered, sortKey, sortAsc]);
+  const toggleSort = (k: SortKey) => { if (k === sortKey) setSortAsc(!sortAsc); else { setSortKey(k); setSortAsc(k === 'nama'); } };
   const beban = (n: number) => n === 0 ? { t: 'Belum ada', c: 'bg-muted text-muted-foreground' } : n <= 3 ? { t: 'Ideal', c: 'bg-green-100 text-green-800' } : n <= 6 ? { t: 'Sedang', c: 'bg-yellow-100 text-yellow-800' } : { t: 'Tinggi', c: 'bg-red-100 text-red-800' };
+  const th = (k: SortKey, label: string, center?: boolean) => (
+    <th className={cn('p-2', center && 'text-center')}>
+      <button className={cn('inline-flex items-center gap-1', sortKey === k ? 'text-foreground' : 'hover:text-foreground')} onClick={() => toggleSort(k)}>
+        {label}
+        {sortKey === k ? (sortAsc ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+      </button>
+    </th>
+  );
   return (
-    <Card>
-      <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
-        <CardTitle className="text-base">Rekap Karyawan {year} ({rows.length} pegawai)</CardTitle>
-        <Input className="w-60" placeholder="Cari nama pegawai…" value={q} onChange={(e) => setQ(e.target.value)} />
-      </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b text-left text-xs text-muted-foreground">
-            <th className="p-2">No</th><th className="p-2">Nama</th><th className="p-2 text-center">Kegiatan</th><th className="p-2 text-center">Sbg PIC</th><th className="p-2 text-center">Hari Sibuk</th><th className="p-2">Beban</th><th className="p-2">Daftar Kegiatan</th>
-          </tr></thead>
-          <tbody>
-            {shown.map((r, i) => {
-              const b = beban(r.keg.length);
-              return (
-                <tr key={r.o.id + i} className="border-b align-top">
-                  <td className="p-2 text-muted-foreground">{i + 1}</td>
-                  <td className="p-2"><div className="font-medium">{r.o.name}</div>{r.o.jabatan && <div className="text-xs text-muted-foreground">{r.o.jabatan}</div>}</td>
-                  <td className="p-2 text-center font-semibold">{r.keg.length}</td>
-                  <td className="p-2 text-center">{r.pic}</td>
-                  <td className="p-2 text-center">{r.hari}</td>
-                  <td className="p-2"><span className={cn('rounded px-2 py-0.5 text-xs', b.c)}>{b.t}</span></td>
-                  <td className="p-2"><div className="flex flex-wrap gap-1">
-                    {r.keg.map((j) => <button key={j.id} onClick={() => onItem(j)}><Badge variant="outline" className="font-normal hover:bg-accent">{j.nama_kegiatan}</Badge></button>)}
-                  </div></td>
-                </tr>
-              );
-            })}
-            {shown.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Tidak ada pegawai.</td></tr>}
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+          <CardTitle className="text-base">Rekap Karyawan {year} ({rows.length} pegawai)</CardTitle>
+          <Input className="w-60" placeholder="Cari nama pegawai…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b text-left text-xs text-muted-foreground">
+              <th className="p-2">No</th>
+              {th('nama', 'Nama')}
+              {th('keg', 'Kegiatan', true)}
+              {th('pic', 'Sbg PIC', true)}
+              {th('hari', 'Hari Sibuk', true)}
+              <th className="p-2">Beban</th>
+              <th className="p-2">Daftar Kegiatan</th>
+            </tr></thead>
+            <tbody>
+              {shown.map((r, i) => {
+                const b = beban(r.keg.length);
+                return (
+                  <tr key={r.o.id + i} className="border-b align-top">
+                    <td className="p-2 text-muted-foreground">{i + 1}</td>
+                    <td className="p-2"><div className="font-medium">{r.o.name}</div>{r.o.jabatan && <div className="text-xs text-muted-foreground">{r.o.jabatan}</div>}</td>
+                    <td className="p-2 text-center font-semibold">{r.keg.length}</td>
+                    <td className="p-2 text-center">{r.pic}</td>
+                    <td className="p-2 text-center">{r.hari}</td>
+                    <td className="p-2"><span className={cn('rounded px-2 py-0.5 text-xs', b.c)}>{b.t}</span></td>
+                    <td className="p-2"><div className="flex flex-wrap items-center gap-1">
+                      {r.keg.slice(0, 3).map((j) => <button key={j.id} onClick={() => onItem(j)}><Badge variant="outline" className="font-normal hover:bg-accent">{j.nama_kegiatan}</Badge></button>)}
+                      {r.keg.length > 3 && (
+                        <Button size="sm" variant="secondary" className="h-6 px-2 text-xs" onClick={() => setEmp({ name: r.o.name, keg: r.keg, hari: r.hari, pic: r.pic })}>
+                          +{r.keg.length - 3} lainnya
+                        </Button>
+                      )}
+                    </div></td>
+                  </tr>
+                );
+              })}
+              {shown.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Tidak ada pegawai.</td></tr>}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!emp} onOpenChange={(o) => !o && setEmp(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader><DialogTitle>Daftar Kegiatan — {emp?.name}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">{emp?.keg.length ?? 0} kegiatan · {emp?.hari ?? 0} hari sibuk · {emp?.pic ?? 0}× sebagai PIC</p>
+          <div className="space-y-2">
+            {emp?.keg.slice().sort((a, b) => a.tanggal_mulai.getTime() - b.tanggal_mulai.getTime()).map((j) => (
+              <div key={j.id} className="rounded-md border p-2 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">{j.nama_kegiatan}</span>
+                  <Badge variant="secondary">{j.fungsi}</Badge>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{fmtRange(j)}</span>
+                  {j.tahapan && <span>· {j.tahapan}</span>}
+                  {j.penanggung_jawab && <span>· PIC: {j.penanggung_jawab}</span>}
+                  {normName(j.penanggung_jawab) === normName(emp.name) && <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-foreground">Sebagai PIC</span>}
+                </div>
+                {j.organik.length > 0 && <div className="mt-1 text-xs text-muted-foreground">Organik ({j.organik.length}): {j.organik.join(', ')}</div>}
+                <Button size="sm" variant="ghost" className="mt-1 h-6 px-2 text-xs" onClick={() => { setEmp(null); onItem(j); }}>Lihat rincian</Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function PenanggungJawabPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { data, loading } = useOrganikBPS();
+  const names = useMemo(() => Array.from(new Set(data.map((o) => o.name).filter(Boolean))), [data]);
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="space-y-1">
+      <Label>Penanggung Jawab</Label>
+      {names.length === 0 && !loading ? (
+        <Input placeholder="Ketik nama penanggung jawab" value={value} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" className="w-full justify-between font-normal">
+              <span className={cn(!value && 'text-muted-foreground')}>{value || 'Pilih nama organik'}</span>
+              <span className="flex items-center gap-1">
+                {value && <X className="h-3 w-3 opacity-50 hover:opacity-100" onClick={(e) => { e.stopPropagation(); onChange(''); }} />}
+                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+              </span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+            <Command filter={(v, s) => (v.toLowerCase().includes(s.trim().toLowerCase()) ? 1 : 0)}>
+              <CommandInput placeholder="Cari nama organik…" />
+              <CommandList>
+                <CommandEmpty>Tidak ditemukan.</CommandEmpty>
+                {loading && <div className="px-3 py-2 text-sm text-muted-foreground">Memuat daftar pegawai…</div>}
+                {names.map((n) => (
+                  <CommandItem key={n} value={n} onSelect={() => { onChange(n); setOpen(false); }}>
+                    <Check className={cn('mr-2 h-4 w-4', value === n ? 'opacity-100' : 'opacity-0')} />{n}
+                  </CommandItem>
+                ))}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
   );
 }
