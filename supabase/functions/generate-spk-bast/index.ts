@@ -1,7 +1,7 @@
 // @ts-ignore - Deno runtime
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzdCowcmf5CAAL6CdHtrnSGQIJ-Ty80oPWyQGqwmMDSA11MICoj0a2rOxwU52suFrM/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyw64RNfCNRE59sNPAmCtvihHiiL-yjnCiAb0grMHN48wRX_EqVxXchvXRV1g0sh_Vn/exec";
 
 serve(async (req: Request) => {
   // Handle CORS
