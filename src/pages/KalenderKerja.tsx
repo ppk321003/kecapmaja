@@ -400,7 +400,118 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
     });
     return [...m.entries()].sort((a, b) => b[1].keg - a[1].keg);
   }, [items]);
-...
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <Kpi label="Total kegiatan" value={items.length} />
+        <Kpi label="Bulan tersibuk" value={items.length ? BULAN_PANJANG[busiest] : '-'} />
+        <Kpi label="Tanggal terpadat" value={peak ? `${toDdMmYyyy(new Date(peak[0]))} (${peak[1].length} keg.)` : '-'} />
+        <Kpi label="Hari ≥2 kegiatan" value={hariBentrok} />
+        <Kpi label="Pasangan bentrok" value={ov.length} />
+        <Kpi label="Total orang-hari" value={totalOrangHari.toLocaleString('id-ID')} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Kegiatan per bulan {year}</CardTitle></CardHeader>
+          <CardContent className="flex h-40 items-end gap-2">
+            {perMonth.map((n, m) => (
+              <div key={m} className="flex flex-1 flex-col items-center gap-1 text-xs">
+                <span>{n}</span>
+                <div className="w-full rounded-t bg-primary" style={{ height: `${(n / max) * 100}px` }} />
+                <span className="text-muted-foreground">{BULAN[m]}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">5 tanggal terpadat</CardTitle></CardHeader>
+          <CardContent className="space-y-1.5 text-sm">
+            {top5.length === 0 && <p className="text-muted-foreground">Belum ada data.</p>}
+            {top5.map(([k, v]) => {
+              const d = new Date(k);
+              return (
+                <div key={k} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-1.5">
+                  <span className="font-medium">{d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="hidden max-w-[240px] flex-wrap justify-end gap-1 sm:flex">
+                      {v.slice(0, 2).map((j) => <Badge key={j.id} variant="secondary" className="max-w-[110px] truncate font-normal">{j.nama_kegiatan}</Badge>)}
+                      {v.length > 2 && <span className="text-xs text-muted-foreground">+{v.length - 2}</span>}
+                    </div>
+                    <span className={cn('rounded px-2 py-0.5 text-xs font-semibold', v.length >= 3 ? 'bg-red-700 text-white' : v.length === 2 ? 'bg-red-200 text-red-900' : 'bg-red-100 text-red-800')}>{v.length} kegiatan</span>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Beban per Fungsi</CardTitle></CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b text-left text-xs text-muted-foreground">
+              <th className="p-2">Fungsi</th><th className="p-2 text-center">Kegiatan</th><th className="p-2 text-center">Hari aktif</th><th className="p-2 text-center">Terlibat bentrok</th>
+            </tr></thead>
+            <tbody>
+              {perFungsi.map(([f, s]) => (
+                <tr key={f} className="border-b">
+                  <td className="p-2 font-medium">{f}</td>
+                  <td className="p-2 text-center font-semibold">{s.keg}</td>
+                  <td className="p-2 text-center">{s.hari.size}</td>
+                  <td className="p-2 text-center">{s.ov > 0 ? <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-800">{s.ov}×</span> : '-'}</td>
+                </tr>
+              ))}
+              {perFungsi.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">Belum ada data.</td></tr>}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" />Kegiatan yang tumpang tindih ({ov.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {ov.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada kegiatan yang bentrok.</p>}
+          {ov.slice(0, 50).map(([a, b]) => {
+            const s = a.tanggal_mulai > b.tanggal_mulai ? a.tanggal_mulai : b.tanggal_mulai;
+            const e = a.tanggal_selesai < b.tanggal_selesai ? a.tanggal_selesai : b.tanggal_selesai;
+            const dur = Math.round((e.getTime() - s.getTime()) / DAY) + 1;
+            const same = a.fungsi === b.fungsi;
+            const orgGabung = new Set([...a.organik, ...b.organik].map(normName)).size;
+            const bulanSet = new Set<number>();
+            for (let t = s.getTime(); t <= e.getTime(); t += DAY) bulanSet.add(new Date(t).getMonth());
+            return (
+              <div key={a.id + b.id} className="space-y-2 rounded-md border p-3">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <button className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-left hover:bg-accent" onClick={() => onItem(a)}>
+                    <Badge variant="secondary">{a.fungsi}</Badge>
+                    <span className="font-medium">{a.nama_kegiatan}</span>
+                    <span className="text-xs text-muted-foreground">{fmtRange(a)}</span>
+                  </button>
+                  <span className="font-bold text-destructive">×</span>
+                  <button className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-left hover:bg-accent" onClick={() => onItem(b)}>
+                    <Badge variant="secondary">{b.fungsi}</Badge>
+                    <span className="font-medium">{b.nama_kegiatan}</span>
+                    <span className="text-xs text-muted-foreground">{fmtRange(b)}</span>
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  <Badge variant={same ? 'outline' : 'destructive'}>{same ? 'Dalam 1 Fungsi' : 'Antar-Fungsi'}</Badge>
+                  <span className="font-medium text-foreground">Masa bentrok: {s.getTime() === e.getTime() ? toDdMmYyyy(s) : `${toDdMmYyyy(s)} – ${toDdMmYyyy(e)}`}</span>
+                  <span>· {dur} hari</span>
+                  <span>· {Array.from(bulanSet).sort((x, y) => x - y).map((m) => BULAN_PANJANG[m]).join(', ')}</span>
+                  <span>· {orgGabung} organik terdampak</span>
+                </div>
+              </div>
+            );
+          })}
+          {ov.length > 50 && <p className="text-xs text-muted-foreground">Menampilkan 50 dari {ov.length} pasangan bentrok.</p>}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
