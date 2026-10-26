@@ -437,8 +437,21 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
   const busiest = perMonth.indexOf(Math.max(...perMonth));
   const top5 = [...perDay.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 5);
   const peak = top5[0];
-  const ov = findOverlaps(items);
-  const overlapGroups = findOverlapGroups(items);
+  const overlapByMonth = BULAN.map((_, month) => {
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    const monthItems = items
+      .filter((item) => item.tanggal_mulai <= monthEnd && item.tanggal_selesai >= monthStart)
+      .map((item) => ({
+        ...item,
+        tanggal_mulai: item.tanggal_mulai < monthStart ? monthStart : item.tanggal_mulai,
+        tanggal_selesai: item.tanggal_selesai > monthEnd ? monthEnd : item.tanggal_selesai,
+      }));
+    return {
+      month,
+      groups: findOverlapGroups(monthItems),
+    };
+  }).filter(({ groups }) => groups.length > 0);
   const hariBentrok = [...perDay.values()].filter((v) => v.length >= 2).length;
   const perFungsi = useMemo(() => {
     const m = new Map<string, { keg: number; hari: Set<string>; ov: number }>();
@@ -538,51 +551,50 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" />Kelompok kegiatan overlap ({overlapGroups.length})</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" />Kelompok kegiatan overlap per bulan ({overlapByMonth.length} bulan)</CardTitle>
         </CardHeader>
         <CardContent>
-          {overlapGroups.length === 0 ? <p className="text-sm text-muted-foreground">Tidak ada kegiatan overlap.</p> : (
+          {overlapByMonth.length === 0 ? <p className="text-sm text-muted-foreground">Tidak ada kegiatan overlap.</p> : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="p-2">Kegiatan yang overlap</th>
-                    <th className="p-2">Periode overlap</th>
-                    <th className="p-2 text-center">Durasi</th>
                     <th className="p-2">Bulan</th>
-                    <th className="p-2 text-center">Organik pada ≥2 kegiatan</th>
+                    <th className="p-2">Kegiatan yang overlap serentak</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {overlapGroups.slice(0, 50).map((group) => {
-                    const { items: groupItems, start: s, end: e } = group;
-                    const dur = Math.round((e.getTime() - s.getTime()) / DAY) + 1;
-                    const organikFrequency = new Map<string, number>();
-                    groupItems.forEach((item) => {
-                      new Set(item.organik.map(normName).filter(Boolean)).forEach((name) =>
-                        organikFrequency.set(name, (organikFrequency.get(name) ?? 0) + 1),
-                      );
-                    });
-                    const organikOverlap = [...organikFrequency.values()].filter((frequency) => frequency >= 2).length;
-                    const bulanSet = new Set<number>();
-                    for (let t = s.getTime(); t <= e.getTime(); t += DAY) bulanSet.add(new Date(t).getMonth());
+                  {overlapByMonth.map(({ month, groups }) => {
                     return (
-                      <tr key={groupItems.map((item) => item.id).sort().join('|')} className="border-b last:border-0">
-                        <td className="p-2 align-top">
-                          <div className="flex min-w-56 flex-col items-start gap-2">
-                            {groupItems.map((j) => (
-                              <button key={j.id} className="flex w-full flex-col items-start gap-1 rounded-md p-1 text-left hover:bg-accent" onClick={() => onItem(j)}>
-                                <Badge variant="outline" className={cn('font-normal', fungsiColor(j.fungsi))}>{fungsiDisplayName(j.fungsi)}</Badge>
-                                <span className="font-medium">{j.nama_kegiatan}</span>
-                                <span className="text-xs text-muted-foreground">{fmtRange(j)}</span>
-                              </button>
-                            ))}
+                      <tr key={month} className="border-b last:border-0">
+                        <td className="whitespace-nowrap p-3 align-top font-semibold">{BULAN_PANJANG[month]}</td>
+                        <td className="p-3">
+                          <div className="space-y-3">
+                            {groups.map(({ items: groupItems }) => {
+                              const organikFrequency = new Map<string, number>();
+                              groupItems.forEach((item) => {
+                                new Set(item.organik.map(normName).filter(Boolean)).forEach((name) =>
+                                  organikFrequency.set(name, (organikFrequency.get(name) ?? 0) + 1),
+                                );
+                              });
+                              const organikOverlap = [...organikFrequency.values()].filter((frequency) => frequency >= 2).length;
+                              return (
+                                <div key={groupItems.map((item) => item.id).sort().join('|')} className="space-y-2 rounded-md bg-muted/30 p-2">
+                                  <div className="text-xs font-medium text-muted-foreground">{groupItems.length} kegiatan overlap serentak</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {groupItems.map((j) => (
+                                      <button key={j.id} className="flex max-w-full items-center gap-2 rounded-md border bg-background px-2 py-1 text-left hover:bg-accent" onClick={() => onItem(j)}>
+                                        <Badge variant="outline" className={cn('shrink-0 font-normal', fungsiColor(j.fungsi))}>{fungsiDisplayName(j.fungsi)}</Badge>
+                                        <span className="font-medium">{j.nama_kegiatan}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{organikOverlap} organik mengikuti ≥2 kegiatan</div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </td>
-                        <td className="whitespace-nowrap p-2 font-medium">{s.getTime() === e.getTime() ? toDdMmYyyy(s) : `${toDdMmYyyy(s)} – ${toDdMmYyyy(e)}`}</td>
-                        <td className="p-2 text-center">{dur} hari</td>
-                        <td className="p-2 text-muted-foreground">{Array.from(bulanSet).sort((x, y) => x - y).map((m) => BULAN_PANJANG[m]).join(', ')}</td>
-                        <td className="p-2 text-center">{organikOverlap}</td>
                       </tr>
                     );
                   })}
@@ -590,7 +602,6 @@ function SummaryView({ year, items, perDay, onItem }: { year: number; items: Jad
               </table>
             </div>
           )}
-          {overlapGroups.length > 50 && <p className="pt-2 text-xs text-muted-foreground">Menampilkan 50 dari {overlapGroups.length} kelompok overlap.</p>}
         </CardContent>
       </Card>
     </div>
@@ -748,7 +759,16 @@ function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
                 return (
                   <tr key={r.o.id + i} className="border-b align-top">
                     <td className="p-2 text-muted-foreground">{i + 1}</td>
-                    <td className="p-2"><div className="font-medium">{r.o.name}</div>{r.o.jabatan && <div className="text-xs text-muted-foreground">{r.o.jabatan}</div>}</td>
+                    <td className="p-2">
+                      <button
+                        type="button"
+                        className="text-left font-medium text-primary hover:underline"
+                        onClick={() => setEmp({ name: r.o.name, keg: r.keg, hari: r.hari, pic: r.pic })}
+                      >
+                        {r.o.name}
+                      </button>
+                      {r.o.jabatan && <div className="text-xs text-muted-foreground">{r.o.jabatan}</div>}
+                    </td>
                     <td className="p-2 text-center font-semibold">{r.keg.length}</td>
                     <td className="p-2 text-center">{r.pic}</td>
                     <td className="p-2 text-center">{r.hari}</td>
