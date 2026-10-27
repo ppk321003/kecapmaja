@@ -232,27 +232,36 @@ export default function KalenderKerja() {
           <SheetHeader><SheetTitle>{detailDay?.title}</SheetTitle></SheetHeader>
           <div className="mt-4 space-y-3">
             {detailDay?.items.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada kegiatan.</p>}
-            {detailDay?.items.map((j) => (
-              <Card key={j.id}><CardContent className="space-y-2 p-4 text-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="font-semibold">{j.nama_kegiatan}</div>
-                  <Badge variant="outline" className={cn('shrink-0', fungsiColor(j.fungsi))}>{fungsiDisplayName(j.fungsi)}</Badge>
+            {detailDay?.items.map((j, index) => (
+              <Card key={j.id}><CardContent className="flex gap-2.5 p-3 text-sm">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">{index + 1}</span>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-semibold">{j.nama_kegiatan}</div>
+                    <Badge variant="outline" className={cn('shrink-0', fungsiColor(j.fungsi))}>{fungsiDisplayName(j.fungsi)}</Badge>
+                  </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  {j.tahapan && <span>Tahapan: {j.tahapan}</span>}
+                  <span className="whitespace-nowrap">{fmtRange(j)}</span>
+                  {j.penanggung_jawab && <span>PIC: {j.penanggung_jawab}</span>}
                 </div>
-                {j.tahapan && <div className="text-muted-foreground">Tahapan: {j.tahapan}</div>}
-                <div>{fmtRange(j)}</div>
-                {j.penanggung_jawab && <div>PIC: {j.penanggung_jawab}</div>}
-                {j.keterangan && <div className="text-muted-foreground">{j.keterangan}</div>}
+                {j.keterangan && <div className="text-xs text-muted-foreground">{j.keterangan}</div>}
                 {j.organik.length > 0 && (
-                  <div className="min-w-0 rounded-md bg-muted/40 p-2">
-                    <div className="mb-1 text-xs font-medium text-muted-foreground">Organik Terlibat ({j.organik.length})</div>
-                    <ol className="grid grid-cols-1 gap-x-3 gap-y-0.5 text-xs sm:grid-cols-2">
-                      {j.organik.map((o, i) => (
-                        <li key={o} className="flex min-w-0 gap-1">
-                          <span className="w-5 shrink-0 text-right text-muted-foreground">{i + 1}.</span>
-                          <span className="min-w-0 truncate" title={o}>{o}</span>
-                        </li>
-                      ))}
-                    </ol>
+                  <div className="min-w-0 rounded-md bg-muted/40 px-2 py-1.5">
+                    <details>
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                        <span>Organik Terlibat ({j.organik.length})</span>
+                        <span className="text-primary">Lihat nama</span>
+                      </summary>
+                      <ol className="mt-2 grid grid-cols-1 gap-x-3 gap-y-0.5 text-xs sm:grid-cols-2">
+                        {j.organik.map((o, i) => (
+                          <li key={o} className="flex min-w-0 gap-1">
+                            <span className="w-5 shrink-0 text-right text-muted-foreground">{i + 1}.</span>
+                            <span className="min-w-0 truncate" title={o}>{o}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </details>
                   </div>
                 )}
                 {j.status && <div className="text-xs italic text-muted-foreground">{j.status}</div>}
@@ -262,6 +271,7 @@ export default function KalenderKerja() {
                     <Button size="sm" variant="destructive" onClick={() => setToDelete(j)}><Trash2 className="mr-1 h-3 w-3" />Hapus</Button>
                   </div>
                 )}
+                </div>
               </CardContent></Card>
             ))}
           </div>
@@ -805,31 +815,32 @@ function RekapView({ year, items, onItem }: { year: number; items: Jadwal[]; onI
         </CardContent>
       </Card>
 
-      <Dialog open={!!emp} onOpenChange={(o) => !o && setEmp(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
-          <DialogHeader><DialogTitle>Daftar Kegiatan — {emp?.name}</DialogTitle></DialogHeader>
+      <Sheet open={!!emp} onOpenChange={(o) => !o && setEmp(null)}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+          <SheetHeader><SheetTitle>Daftar Kegiatan — {emp?.name}</SheetTitle></SheetHeader>
           <p className="text-sm text-muted-foreground">{emp?.keg.length ?? 0} kegiatan · {emp?.hari ?? 0} hari sibuk · {emp?.pic ?? 0}× sebagai PIC</p>
           <div className="space-y-2">
+            {emp?.keg.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada kegiatan pada tahun {year}.</p>}
             {emp?.keg.slice().sort((a, b) => a.tanggal_mulai.getTime() - b.tanggal_mulai.getTime()).map((j, index) => (
               <div key={j.id} className="flex gap-3 rounded-md border p-3 text-sm">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">{index + 1}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium">{j.nama_kegiatan}</span>
-                    <Badge variant="outline" className={cn('shrink-0', fungsiColor(j.fungsi))}>{fungsiDisplayName(j.fungsi)}</Badge>
+                  <div className="relative min-h-6 pr-32">
+                    <span className="block font-medium">{j.nama_kegiatan}</span>
+                    <Badge variant="outline" className={cn('absolute right-0 top-0 max-w-32 truncate', fungsiColor(j.fungsi))}>{fungsiDisplayName(j.fungsi)}</Badge>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span>{fmtRange(j)}</span>
                     {j.tahapan && <span>· {j.tahapan}</span>}
                     {normName(j.penanggung_jawab) === normName(emp.name) && <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-foreground">Sebagai PIC</span>}
                   </div>
-                  <Button size="sm" variant="ghost" className="mt-1 h-6 px-2 text-xs" onClick={() => { setEmp(null); onItem(j); }}>Lihat rincian</Button>
+                  {j.keterangan && <p className="mt-1 text-xs text-muted-foreground">{j.keterangan}</p>}
                 </div>
               </div>
             ))}
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
