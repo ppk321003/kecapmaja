@@ -825,7 +825,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           kegiatan.nama.toLowerCase().includes(organikSearchQuery.toLowerCase())
         )
       )
-    : allPetugasData.organik.slice(0, 15);
+    : allPetugasData.organik;
 
   const filteredMitraData = mitraSearchQuery 
     ? allPetugasData.mitra.filter(item => 
@@ -834,7 +834,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
           kegiatan.nama.toLowerCase().includes(mitraSearchQuery.toLowerCase())
         )
       )
-    : allPetugasData.mitra.slice(0, 15);
+    : allPetugasData.mitra.slice(0, 25);
 
   return (
     <div className="space-y-6">
@@ -1020,7 +1020,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                 <Users className="h-5 w-5" />
                 Distribusi Realisasi Perjalanan Dinas - Organik
                 <span className="text-sm font-normal text-muted-foreground">
-                  ({organikSearchQuery ? `${filteredOrganikData.length} hasil` : 'Top 15'})
+                  ({organikSearchQuery ? `${filteredOrganikData.length} hasil` : `${filteredOrganikData.length} nama`})
                 </span>
               </CardTitle>
               <SearchInput 
@@ -1102,7 +1102,7 @@ export default function DashboardPerjadin({ viewMode, filterTahun }: DashboardPe
                 <Users className="h-5 w-5" />
                 Distribusi Realisasi Perjalanan Dinas - Mitra Statistik
                 <span className="text-sm font-normal text-muted-foreground">
-                  ({mitraSearchQuery ? `${filteredMitraData.length} hasil` : 'Top 15'})
+                  ({mitraSearchQuery ? `${filteredMitraData.length} hasil` : 'Top 25'})
                 </span>
               </CardTitle>
               <SearchInput 
