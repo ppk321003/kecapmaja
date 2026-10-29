@@ -613,7 +613,9 @@ const ETamu = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tujuan">Tujuan bertemu dengan (tidak wajib)</Label>
+                  <Label htmlFor="tujuan">
+                    Tujuan bertemu dengan <span className="italic">(tidak wajib isi)</span>
+                  </Label>
                   <Combobox
                     id="tujuan"
                     options={tujuanOptions}
