@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle2, Loader2, Send, Sparkles } from "lucide-react";
@@ -125,6 +126,14 @@ const ETamu = () => {
   const [loadingOrganik, setLoadingOrganik] = useState(true);
   const [existingAntrianData, setExistingAntrianData] = useState<string[][]>([]);
   const [generatedAntrian, setGeneratedAntrian] = useState<string>("");
+  const tujuanOptions = useMemo(
+    () =>
+      organikList.map((o) => ({
+        value: o.nama,
+        label: o.jabatan ? `${o.nama} - ${o.jabatan}` : o.nama,
+      })),
+    [organikList],
+  );
 
   // Fetch dropdown organik (filter kode satker 3210) + No HP + Jabatan
   useEffect(() => {
@@ -445,7 +454,7 @@ const ETamu = () => {
                   </Label>
                   <Input
                     id="asal"
-                    placeholder="Contoh: BPS Provinsi Jawa Barat"
+                    placeholder="Cth: Mitra Statistik/Pemda/Diskominfo/dll"
                     value={form.asal}
                     onChange={(e) => handleChange("asal", e.target.value)}
                     maxLength={150}
@@ -604,42 +613,20 @@ const ETamu = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tujuan">Tujuan bertemu dengan (opsional)</Label>
-                  <Select
+                  <Label htmlFor="tujuan">Tujuan bertemu dengan (tidak wajib)</Label>
+                  <Combobox
+                    id="tujuan"
+                    options={tujuanOptions}
                     value={form.tujuan}
-                    onValueChange={(v) => handleChange("tujuan", v)}
+                    onValueChange={(value) => handleChange("tujuan", value)}
+                    placeholder={
+                      loadingOrganik ? "Memuat daftar pegawai…" : "Pilih pegawai"
+                    }
+                    searchPlaceholder="Cari nama pegawai…"
+                    emptyText="Nama pegawai tidak ditemukan."
                     disabled={loadingOrganik}
-                  >
-                    <SelectTrigger id="tujuan">
-                      <SelectValue
-                        placeholder={
-                          loadingOrganik ? "Memuat daftar pegawai…" : "Pilih pegawai (opsional)"
-                        }
-                      >
-                        {form.tujuan && organikList.find(o => o.nama === form.tujuan) && (
-                          <span>
-                            {form.tujuan}
-                            {organikList.find(o => o.nama === form.tujuan)?.jabatan && ` - ${organikList.find(o => o.nama === form.tujuan)?.jabatan}`}
-                          </span>
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {organikList.length === 0 && !loadingOrganik && (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">
-                          Daftar pegawai tidak tersedia
-                        </div>
-                      )}
-                      {organikList.map((o) => (
-                        <SelectItem key={o.nama} value={o.nama}>
-                          <span>
-                            {o.nama}
-                            {o.jabatan && ` - ${o.jabatan}`}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    className="h-10 font-normal"
+                  />
                 </div>
 
                 <Button

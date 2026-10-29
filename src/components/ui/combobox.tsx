@@ -23,6 +23,7 @@ export interface ComboboxOption {
 
 interface ComboboxProps {
   options: ComboboxOption[]
+  id?: string
   value?: string
   onValueChange?: (value: string) => void
   placeholder?: string
@@ -34,6 +35,7 @@ interface ComboboxProps {
 
 export function Combobox({
   options,
+  id,
   value,
   onValueChange,
   placeholder = "Pilih...",
@@ -48,6 +50,7 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           role="combobox"
           aria-expanded={open}
