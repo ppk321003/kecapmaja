@@ -63,6 +63,7 @@ const keuanganItems = [
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Lapor Supervisi", url: "/lapor-supervisi", icon: MapPin },
   { title: "Blok Tanggal Translok", url: "/BlockTanggal", icon: Users },
+  { title: "Plotting Mitra", url: "/plotting-mitra", icon: UsersRound },
 ];
 
 // MENU GROUP: PENGADAAN
