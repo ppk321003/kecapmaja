@@ -210,6 +210,7 @@ export default function PlottingMitra() {
         </TabsList>
 
         <TabsContent value="daftar">
+          <Paged items={items} defaultSize={10}>{(pageItems, offset) => (
           <Card><CardContent className="overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
@@ -219,12 +220,12 @@ export default function PlottingMitra() {
               <tbody>
                 {isLoading && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Memuat…</td></tr>}
                 {!isLoading && items.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Belum ada plotting.</td></tr>}
-                {items.map((p, i) => {
+                {pageItems.map((p, i) => {
                   const st = rowStatus(p);
                   const can = canModify(role, p);
                   return (
                     <tr key={p.rowNumber} className="border-b align-top">
-                      <td className="p-2 text-muted-foreground">{i + 1}</td>
+                      <td className="p-2 text-muted-foreground">{offset + i + 1}</td>
                       <td className="p-2">{BULAN[p.bulan - 1] ?? '-'}{p.tanggal_mulai && <div className="text-xs text-muted-foreground">{p.tanggal_mulai}{p.tanggal_selesai && p.tanggal_selesai !== p.tanggal_mulai ? ` – ${p.tanggal_selesai}` : ''}</div>}</td>
                       <td className="p-2 font-medium">{p.nama_mitra}</td>
                       <td className="p-2"><div>{p.nama_kegiatan}</div><div className="text-xs text-muted-foreground">{p.fungsi}</div></td>
@@ -243,18 +244,20 @@ export default function PlottingMitra() {
               </tbody>
             </table>
           </CardContent></Card>
+          )}</Paged>
         </TabsContent>
 
         <TabsContent value="rekap">
+          <Paged items={totals.filter((t) => bulanFilter === 'semua' || t.bulan === Number(bulanFilter))
+                  .filter((t) => !q.trim() || t.nama.toLowerCase().includes(q.trim().toLowerCase()))
+                  .sort((a, b) => a.bulan - b.bulan || b.total - a.total)} defaultSize={20}>{(rekapRows) => (
           <Card><CardContent className="overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
                 <th className="p-2">Bulan</th><th className="p-2">Mitra</th><th className="p-2">Rincian kegiatan</th><th className="p-2 text-right">Total honor</th><th className="p-2 text-right">Batas SBML</th><th className="p-2 text-right">Sisa</th><th className="p-2">Status</th>
               </tr></thead>
               <tbody>
-                {totals.filter((t) => bulanFilter === 'semua' || t.bulan === Number(bulanFilter))
-                  .filter((t) => !q.trim() || t.nama.toLowerCase().includes(q.trim().toLowerCase()))
-                  .sort((a, b) => a.bulan - b.bulan || b.total - a.total).map((t) => {
+                {rekapRows.map((t) => {
                     const lim = effectiveLimit(sbml, Object.keys(t.perJenis));
                     const st = statusHonor(t.total, lim);
                     return (
@@ -273,15 +276,17 @@ export default function PlottingMitra() {
               </tbody>
             </table>
           </CardContent></Card>
+          )}</Paged>
         </TabsContent>
 
         <TabsContent value="matriks">
+          <Paged items={Array.from(new Set(totals.map((t) => t.nama))).filter((n) => !q.trim() || n.toLowerCase().includes(q.trim().toLowerCase())).sort()} defaultSize={20}>{(namaRows) => (
           <Card><CardHeader><CardTitle className="text-base">Total honor per mitra per bulan {tahun}</CardTitle></CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead><tr className="border-b text-muted-foreground"><th className="p-1 text-left">Mitra</th>{BULAN.map((b) => <th key={b} className="p-1">{b.slice(0, 3)}</th>)}</tr></thead>
                 <tbody>
-                  {Array.from(new Set(totals.map((t) => t.nama))).filter((n) => !q.trim() || n.toLowerCase().includes(q.trim().toLowerCase())).sort().map((n) => (
+                  {namaRows.map((n) => (
                     <tr key={n} className="border-b">
                       <td className="p-1 font-medium whitespace-nowrap">{n}</td>
                       {BULAN.map((_, i) => {
@@ -297,6 +302,7 @@ export default function PlottingMitra() {
               <p className="mt-2 text-xs text-muted-foreground">Hijau: aman · Kuning: ≥90% batas · Merah: melebihi SBML.</p>
             </CardContent>
           </Card>
+          )}</Paged>
         </TabsContent>
       </Tabs>
 
@@ -430,6 +436,39 @@ function PlotForm({ form, setForm, role, kegiatanOpts, loadingKeg, mitraList, sb
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Paged<T>({ items, defaultSize, children }: { items: T[]; defaultSize: number; children: (rows: T[], offset: number) => React.ReactNode }) {
+  const [size, setSize] = useState(String(defaultSize));
+  const [page, setPage] = useState(1);
+  const per = size === 'semua' ? Math.max(items.length, 1) : Number(size);
+  const pages = Math.max(1, Math.ceil(items.length / per));
+  const cur = Math.min(page, pages);
+  const offset = (cur - 1) * per;
+  const rows = items.slice(offset, offset + per);
+  return (
+    <div className="space-y-2">
+      {children(rows, offset)}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <span>Tampilkan</span>
+          <Select value={size} onValueChange={(v) => { setSize(v); setPage(1); }}>
+            <SelectTrigger className="h-8 w-24"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {['10', '20', '50'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+              <SelectItem value="semua">Semua</SelectItem>
+            </SelectContent>
+          </Select>
+          <span>{items.length ? `${offset + 1}–${offset + rows.length} dari ${items.length}` : '0 data'}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" disabled={cur <= 1} onClick={() => setPage(cur - 1)}>Sebelumnya</Button>
+          <span>Hal. {cur} / {pages}</span>
+          <Button size="sm" variant="outline" disabled={cur >= pages} onClick={() => setPage(cur + 1)}>Selanjutnya</Button>
+        </div>
+      </div>
     </div>
   );
 }
