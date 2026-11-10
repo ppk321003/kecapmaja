@@ -53,7 +53,7 @@ export default function PlottingMitra() {
   const { user } = useAuth();
   const role = user?.role ?? '';
   const satker = useSatkerConfigContext();
-  const cfg = satker?.getUserSatkerConfig() as (Record<string, string> | undefined);
+  const cfg = satker?.getUserSatkerConfig();
   const sheetId = cfg?.plotting_sheet_id || PLOTTING_SPREADSHEET_ID;
   const masterId = satker?.getUserSatkerSheetId('masterorganik') || '';
   const qc = useQueryClient();
