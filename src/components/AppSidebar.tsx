@@ -26,6 +26,7 @@ import {
   MapPin,
   ShieldCheck,
   CalendarDays,
+  Wrench,
 } from "lucide-react";
 
 import {
@@ -52,7 +53,6 @@ import { useSatkerConfig } from "@/hooks/use-satker-config";
 const topLevelItems = [
   { title: "Beranda", url: "/", icon: Home },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Kalender Kerja", url: "/kalender-kerja", icon: CalendarDays },
 ];
 
 // MENU GROUP: KEUANGAN
@@ -63,6 +63,11 @@ const keuanganItems = [
   { title: "Kecap to Bendahara", url: "/aki-to-bendahara", icon: DollarSign },
   { title: "Lapor Supervisi", url: "/lapor-supervisi", icon: MapPin },
   { title: "Blok Tanggal Translok", url: "/BlockTanggal", icon: Users },
+];
+
+// MENU GROUP: TEKNIS (direct links; Sensus Ekonomi & Rekrutmen nested below)
+const teknisItems = [
+  { title: "Kalender Kerja", url: "/kalender-kerja", icon: CalendarDays },
   { title: "Plotting Mitra", url: "/plotting-mitra", icon: UsersRound },
 ];
 
@@ -155,6 +160,7 @@ export function AppSidebar() {
     keuangan: false,
     pengadaan: false,
     kepegawaian: false,
+    teknis: false,
     sensusEkonomi: false,
     rekrutmen: false,
     dokumen: false,
@@ -714,6 +720,44 @@ export function AppSidebar() {
               </SidebarGroup>
             )}
 
+            {/* MENU GROUP: TEKNIS */}
+            {!isPML && (
+              <SidebarGroup className="px-3 py-1">
+                <SidebarGroupContent className="mt-0">
+                  <SidebarMenu className="space-y-1">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <button onClick={() => toggleGroup("teknis")} className="flex items-center justify-between w-full transition-all duration-200 text-white font-semibold">
+                          <div className="flex items-center gap-3">
+                            <Wrench className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                            {open && <span className="font-medium">Teknis</span>}
+                          </div>
+                          <ChevronDown className="h-4 w-4 transition-transform duration-300" style={{ transform: expandedGroups.teknis ? "rotate(180deg)" : "rotate(0deg)" }} />
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+                {expandedGroups.teknis && (
+                  <SidebarGroupContent className="mt-1">
+                    <SidebarMenu className="space-y-0.5 pl-2">
+                      {getVisibleItems(teknisItems).map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild>
+                            <NavLink to={item.url} end className={({ isActive }) => isActive ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200" : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"}>
+                              <item.icon className="h-3.5 w-3.5 text-white/80" />
+                              {open && <span>{item.title}</span>}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                )}
+              </SidebarGroup>
+            )}
+            {expandedGroups.teknis && (
+            <div className="pl-4">
             {/* MENU GROUP: SENSUS EKONOMI 2026 */}
             {getVisibleItems(sensusEkonomiItems).length > 0 && (
               <SidebarGroup className="px-3 py-1">
@@ -880,6 +924,9 @@ export function AppSidebar() {
                   </SidebarGroupContent>
                 )}
               </SidebarGroup>
+            )}
+
+            </div>
             )}
 
             {/* MENU GROUP: DOKUMEN */}
