@@ -52,7 +52,7 @@ export function useSatkerConfig() {
         // Dibaca langsung dari Google Sheets (tanpa Supabase)
         const data = await readSheetValues({
           spreadsheetId: MASTER_CONFIG_SPREADSHEET_ID,
-          range: `${CONFIG_SHEET_NAME}!A:AD`,
+          range: `${CONFIG_SHEET_NAME}!A:AG`,
         });
         rows = Array.isArray(data?.values) ? data.values : [];
       } catch (readError) {
@@ -115,7 +115,7 @@ export function useSatkerConfig() {
           template_spk_id: row[26]?.trim() || '',
           pulsa_id: row[27]?.trim() || '',
           kalender_sheet_id: row[28]?.trim() || '',
-          plotting_sheet_id: row[29]?.trim() || "",
+          plotting_sheet_id: extractSheetId(row[32]) || extractSheetId(row[29]),
         }));
 
       console.log('[useSatkerConfig] Loaded satker configs:', configs.map(c => ({
@@ -185,4 +185,12 @@ export function getSheetIdBySatkerAndModule(
   }
 
   return sheetId;
+}
+
+/** Ambil ID spreadsheet dari ID mentah atau link Google Sheets */
+export function extractSheetId(v?: string): string {
+  const t = (v ?? '').trim();
+  if (!t) return '';
+  const m = t.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : t;
 }
