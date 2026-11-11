@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { buildStatus, canAdd, canModify } from '@/lib/kalender-kerja';
 import { PaketSpkBast } from '@/components/plotting/PaketSpkBast';
 import {
-  PLOTTING_SPREADSHEET_ID, PLOTTING_SHEET, MASTER_KEGIATAN_ID, JENIS_TUGAS, Plotting, parsePlotting, parseRupiah, parseNum,
+  PLOTTING_SHEET, MASTER_KEGIATAN_ID, JENIS_TUGAS, Plotting, parsePlotting, parseRupiah, parseNum,
   fmtRp, guessJenis, SbmlLimit, monthlyTotals, effectiveLimit, statusHonor, roleMatches,
 } from '@/lib/plotting-mitra';
 
@@ -171,6 +171,11 @@ export default function PlottingMitra() {
 
   const lewatCount = totals.filter((t) => statusHonor(t.total, effectiveLimit(sbml, Object.keys(t.perJenis))) === 'lewat').length;
 
+  if (satker && !satker.isLoading && !sheetId) {
+    return <div className="p-6"><div className="rounded-md border p-4 text-sm text-muted-foreground">
+      Spreadsheet Plotting Mitra untuk satker Anda belum diatur. Isi kolom <b>plotting</b> pada sheet satker_config.
+    </div></div>;
+  }
   return (
     <div className="space-y-4 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
