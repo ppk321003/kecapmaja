@@ -46,6 +46,15 @@ export function guessJenis(nama: string): JenisTugas {
   return 'Pendataan';
 }
 
+/** Nama jenis pekerjaan yang dipakai pada kolom D SPK-BAST. */
+export function jenisPekerjaanSpk(jenis: string): string {
+  const value = jenis.trim().toLowerCase();
+  if (value.startsWith('pendataan')) return 'Petugas Pendataan Lapangan';
+  if (value.startsWith('pemeriksaan')) return 'Petugas Pemeriksaan Lapangan';
+  if (value.startsWith('pengolahan')) return 'Petugas Pengolahan';
+  return jenis;
+}
+
 export interface SbmlLimit { pendataan: number; pemeriksaan: number; pengolahan: number }
 export const limitFor = (sbml: SbmlLimit | null, jenis: string) => {
   if (!sbml) return 0;
