@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Combobox } from '@/components/ui/combobox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plotting, fmtRp } from '@/lib/plotting-mitra';
+import { jenisPekerjaanSpk, Plotting, fmtRp } from '@/lib/plotting-mitra';
 import { canModify } from '@/lib/kalender-kerja';
 
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -69,6 +69,8 @@ export function PaketSpkBast({ items, role, spkSheetId, masterId, mitraList, keg
   const [target, setTarget] = useState<Paket | null>(null);
   const [nomorSK, setNomorSK] = useState('');
   const [tanggalSK, setTanggalSK] = useState('');
+  const [tanggalMulai, setTanggalMulai] = useState('');
+  const [tanggalSelesai, setTanggalSelesai] = useState('');
   const [koordinator, setKoordinator] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -101,7 +103,10 @@ export function PaketSpkBast({ items, role, spkSheetId, masterId, mitraList, keg
     const ex = findSpk(p);
     setTarget(p);
     setNomorSK(ex?.nomorSK ?? '');
-    setTanggalSK(ex?.tanggalSK ? toIso(ex.tanggalSK) : toIso(p.tanggal_mulai));
+    const start = toIso(p.tanggal_mulai);
+    setTanggalMulai(start);
+    setTanggalSelesai(toIso(p.tanggal_selesai));
+    setTanggalSK(ex?.tanggalSK ? toIso(ex.tanggalSK) : start);
     setKoordinator(ex?.koordinator ?? '');
   };
 
@@ -113,8 +118,9 @@ export function PaketSpkBast({ items, role, spkSheetId, masterId, mitraList, keg
   const send = async () => {
     if (!target) return;
     if (!nomorSK.trim() || !tanggalSK || !koordinator) { toast.error('Nomor SK, Tanggal SK, dan Koordinator wajib diisi'); return; }
-    if (!target.tanggal_mulai) { toast.error('Tanggal mulai kegiatan belum diisi di plotting'); return; }
-    if (toIso(target.tanggal_mulai) < tanggalSK) { toast.error('Tanggal mulai kegiatan tidak boleh lebih awal dari Tanggal SK'); return; }
+    if (!tanggalMulai || !tanggalSelesai) { toast.error('Tanggal mulai dan tanggal selesai kegiatan wajib diisi'); return; }
+    if (tanggalSelesai < tanggalMulai) { toast.error('Tanggal selesai tidak boleh lebih awal dari tanggal mulai'); return; }
+    if (tanggalMulai < tanggalSK) { toast.error('Tanggal mulai kegiatan tidak boleh lebih awal dari Tanggal SK'); return; }
     setSending(true);
     try {
       const ws = target.items;
@@ -129,8 +135,8 @@ export function PaketSpkBast({ items, role, spkSheetId, masterId, mitraList, keg
         no = String(colA.length || 1);
       }
       const row = [
-        no, target.fungsi, target.periode, target.jenis_tugas, target.nama_kegiatan, nomorSK.trim(), toDmy(tanggalSK),
-        toDmy(target.tanggal_mulai), toDmy(target.tanggal_selesai || target.tanggal_mulai), hs, target.satuan, koordinator, beban,
+        no, target.fungsi, target.periode, jenisPekerjaanSpk(target.jenis_tugas), target.nama_kegiatan, nomorSK.trim(), toDmy(tanggalSK),
+        toDmy(tanggalMulai), toDmy(tanggalSelesai), hs, target.satuan, koordinator, beban,
         join(ws.map((w) => w.nama_mitra)), join(vols), join(vols), join(ws.map((w) => Math.round(w.volume * w.honor_satuan))),
         Math.round(ws.reduce((s, w) => s + w.volume * w.honor_satuan, 0)), beban, 'Kirim ke PPK', '', '',
         join(ws.map((w) => `'${nikOf(w)}`)), join(ws.map(() => 'Belum ditandatangani')), join(ws.map(() => 'belum')),
@@ -209,7 +215,13 @@ export function PaketSpkBast({ items, role, spkSheetId, masterId, mitraList, keg
             <div className="space-y-1"><Label>Koordinator *</Label>
               <Combobox options={koordList.map((n) => ({ value: n, label: n }))} value={koordinator} onValueChange={setKoordinator} placeholder="Pilih pegawai organik" />
             </div>
-            <p className="text-xs text-muted-foreground">Komponen POK, daftar mitra, NIK, volume, dan honor diisi otomatis. Status: <b>Kirim ke PPK</b>.</p>
+            <div className="space-y-1"><Label>Tanggal mulai kegiatan *</Label><Input type="date" value={tanggalMulai} onChange={(e) => {
+              const next = e.target.value;
+              setTanggalMulai(next);
+              if (!tanggalSK || tanggalSK === tanggalMulai) setTanggalSK(next);
+            }} /></div>
+            <div className="space-y-1"><Label>Tanggal selesai kegiatan *</Label><Input type="date" value={tanggalSelesai} onChange={(e) => setTanggalSelesai(e.target.value)} /></div>
+            <p className="text-xs text-muted-foreground">Komponen POK, jenis pekerjaan, daftar mitra, NIK, volume, dan honor diisi otomatis. Status: <b>Kirim ke PPK</b>.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTarget(null)}>Batal</Button>
