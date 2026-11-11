@@ -55,7 +55,7 @@ export default function PlottingMitra() {
   const role = user?.role ?? '';
   const satker = useSatkerConfigContext();
   const cfg = satker?.getUserSatkerConfig();
-  const sheetId = cfg?.plotting_sheet_id || PLOTTING_SPREADSHEET_ID;
+  const sheetId = cfg?.plotting_sheet_id || '';
   const masterId = satker?.getUserSatkerSheetId('masterorganik') || '';
   const spkSheetId = satker?.getUserSatkerSheetId('entrikegiatan') || '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA';
   const qc = useQueryClient();
@@ -71,6 +71,7 @@ export default function PlottingMitra() {
 
   const { data: all = [], isLoading } = useQuery({
     queryKey: ['plotting-mitra', sheetId],
+    enabled: !!sheetId,
     queryFn: async () => parsePlotting((await readSheetValues({ spreadsheetId: sheetId, range: `${PLOTTING_SHEET}!A:P` })).values),
     staleTime: 60_000,
   });
