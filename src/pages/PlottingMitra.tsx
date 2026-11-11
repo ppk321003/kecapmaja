@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { buildStatus, canAdd, canModify } from '@/lib/kalender-kerja';
+import { PaketSpkBast } from '@/components/plotting/PaketSpkBast';
 import {
   PLOTTING_SPREADSHEET_ID, PLOTTING_SHEET, MASTER_KEGIATAN_ID, JENIS_TUGAS, Plotting, parsePlotting, parseRupiah, parseNum,
   fmtRp, guessJenis, SbmlLimit, monthlyTotals, effectiveLimit, statusHonor, roleMatches,
@@ -56,6 +57,7 @@ export default function PlottingMitra() {
   const cfg = satker?.getUserSatkerConfig();
   const sheetId = cfg?.plotting_sheet_id || PLOTTING_SPREADSHEET_ID;
   const masterId = satker?.getUserSatkerSheetId('masterorganik') || '';
+  const spkSheetId = satker?.getUserSatkerSheetId('entrikegiatan') || '1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA';
   const qc = useQueryClient();
   const now = new Date();
   const [tahun, setTahun] = useState(now.getFullYear());
@@ -205,6 +207,7 @@ export default function PlottingMitra() {
       <Tabs defaultValue="daftar">
         <TabsList>
           <TabsTrigger value="daftar">Daftar Plotting</TabsTrigger>
+          <TabsTrigger value="paket">Paket SPK-BAST</TabsTrigger>
           <TabsTrigger value="rekap">Rekap Honor Mitra</TabsTrigger>
           <TabsTrigger value="matriks">Matriks Bulanan</TabsTrigger>
         </TabsList>
@@ -245,6 +248,11 @@ export default function PlottingMitra() {
             </table>
           </CardContent></Card>
           )}</Paged>
+        </TabsContent>
+
+        <TabsContent value="paket">
+          <PaketSpkBast items={items} role={role} spkSheetId={spkSheetId} masterId={masterId} mitraList={mitraList}
+            kegiatanBeban={(n) => kegiatanAll.find((k) => k.nama === n.trim())?.beban ?? ''} />
         </TabsContent>
 
         <TabsContent value="rekap">
