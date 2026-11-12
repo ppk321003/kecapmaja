@@ -6,3 +6,7 @@
 - [ ] Implement non-destructive Sheets initialization and acknowledged CRUD with stable IDs.
 - [ ] Implement shared-source previews and all selected Excel/PDF documents.
 - [ ] Verify real Google read/write/update/delete, package rules, rooms, classes, imports and exports; document setup and results.
+
+# SPK-BAST Audit Trail
+
+- [ ] Preserve function ownership in column B, record add/edit/delete audit in column Z, soft-delete rows, and exclude deleted rows from SPK views and reports.
