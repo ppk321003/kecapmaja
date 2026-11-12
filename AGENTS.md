@@ -1,0 +1,1 @@
+SPK-BAST soft-delete and audit history belong in Sheet1 column Z so column T remains workflow status and column B retains function ownership.
