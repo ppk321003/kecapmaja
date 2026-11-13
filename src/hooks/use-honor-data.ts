@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { readSheetValues } from '@/lib/sheets-read';
+import { isSpkDeleted } from '@/lib/spk-bast-audit';
 
 interface HonorRow {
   // Identitas Penerima
@@ -164,7 +165,7 @@ export const useHonorData = () => {
         // Dibaca langsung dari Google Sheets (tanpa Supabase)
         const data = await readSheetValues({
           spreadsheetId: entriKegiatanSheetId,
-          range: 'Sheet1!A:W'
+          range: 'Sheet1!A:Z'
         });
         const fetchError = null as any;
 
@@ -188,6 +189,7 @@ export const useHonorData = () => {
 
         rows.forEach((row: any[]) => {
           if (!row[0] || !row[2]) return; // Check periode exists
+          if (isSpkDeleted(row[25])) return;
 
           // All row data extraction (supporting all 27 columns)
           const periode = row[2] || ''; // Column C: periode

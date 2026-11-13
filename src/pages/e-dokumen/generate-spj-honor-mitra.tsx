@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { isSpkDeleted } from "@/lib/spk-bast-audit";
 
 interface KegiatanSPJData {
   no: number;
@@ -221,7 +222,7 @@ export default function GenerateSPJHonorMitra() {
       }
 
       const processedData: KegiatanSPJData[] = dataRows
-        .filter((row: any[]) => row && row.length > 0 && row[namaKegiatanIndex])
+        .filter((row: any[]) => row && row.length > 0 && row[namaKegiatanIndex] && !isSpkDeleted(row[25]))
         .map((row: any[], index: number) => {
           // Parse periode dari format yang kompleks seperti "Periode (Bulan) SPK: Januari 2026" atau "Januari 2026"
           const periodeStr = row[periodeIndex]?.toString() || '';

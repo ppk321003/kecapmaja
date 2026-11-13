@@ -13,6 +13,7 @@ import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { isSpkDeleted } from "@/lib/spk-bast-audit";
 
 // Default fallback untuk compatibility
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
@@ -402,6 +403,7 @@ export default function RekapSPKBAST() {
       for (let i = 1; i < tugasRows.length; i++) {
         const row = tugasRows[i];
         if (!row || row.length < 15) continue;
+        if (isSpkDeleted(row[25])) continue;
 
         const periode = cleanPeriode(row[2]?.toString() || "");
         const role = row[3]?.toString() || "";

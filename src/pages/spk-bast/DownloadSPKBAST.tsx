@@ -11,6 +11,7 @@ import PreviewSPKBAST from "@/components/PreviewSPKBAST";
 import ResetAndDeleteSPKBAST from "@/components/ResetAndDeleteSPKBAST";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
+import { isSpkDeleted } from "@/lib/spk-bast-audit";
 interface SPKData {
   no: number;
   periode: string;
@@ -93,8 +94,8 @@ export default function DownloadSPKBAST() {
 
       // Coba beberapa range yang mungkin untuk sheet entrikegiatan
       const rangesToTry = [
-        "Sheet1!A:W",
         "Sheet1!A:Z",
+        "Sheet1!A:W",
         "Sheet1!A1:W200",
         "Sheet1!A1:Z200",
         "A:W",
@@ -184,6 +185,7 @@ export default function DownloadSPKBAST() {
       for (let i = dataStartIndex; i < sheetData.length; i++) {
         const row = sheetData[i];
         if (!row || row.length === 0) continue;
+        if (isSpkDeleted(row[25])) continue;
         try {
           const periodeRaw = periodeIndex >= 0
             ? row[periodeIndex]?.toString()?.trim() || ''

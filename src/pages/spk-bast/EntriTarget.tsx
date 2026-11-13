@@ -25,6 +25,7 @@ import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
 import { readSheetValues } from "@/lib/sheets-read";
+import { buildSpkAuditStatus, isSpkDeleted, resolveSpkFunction } from "@/lib/spk-bast-audit";
 
 // =============================================
 // FUNGSI UTILITY BARU UNTUK KONSISTENSI
@@ -268,6 +269,7 @@ type Activity = {
   spreadsheetRowIndex?: number;
   bebanAnggaran?: string;
   dikirimKePPK?: string;
+  fungsiPembuat?: string;
 };
 type PetugasFromSheet = {
   id: number;
@@ -986,7 +988,7 @@ export default function EntriTarget() {
       try {
         data = await readSheetValues({
           spreadsheetId: userDataSheetId,
-          range: 'Sheet1!A:W'
+          range: 'Sheet1!A:Z'
         });
       } catch (error) {
         console.error('Error loading from spreadsheet:', error);
@@ -1008,6 +1010,7 @@ export default function EntriTarget() {
       let activityIdCounter = 1;
       rows.forEach((row: any[], rowIndex: number) => {
         if (!row[0] || !row[2] || !row[3]) return;
+        if (isSpkDeleted(row[25])) return;
         const periode = row[2] || '';
         const jenisPekerjaan = row[3] || '';
         const namaKegiatan = row[4] || '';
@@ -1071,7 +1074,8 @@ export default function EntriTarget() {
           jobType: jenisPekerjaan,
           spreadsheetRowIndex: rowIndex + 2,
           bebanAnggaran,
-          dikirimKePPK
+          dikirimKePPK,
+          fungsiPembuat: row[1] || ''
         };
         const periodKey = `${periode}-${jenisPekerjaan}`;
         if (!activitiesMap[periodKey]) {
@@ -1178,7 +1182,7 @@ export default function EntriTarget() {
     // Dibaca langsung dari Google Sheets (tanpa Supabase)
     const data = await readSheetValues({
       spreadsheetId: userDataSheetId,
-      range: 'Sheet1!A:W'
+      range: 'Sheet1!A:Z'
     });
     const rows = data?.values || [];
     if (rows.length <= 1) return null;
@@ -1187,6 +1191,7 @@ export default function EntriTarget() {
     const fallbackMatches: number[] = [];
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i] || [];
+      if (isSpkDeleted(row[25])) continue;
       const rowPeriode = norm(row[2]);
       const rowJenis = norm(row[3]);
       const rowKegiatan = norm(row[4]);
@@ -1253,8 +1258,9 @@ export default function EntriTarget() {
       } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: userDataSheetId,
-          operation: 'delete',
-          rowIndex: rowIndex
+          operation: 'update',
+          range: `Sheet1!Z${rowIndex}:Z${rowIndex}`,
+          values: [[buildSpkAuditStatus('dihapus', user?.role)]]
         }
       });
       if (error) throw error;
@@ -1506,7 +1512,7 @@ export default function EntriTarget() {
       
       const rowData = [[nextNo.toString(),
       // A: No
-      user?.role || "User",
+      resolveSpkFunction(activity.fungsiPembuat, user?.role),
       // B: Role User
       `${targetPeriod} ${targetYear}`,
       // C: Periode
@@ -1552,8 +1558,10 @@ export default function EntriTarget() {
       // W: NIK List
       statusTTDList,
       // X: Status TTD (auto-generate based on workers count)
-      statusNotifList
+      statusNotifList,
       // Y: Status Notif (auto-generate based on workers count)
+      buildSpkAuditStatus('ditambahkan', user?.role)
+      // Z: Status Dokumen / jejak audit
       ]];
       const {
         error
@@ -1597,15 +1605,14 @@ export default function EntriTarget() {
       const statusTTDList = Array(activity.workers.length).fill("Belum ditandatangani").join(" | ");
       const statusNotifList = Array(activity.workers.length).fill("belum").join(" | ");
       
-      const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), user?.role || "User", `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), Math.round(cleanNumberValue(activity.hargaSatuan)), activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, totalRealisasiNumeric, activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList, statusTTDList, statusNotifList]];
+      const rowData = [[(activity.spreadsheetRowIndex - 1).toString(), resolveSpkFunction(activity.fungsiPembuat, user?.role), `${selectedPeriod} ${selectedYear}`, selectedJobType || "", activity.namaKegiatan, activity.nomorSK, format(activity.tanggalSK, "dd/MM/yyyy"), format(activity.tanggalMulai, "dd/MM/yyyy"), format(activity.tanggalAkhir, "dd/MM/yyyy"), Math.round(cleanNumberValue(activity.hargaSatuan)), activity.satuan, activity.koordinator, komponenPOKLabel, namaPetugas, targetList, realisasiList, nilaiRealisasiList, totalRealisasiNumeric, activity.bebanAnggaran || "", activity.dikirimKePPK || "", "", "", nikList, statusTTDList, statusNotifList, buildSpkAuditStatus('diedit', user?.role)]];
       const {
         error
       } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: userDataSheetId,
           operation: 'update',
-          range: 'Sheet1',
-          rowIndex: activity.spreadsheetRowIndex,
+          range: `Sheet1!A${activity.spreadsheetRowIndex}:Z${activity.spreadsheetRowIndex}`,
           values: rowData
         }
       });
@@ -2387,7 +2394,7 @@ export default function EntriTarget() {
           <AlertDialogHeader>
             <AlertDialogTitle>Konfirmasi Hapus Kegiatan</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus kegiatan "{deleteTarget?.namaKegiatan}"? Data yang dihapus tidak dapat dikembalikan.
+            Apakah Anda yakin ingin mengarsipkan kegiatan "{deleteTarget?.namaKegiatan}"? Kegiatan akan disembunyikan, tetapi riwayatnya tetap tersimpan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2406,7 +2413,7 @@ export default function EntriTarget() {
                   setDeleteTarget(null);
                 }
               }}>
-              {isDeletingActivity ? "Menghapus..." : "Hapus"}
+              {isDeletingActivity ? "Mengarsipkan..." : "Arsipkan"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

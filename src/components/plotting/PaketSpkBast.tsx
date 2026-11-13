@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from 'sonner';
 import { jenisPekerjaanSpk, Plotting, fmtRp } from '@/lib/plotting-mitra';
 import { canModify } from '@/lib/kalender-kerja';
+import { buildSpkAuditStatus, isSpkDeleted } from '@/lib/spk-bast-audit';
 
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const norm = (s: string) => (s ?? '').trim().toLowerCase();
@@ -56,7 +57,7 @@ const toDmy = (s: string) => {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : s;
 };
 
-interface SpkRow { rowNumber: number; no: string; role: string; periode: string; nama: string; nomorSK: string; tanggalSK: string; koordinator: string; status: string }
+interface SpkRow { rowNumber: number; no: string; role: string; periode: string; nama: string; nomorSK: string; tanggalSK: string; koordinator: string; status: string; deleted: boolean }
 const spkKey = (role: string, periode: string, nama: string) => [norm(role), norm(periode), norm(nama)].join('|');
 
 export function PaketSpkBast({ items, role, spkSheetId, masterId, mitraList, kegiatanBeban }: {
@@ -78,11 +79,11 @@ export function PaketSpkBast({ items, role, spkSheetId, masterId, mitraList, keg
     queryKey: ['spk-bast-rows', spkSheetId],
     enabled: !!spkSheetId,
     queryFn: async (): Promise<SpkRow[]> => {
-      const rows = (await readSheetValues({ spreadsheetId: spkSheetId, range: 'Sheet1!A:T' })).values ?? [];
+      const rows = (await readSheetValues({ spreadsheetId: spkSheetId, range: 'Sheet1!A:Z' })).values ?? [];
       return rows.slice(1).map((r, i) => ({
         rowNumber: i + 2, no: r[0] ?? '', role: r[1] ?? '', periode: r[2] ?? '', nama: r[4] ?? '',
-        nomorSK: r[5] ?? '', tanggalSK: r[6] ?? '', koordinator: r[11] ?? '', status: r[19] ?? '',
-      }));
+        nomorSK: r[5] ?? '', tanggalSK: r[6] ?? '', koordinator: r[11] ?? '', status: r[19] ?? '', deleted: isSpkDeleted(r[25]),
+      })).filter((row) => !row.deleted);
     },
     staleTime: 30_000,
   });
@@ -140,10 +141,11 @@ export function PaketSpkBast({ items, role, spkSheetId, masterId, mitraList, keg
         join(ws.map((w) => w.nama_mitra)), join(vols), join(vols), join(ws.map((w) => Math.round(w.volume * w.honor_satuan))),
         Math.round(ws.reduce((s, w) => s + w.volume * w.honor_satuan, 0)), beban, 'Kirim ke PPK', '', '',
         join(ws.map((w) => `'${nikOf(w)}`)), join(ws.map(() => 'Belum ditandatangani')), join(ws.map(() => 'belum')),
+        buildSpkAuditStatus(ex ? 'diedit' : 'ditambahkan', role),
       ];
       const body = ex
-        ? { spreadsheetId: spkSheetId, operation: 'update', range: `Sheet1!A${ex.rowNumber}:Y${ex.rowNumber}`, values: [row] }
-        : { spreadsheetId: spkSheetId, operation: 'append', range: 'Sheet1!A:Y', values: [row] };
+        ? { spreadsheetId: spkSheetId, operation: 'update', range: `Sheet1!A${ex.rowNumber}:Z${ex.rowNumber}`, values: [row] }
+        : { spreadsheetId: spkSheetId, operation: 'append', range: 'Sheet1!A:Z', values: [row] };
       const { error, data } = await supabase.functions.invoke('google-sheets', { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

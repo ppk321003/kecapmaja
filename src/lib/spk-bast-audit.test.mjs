@@ -11,6 +11,11 @@ test('PPK edits are attributed to PPK in the audit value', () => {
     .toBe('diedit oleh Pejabat Pembuat Komitmen pada 11/11/2026 14:08');
 });
 
+test('soft deletion records the deleting role and timestamp', () => {
+  expect(buildSpkAuditStatus('dihapus', 'Fungsi Sosial', new Date(2026, 10, 11, 14, 8)))
+    .toBe('dihapus oleh Fungsi Sosial pada 11/11/2026 14:08');
+});
+
 test('soft-deleted SPK rows are hidden while blank legacy status stays active', () => {
   expect(isSpkDeleted('dihapus oleh Fungsi Sosial pada 11/11/2026 14:08')).toBe(true);
   expect(isSpkDeleted('')).toBe(false);

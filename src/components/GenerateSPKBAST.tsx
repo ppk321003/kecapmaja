@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 import { readSheetValues } from '@/lib/sheets-read';
+import { isSpkDeleted } from '@/lib/spk-bast-audit';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -145,6 +146,7 @@ export default function GenerateSPKBAST() {
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
+        if (isSpkDeleted(row[25])) continue;
         const status = normalizeCell(row[statusIdx]);
         const keterangan = normalizeCell(row[keteranganIdx]);
         const periode = row[periodColumnIndex]?.toString().trim() || '';
