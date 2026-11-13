@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from 'sonner';
 import { jenisPekerjaanSpk, Plotting, fmtRp } from '@/lib/plotting-mitra';
 import { canModify } from '@/lib/kalender-kerja';
+import { isSpkDeleted } from '@/lib/spk-bast-audit';
 
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const norm = (s: string) => (s ?? '').trim().toLowerCase();
@@ -78,8 +79,8 @@ export function PaketSpkBast({ items, role, spkSheetId, masterId, mitraList, keg
     queryKey: ['spk-bast-rows', spkSheetId],
     enabled: !!spkSheetId,
     queryFn: async (): Promise<SpkRow[]> => {
-      const rows = (await readSheetValues({ spreadsheetId: spkSheetId, range: 'Sheet1!A:T' })).values ?? [];
-      return rows.slice(1).map((r, i) => ({
+      const rows = (await readSheetValues({ spreadsheetId: spkSheetId, range: 'Sheet1!A:Z' })).values ?? [];
+      return rows.slice(1).filter((r) => !isSpkDeleted(r[25])).map((r, i) => ({
         rowNumber: i + 2, no: r[0] ?? '', role: r[1] ?? '', periode: r[2] ?? '', nama: r[4] ?? '',
         nomorSK: r[5] ?? '', tanggalSK: r[6] ?? '', koordinator: r[11] ?? '', status: r[19] ?? '',
       }));

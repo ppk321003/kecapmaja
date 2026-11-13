@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useNotificationsContext, NotificationsContextType } from '@/contexts/NotificationsContext';
 import { Notification, PencairanNotification, SBMLNotification } from '@/types/notifications';
+import { isSpkDeleted } from '@/lib/spk-bast-audit';
 
 const POLLING_INTERVAL = 3600000; // 1 hour - polling interval
 const MIN_REQUEST_INTERVAL = 60000; // 1 minute - minimum time between requests to debounce
@@ -330,6 +331,7 @@ export function useNotifications() {
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !row[idxNama]) continue;
+          if (isSpkDeleted(row[25])) continue;
 
           const nama = row[idxNama]?.toString() || '';
           const status = row[idxStatus]?.toString().toLowerCase().trim();
@@ -413,6 +415,7 @@ export function useNotifications() {
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !row[idxNama]) continue;
+          if (isSpkDeleted(row[25])) continue;
 
           const nama = row[idxNama]?.toString() || '';
           const status = row[idxStatus]?.toString().toLowerCase().trim();

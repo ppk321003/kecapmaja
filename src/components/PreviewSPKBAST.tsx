@@ -8,6 +8,7 @@ import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 import { readSheetValues } from '@/lib/sheets-read';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { isSpkDeleted } from '@/lib/spk-bast-audit';
 
 interface PreviewData {
   no: number;
@@ -96,6 +97,7 @@ export default function PreviewSPKBAST() {
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
+        if (isSpkDeleted(row[25])) continue;
         const status = row[statusIdx]?.toString().trim() || '';
         const keterangan = row[keteranganIdx]?.toString().trim() || '';
 
