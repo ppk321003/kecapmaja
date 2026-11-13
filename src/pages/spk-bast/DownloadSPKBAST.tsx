@@ -94,8 +94,8 @@ export default function DownloadSPKBAST() {
 
       // Coba beberapa range yang mungkin untuk sheet entrikegiatan
       const rangesToTry = [
-        "Sheet1!A:W",
         "Sheet1!A:Z",
+        "Sheet1!A:W",
         "Sheet1!A1:W200",
         "Sheet1!A1:Z200",
         "A:W",
