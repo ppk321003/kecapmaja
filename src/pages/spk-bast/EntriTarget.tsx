@@ -25,6 +25,7 @@ import { useSatkerConfigContext } from "@/contexts/SatkerConfigContext";
 import { useMitraStatistik } from "@/hooks/use-database";
 import { supabase } from "@/integrations/supabase/client";
 import { readSheetValues } from "@/lib/sheets-read";
+import { buildSpkAuditStatus, isSpkDeleted, resolveSpkFunction } from "@/lib/spk-bast-audit";
 
 // =============================================
 // FUNGSI UTILITY BARU UNTUK KONSISTENSI
@@ -268,6 +269,7 @@ type Activity = {
   spreadsheetRowIndex?: number;
   bebanAnggaran?: string;
   dikirimKePPK?: string;
+  fungsiPembuat?: string;
 };
 type PetugasFromSheet = {
   id: number;
@@ -986,7 +988,7 @@ export default function EntriTarget() {
       try {
         data = await readSheetValues({
           spreadsheetId: userDataSheetId,
-          range: 'Sheet1!A:W'
+          range: 'Sheet1!A:Z'
         });
       } catch (error) {
         console.error('Error loading from spreadsheet:', error);
@@ -1008,6 +1010,7 @@ export default function EntriTarget() {
       let activityIdCounter = 1;
       rows.forEach((row: any[], rowIndex: number) => {
         if (!row[0] || !row[2] || !row[3]) return;
+        if (isSpkDeleted(row[25])) return;
         const periode = row[2] || '';
         const jenisPekerjaan = row[3] || '';
         const namaKegiatan = row[4] || '';
@@ -1071,7 +1074,8 @@ export default function EntriTarget() {
           jobType: jenisPekerjaan,
           spreadsheetRowIndex: rowIndex + 2,
           bebanAnggaran,
-          dikirimKePPK
+          dikirimKePPK,
+          fungsiPembuat: row[1] || ''
         };
         const periodKey = `${periode}-${jenisPekerjaan}`;
         if (!activitiesMap[periodKey]) {
@@ -1178,7 +1182,7 @@ export default function EntriTarget() {
     // Dibaca langsung dari Google Sheets (tanpa Supabase)
     const data = await readSheetValues({
       spreadsheetId: userDataSheetId,
-      range: 'Sheet1!A:W'
+      range: 'Sheet1!A:Z'
     });
     const rows = data?.values || [];
     if (rows.length <= 1) return null;
@@ -1187,6 +1191,7 @@ export default function EntriTarget() {
     const fallbackMatches: number[] = [];
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i] || [];
+      if (isSpkDeleted(row[25])) continue;
       const rowPeriode = norm(row[2]);
       const rowJenis = norm(row[3]);
       const rowKegiatan = norm(row[4]);
