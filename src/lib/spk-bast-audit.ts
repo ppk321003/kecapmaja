@@ -6,11 +6,21 @@ export function buildSpkAuditStatus(
   date: Date = new Date(),
 ): string {
   const actor = role?.trim() || 'User';
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  const hour = String(date.getHours()).padStart(2, '0');
-  const minute = String(date.getMinutes()).padStart(2, '0');
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
+  const day = value('day');
+  const month = value('month');
+  const year = value('year');
+  const hour = value('hour');
+  const minute = value('minute');
   return `${action} oleh ${actor} pada ${day}/${month}/${year} ${hour}:${minute}`;
 }
 
