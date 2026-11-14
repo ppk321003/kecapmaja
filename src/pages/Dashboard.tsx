@@ -19,6 +19,7 @@ import DashboardSikostik28 from "@/components/DashboardSikostik28";
 import DashboardPelayanan from "@/components/DashboardPelayanan";
 import DashboardHumas from "@/components/DashboardHumas";
 import DashboardNgibarSE26 from "@/components/DashboardNgibarSE26";
+import { isSpkDeleted } from "@/lib/spk-bast-audit";
 
 // Default fallback untuk compatibility
 const TUGAS_SPREADSHEET_ID = "1ShNjmKUkkg00aAc2yNduv4kAJ8OO58lb2UfaBX8P_BA";
@@ -994,6 +995,7 @@ export default function Dashboard() {
 
       // Filter data berdasarkan tahun
       const filteredData = allData.filter((row: any[]) => {
+        if (isSpkDeleted(row[25])) return false;
         const periode = row[2]?.toString() || "";
         return periode.includes(filterTahun);
       });
