@@ -26,6 +26,7 @@ import {
   MapPin,
   ShieldCheck,
   CalendarDays,
+  Building2,
   Wrench,
 } from "lucide-react";
 
@@ -55,8 +56,8 @@ const topLevelItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
 ];
 
-// MENU GROUP: KEUANGAN
-const keuanganItems = [
+// MENU GROUP: ADMINISTRASI
+const administrasiItems = [
   { title: "Sigap SPJ", url: "/usulan-pencairan", icon: DollarSign },
   { title: "SPK dan BAST", url: "/spk-bast", icon: FileText },
   { title: "Anggaran", url: "/bahan-revisi-anggaran", icon: BarChart3, conditional: "showBahanRevisiAnggaran" },
@@ -81,6 +82,10 @@ const pengadaanItems = [
 const kepegawaianItems = [
   { title: "KarierKu", url: "/KarierKu", icon: Briefcase },
   { title: "Padamel | Mitra Kepka", url: "/entri-pengelola", icon: UserCog },
+];
+
+const umumItems = [
+  { title: "Book Aula", url: "/book-aula", icon: Building2 },
 ];
 
 // MENU GROUP: SENSUS EKONOMI 2026 ITEMS (MAIN MENU GROUP NOW)
@@ -157,7 +162,7 @@ export function AppSidebar() {
   
   // State untuk track which groups are open - Default collapsed
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    keuangan: false,
+    administrasi: false,
     pengadaan: false,
     kepegawaian: false,
     teknis: false,
@@ -165,6 +170,7 @@ export function AppSidebar() {
     rekrutmen: false,
     dokumen: false,
     adminUtilitas: false,
+    umum: false,
   });
 
   // State untuk track nested submenu items (for e-Dokumen only now)
@@ -220,6 +226,7 @@ export function AppSidebar() {
         "/sensus-ekonomi-2026/verifikasi-akhir",
         "/sensus-ekonomi-2026/outlier",
         "/sensus-ekonomi-2026/nilai-tambah-bruto",
+        "/book-aula",
       ].includes(item.url);
     }
     if (!item.conditional) return true;
@@ -518,7 +525,7 @@ export function AppSidebar() {
 
         <div className="flex flex-col flex-1 relative z-10 min-h-0">
           {/* Scrollable Content */}
-          <div className="flex-1 sidebar-content-hidden overflow-y-auto">
+          <div className="flex flex-1 flex-col sidebar-content-hidden overflow-y-auto">
             {/* HEADER LOGO */}
             <div className="px-5 py-7 border-b border-white/20">
               <div className="flex items-center gap-3 mb-2">
@@ -564,25 +571,25 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {/* MENU GROUP: KEUANGAN */}
-            {getVisibleItems(keuanganItems).length > 0 && (
-              <SidebarGroup className="px-3 py-1">
+            {/* MENU GROUP: ADMINISTRASI */}
+            {getVisibleItems(administrasiItems).length > 0 && (
+              <SidebarGroup className="order-1 px-3 py-1">
                 <SidebarGroupContent className="mt-0">
                   <SidebarMenu className="space-y-1">
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild>
                         <button
-                          onClick={() => toggleGroup("keuangan")}
+                          onClick={() => toggleGroup("administrasi")}
                           className={"flex items-center justify-between w-full transition-all duration-200 " + (true ? "text-white font-semibold" : "text-white/90 hover:text-white")}
                         >
                           <div className="flex items-center gap-3">
                             <DollarSign className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                            {open && <span className="font-medium">Keuangan</span>}
+                            {open && <span className="font-medium">Administrasi</span>}
                           </div>
                           <ChevronDown
                             className="h-4 w-4 transition-transform duration-300"
                             style={{
-                              transform: expandedGroups.keuangan ? "rotate(180deg)" : "rotate(0deg)",
+                              transform: expandedGroups.administrasi ? "rotate(180deg)" : "rotate(0deg)",
                             }}
                           />
                         </button>
@@ -590,10 +597,10 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                   </SidebarMenu>
                 </SidebarGroupContent>
-                {expandedGroups.keuangan && (
+                {expandedGroups.administrasi && (
                   <SidebarGroupContent className="mt-1">
                     <SidebarMenu className="space-y-0.5 pl-2">
-                      {getVisibleItems(keuanganItems).map((item) => (
+                      {getVisibleItems(administrasiItems).map((item) => (
                         <SidebarMenuItem key={item.title}>
                           <SidebarMenuButton asChild>
                             <NavLink
@@ -618,7 +625,7 @@ export function AppSidebar() {
 
             {/* MENU GROUP: PENGADAAN */}
             {getVisibleItems(pengadaanItems).length > 0 && (
-              <SidebarGroup className="px-3 py-1">
+              <SidebarGroup className="order-4 px-3 py-1">
                 <SidebarGroupContent className="mt-0">
                   <SidebarMenu className="space-y-1">
                     <SidebarMenuItem>
@@ -670,7 +677,7 @@ export function AppSidebar() {
 
             {/* MENU GROUP: KEPEGAWAIAN */}
             {getVisibleItems(kepegawaianItems).length > 0 && (
-              <SidebarGroup className="px-3 py-1">
+              <SidebarGroup className="order-3 px-3 py-1">
                 <SidebarGroupContent className="mt-0">
                   <SidebarMenu className="space-y-1">
                     <SidebarMenuItem>
@@ -720,9 +727,56 @@ export function AppSidebar() {
               </SidebarGroup>
             )}
 
+            {/* MENU GROUP: UMUM */}
+            <SidebarGroup className="order-6 px-3 py-1">
+              <SidebarGroupContent className="mt-0">
+                <SidebarMenu className="space-y-1">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <button
+                        onClick={() => toggleGroup("umum")}
+                        className="flex items-center justify-between w-full transition-all duration-200 text-white font-semibold"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Building2 className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
+                          {open && <span className="font-medium">Umum</span>}
+                        </div>
+                        <ChevronDown
+                          className="h-4 w-4 transition-transform duration-300"
+                          style={{ transform: expandedGroups.umum ? "rotate(180deg)" : "rotate(0deg)" }}
+                        />
+                      </button>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+              {expandedGroups.umum && (
+                <SidebarGroupContent className="mt-1">
+                  <SidebarMenu className="space-y-0.5 pl-2">
+                    {getVisibleItems(umumItems).map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to={item.url}
+                            end
+                            className={({ isActive }) => isActive
+                              ? "text-white font-medium text-xs py-2 pl-4 transition-all duration-200"
+                              : "text-white/80 hover:text-white text-xs py-2 pl-4 transition-all duration-200"}
+                          >
+                            <item.icon className="h-3.5 w-3.5 text-white/80" />
+                            {open && <span>{item.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              )}
+            </SidebarGroup>
+
             {/* MENU GROUP: TEKNIS */}
             {!isPML && (
-              <SidebarGroup className="px-3 py-1">
+              <SidebarGroup className="order-5 px-3 py-1">
                 <SidebarGroupContent className="mt-0">
                   <SidebarMenu className="space-y-1">
                     <SidebarMenuItem>
@@ -757,7 +811,7 @@ export function AppSidebar() {
               </SidebarGroup>
             )}
             {expandedGroups.teknis && (
-            <div className="pl-4">
+            <div className="order-5 pl-4">
             {/* MENU GROUP: SENSUS EKONOMI 2026 */}
             {getVisibleItems(sensusEkonomiItems).length > 0 && (
               <SidebarGroup className="px-3 py-1">
@@ -931,7 +985,7 @@ export function AppSidebar() {
 
             {/* MENU GROUP: DOKUMEN */}
             {getVisibleItems(dokumenItems).length > 0 && (
-              <SidebarGroup className="px-3 py-1">
+              <SidebarGroup className="order-2 px-3 py-1">
                 <SidebarGroupContent className="mt-0">
                   <SidebarMenu className="space-y-1">
                     <SidebarMenuItem>
@@ -1023,9 +1077,9 @@ export function AppSidebar() {
               </SidebarGroup>
             )}
 
-            {/* MENU GROUP: ADMIN & UTILITAS */}
+            {/* MENU GROUP: UTILITAS & ADMIN */}
             {getVisibleItems(adminUtilitasItems).length > 0 && (
-              <SidebarGroup className="px-3 py-1">
+              <SidebarGroup className="order-7 px-3 py-1">
                 <SidebarGroupContent className="mt-0">
                   <SidebarMenu className="space-y-1">
                     <SidebarMenuItem>
@@ -1036,7 +1090,7 @@ export function AppSidebar() {
                         >
                           <div className="flex items-center gap-3">
                             <FileCheck className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                            {open && <span className="font-medium">Admin & Utilitas</span>}
+                            {open && <span className="font-medium">Utilitas & Admin</span>}
                           </div>
                           <ChevronDown
                             className="h-4 w-4 transition-transform duration-300"
