@@ -23,4 +23,6 @@ test('soft-deleted SPK rows are hidden while blank legacy status stays active', 
 
 test('editing as PPK preserves the original function in column B', () => {
   expect(resolveSpkFunction('Fungsi Sosial', 'Pejabat Pembuat Komitmen')).toBe('Fungsi Sosial');
+  expect(resolveSpkFunction('', 'Pejabat Pembuat Komitmen')).toBe('');
+  expect(resolveSpkFunction(undefined, 'Fungsi Sosial')).toBe('Fungsi Sosial');
 });

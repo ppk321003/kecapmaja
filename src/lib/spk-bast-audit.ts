@@ -19,5 +19,5 @@ export function isSpkDeleted(status: unknown): boolean {
 }
 
 export function resolveSpkFunction(originalFunction: string | null | undefined, actorRole: string | null | undefined): string {
-  return originalFunction?.trim() || actorRole?.trim() || 'User';
+  return originalFunction ?? actorRole?.trim() ?? 'User';
 }
