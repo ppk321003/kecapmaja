@@ -1253,17 +1253,24 @@ export default function EntriTarget() {
   };
   const deleteActivityFromSpreadsheet = async (rowIndex: number) => {
     try {
-      const {
-        error
-      } = await supabase.functions.invoke('google-sheets', {
+      const { error, data } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId: userDataSheetId,
-          operation: 'update',
-          range: `Sheet1!Z${rowIndex}:Z${rowIndex}`,
-          values: [[buildSpkAuditStatus('dihapus', user?.role)]]
+          operation: 'batch-update',
+          updates: [
+            {
+              range: `Sheet1!T${rowIndex}:V${rowIndex}`,
+              values: [['dihapus', 'dihapus', 'dihapus']]
+            },
+            {
+              range: `Sheet1!Z${rowIndex}:Z${rowIndex}`,
+              values: [[buildSpkAuditStatus('dihapus', user?.role)]]
+            }
+          ]
         }
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     } catch (error) {
       console.error('Error in deleteActivityFromSpreadsheet:', error);
       throw error;
