@@ -9,4 +9,5 @@
 
 # SPK-BAST Audit Trail
 
-- [ ] Preserve function ownership in column B, record add/edit/delete audit in column Z, soft-delete rows, and exclude deleted rows from SPK views and reports.
+- [x] Preserve function ownership in column B, record add/edit/delete audit in column Z, soft-delete rows, and exclude deleted rows from SPK views and reports.
+- [ ] Publish the updated SPK-BAST Google Apps Script sources; deployment to the user's Google Apps Script is outside this preview workspace.
