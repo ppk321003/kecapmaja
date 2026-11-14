@@ -314,6 +314,7 @@ function filterQualifiedData(sheet, executionId) {
   const headers = allData[0];
   const statusColIndex = findColumnIndex(headers, ["Status"]);
   const keteranganColIndex = findColumnIndex(headers, ["Keterangan"]);
+  const statusDokumenColIndex = headers.findIndex(value => String(value || "").trim().toLowerCase() === "status dokumen");
   
   const qualifiedRows = [];
   const qualifiedRowNumbers = [];
@@ -324,8 +325,9 @@ function filterQualifiedData(sheet, executionId) {
     
     const status = row[statusColIndex] ? row[statusColIndex].toString().trim() : "";
     const keterangan = row[keteranganColIndex] ? row[keteranganColIndex].toString().trim() : "";
+    const statusDokumen = statusDokumenColIndex >= 0 ? String(row[statusDokumenColIndex] || "").trim().toLowerCase() : "";
     
-    if (status === "Generated" || keterangan !== "Kirim ke PPK") {
+    if (status === "Generated" || keterangan !== "Kirim ke PPK" || statusDokumen.includes("dihapus")) {
       continue;
     }
     
