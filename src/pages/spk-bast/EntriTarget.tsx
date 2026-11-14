@@ -1239,8 +1239,8 @@ export default function EntriTarget() {
       // Muat ulang data agar seluruh indeks baris sinkron dengan kondisi sheet
       await loadDataFromSpreadsheet();
       toast({
-        title: "Kegiatan berhasil dihapus",
-        description: `Kegiatan "${activityToDelete.namaKegiatan}" telah dihapus.`
+        title: "Kegiatan berhasil diarsipkan",
+        description: `Kegiatan "${activityToDelete.namaKegiatan}" disembunyikan dan riwayatnya tetap tersimpan.`
       });
     } catch (error: any) {
       console.error('Error deleting activity:', error);

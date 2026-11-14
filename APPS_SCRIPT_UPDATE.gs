@@ -314,7 +314,7 @@ function filterQualifiedData(sheet, executionId) {
   const headers = allData[0];
   const statusColIndex = findColumnIndex(headers, ["Status"]);
   const keteranganColIndex = findColumnIndex(headers, ["Keterangan"]);
-  const statusDokumenColIndex = findColumnIndex(headers, ["Status Dokumen"]);
+  const statusDokumenColIndex = headers.findIndex(value => String(value || "").trim().toLowerCase() === "status dokumen");
   
   const qualifiedRows = [];
   const qualifiedRowNumbers = [];
