@@ -109,7 +109,7 @@ const sensusEkonomiItems = [
 
 // MENU GROUP: REKRUTMEN
 const rekrutmenItems = [
-  { title: "Mitra Tambahan 2026", url: "/mitra-tambahan-2026", icon: FileCheck, conditional: "showRekrutmen" },
+  { title: "Mitra 2026 Tambahan", url: "/mitra-tambahan-2026", icon: FileCheck, conditional: "showRekrutmen" },
   { title: "Mitra SE2026", url: "/mitra-se2026", icon: Users, conditional: "showRekrutmen" },
 ];
 
@@ -771,7 +771,7 @@ export function AppSidebar() {
                         >
                           <div className="flex items-center gap-3">
                             <BarChart3 className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 text-white" />
-                            {open && <span className="font-medium">Sensus Ekonomi 2026</span>}
+                            {open && <span className="font-medium">SE 2026</span>}
                           </div>
                           <ChevronDown
                             className="h-4 w-4 transition-transform duration-300"
