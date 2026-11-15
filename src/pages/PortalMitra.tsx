@@ -266,9 +266,18 @@ export default function PortalMitra() {
                 <div className="rounded-lg bg-primary/5 p-4">
                   <p className="text-sm text-muted-foreground">Honor bruto berdasarkan realisasi bulan {result.honorMonth}</p>
                   <p className="mt-1 text-2xl font-bold">{formatCurrency(result.grossTotal)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Nilai ini merupakan rekapitulasi sementara berdasarkan realisasi dan usulan Subject Matter. Nilai akhir dapat berubah setelah proses verifikasi dan penetapan.
-                  </p>
+                </div>
+                <div
+                  role="note"
+                  className="mt-3 flex items-start gap-2 rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-semibold">Perhatian: Nilai honor masih sementara</p>
+                    <p className="text-xs leading-relaxed">
+                      Nilai ini merupakan rekapitulasi sementara berdasarkan realisasi dan usulan Subject Matter. Nilai akhir dapat berubah setelah proses verifikasi dan penetapan.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
