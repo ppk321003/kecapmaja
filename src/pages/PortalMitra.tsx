@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import bpsLogo from '@/assets/bps-logo.png';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { AlertCircle, CheckCircle2, Clock3, FileText, Search, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock3, Search, ShieldCheck } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -155,10 +156,8 @@ export default function PortalMitra() {
     <main className="min-h-screen bg-muted/40 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="mx-auto w-full max-w-screen-2xl space-y-6">
         <header className="space-y-2 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <FileText className="h-6 w-6" aria-hidden="true" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Portal Mitra</h1>
+          <img src={bpsLogo} alt="Badan Pusat Statistik" className="mx-auto h-12 w-16 object-contain sm:h-14 sm:w-20" />
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Portal Mitra Statistik</h1>
           <p className="text-sm text-muted-foreground sm:text-base">
             Periksa status penugasan dan estimasi honor bulanan Anda.
           </p>
