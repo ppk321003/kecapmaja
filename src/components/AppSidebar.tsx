@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   CalendarDays,
   Building2,
+  Mail,
   Wrench,
 } from "lucide-react";
 
@@ -86,6 +87,7 @@ const kepegawaianItems = [
 
 const umumItems = [
   { title: "Book Aula", url: "/book-aula", icon: Building2 },
+  { title: "Surat & Disposisi", url: "/surat-disposisi", icon: Mail },
 ];
 
 // MENU GROUP: SENSUS EKONOMI 2026 ITEMS (MAIN MENU GROUP NOW)
@@ -227,6 +229,7 @@ export function AppSidebar() {
         "/sensus-ekonomi-2026/outlier",
         "/sensus-ekonomi-2026/nilai-tambah-bruto",
         "/book-aula",
+        "/surat-disposisi",
       ].includes(item.url);
     }
     if (!item.conditional) return true;

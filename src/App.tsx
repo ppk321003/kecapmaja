@@ -71,6 +71,7 @@ import NilaiTambahBruto from "./pages/sensusEkonomi2026/NilaiTambahBruto";
 import OlahCepatMakro from "./pages/OlahCepatMakro";
 import BahanRevisiAnggaran from "./components/bahanrevisi/BahanRevisiAnggaran";
 import BookAula from "./pages/BookAula";
+import SuratDisposisi from "./pages/SuratDisposisi";
 
 const queryClient = new QueryClient();
 
@@ -107,6 +108,7 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
             <Route path="/kalender-kerja" element={<ProtectedRoute><Layout><KalenderKerja /></Layout></ProtectedRoute>} />
             <Route path="/book-aula" element={<ProtectedRoute><Layout><BookAula /></Layout></ProtectedRoute>} />
+            <Route path="/surat-disposisi" element={<ProtectedRoute><Layout><SuratDisposisi /></Layout></ProtectedRoute>} />
             <Route path="/plotting-mitra" element={<ProtectedRoute><Layout><PlottingMitra /></Layout></ProtectedRoute>} />
             <Route path="/usulan-pencairan" element={<ProtectedRoute><Layout><UsulanPencairan /></Layout></ProtectedRoute>} />
             <Route path="/aki-to-bendahara" element={<ProtectedRoute><Layout><AkiToBendahara /></Layout></ProtectedRoute>} />
