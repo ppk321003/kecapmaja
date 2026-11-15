@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,6 +83,17 @@ export default function Login() {
               )}
             </Button>
           </form>
+          <div className="mt-6 space-y-2 border-t pt-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Mitra dapat memeriksa status penugasan dan rekapitulasi sementara honor melalui Portal Mitra Statistik tanpa perlu login.
+            </p>
+            <Link
+              to="/portal-mitra"
+              className="inline-flex min-h-11 items-center justify-center font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Buka Portal Mitra Statistik
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
