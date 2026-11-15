@@ -72,6 +72,7 @@ import OlahCepatMakro from "./pages/OlahCepatMakro";
 import BahanRevisiAnggaran from "./components/bahanrevisi/BahanRevisiAnggaran";
 import BookAula from "./pages/BookAula";
 import SuratDisposisi from "./pages/SuratDisposisi";
+import PortalMitra from "./pages/PortalMitra";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AuthProvider>
+        <BrowserRouter>
         <SatkerConfigProvider>
           <KuitansiStoreProvider>
             <KuitansiProvider>
@@ -101,9 +103,9 @@ const App = () => (
             <TooltipProvider>
               <Toaster />
               <Sonner />
-            <BrowserRouter>
             <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/portal-mitra" element={<PortalMitra />} />
             <Route path="/" element={<ProtectedRoute><Layout><Home /></Layout></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
             <Route path="/kalender-kerja" element={<ProtectedRoute><Layout><KalenderKerja /></Layout></ProtectedRoute>} />
@@ -169,12 +171,12 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
           </Routes>
-        </BrowserRouter>
             </TooltipProvider>
             </NotificationsProvider>
             </KuitansiProvider>
           </KuitansiStoreProvider>
         </SatkerConfigProvider>
+        </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>

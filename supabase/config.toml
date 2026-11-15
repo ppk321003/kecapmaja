@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.upload-dokumen]
 verify_jwt = false
+
+[functions.portal-mitra]
+verify_jwt = false

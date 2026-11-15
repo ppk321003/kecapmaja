@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useSatkerConfig, SatkerConfig, getSheetIdBySatkerAndModule } from '@/hooks/use-satker-config';
 import { useAuth } from './AuthContext';
 
@@ -19,7 +20,8 @@ interface SatkerConfigContextType {
 const SatkerConfigContext = createContext<SatkerConfigContextType | null | undefined>(undefined);
 
 export function SatkerConfigProvider({ children }: { children: React.ReactNode }) {
-  const { data: configs, isLoading, error } = useSatkerConfig();
+  const isPublicPortal = useLocation().pathname === '/portal-mitra';
+  const { data: configs, isLoading, error } = useSatkerConfig(!isPublicPortal);
   const { user } = useAuth();
 
   const getUserSatkerSheetId = useCallback((module: 'pencairan' | 'pengadaan' | 'entrikegiatan' | 'tagging' | 'masterorganik' | 'perjalanan' | 'daftarhadir' | 'dokpengadaan' | 'kak' | 'kuiperjadin' | 'kuitranport' | 'lembur' | 'spjhonor' | 'sk' | 'super' | 'tandaterima' | 'spjtranslok' | 'uh' | 'linkers' | 'kecaptobendahara' | 'kuitansi' | 'bahanrevisi' | 'spkoutput' | 'pulsa' | 'aula' | 'suratdisposisi'): string | null => {
@@ -27,7 +29,7 @@ export function SatkerConfigProvider({ children }: { children: React.ReactNode }
       console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] Missing: user=${!!user}, satker=${user?.satker}, configs=${!!configs}`);
       return null;
     }
-    const sheetId = getSheetIdBySatkerAndModule(configs, user.satker, module as any);
+    const sheetId = getSheetIdBySatkerAndModule(configs, user.satker, module);
     console.log(`[SatkerConfigContext.getUserSatkerSheetId(${module})] user.satker=${user.satker}, found_sheetId=${!!sheetId}, sheetId=${sheetId ? sheetId.substring(0, 20) + '...' : 'NOT_FOUND'}`);
     return sheetId;
   }, [user, configs]);
@@ -40,12 +42,12 @@ export function SatkerConfigProvider({ children }: { children: React.ReactNode }
   }, [user, configs]);
 
   const contextValue = useMemo(() => ({
-    configs,
-    isLoading,
+    configs: isPublicPortal ? undefined : configs,
+    isLoading: isPublicPortal ? false : isLoading,
     error: error as Error | null,
     getUserSatkerSheetId,
     getUserSatkerConfig,
-  }), [configs, isLoading, error, getUserSatkerSheetId, getUserSatkerConfig]);
+  }), [configs, isLoading, error, getUserSatkerSheetId, getUserSatkerConfig, isPublicPortal]);
 
   return (
     <SatkerConfigContext.Provider value={contextValue}>

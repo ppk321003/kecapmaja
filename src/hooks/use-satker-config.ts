@@ -44,9 +44,10 @@ export interface SatkerConfig {
 /**
  * Hook untuk membaca Master Config Sheet dan mendapatkan sheet IDs per satker
  */
-export function useSatkerConfig() {
+export function useSatkerConfig(enabled = true) {
   return useQuery({
     queryKey: ['satker-config'],
+    enabled,
     queryFn: async (): Promise<SatkerConfig[]> => {
       let rows: string[][] = [];
 
