@@ -1,6 +1,6 @@
 export const AULA_ROOMS = [
   { name: 'Aula Sinergi', capacity: 40 },
-  { name: 'Ruang Sinergi', capacity: 10 },
+  { name: 'Ruang Kolaborasi', capacity: 10 },
 ] as const;
 
 export type AulaRoom = (typeof AULA_ROOMS)[number]['name'];
