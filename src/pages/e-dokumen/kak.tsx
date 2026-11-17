@@ -1,5 +1,6 @@
 import { generateNextDocumentId, getNextSequenceNumberFromSheet, monthlyPrefix } from "@/utils/document-id";
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -265,6 +266,7 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
 
 const KerangkaAcuanKerja = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const satkerContext = useSatkerConfigContext();
   const kakSheetId = getTargetSheetId(satkerContext?.getUserSatkerSheetId('kak'));
   
@@ -722,32 +724,7 @@ const KerangkaAcuanKerja = () => {
         description: `Data KAK berhasil disimpan dengan ID: ${kakId} (No. ${sequenceNumber})`,
         variant: "default"
       });
-
-      // Reset form
-      setFormData({
-        jenisKak: "",
-        jenisPaketMeeting: "",
-        program: "",
-        kegiatan: "",
-        kro: "",
-        ro: "",
-        komponen: "",
-        akun: "",
-        paguAnggaran: "",
-        kegiatanDetails: [{
-          id: `kegiatan-${Date.now()}`,
-          namaKegiatan: "",
-          volume: "",
-          satuan: "",
-          hargaSatuan: ""
-        }],
-        tanggalMulaiKegiatan: null,
-        tanggalAkhirKegiatan: null,
-        tanggalPengajuanKAK: null,
-        pembuatDaftar: "",
-        jumlahGelombang: "0",
-        waveDates: []
-      });
+      navigate("/e-dokumen/buat");
 
     } catch (error: any) {
       console.error("❌ Error submitting KAK:", error);
