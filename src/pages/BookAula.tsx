@@ -628,9 +628,12 @@ export default function BookAula() {
                       type="button"
                       key={dayKey}
                       onClick={() => setSelectedCalendarDate(day)}
-                      className={`min-h-16 rounded-md border p-2 text-left transition-colors hover:bg-accent ${selected ? 'border-primary bg-accent' : ''} ${isSameMonth(day, calendarMonth) ? '' : 'text-muted-foreground/50'}`}
+                      aria-pressed={selected}
+                      className={`min-h-16 rounded-md border p-2 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${selected ? 'border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/20' : ''} ${isSameMonth(day, calendarMonth) || selected ? '' : 'text-muted-foreground/50'}`}
                     >
-                      <span className="text-sm">{format(day, 'd')}</span>
+                      <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full text-sm ${selected ? 'bg-primary px-2 font-semibold text-primary-foreground' : ''}`}>
+                        {format(day, 'd')}
+                      </span>
                       {count > 0 && <span className="mt-1 block text-xs text-primary">{count} jadwal</span>}
                     </button>
                   );
