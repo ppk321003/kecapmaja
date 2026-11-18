@@ -368,12 +368,21 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
 
   // Filter options based on search term
   const filteredOptions = useMemo(() => {
-    if (!searchTerm) return options;
-    return options.filter(option =>
-      option.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (option.jabatan && option.jabatan.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (option.kecamatan && option.kecamatan.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const searchTerms = searchTerm
+      .trim()
+      .toLocaleLowerCase('id')
+      .split(/\s+/)
+      .filter(Boolean);
+    if (searchTerms.length === 0) return options;
+
+    return options.filter(option => {
+      const searchableText = [option.name, option.jabatan, option.kecamatan]
+        .filter((text): text is string => Boolean(text))
+        .join(' ')
+        .toLocaleLowerCase('id');
+
+      return searchTerms.every(term => searchableText.includes(term));
+    });
   }, [options, searchTerm]);
 
   // Close dropdown when clicking outside
@@ -397,10 +406,14 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   };
 
   const handleSelectAll = () => {
-    if (value.length === filteredOptions.length) {
-      onValueChange([]);
+    const filteredIds = new Set(filteredOptions.map(option => option.id));
+    const allFilteredSelected = filteredOptions.length > 0 &&
+      filteredOptions.every(option => value.includes(option.id));
+
+    if (allFilteredSelected) {
+      onValueChange(value.filter(id => !filteredIds.has(id)));
     } else {
-      onValueChange(filteredOptions.map(option => option.id));
+      onValueChange([...new Set([...value, ...filteredOptions.map(option => option.id)])]);
     }
   };
 
@@ -452,10 +465,6 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 h-9"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
                 onKeyDown={(e) => e.stopPropagation()}
               />
             </div>
@@ -470,7 +479,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
               className="w-full h-8 justify-start"
               onClick={handleSelectAll}
             >
-              {value.length === filteredOptions.length ? (
+              {filteredOptions.length > 0 && filteredOptions.every(option => value.includes(option.id)) ? (
                 <>Batalkan semua pilihan</>
               ) : (
                 <>Pilih semua ({filteredOptions.length})</>
@@ -655,8 +664,8 @@ const DaftarHadir = () => {
   );
 
   const mitraList: Option[] = useMemo(() => 
-    mitraDataFromHook.map(item => ({
-      id: `mitra-${item.nik}`,
+    mitraDataFromHook.map((item, index) => ({
+      id: `mitra-${item.nik || item.id}-${index}`,
       name: item.name,
       kecamatan: item.kecamatan
     })) || [],
