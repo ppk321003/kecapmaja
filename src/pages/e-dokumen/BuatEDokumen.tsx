@@ -1,23 +1,19 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { FileText, Users, Briefcase, Car, Clock, FileSpreadsheet, FileCheck, FileSignature, Receipt, Banknote, Bike, Zap } from "lucide-react";
+import {
+  Banknote,
+  Bike,
+  Briefcase,
+  Car,
+  ChevronRight,
+  Clock,
+  FileCheck,
+  FileSignature,
+  FileSpreadsheet,
+  FileText,
+  Receipt,
+  Users,
+  Zap,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-// Warna aksen — hanya untuk top bar + background icon
-const accentColors = [
-  "from-blue-500 to-blue-600",
-  "from-emerald-500 to-emerald-600",
-  "from-violet-500 to-violet-600",
-  "from-amber-500 to-amber-600",
-  "from-rose-500 to-rose-600",
-  "from-cyan-500 to-cyan-600",
-  "from-indigo-500 to-indigo-600",
-  "from-teal-500 to-teal-600",
-  "from-purple-500 to-purple-600",
-  "from-orange-500 to-orange-600",
-  "from-pink-500 to-pink-600",
-  "from-lime-500 to-lime-600",
-];
 
 export default function BuatEDokumen() {
   const navigate = useNavigate();
@@ -25,90 +21,64 @@ export default function BuatEDokumen() {
   const eDokumenMenuItems = [
     { title: "Daftar Hadir (Tabel Rekap)", url: "/e-dokumen/daftar-hadir", icon: Users, description: "Buat daftar hadir kegiatan dalam format tabel rekap" },
     { title: "Dokumen Pengadaan", url: "/e-dokumen/dokumen-pengadaan", icon: Briefcase, description: "Buat dokumen pengadaan barang dan jasa" },
-    { title: "Generate SPJ Honor Mitra", url: "/e-dokumen/generate-spj-honor-mitra", icon: Zap, description: "Generate SPJ honor mitra secara otomatis hasil entri dari SPK dan BAST" },
+    { title: "Generate SPJ Honor Mitra", url: "/e-dokumen/generate-spj-honor-mitra", icon: Zap, description: "Generate SPJ honor mitra secara otomatis hasil entri dari SPK dan BAST", bosNotice: true },
     { title: "Kerangka Acuan Kerja (KAK)", url: "/e-dokumen/kak", icon: FileText, description: "Buat Kerangka Acuan Kerja / Spesifikasi Teknis kegiatan" },
-    { title: "Kuitansi Perjalanan Dinas", url: "/e-dokumen/kuitansi-perjalanan", icon: Car, description: "Kuitansi Perjalanan Dinas Luar Kota / Dalam Kota > 8 Jam" },
-    { title: "Kuitansi Transport Lokal", url: "/e-dokumen/kuitansi-transport", icon: Bike, description: "Buat kuitansi transport lokal" },
+    { title: "Kuitansi Perjalanan Dinas", url: "/e-dokumen/kuitansi-perjalanan", icon: Car, description: "Kuitansi Perjalanan Dinas Luar Kota / Dalam Kota > 8 Jam", bosNotice: true },
+    { title: "Kuitansi Transport Lokal", url: "/e-dokumen/kuitansi-transport", icon: Bike, description: "Buat kuitansi transport lokal", bosNotice: true },
     { title: "Lembur & Laporan", url: "/e-dokumen/lembur-laporan", icon: Clock, description: "Buat dokumen lembur dan laporan" },
-    { title: "SPJ Honor (Tabel Rekap)", url: "/e-dokumen/spj-honor", icon: FileSpreadsheet, description: "Buat SPJ Honor dalam format tabel rekap" },
+    { title: "SPJ Honor (Tabel Rekap)", url: "/e-dokumen/spj-honor", icon: FileSpreadsheet, description: "Buat SPJ Honor dalam format tabel rekap", bosNotice: true },
     { title: "Surat Keputusan", url: "/e-dokumen/surat-keputusan", icon: FileCheck, description: "Buat Surat Keputusan" },
     { title: "Surat Pernyataan", url: "/e-dokumen/surat-pernyataan", icon: FileSignature, description: "Buat Surat Pernyataan" },
     { title: "Tanda Terima (Tabel Rekap)", url: "/e-dokumen/tanda-terima", icon: Receipt, description: "Buat tanda terima dalam format tabel rekap" },
-    { title: "Transport Lokal (Tabel Rekap)", url: "/e-dokumen/transport-lokal", icon: Bike, description: "Buat transport lokal dalam format tabel rekap" },
+    { title: "Transport Lokal (Tabel Rekap)", url: "/e-dokumen/transport-lokal", icon: Bike, description: "Buat transport lokal dalam format tabel rekap", bosNotice: true },
     { title: "Uang Harian dan Transport Lokal (Tabel Rekap)", url: "/e-dokumen/uang-harian-transport", icon: Banknote, description: "Buat uang harian dan transport lokal dalam format tabel rekap" },
   ];
 
   return (
-    <div className="min-h-screen bg-background pt-4 pb-16 px-4 sm:px-6">
-      {/* Header */}
-      <div className="text-center mb-10 max-w-[2400px] mx-auto">
-        <h1 className="text-4xl font-extrabold text-red-500 tracking-tight">
+    <main className="min-h-screen w-full bg-background pb-16 pt-6">
+      <header className="mb-8 w-full">
+        <h1 className="text-3xl font-bold tracking-tight text-red-500 sm:text-4xl">
           Buat e-Dokumen
         </h1>
-        <p className="mt-3 text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+        <p className="mt-2 text-muted-foreground">
           Pilih jenis dokumen yang ingin Anda buat. Semua template telah disesuaikan dengan standar formal pemerintahan.
         </p>
-      </div>
+      </header>
 
-      {/* Grid Cards - Optimized for wide screens */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-6 max-w-[2400px] mx-auto">
-        {eDokumenMenuItems.map((item, index) => {
+      <ul className="w-full divide-y divide-border">
+        {eDokumenMenuItems.map((item) => {
           const Icon = item.icon;
-          const accent = accentColors[index % accentColors.length];
-          const lighterBg = accent.replace("500", "100").replace("600", "200");
-          const iconColor = accent.split(" ")[0].replace("from-", "text-").replace("-500", "-600");
 
           return (
-            <Card
-              key={item.title}
-              className="group relative overflow-hidden bg-card/95 backdrop-blur-sm border border-border/60 
-                         hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 
-                         transition-all duration-500 hover:-translate-y-2 rounded-2xl h-full flex flex-col min-h-[220px]"
-            >
-              {/* Top bar warna-warni */}
-              <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-
-              <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0 flex-1">
-                <div className="space-y-3 flex-1 min-w-0">
-                  {/* Icon and Title Row */}
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${lighterBg} border transition-all duration-300 group-hover:scale-110 flex-shrink-0 mt-0.5`}>
-                      <Icon className={`h-6 w-6 ${iconColor}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg font-semibold text-foreground leading-tight line-clamp-2">
-                        {item.title}
-                      </CardTitle>
-                      <CardDescription className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mt-2">
-                        {item.description}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-
-              {/* Tombol: SELALU primary (merah) + gradasi halus */}
-              <CardContent className="pt-0 pb-4">
-                <Button
-                  onClick={() => navigate(item.url)}
-                  className="w-full h-11 text-sm font-semibold
-                             bg-gradient-to-r from-primary to-primary/80
-                             hover:from-primary hover:to-primary/70 hover:brightness-110
-                             text-primary-foreground
-                             shadow-lg hover:shadow-xl hover:shadow-primary/25
-                             relative overflow-hidden
-                             transition-all duration-300 group-hover:scale-105
-                             flex items-center justify-center gap-2 group/btn"
-                  size="lg"
-                >
-                  <span className="relative z-10">Buat Dokumen</span>
-                  <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full bg-white/20 transition-transform duration-700" />
-                </Button>
-              </CardContent>
-            </Card>
+            <li key={item.url}>
+              <button
+                type="button"
+                onClick={() => navigate(item.url)}
+                className="group flex w-full items-center gap-4 py-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-foreground">{item.title}</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">{item.description}</span>
+                  {item.bosNotice && (
+                    <span className="mt-1 block text-sm font-bold text-blue-700 dark:text-blue-400 sm:hidden">
+                      Utamakan menggunakan aplikasi BOS
+                    </span>
+                  )}
+                </span>
+                {item.bosNotice && (
+                  <span className="hidden shrink-0 rounded-md bg-blue-50 px-4 py-2 text-right text-sm font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 sm:block">
+                    Utamakan menggunakan aplikasi BOS
+                  </span>
+                )}
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" aria-hidden="true" />
+              </button>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ul>
+    </main>
   );
 }
