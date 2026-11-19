@@ -31,7 +31,7 @@ export default function BuatEDokumen() {
     { title: "Surat Pernyataan", url: "/e-dokumen/surat-pernyataan", icon: FileSignature, description: "Buat Surat Pernyataan" },
     { title: "Tanda Terima (Tabel Rekap)", url: "/e-dokumen/tanda-terima", icon: Receipt, description: "Buat tanda terima dalam format tabel rekap" },
     { title: "Transport Lokal (Tabel Rekap)", url: "/e-dokumen/transport-lokal", icon: Bike, description: "Buat transport lokal dalam format tabel rekap", bosNotice: true },
-    { title: "Uang Harian dan Transport Lokal (Tabel Rekap)", url: "/e-dokumen/uang-harian-transport", icon: Banknote, description: "Buat uang harian dan transport lokal dalam format tabel rekap" },
+    { title: "Uang Harian dan Transport Lokal (Tabel Rekap)", url: "/e-dokumen/uang-harian-transport", icon: Banknote, description: "Buat uang harian dan transport lokal dalam format tabel rekap", bosNotice: true },
   ];
 
   return (
