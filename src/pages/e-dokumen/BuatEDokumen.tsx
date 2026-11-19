@@ -64,13 +64,13 @@ export default function BuatEDokumen() {
                   <span className="mt-1 block text-sm text-muted-foreground">{item.description}</span>
                   {item.bosNotice && (
                     <span className="mt-1 block text-sm font-bold text-blue-700 dark:text-blue-400 sm:hidden">
-                      Utamakan menggunakan aplikasi BOS
+                      Utamakan menggunakan aplikasi BOS / Gunakan jika BOS sedang bermasalah
                     </span>
                   )}
                 </span>
                 {item.bosNotice && (
                   <span className="hidden shrink-0 rounded-md bg-blue-50 px-4 py-2 text-right text-sm font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 sm:block">
-                    Utamakan menggunakan aplikasi BOS
+                    Utamakan menggunakan aplikasi BOS / Gunakan jika BOS sedang bermasalah
                   </span>
                 )}
                 <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" aria-hidden="true" />
