@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SatkerOption {
@@ -177,23 +176,24 @@ export default function PortalMitra() {
             <form className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5" onSubmit={(event) => void submitLookup(event)}>
               <div className="space-y-2 xl:col-span-2">
                 <Label htmlFor="mitra-satker">Satker</Label>
-                <Select
+                <select
+                  id="mitra-satker"
                   value={satkerId}
-                  onValueChange={(value) => {
-                    setSatkerId(value);
+                  onChange={(event) => {
+                    setSatkerId(event.target.value);
                     resetResult();
                   }}
                   disabled={isLoadingSatkers || satkers.length === 0}
+                  required
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <SelectTrigger id="mitra-satker">
-                    <SelectValue placeholder={isLoadingSatkers ? 'Memuat daftar satker...' : 'Pilih satker'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {satkers.map((satker) => (
-                      <SelectItem key={satker.id} value={satker.id}>{satker.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">
+                    {isLoadingSatkers ? 'Memuat daftar satker...' : 'Pilih satker'}
+                  </option>
+                  {satkers.map((satker) => (
+                    <option key={satker.id} value={satker.id}>{satker.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="mitra-nik">NIK</Label>
