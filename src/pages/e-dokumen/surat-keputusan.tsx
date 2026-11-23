@@ -777,7 +777,7 @@ const generateSKId = async (targetId: string = DEFAULT_TARGET_SPREADSHEET_ID): P
     spreadsheetId: targetId,
     sheetName: SHEET_NAME,
     prefix: monthlyPrefix('sk'),
-    column: 'A',
+    column: 'B',
   });
 };
 
