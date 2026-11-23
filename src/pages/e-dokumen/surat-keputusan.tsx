@@ -1,6 +1,7 @@
 import { generateNextDocumentId, getNextSequenceNumberFromSheet, monthlyPrefix } from "@/utils/document-id";
 import React, { useState, useEffect, useMemo } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch, Controller } from "react-hook-form";
+import type { Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
@@ -544,8 +545,7 @@ const SearchablePembuatSelect: React.FC<SearchablePembuatSelectProps> = ({
 // Komponen untuk form kegiatan dengan dropdown - DIPERBAIKI LEBAR KOLOM
 interface KegiatanFormItemProps {
   index: number;
-  item: KegiatanItem;
-  onUpdate: (index: number, field: keyof KegiatanItem, value: string) => void;
+  control: Control<SuratKeputusanFormData>;
   onRemove: (index: number) => void;
   masterData: MasterKegiatan[];
   onSelectFromMaster: (index: number, masterItem: MasterKegiatan) => void;
@@ -553,8 +553,7 @@ interface KegiatanFormItemProps {
 
 const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
   index,
-  item,
-  onUpdate,
+  control,
   onRemove,
   masterData,
   onSelectFromMaster
@@ -610,52 +609,76 @@ const KegiatanFormItem: React.FC<KegiatanFormItemProps> = ({
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Nama Kegiatan
             </label>
-            <Input
-              value={item.namaKegiatan}
-              onChange={(e) => onUpdate(index, 'namaKegiatan', e.target.value)}
-              placeholder="Nama kegiatan"
-              className="h-9 text-sm border-amber-600 focus:border-amber-700"
+            <Controller
+              control={control}
+              name={`kegiatanList.${index}.namaKegiatan` as const}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Nama kegiatan"
+                  className="h-9 text-sm border-amber-600 focus:border-amber-700"
+                />
+              )}
             />
           </div>
-          
-          {/* Beban Anggaran - 2 kolom (16.7%) + 7% = 2.8 ≈ 3 kolom */}
+
+          {/* Beban Anggaran - 3 kolom */}
           <div className="md:col-span-3">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Beban Anggaran
             </label>
-            <Input
-              value={item.bebanAnggaran}
-              onChange={(e) => onUpdate(index, 'bebanAnggaran', e.target.value)}
-              placeholder="2898.BMA.007.005.A.521213"
-              className="h-9 text-sm border-amber-600 focus:border-amber-700"
+            <Controller
+              control={control}
+              name={`kegiatanList.${index}.bebanAnggaran` as const}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="2898.BMA.007.005.A.521213"
+                  className="h-9 text-sm border-amber-600 focus:border-amber-700"
+                />
+              )}
             />
           </div>
-          
-          {/* Harga - 1 kolom (8.3%) + 5% = 1.4 ≈ 1 kolom */}
+
+          {/* Harga - 1 kolom */}
           <div className="md:col-span-1">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Harga
             </label>
-            <Input
-              value={item.harga}
-              onChange={(e) => onUpdate(index, 'harga', e.target.value)}
-              placeholder="1000000000"
-              className="h-9 text-sm border-amber-600 focus:border-amber-700"
-              maxLength={10}
+            <Controller
+              control={control}
+              name={`kegiatanList.${index}.harga` as const}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="1000000000"
+                  className="h-9 text-sm border-amber-600 focus:border-amber-700"
+                  maxLength={10}
+                />
+              )}
             />
           </div>
-          
-          {/* Satuan - 1 kolom (8.3%) + 5% = 1.4 ≈ 1 kolom */}
+
+          {/* Satuan - 1 kolom */}
           <div className="md:col-span-1">
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Satuan
             </label>
-            <Input
-              value={item.satuan}
-              onChange={(e) => onUpdate(index, 'satuan', e.target.value)}
-              placeholder="Orang"
-              className="h-9 text-sm border-amber-600 focus:border-amber-700"
-              maxLength={10}
+            <Controller
+              control={control}
+              name={`kegiatanList.${index}.satuan` as const}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Orang"
+                  className="h-9 text-sm border-amber-600 focus:border-amber-700"
+                  maxLength={10}
+                />
+              )}
             />
           </div>
         </div>
@@ -851,7 +874,10 @@ const SuratKeputusan = () => {
     name: "kegiatanList"
   });
 
-  const kegiatanList = form.watch("kegiatanList");
+  const kegiatanList = useWatch({
+    control: form.control,
+    name: "kegiatanList"
+  }) as KegiatanItem[] | undefined;
   const watchedOrganik = form.watch("organik") || [];
   const watchedMitra = form.watch("mitraStatistik") || [];
   const memutuskanKesatuValue = form.watch("memutuskanKesatu");
@@ -900,36 +926,34 @@ const SuratKeputusan = () => {
   };
 
   const handleAddKegiatan = () => {
-    append(DEFAULT_KEGIATAN);
+    append({ ...DEFAULT_KEGIATAN });
   };
 
   const handleRemoveKegiatan = (index: number) => {
     if (fields.length > 1) remove(index);
   };
 
-  const handleUpdateKegiatan = (index: number, field: keyof KegiatanItem, value: string) => {
-    const currentValues = form.getValues("kegiatanList");
-    if (currentValues && currentValues[index]) {
-      const updatedList = [...currentValues];
-      updatedList[index] = { ...updatedList[index], [field]: value };
-      form.setValue("kegiatanList", updatedList);
-    }
-  };
-
   const handleSelectFromMaster = (index: number, masterItem: MasterKegiatan) => {
-    const updatedKegiatan: KegiatanItem = {
-      namaKegiatan: masterItem.namaKegiatan,
-      bebanAnggaran: masterItem.bebanAnggaran,
-      harga: masterItem.harga,
-      satuan: masterItem.satuan
-    };
-    
-    const currentValues = form.getValues("kegiatanList");
-    if (currentValues && currentValues[index]) {
-      const updatedList = [...currentValues];
-      updatedList[index] = updatedKegiatan;
-      form.setValue("kegiatanList", updatedList);
-    }
+    form.setValue(`kegiatanList.${index}.namaKegiatan` as const, masterItem.namaKegiatan ?? "", {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    form.setValue(`kegiatanList.${index}.bebanAnggaran` as const, masterItem.bebanAnggaran ?? "", {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    form.setValue(`kegiatanList.${index}.harga` as const, masterItem.harga ?? "", {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    form.setValue(`kegiatanList.${index}.satuan` as const, masterItem.satuan ?? "", {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
   };
 
   const formatKegiatanForSpreadsheet = (kegiatanList: KegiatanItem[]): string => {
@@ -1291,13 +1315,13 @@ const SuratKeputusan = () => {
                       <Input 
                         placeholder="Contoh: PETUGAS SURVEI KONVERSI GABAH KE BERAS (SKGB) TAHUN 2026" 
                         className="h-10 text-sm border-amber-600 focus:border-amber-700" 
-                        {...form.register("memutuskanKesatu")}
+                        value={form.watch("memutuskanKesatu") ?? ""}
                         onChange={(e) => {
-                          form.setValue("memutuskanKesatu", e.target.value);
+                          form.setValue("memutuskanKesatu", e.target.value, { shouldDirty: true, shouldValidate: true });
                           // Jika user mengosongkan, otomatis generate lagi dari tentang
                           if (!e.target.value.trim() && tentangValue.trim()) {
                             const generated = generateMemutuskanKesatu(tentangValue);
-                            form.setValue("memutuskanKesatu", generated);
+                            form.setValue("memutuskanKesatu", generated, { shouldDirty: true, shouldValidate: true });
                           }
                         }}
                       />
@@ -1339,8 +1363,7 @@ const SuratKeputusan = () => {
                           <KegiatanFormItem
                             key={field.id}
                             index={index}
-                            item={(kegiatanList[index] as KegiatanItem) || DEFAULT_KEGIATAN}
-                            onUpdate={handleUpdateKegiatan}
+                            control={form.control}
                             onRemove={handleRemoveKegiatan}
                             masterData={masterData}
                             onSelectFromMaster={handleSelectFromMaster}
