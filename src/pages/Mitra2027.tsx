@@ -29,7 +29,7 @@ type RowWithMeta = Row & { __sheetRowNum: number };
 
 const SPREADSHEET_ID = "15txzji3eK-gxqqP9RPwvaQuEcF9ve4xtkMukfaAAlig";
 const SHEET_NAME = "GABUNG-2026";
-const RANGE = `${SHEET_NAME}!A1:AX`;
+const RANGE = `${SHEET_NAME}!A1:AY`;
 
 const colIdx = (letter: string): number => {
   let n = 0;
@@ -51,12 +51,19 @@ const COL = {
   sobatId: colIdx("U"),
   aksiPJ: colIdx("AW"),
   waktuAksi: colIdx("AX"),
+  posisiBaru: colIdx("AY"),
 };
 
 const AKSI_OPTIONS = [
   { value: "belum", label: "Belum" },
   { value: "Ditawarkan", label: "Ditawarkan" },
   { value: "Tidak Ditawarkan", label: "Tidak Ditawarkan" },
+] as const;
+
+const POSISI_BARU_OPTIONS = [
+  { value: "Mitra Pendataan", label: "Mitra Pendataan", className: "bg-sky-100 text-sky-800 border-sky-300 hover:bg-sky-200" },
+  { value: "Mitra (Pendataan dan Pengolahan)", label: "Mitra (Pendataan dan Pengolahan)", className: "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200" },
+  { value: "Mitra Pengolahan", label: "Mitra Pengolahan", className: "bg-violet-100 text-violet-800 border-violet-300 hover:bg-violet-200" },
 ] as const;
 
 const normalizeKecamatanName = (raw: string): string => {
@@ -122,8 +129,15 @@ const statusLabel = (value: string): "Ditawarkan" | "Tidak Ditawarkan" | "Belum"
   return "Belum";
 };
 
-type SortKey = "nama" | "kecamatan" | "desa" | "umur" | "pendidikan";
+type SortKey = "nama" | "alamat" | "umur" | "pendidikan";
 type SortDir = "asc" | "desc";
+
+const formatAlamat = (kecamatan: string, desa: string) => {
+  const kec = normalizeKecamatanName(kecamatan || "") || (kecamatan || "").trim();
+  const des = (desa || "").trim();
+  if (kec && des) return `${kec}, ${des}`;
+  return kec || des || "";
+};
 
 const normalizePhone = (raw: string) => (raw || "").replace(/[^\d+]/g, "");
 
@@ -146,6 +160,7 @@ export default function Mitra2027() {
   const [search, setSearch] = useState("");
   const [filterKec, setFilterKec] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterPendidikan, setFilterPendidikan] = useState<string>("all");
   const [detailRow, setDetailRow] = useState<RowWithMeta | null>(null);
   const [savingRow, setSavingRow] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -153,6 +168,12 @@ export default function Mitra2027() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [didSetDefaultKec, setDidSetDefaultKec] = useState(false);
+  const [posisiDialogRow, setPosisiDialogRow] = useState<RowWithMeta | null>(null);
+  const [selectedPosisiBaru, setSelectedPosisiBaru] = useState<string>("");
+  const [revertConfirm, setRevertConfirm] = useState<{
+    row: RowWithMeta;
+    target: "belum" | "Tidak Ditawarkan";
+  } | null>(null);
 
   const userRole = user?.role || "";
   const canEditAny = useMemo(() => {
@@ -225,6 +246,15 @@ export default function Mitra2027() {
       .sort((a, b) => a.label.localeCompare(b.label, "id"));
   }, [rows]);
 
+  const pendidikanOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) {
+      const v = (r[COL.pendidikan] || "").trim();
+      if (v) set.add(v);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "id"));
+  }, [rows]);
+
   const myKecamatanKeys = useMemo(() => {
     const allowed = getAllowedKecamatanFromRole(userRole);
     if (!Array.isArray(allowed)) return [] as string[];
@@ -289,6 +319,10 @@ export default function Mitra2027() {
       if (filterStatus === "belum" && st !== "Belum") return false;
       if (filterStatus === "Ditawarkan" && st !== "Ditawarkan") return false;
       if (filterStatus === "Tidak Ditawarkan" && st !== "Tidak Ditawarkan") return false;
+
+      const pendidikan = (r[COL.pendidikan] || "").trim();
+      if (filterPendidikan !== "all" && pendidikan !== filterPendidikan) return false;
+
       if (!q) return true;
       const hay = [
         r[COL.nama],
@@ -297,6 +331,7 @@ export default function Mitra2027() {
         normalizeKecamatanName(kecRaw),
         r[COL.alamatDesa],
         r[COL.posisi],
+        r[COL.posisiBaru],
       ]
         .join(" ")
         .toLowerCase();
@@ -310,10 +345,8 @@ export default function Mitra2027() {
       switch (sortKey) {
         case "nama":
           return (r[COL.nama] || "").trim();
-        case "kecamatan":
-          return normalizeKecamatanName(r[COL.alamatKecamatan] || "") || (r[COL.alamatKecamatan] || "").trim();
-        case "desa":
-          return (r[COL.alamatDesa] || "").trim();
+        case "alamat":
+          return formatAlamat(r[COL.alamatKecamatan] || "", r[COL.alamatDesa] || "");
         case "pendidikan":
           return (r[COL.pendidikan] || "").trim();
         case "umur":
@@ -338,11 +371,11 @@ export default function Mitra2027() {
       if (va > vb) return 1 * dir;
       return 0;
     });
-  }, [rows, search, filterKec, filterStatus, myKecamatanKeys, sortKey, sortDir]);
+  }, [rows, search, filterKec, filterStatus, filterPendidikan, myKecamatanKeys, sortKey, sortDir]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, filterKec, filterStatus, pageSize, sortKey, sortDir]);
+  }, [search, filterKec, filterStatus, filterPendidikan, pageSize, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -357,7 +390,11 @@ export default function Mitra2027() {
     if (page !== safePage) setPage(safePage);
   }, [page, safePage]);
 
-  const updateAksiPJ = async (row: RowWithMeta, newValue: "belum" | "Ditawarkan" | "Tidak Ditawarkan") => {
+  const updateAksiPJ = async (
+    row: RowWithMeta,
+    newValue: "belum" | "Ditawarkan" | "Tidak Ditawarkan",
+    posisiBaruArg?: string
+  ) => {
     const kecRaw = row[COL.alamatKecamatan] || "";
     if (!canUserEditKecamatan(userRole, kecRaw)) {
       window.alert("Anda tidak memiliki kewenangan mengubah data kecamatan ini.");
@@ -365,8 +402,19 @@ export default function Mitra2027() {
     }
     const sheetRow = row.__sheetRowNum;
     if (!sheetRow) return;
+
     const aksiValue = newValue === "belum" ? "" : newValue;
     const waktuValue = newValue === "belum" ? "" : formatWaktuAksi(userRole || user?.username || "Pengguna");
+    const posisiBaruValue = newValue === "Ditawarkan" ? (posisiBaruArg ?? row[COL.posisiBaru] ?? "").trim() : "";
+    if (newValue === "Ditawarkan" && !posisiBaruValue) {
+      window.alert("Pilih Posisi Baru terlebih dahulu.");
+      return;
+    }
+
+    const prevAksi = row[COL.aksiPJ] || "";
+    const prevWaktu = row[COL.waktuAksi] || "";
+    const prevPosisiBaru = row[COL.posisiBaru] || "";
+
     setSavingRow(sheetRow);
     try {
       const { data, error: err } = await supabase.functions.invoke("google-sheets", {
@@ -376,13 +424,13 @@ export default function Mitra2027() {
           updates: [
             { range: `${SHEET_NAME}!AW${sheetRow}`, values: [[aksiValue]] },
             { range: `${SHEET_NAME}!AX${sheetRow}`, values: [[waktuValue]] },
+            { range: `${SHEET_NAME}!AY${sheetRow}`, values: [[posisiBaruValue]] },
           ],
         },
       });
       if (err) throw err;
-      // Some implementations return ok flag
-      if (data && data.ok === false) {
-        throw new Error(data.error || "Gagal menyimpan perubahan.");
+      if (data && (data as any).ok === false) {
+        throw new Error((data as any).error || "Gagal menyimpan perubahan.");
       }
       setRows((prev) =>
         prev.map((r) => {
@@ -391,11 +439,27 @@ export default function Mitra2027() {
           copy.__sheetRowNum = r.__sheetRowNum;
           copy[COL.aksiPJ] = aksiValue;
           copy[COL.waktuAksi] = waktuValue;
+          copy[COL.posisiBaru] = posisiBaruValue;
           return copy;
         })
       );
+      setPosisiDialogRow(null);
+      setSelectedPosisiBaru("");
+      setRevertConfirm(null);
     } catch (e: any) {
       console.error("Gagal menyimpan Aksi PJ:", e);
+      // rollback
+      setRows((prev) =>
+        prev.map((r) => {
+          if (r.__sheetRowNum !== sheetRow) return r;
+          const copy = [...r] as RowWithMeta;
+          copy.__sheetRowNum = r.__sheetRowNum;
+          copy[COL.aksiPJ] = prevAksi;
+          copy[COL.waktuAksi] = prevWaktu;
+          copy[COL.posisiBaru] = prevPosisiBaru;
+          return copy;
+        })
+      );
       let detail = e?.message || "Gagal menyimpan perubahan ke Google Sheets.";
       try {
         const ctx: any = e?.context;
@@ -410,6 +474,24 @@ export default function Mitra2027() {
     } finally {
       setSavingRow(null);
     }
+  };
+
+  const handleAksiChange = (row: RowWithMeta, val: "belum" | "Ditawarkan" | "Tidak Ditawarkan") => {
+    const current = statusLabel(row[COL.aksiPJ] || "");
+    if (val === "Ditawarkan") {
+      setPosisiDialogRow(row);
+      setSelectedPosisiBaru((row[COL.posisiBaru] || "").trim());
+      return;
+    }
+    if (val === "Tidak Ditawarkan") {
+      setRevertConfirm({ row, target: "Tidak Ditawarkan" });
+      return;
+    }
+    if (current === "Ditawarkan" && val === "belum") {
+      setRevertConfirm({ row, target: "belum" });
+      return;
+    }
+    void updateAksiPJ(row, val);
   };
 
   const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : 0);
@@ -620,13 +702,13 @@ export default function Mitra2027() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
-                <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex flex-col md:flex-row md:flex-wrap gap-3">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Cari nama, SOBAT ID, kecamatan, desa..."
+                      placeholder="Cari nama, SOBAT ID, kecamatan, desa, posisi baru..."
                       className="pl-9"
                     />
                   </div>
@@ -655,6 +737,19 @@ export default function Mitra2027() {
                       <SelectItem value="belum">Belum</SelectItem>
                       <SelectItem value="Ditawarkan">Ditawarkan</SelectItem>
                       <SelectItem value="Tidak Ditawarkan">Tidak Ditawarkan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterPendidikan} onValueChange={setFilterPendidikan}>
+                    <SelectTrigger className="w-full md:w-52">
+                      <SelectValue placeholder="Semua Pendidikan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Pendidikan</SelectItem>
+                      {pendidikanOptions.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {p}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -713,13 +808,8 @@ export default function Mitra2027() {
                       </TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Posisi</TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
-                        <button type="button" onClick={() => toggleSort("kecamatan")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
-                          Alamat Kecamatan {renderSortIcon("kecamatan")}
-                        </button>
-                      </TableHead>
-                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
-                        <button type="button" onClick={() => toggleSort("desa")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
-                          Alamat Desa/Kel {renderSortIcon("desa")}
+                        <button type="button" onClick={() => toggleSort("alamat")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                          Alamat {renderSortIcon("alamat")}
                         </button>
                       </TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap text-center">
@@ -734,21 +824,21 @@ export default function Mitra2027() {
                         </button>
                       </TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">No Telp</TableHead>
-                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">SOBAT ID</TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Aksi PJ Kecamatan</TableHead>
+                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Posisi Baru</TableHead>
                       <TableHead className="h-12 py-3 px-4 w-[70px] font-semibold text-slate-700 whitespace-nowrap">Detail</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={12} className="text-center py-10 text-slate-500">
+                        <TableCell colSpan={11} className="text-center py-10 text-slate-500">
                           <div className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Memuat data...</div>
                         </TableCell>
                       </TableRow>
                     ) : filteredRows.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={12} className="text-center py-10 text-slate-500">
+                        <TableCell colSpan={11} className="text-center py-10 text-slate-500">
                           Tidak ada data yang sesuai filter.
                         </TableCell>
                       </TableRow>
@@ -762,10 +852,26 @@ export default function Mitra2027() {
                         return (
                           <TableRow key={`${r.__sheetRowNum}-${r[COL.sobatId] || ""}`}>
                             <TableCell className="text-center text-slate-600 font-medium">{pageStart + idx}</TableCell>
-                            <TableCell className="font-medium whitespace-nowrap py-3">{r[COL.nama] || "-"}</TableCell>
+                            <TableCell className="py-3">
+                              <div className="leading-snug">
+                                <div className="font-medium text-slate-900">{r[COL.nama] || "-"}</div>
+                                <div className="text-xs text-slate-500 mt-0.5">{(r[COL.sobatId] || "").trim() || "-"}</div>
+                              </div>
+                            </TableCell>
                             <TableCell className="py-3">{r[COL.posisi] || "-"}</TableCell>
-                            <TableCell className="whitespace-nowrap py-3">{kecRaw || "-"}</TableCell>
-                            <TableCell className="py-3">{r[COL.alamatDesa] || "-"}</TableCell>
+                            <TableCell className="py-3">
+                              {(() => {
+                                const kec = (r[COL.alamatKecamatan] || "").trim();
+                                const desa = (r[COL.alamatDesa] || "").trim();
+                                if (!kec && !desa) return "-";
+                                return (
+                                  <div className="leading-snug">
+                                    <div className="text-slate-900">{kec || "-"}</div>
+                                    <div className="text-xs text-slate-500 mt-0.5">{desa || "-"}</div>
+                                  </div>
+                                );
+                              })()}
+                            </TableCell>
                             <TableCell className="py-3 text-center">{r[COL.umur] || "-"}</TableCell>
                             <TableCell className="py-3 text-center">{r[COL.jenisKelamin] || "-"}</TableCell>
                             <TableCell className="py-3">{r[COL.pendidikan] || "-"}</TableCell>
@@ -793,12 +899,11 @@ export default function Mitra2027() {
                                 );
                               })()}
                             </TableCell>
-                            <TableCell className="whitespace-nowrap py-3">{r[COL.sobatId] || "-"}</TableCell>
                             <TableCell className="min-w-[210px]">
                               <div className="flex items-center gap-2">
                                 <Select
                                   value={selectValue}
-                                  onValueChange={(val) => updateAksiPJ(r, val as "belum" | "Ditawarkan" | "Tidak Ditawarkan")}
+                                  onValueChange={(val) => handleAksiChange(r, val as "belum" | "Ditawarkan" | "Tidak Ditawarkan")}
                                   disabled={!editable || isSaving}
                                 >
                                   <SelectTrigger className="h-8">
@@ -827,6 +932,35 @@ export default function Mitra2027() {
                               {r[COL.waktuAksi] && (
                                 <div className="text-[11px] text-slate-500 mt-1 leading-snug">{r[COL.waktuAksi]}</div>
                               )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {(() => {
+                                const pb = (r[COL.posisiBaru] || "").trim();
+                                const stNow = statusLabel(r[COL.aksiPJ] || "");
+                                if (stNow === "Ditawarkan" && editable) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      className="text-left hover:underline underline-offset-2"
+                                      onClick={() => {
+                                        setPosisiDialogRow(r);
+                                        setSelectedPosisiBaru(pb);
+                                      }}
+                                      title="Pilih/ubah Posisi Baru"
+                                    >
+                                      {pb ? <span className="font-medium text-slate-800">{pb}</span> : <span className="text-amber-700">Pilih posisi</span>}
+                                    </button>
+                                  );
+                                }
+                                if (stNow === "Tidak Ditawarkan") {
+                                  return (
+                                    <span title="Tidak Ditawarkan">
+                                      <XCircle className="h-5 w-5 text-red-600" aria-label="Tidak Ditawarkan" />
+                                    </span>
+                                  );
+                                }
+                                return pb ? <span className="font-medium text-slate-800">{pb}</span> : "-";
+                              })()}
                             </TableCell>
                             <TableCell>
                               <Button variant="ghost" size="icon" onClick={() => setDetailRow(r)} title="Lihat detail">
@@ -868,6 +1002,128 @@ export default function Mitra2027() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!revertConfirm} onOpenChange={(open) => !open && setRevertConfirm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Perubahan Status</DialogTitle>
+            <DialogDescription className="text-sm text-slate-600">
+              {revertConfirm?.target === "Tidak Ditawarkan" ? (
+                <>
+                  <span className="block">Apakah Anda yakin ingin menetapkan status <strong>Tidak Ditawarkan</strong>?</span>
+                  <span className="block mt-1">Mitra ini tidak akan dapat mengikuti kegiatan di tahun 2027.</span>
+                </>
+              ) : (
+                <span className="block">
+                  Apakah Anda yakin ingin mengubah status dari <strong>Ditawarkan</strong> menjadi <strong>Belum</strong>? Posisi Baru dan Waktu Aksi akan dikosongkan.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {revertConfirm && (
+            <div className={`rounded-md border px-3 py-2 text-sm ${revertConfirm.target === "Tidak Ditawarkan" ? "border-red-200 bg-red-50 text-red-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+              <div className="font-medium">{revertConfirm.row[COL.nama] || "-"}</div>
+              <div className={revertConfirm.target === "Tidak Ditawarkan" ? "text-red-800" : "text-amber-800"}>
+                SOBAT ID: {revertConfirm.row[COL.sobatId] || "-"}
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRevertConfirm(null)}
+              disabled={revertConfirm ? savingRow === revertConfirm.row.__sheetRowNum : false}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant={revertConfirm?.target === "Tidak Ditawarkan" ? "destructive" : "default"}
+              className={revertConfirm?.target === "belum" ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
+              onClick={() => {
+                if (revertConfirm) void updateAksiPJ(revertConfirm.row, revertConfirm.target);
+              }}
+              disabled={revertConfirm ? savingRow === revertConfirm.row.__sheetRowNum : false}
+            >
+              {revertConfirm && savingRow === revertConfirm.row.__sheetRowNum ? (
+                <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...</span>
+              ) : revertConfirm?.target === "Tidak Ditawarkan" ? (
+                "Ya, Tetapkan Tidak Ditawarkan"
+              ) : (
+                "Ya, Ubah ke Belum"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!posisiDialogRow}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPosisiDialogRow(null);
+            setSelectedPosisiBaru("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Pilih Posisi Baru</DialogTitle>
+            <DialogDescription>
+              {posisiDialogRow
+                ? `Tentukan Posisi Baru untuk ${posisiDialogRow[COL.nama] || "-"} (SOBAT ID: ${posisiDialogRow[COL.sobatId] || "-"}) saat ditawarkan.`
+                : "Pilih posisi baru untuk mitra yang ditawarkan."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {POSISI_BARU_OPTIONS.map((opt) => {
+              const selected = selectedPosisiBaru === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSelectedPosisiBaru(opt.value)}
+                  aria-pressed={selected}
+                  className={`min-h-[48px] rounded-2xl border px-3 py-2 text-sm font-medium text-center leading-snug transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-1 ${
+                    selected
+                      ? "bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300 ring-offset-1 shadow-sm"
+                      : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPosisiDialogRow(null);
+                setSelectedPosisiBaru("");
+              }}
+              disabled={savingRow === posisiDialogRow?.__sheetRowNum}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (posisiDialogRow) void updateAksiPJ(posisiDialogRow, "Ditawarkan", selectedPosisiBaru);
+              }}
+              disabled={!selectedPosisiBaru || (posisiDialogRow ? savingRow === posisiDialogRow.__sheetRowNum : false)}
+            >
+              {posisiDialogRow && savingRow === posisiDialogRow.__sheetRowNum ? (
+                <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...</span>
+              ) : (
+                "Simpan"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!detailRow} onOpenChange={(open) => !open && setDetailRow(null)}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
