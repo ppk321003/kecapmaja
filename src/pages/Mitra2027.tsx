@@ -9,7 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Loader2, Eye, RefreshCw, Users, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight, Ban } from "lucide-react";
+import { Search, Loader2, Eye, RefreshCw, Users, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight, Ban, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+
+const WhatsAppIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
+  <svg viewBox="0 0 32 32" className={className} aria-hidden="true" focusable="false">
+    <path
+      fill="#25D366"
+      d="M16.02 3C9.383 3 4 8.383 4 15.02c0 2.316.66 4.57 1.91 6.52L4 29l7.65-1.86a11.96 11.96 0 0 0 4.37.83h.01C22.657 27.97 28 22.587 28 15.95 28 12.74 26.75 9.72 24.48 7.45A11.93 11.93 0 0 0 16.02 3z"
+    />
+    <path
+      fill="#FFFFFF"
+      d="M22.57 19.27c-.27-.14-1.6-.79-1.85-.88-.25-.09-.43-.14-.61.14-.18.27-.7.88-.86 1.06-.16.18-.32.2-.59.07-.27-.14-1.14-.42-2.17-1.34-.8-.71-1.34-1.6-1.5-1.86-.16-.27-.02-.42.12-.55.12-.12.27-.32.41-.48.14-.16.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.61-1.47-.84-2.01-.22-.53-.45-.46-.61-.47h-.52c-.18 0-.48.07-.73.34-.25.27-.95.93-.95 2.27s.97 2.63 1.11 2.81c.14.18 1.91 2.92 4.63 4.09.65.28 1.15.45 1.54.57.65.21 1.24.18 1.71.11.52-.08 1.6-.65 1.83-1.28.23-.63.23-1.17.16-1.28-.07-.11-.25-.18-.52-.32z"
+    />
+  </svg>
+);
 
 type Row = string[];
 type RowWithMeta = Row & { __sheetRowNum: number };
@@ -109,6 +122,21 @@ const statusLabel = (value: string): "Ditawarkan" | "Tidak Ditawarkan" | "Belum"
   return "Belum";
 };
 
+type SortKey = "nama" | "kecamatan" | "desa" | "umur" | "pendidikan";
+type SortDir = "asc" | "desc";
+
+const normalizePhone = (raw: string) => (raw || "").replace(/[^\d+]/g, "");
+
+const toWaHref = (raw: string) => {
+  const cleaned = normalizePhone(raw);
+  let digits = cleaned.replace(/[^\d]/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("0")) digits = `62${digits.slice(1)}`;
+  else if (digits.startsWith("8")) digits = `62${digits}`;
+  // if starts with 62 keep, if other country code keep as-is
+  return `https://wa.me/${digits}`;
+};
+
 export default function Mitra2027() {
   const { user } = useAuth();
   const [rows, setRows] = useState<RowWithMeta[]>([]);
@@ -122,6 +150,9 @@ export default function Mitra2027() {
   const [savingRow, setSavingRow] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [didSetDefaultKec, setDidSetDefaultKec] = useState(false);
 
   const userRole = user?.role || "";
   const canEditAny = useMemo(() => {
@@ -194,6 +225,22 @@ export default function Mitra2027() {
       .sort((a, b) => a.label.localeCompare(b.label, "id"));
   }, [rows]);
 
+  const myKecamatanKeys = useMemo(() => {
+    const allowed = getAllowedKecamatanFromRole(userRole);
+    if (!Array.isArray(allowed)) return [] as string[];
+    return kecamatanOptions.filter((k) => canUserEditKecamatan(userRole, k.label)).map((k) => k.key);
+  }, [userRole, kecamatanOptions]);
+
+  useEffect(() => {
+    if (didSetDefaultKec || loading) return;
+    const allowed = getAllowedKecamatanFromRole(userRole);
+    if (Array.isArray(allowed) && allowed.length > 0) {
+      if (myKecamatanKeys.length === 1) setFilterKec(myKecamatanKeys[0]);
+      else if (myKecamatanKeys.length > 1) setFilterKec("__mine__");
+    }
+    setDidSetDefaultKec(true);
+  }, [didSetDefaultKec, loading, userRole, myKecamatanKeys]);
+
   const monitoring = useMemo(() => {
     const map = new Map<
       string,
@@ -229,10 +276,15 @@ export default function Mitra2027() {
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
+    const mineSet = new Set(myKecamatanKeys);
+    const filtered = rows.filter((r) => {
       const kecRaw = r[COL.alamatKecamatan] || "";
       const kecKey = normalizeKey(kecRaw);
-      if (filterKec !== "all" && kecKey !== filterKec) return false;
+      if (filterKec === "__mine__") {
+        if (!mineSet.has(kecKey)) return false;
+      } else if (filterKec !== "all" && kecKey !== filterKec) {
+        return false;
+      }
       const st = statusLabel(r[COL.aksiPJ] || "");
       if (filterStatus === "belum" && st !== "Belum") return false;
       if (filterStatus === "Ditawarkan" && st !== "Ditawarkan") return false;
@@ -250,11 +302,47 @@ export default function Mitra2027() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [rows, search, filterKec, filterStatus]);
+
+    if (!sortKey) return filtered;
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    const getVal = (r: RowWithMeta) => {
+      switch (sortKey) {
+        case "nama":
+          return (r[COL.nama] || "").trim();
+        case "kecamatan":
+          return normalizeKecamatanName(r[COL.alamatKecamatan] || "") || (r[COL.alamatKecamatan] || "").trim();
+        case "desa":
+          return (r[COL.alamatDesa] || "").trim();
+        case "pendidikan":
+          return (r[COL.pendidikan] || "").trim();
+        case "umur":
+          return (r[COL.umur] || "").trim();
+        default:
+          return "";
+      }
+    };
+
+    return [...filtered].sort((a, b) => {
+      if (sortKey === "umur") {
+        const na = parseFloat(getVal(a).replace(",", "."));
+        const nb = parseFloat(getVal(b).replace(",", "."));
+        const aNum = Number.isFinite(na);
+        const bNum = Number.isFinite(nb);
+        if (aNum && bNum && na !== nb) return (na - nb) * dir;
+        if (aNum !== bNum) return (aNum ? -1 : 1) * dir;
+      }
+      const va = getVal(a).toLocaleLowerCase("id");
+      const vb = getVal(b).toLocaleLowerCase("id");
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }, [rows, search, filterKec, filterStatus, myKecamatanKeys, sortKey, sortDir]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, filterKec, filterStatus, pageSize]);
+  }, [search, filterKec, filterStatus, pageSize, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -336,6 +424,24 @@ export default function Mitra2027() {
     return "bg-slate-300";
   };
 
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const renderSortIcon = (key: SortKey) => {
+    if (sortKey !== key) return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
+    return sortDir === "asc" ? (
+      <ArrowUp className="h-3.5 w-3.5 text-slate-700" />
+    ) : (
+      <ArrowDown className="h-3.5 w-3.5 text-slate-700" />
+    );
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -371,7 +477,7 @@ export default function Mitra2027() {
                 <Users className="h-5 w-5" /> Monitoring Progres per Kecamatan
               </CardTitle>
               <CardDescription>
-                Progres "sudah penawaran" dihitung dari <strong>AW = Ditawarkan</strong> per kecamatan.
+                Progres penawaran dihitung dari keputusan <strong>Ditawarkan</strong> dan <strong>Tidak Ditawarkan</strong> terhadap total mitra per kecamatan.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -393,16 +499,25 @@ export default function Mitra2027() {
                   <div className="text-xl font-semibold text-amber-800">{monitoring.totals.belum}</div>
                 </div>
                 <div className="rounded-lg border p-3 bg-blue-50 border-blue-200">
-                  <div className="text-xs text-blue-700">% Ditawarkan</div>
-                  <div className="text-xl font-semibold text-blue-800">
-                    {pct(monitoring.totals.ditawarkan, monitoring.totals.total)}%
-                  </div>
-                  <div className="mt-2 h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${progressBarColor(pct(monitoring.totals.ditawarkan, monitoring.totals.total))}`}
-                      style={{ width: `${Math.min(100, pct(monitoring.totals.ditawarkan, monitoring.totals.total))}%` }}
-                    />
-                  </div>
+                  <div className="text-xs text-blue-700">Progres Penawaran</div>
+                  {(() => {
+                    const processed = monitoring.totals.ditawarkan + monitoring.totals.tidakDitawarkan;
+                    const percent = pct(processed, monitoring.totals.total);
+                    return (
+                      <>
+                        <div className="text-xl font-semibold text-blue-800">{percent}%</div>
+                        <div className="mt-2 h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${progressBarColor(percent)}`}
+                            style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+                          />
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-1 leading-snug">
+                          {monitoring.totals.ditawarkan} ditawarkan | {monitoring.totals.tidakDitawarkan} tidak ditawarkan
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -427,31 +542,64 @@ export default function Mitra2027() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      monitoring.list.map((m, idx) => {
-                        const percent = pct(m.ditawarkan, m.total);
-                        return (
-                          <TableRow key={m.key} className="hover:bg-slate-50/70">
-                            <TableCell className="text-center text-slate-600 font-medium py-3">{idx + 1}</TableCell>
-                            <TableCell className="font-medium py-3">{m.label}</TableCell>
-                            <TableCell className="text-right py-3">{m.total}</TableCell>
-                            <TableCell className="text-right text-green-700 font-medium py-3">{m.ditawarkan}</TableCell>
-                            <TableCell className="text-right text-red-700 py-3">{m.tidakDitawarkan}</TableCell>
-                            <TableCell className="text-right text-amber-700 py-3">{m.belum}</TableCell>
-                            <TableCell className="py-3">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all ${progressBarColor(percent)}`}
-                                    style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
-                                  />
+                      <>
+                        {monitoring.list.map((m, idx) => {
+                          const processed = m.ditawarkan + m.tidakDitawarkan;
+                          const percent = pct(processed, m.total);
+                          return (
+                            <TableRow key={m.key} className="hover:bg-slate-50/70">
+                              <TableCell className="text-center text-slate-600 font-medium py-3">{idx + 1}</TableCell>
+                              <TableCell className="font-medium py-3">{m.label}</TableCell>
+                              <TableCell className="text-right py-3">{m.total}</TableCell>
+                              <TableCell className="text-right text-green-700 font-medium py-3">{m.ditawarkan}</TableCell>
+                              <TableCell className="text-right text-red-700 py-3">{m.tidakDitawarkan}</TableCell>
+                              <TableCell className="text-right text-amber-700 py-3">{m.belum}</TableCell>
+                              <TableCell className="py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all ${progressBarColor(percent)}`}
+                                      style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-semibold text-slate-700 w-14 text-right tabular-nums">{percent}%</span>
                                 </div>
-                                <span className="text-sm font-semibold text-slate-700 w-14 text-right tabular-nums">{percent}%</span>
-                              </div>
-                              <div className="text-[11px] text-slate-500 mt-1">{m.ditawarkan} dari {m.total} ditawarkan</div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
+                                <div className="text-[11px] text-slate-500 mt-1">
+                                  {m.ditawarkan} ditawarkan | {m.tidakDitawarkan} tidak ditawarkan | dari mitra tersedia {m.total}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {(() => {
+                          const processed = monitoring.totals.ditawarkan + monitoring.totals.tidakDitawarkan;
+                          const totalPercent = pct(processed, monitoring.totals.total);
+                          return (
+                            <TableRow className="bg-slate-100/80 font-semibold border-t-2 border-slate-300 hover:bg-slate-100">
+                              <TableCell className="text-center text-slate-700 py-3"></TableCell>
+                              <TableCell className="text-slate-900 py-3">Jumlah</TableCell>
+                              <TableCell className="text-right text-slate-900 py-3">{monitoring.totals.total}</TableCell>
+                              <TableCell className="text-right text-green-700 py-3">{monitoring.totals.ditawarkan}</TableCell>
+                              <TableCell className="text-right text-red-700 py-3">{monitoring.totals.tidakDitawarkan}</TableCell>
+                              <TableCell className="text-right text-amber-700 py-3">{monitoring.totals.belum}</TableCell>
+                              <TableCell className="py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all ${progressBarColor(totalPercent)}`}
+                                      style={{ width: `${Math.min(100, Math.max(0, totalPercent))}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-semibold text-slate-900 w-14 text-right tabular-nums">{totalPercent}%</span>
+                                </div>
+                                <div className="text-[11px] text-slate-600 mt-1">
+                                  {monitoring.totals.ditawarkan} ditawarkan | {monitoring.totals.tidakDitawarkan} tidak ditawarkan | dari mitra tersedia {monitoring.totals.total}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })()}
+                      </>
                     )}
                   </TableBody>
                 </Table>
@@ -471,40 +619,65 @@ export default function Mitra2027() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Cari nama, SOBAT ID, kecamatan, desa..."
-                    className="pl-9"
-                  />
+              <div className="space-y-3">
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Cari nama, SOBAT ID, kecamatan, desa..."
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select value={filterKec} onValueChange={setFilterKec}>
+                    <SelectTrigger className="w-full md:w-56">
+                      <SelectValue placeholder="Semua Kecamatan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Kecamatan</SelectItem>
+                      {myKecamatanKeys.length > 1 && (
+                        <SelectItem value="__mine__">Kecamatan Saya</SelectItem>
+                      )}
+                      {kecamatanOptions.map((k) => (
+                        <SelectItem key={k.key} value={k.key}>
+                          {k.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-full md:w-52">
+                      <SelectValue placeholder="Semua Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status Aksi PJ Kecamatan</SelectItem>
+                      <SelectItem value="belum">Belum</SelectItem>
+                      <SelectItem value="Ditawarkan">Ditawarkan</SelectItem>
+                      <SelectItem value="Tidak Ditawarkan">Tidak Ditawarkan</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select value={filterKec} onValueChange={setFilterKec}>
-                  <SelectTrigger className="w-full md:w-56">
-                    <SelectValue placeholder="Semua Kecamatan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Kecamatan</SelectItem>
-                    {kecamatanOptions.map((k) => (
-                      <SelectItem key={k.key} value={k.key}>
-                        {k.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-full md:w-52">
-                    <SelectValue placeholder="Semua Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Status Aksi PJ Kecamatan</SelectItem>
-                    <SelectItem value="belum">Belum</SelectItem>
-                    <SelectItem value="Ditawarkan">Ditawarkan</SelectItem>
-                    <SelectItem value="Tidak Ditawarkan">Tidak Ditawarkan</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-slate-600">Filter cepat:</span>
+                  <Button
+                    type="button"
+                    variant={filterStatus === "belum" ? "default" : "outline"}
+                    size="sm"
+                    className={filterStatus === "belum" ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
+                    onClick={() => setFilterStatus("belum")}
+                  >
+                    Belum diproses
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={filterStatus === "all" ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => setFilterStatus("all")}
+                  >
+                    Semua status
+                  </Button>
+                </div>
               </div>
 
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-sm text-slate-600">
@@ -533,13 +706,33 @@ export default function Mitra2027() {
                   <TableHeader>
                     <TableRow className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
                       <TableHead className="h-12 py-3 px-4 w-[56px] text-center font-semibold text-slate-700 whitespace-nowrap">No</TableHead>
-                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Nama Lengkap</TableHead>
+                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleSort("nama")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                          Nama Lengkap {renderSortIcon("nama")}
+                        </button>
+                      </TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Posisi</TableHead>
-                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Alamat Kecamatan</TableHead>
-                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Alamat Desa/Kel</TableHead>
-                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap text-center">Umur</TableHead>
+                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleSort("kecamatan")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                          Alamat Kecamatan {renderSortIcon("kecamatan")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleSort("desa")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                          Alamat Desa/Kel {renderSortIcon("desa")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap text-center">
+                        <button type="button" onClick={() => toggleSort("umur")} className="inline-flex items-center justify-center gap-1.5 hover:text-slate-900 w-full">
+                          Umur {renderSortIcon("umur")}
+                        </button>
+                      </TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap text-center">JK</TableHead>
-                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Pendidikan</TableHead>
+                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleSort("pendidikan")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                          Pendidikan {renderSortIcon("pendidikan")}
+                        </button>
+                      </TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">No Telp</TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">SOBAT ID</TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Aksi PJ Kecamatan</TableHead>
@@ -576,7 +769,30 @@ export default function Mitra2027() {
                             <TableCell className="py-3 text-center">{r[COL.umur] || "-"}</TableCell>
                             <TableCell className="py-3 text-center">{r[COL.jenisKelamin] || "-"}</TableCell>
                             <TableCell className="py-3">{r[COL.pendidikan] || "-"}</TableCell>
-                            <TableCell className="whitespace-nowrap py-3">{r[COL.noTelp] || "-"}</TableCell>
+                            <TableCell className="whitespace-nowrap py-3">
+                              {(() => {
+                                const phone = (r[COL.noTelp] || "").trim();
+                                if (!phone) return "-";
+                                const waHref = toWaHref(phone);
+                                return (
+                                  <div className="flex items-center gap-2">
+                                    <span>{phone}</span>
+                                    {waHref && (
+                                      <a
+                                        href={waHref}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:opacity-90 transition-opacity"
+                                        title={`WhatsApp ${phone}`}
+                                      >
+                                        <WhatsAppIcon className="h-6 w-6" />
+                                        <span className="sr-only">WhatsApp</span>
+                                      </a>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </TableCell>
                             <TableCell className="whitespace-nowrap py-3">{r[COL.sobatId] || "-"}</TableCell>
                             <TableCell className="min-w-[210px]">
                               <div className="flex items-center gap-2">
