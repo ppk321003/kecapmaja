@@ -118,6 +118,7 @@ const sensusEkonomiItems = [
 const rekrutmenItems = [
   { title: "Mitra 2026 Tambahan", url: "/mitra-tambahan-2026", icon: FileCheck, conditional: "showRekrutmen" },
   { title: "Mitra SE2026", url: "/mitra-se2026", icon: Users, conditional: "showRekrutmen" },
+  { title: "Mitra 2027", url: "/mitra-2027", icon: Users, conditional: "showRekrutmen" },
 ];
 
 // MENU GROUP: e-DOKUMEN SUB ITEMS
@@ -194,6 +195,7 @@ export function AppSidebar() {
   
   // Check if user is Administrator
   const isAdministrator = user?.role === "Administrator";
+  const isPJKecamatan = user?.role?.toLowerCase().includes("pj kecamatan") === true;
   
   // Check if user has Fungsi role for Anggaran menu
   const hasFungsiRole = user?.role?.startsWith("Fungsi") === true;
@@ -204,8 +206,8 @@ export function AppSidebar() {
   // Check if user is satker 3210 for Sikostik 28 menu
   const isSatker3210 = user?.satker === '3210';
   
-  // Show Rekrutmen menu for Administrator OR satker 3210
-  const showRekrutmen = isAdministrator || isSatker3210;
+  // Show Rekrutmen menu for Administrator, satker 3210, PPK, dan PJ Kecamatan
+  const showRekrutmen = isAdministrator || isSatker3210 || isPPK || isPJKecamatan;
   
   // Show Cetak Kuitansi for PPK Satker 3210
   const showCetakKuitansi = isSatker3210 && isPPK;

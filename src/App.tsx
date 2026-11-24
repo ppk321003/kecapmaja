@@ -60,6 +60,7 @@ import LayananUmum from "./pages/LayananUmum";
 import ETamu from "./pages/ETamu";
 import KonfirmasiKepka2026 from "./pages/konfirmasikepka2026";
 import MitraSE2026 from "./pages/mitraSE2026";
+import Mitra2027 from "./pages/Mitra2027";
 import SensusEkonomiPetugas from "./pages/sensusEkonomiPetugas";
 import SensusEkonomiPelatihan from "./pages/sensusEkonomiPelatihan";
 import MonitoringLapangan from "./pages/sensusEkonomi2026/MonitoringLapangan";
@@ -154,6 +155,7 @@ const App = () => (
             <Route path="/e-tamu" element={<ETamu />} />
             <Route path="/mitra-tambahan-2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             <Route path="/mitra-se2026" element={<ProtectedRoute><Layout><MitraSE2026 /></Layout></ProtectedRoute>} />
+            <Route path="/mitra-2027" element={<ProtectedRoute><Layout><Mitra2027 /></Layout></ProtectedRoute>} />
             <Route path="/mitra-tambahan" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             <Route path="/konfirmasi-kepka-2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />
             <Route path="/konfirmasikepka2026" element={<ProtectedRoute><Layout><KonfirmasiKepka2026 /></Layout></ProtectedRoute>} />

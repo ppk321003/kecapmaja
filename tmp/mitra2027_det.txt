@@ -1,0 +1,141 @@
+﻿      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Detail Mitra (Tab GABUNG-2026)</CardTitle>
+          <CardDescription>
+            {canEditAny
+              ? "Pilih Aksi PJ untuk menyimpan keputusan. Perubahan disimpan ke kolom AW dan jejak waktu ke kolom AX (WIB)."
+              : "Anda memiliki akses lihat. Perubahan Aksi PJ hanya dapat dilakukan oleh PJ Kecamatan terkait atau PPK."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari nama, SOBAT ID, kecamatan, desa..."
+                className="pl-9"
+              />
+            </div>
+            <Select value={filterKec} onValueChange={setFilterKec}>
+              <SelectTrigger className="w-full md:w-56">
+                <SelectValue placeholder="Semua Kecamatan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kecamatan</SelectItem>
+                {kecamatanOptions.map((k) => (
+                  <SelectItem key={k.key} value={k.key}>
+                    {k.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full md:w-52">
+                <SelectValue placeholder="Semua Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status Aksi PJ</SelectItem>
+                <SelectItem value="belum">Belum</SelectItem>
+                <SelectItem value="Ditawarkan">Ditawarkan</SelectItem>
+                <SelectItem value="Tidak Ditawarkan">Tidak Ditawarkan</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="text-sm text-slate-600">
+            Menampilkan <strong>{filteredRows.length}</strong> dari <strong>{rows.length}</strong> data.
+          </div>
+
+          <div className="overflow-x-auto border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama Lengkap</TableHead>
+                  <TableHead>Posisi</TableHead>
+                  <TableHead>Alamat Kecamatan</TableHead>
+                  <TableHead>Alamat Desa/Kel</TableHead>
+                  <TableHead>Umur</TableHead>
+                  <TableHead>JK</TableHead>
+                  <TableHead>Pendidikan</TableHead>
+                  <TableHead>No Telp</TableHead>
+                  <TableHead>SOBAT ID</TableHead>
+                  <TableHead>Aksi PJ (AW)</TableHead>
+                  <TableHead className="w-[70px]">Detail</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-center py-10 text-slate-500">
+                      <div className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Memuat data...</div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-center py-10 text-slate-500">
+                      Tidak ada data yang sesuai filter.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredRows.map((r) => {
+                    const st = statusLabel(r[COL.aksiPJ] || "");
+                    const kecRaw = r[COL.alamatKecamatan] || "";
+                    const editable = canUserEditKecamatan(userRole, kecRaw);
+                    const isSaving = savingRow === r.__sheetRowNum;
+                    const selectValue = st === "Belum" ? "belum" : st;
+                    return (
+                      <TableRow key={`${r.__sheetRowNum}-${r[COL.sobatId] || ""}`}>
+                        <TableCell className="font-medium whitespace-nowrap">{r[COL.nama] || "-"}</TableCell>
+                        <TableCell>{r[COL.posisi] || "-"}</TableCell>
+                        <TableCell className="whitespace-nowrap">{kecRaw || "-"}</TableCell>
+                        <TableCell>{r[COL.alamatDesa] || "-"}</TableCell>
+                        <TableCell>{r[COL.umur] || "-"}</TableCell>
+                        <TableCell>{r[COL.jenisKelamin] || "-"}</TableCell>
+                        <TableCell>{r[COL.pendidikan] || "-"}</TableCell>
+                        <TableCell className="whitespace-nowrap">{r[COL.noTelp] || "-"}</TableCell>
+                        <TableCell className="whitespace-nowrap">{r[COL.sobatId] || "-"}</TableCell>
+                        <TableCell className="min-w-[210px]">
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={selectValue}
+                              onValueChange={(val) => updateAksiPJ(r, val as "belum" | "Ditawarkan" | "Tidak Ditawarkan")}
+                              disabled={!editable || isSaving}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Belum" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {AKSI_OPTIONS.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {isSaving && <Loader2 className="h-4 w-4 animate-spin text-slate-500" />}
+                            {!editable && (
+                              <Badge variant="outline" className="text-[10px] text-slate-500 whitespace-nowrap">
+                                Read-only
+                              </Badge>
+                            )}
+                          </div>
+                          {r[COL.waktuAksi] && (
+                            <div className="text-[11px] text-slate-500 mt-1 leading-snug">{r[COL.waktuAksi]}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" onClick={() => setDetailRow(r)} title="Lihat detail">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>

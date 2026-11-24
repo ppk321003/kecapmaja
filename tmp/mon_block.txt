@@ -1,0 +1,75 @@
+﻿        <TabsContent value="monitoring" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Users className="h-5 w-5" /> Monitoring Progres per Kecamatan
+              </CardTitle>
+              <CardDescription>
+                Progres â€œsudah penawaranâ€ dihitung dari <strong>AW = Ditawarkan</strong> per kecamatan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="rounded-lg border p-3 bg-slate-50">
+                  <div className="text-xs text-slate-500">Total</div>
+                  <div className="text-xl font-semibold">{monitoring.totals.total}</div>
+                </div>
+                <div className="rounded-lg border p-3 bg-green-50 border-green-200">
+                  <div className="text-xs text-green-700 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Ditawarkan</div>
+                  <div className="text-xl font-semibold text-green-800">{monitoring.totals.ditawarkan}</div>
+                </div>
+                <div className="rounded-lg border p-3 bg-red-50 border-red-200">
+                  <div className="text-xs text-red-700 flex items-center gap-1"><XCircle className="h-3 w-3" /> Tidak Ditawarkan</div>
+                  <div className="text-xl font-semibold text-red-800">{monitoring.totals.tidakDitawarkan}</div>
+                </div>
+                <div className="rounded-lg border p-3 bg-amber-50 border-amber-200">
+                  <div className="text-xs text-amber-700 flex items-center gap-1"><Clock className="h-3 w-3" /> Belum</div>
+                  <div className="text-xl font-semibold text-amber-800">{monitoring.totals.belum}</div>
+                </div>
+                <div className="rounded-lg border p-3 bg-blue-50 border-blue-200">
+                  <div className="text-xs text-blue-700">% Ditawarkan</div>
+                  <div className="text-xl font-semibold text-blue-800">
+                    {pct(monitoring.totals.ditawarkan, monitoring.totals.total)}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kecamatan</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Ditawarkan</TableHead>
+                      <TableHead className="text-right">Tidak Ditawarkan</TableHead>
+                      <TableHead className="text-right">Belum</TableHead>
+                      <TableHead className="text-right">% Ditawarkan</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {monitoring.list.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-slate-500 py-6">
+                          {loading ? "Memuat data..." : "Tidak ada data."}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      monitoring.list.map((m) => (
+                        <TableRow key={m.key}>
+                          <TableCell className="font-medium">{m.label}</TableCell>
+                          <TableCell className="text-right">{m.total}</TableCell>
+                          <TableCell className="text-right text-green-700 font-medium">{m.ditawarkan}</TableCell>
+                          <TableCell className="text-right text-red-700">{m.tidakDitawarkan}</TableCell>
+                          <TableCell className="text-right text-amber-700">{m.belum}</TableCell>
+                          <TableCell className="text-right font-medium">{pct(m.ditawarkan, m.total)}%</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="penawaran" className="space-y-4">
