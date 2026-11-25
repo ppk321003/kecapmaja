@@ -131,6 +131,7 @@ const statusLabel = (value: string): "Ditawarkan" | "Tidak Ditawarkan" | "Belum"
 
 type SortKey = "nama" | "alamat" | "umur" | "pendidikan";
 type SortDir = "asc" | "desc";
+type MonSortKey = "label" | "total" | "ditawarkan" | "tidakDitawarkan" | "belum" | "progres";
 
 const formatAlamat = (kecamatan: string, desa: string) => {
   const kec = normalizeKecamatanName(kecamatan || "") || (kecamatan || "").trim();
@@ -174,6 +175,8 @@ export default function Mitra2027() {
     row: RowWithMeta;
     target: "belum" | "Tidak Ditawarkan";
   } | null>(null);
+  const [monSortKey, setMonSortKey] = useState<MonSortKey>("label");
+  const [monSortDir, setMonSortDir] = useState<SortDir>("asc");
 
   const userRole = user?.role || "";
   const canEditAny = useMemo(() => {
@@ -303,6 +306,53 @@ export default function Mitra2027() {
     );
     return { list, totals };
   }, [rows]);
+
+  const sortedMonitoringList = useMemo(() => {
+    const arr = [...monitoring.list];
+    const dir = monSortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      let av: string | number = "";
+      let bv: string | number = "";
+      switch (monSortKey) {
+        case "label":
+          av = a.label;
+          bv = b.label;
+          return dir * String(av).localeCompare(String(bv), "id", { sensitivity: "base" });
+        case "total":
+          av = a.total; bv = b.total; break;
+        case "ditawarkan":
+          av = a.ditawarkan; bv = b.ditawarkan; break;
+        case "tidakDitawarkan":
+          av = a.tidakDitawarkan; bv = b.tidakDitawarkan; break;
+        case "belum":
+          av = a.belum; bv = b.belum; break;
+        case "progres":
+          av = pct(a.ditawarkan + a.tidakDitawarkan, a.total);
+          bv = pct(b.ditawarkan + b.tidakDitawarkan, b.total);
+          break;
+      }
+      const diff = (Number(av) - Number(bv)) * dir;
+      if (diff !== 0) return diff;
+      return a.label.localeCompare(b.label, "id", { sensitivity: "base" });
+    });
+    return arr;
+  }, [monitoring.list, monSortKey, monSortDir]);
+
+  const toggleMonSort = (key: MonSortKey) => {
+    if (monSortKey === key) {
+      setMonSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setMonSortKey(key);
+      setMonSortDir(key === "label" ? "asc" : "desc");
+    }
+  };
+
+  const renderMonSortIcon = (key: MonSortKey) => {
+    if (monSortKey !== key) return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
+    return monSortDir === "asc"
+      ? <ArrowUp className="h-3.5 w-3.5 text-slate-700" />
+      : <ArrowDown className="h-3.5 w-3.5 text-slate-700" />;
+  };
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -608,12 +658,36 @@ export default function Mitra2027() {
                   <TableHeader>
                     <TableRow className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
                       <TableHead className="h-12 py-3 px-4 w-[56px] text-center font-semibold text-slate-700 whitespace-nowrap">No</TableHead>
-                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">Kecamatan</TableHead>
-                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-slate-700 whitespace-nowrap">Total</TableHead>
-                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-slate-700 whitespace-nowrap">Ditawarkan</TableHead>
-                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-slate-700 whitespace-nowrap">Tidak Ditawarkan</TableHead>
-                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-slate-700 whitespace-nowrap">Belum</TableHead>
-                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap min-w-[220px]">Progres Penawaran</TableHead>
+                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleMonSort("label")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                          Kecamatan {renderMonSortIcon("label")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-slate-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleMonSort("total")} className="inline-flex items-center justify-end gap-1.5 hover:text-slate-900 w-full">
+                          Total {renderMonSortIcon("total")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-slate-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleMonSort("ditawarkan")} className="inline-flex items-center justify-end gap-1.5 hover:text-slate-900 w-full">
+                          Ditawarkan {renderMonSortIcon("ditawarkan")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-slate-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleMonSort("tidakDitawarkan")} className="inline-flex items-center justify-end gap-1.5 hover:text-slate-900 w-full">
+                          Tidak Ditawarkan {renderMonSortIcon("tidakDitawarkan")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-slate-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleMonSort("belum")} className="inline-flex items-center justify-end gap-1.5 hover:text-slate-900 w-full">
+                          Belum {renderMonSortIcon("belum")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap min-w-[220px]">
+                        <button type="button" onClick={() => toggleMonSort("progres")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                          Progres Penawaran {renderMonSortIcon("progres")}
+                        </button>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -625,7 +699,7 @@ export default function Mitra2027() {
                       </TableRow>
                     ) : (
                       <>
-                        {monitoring.list.map((m, idx) => {
+                        {sortedMonitoringList.map((m, idx) => {
                           const processed = m.ditawarkan + m.tidakDitawarkan;
                           const percent = pct(processed, m.total);
                           return (
