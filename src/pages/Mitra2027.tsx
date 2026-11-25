@@ -307,6 +307,8 @@ export default function Mitra2027() {
     return { list, totals };
   }, [rows]);
 
+  const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : 0);
+
   const sortedMonitoringList = useMemo(() => {
     const arr = [...monitoring.list];
     const dir = monSortDir === "asc" ? 1 : -1;
@@ -544,7 +546,6 @@ export default function Mitra2027() {
     void updateAksiPJ(row, val);
   };
 
-  const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : 0);
   const progressBarColor = (percent: number) => {
     if (percent >= 100) return "bg-green-600";
     if (percent >= 85) return "bg-emerald-500";
