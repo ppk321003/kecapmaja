@@ -32,6 +32,17 @@ Archive-classified letters share a serial sequence by year, archive code, and ar
 | Laporan | `{serial padded to 3 digits}` |
 | Formulir Permintaan | `B-{serial padded to 3 digits}/3210/{kode}.{subkode}/{year}` |
 
+## Surat Sisip dates
+
+The Surat Sisip option is available for all ten letter types. When enabled, the letter date can be selected from January 1 of the current numbering year through today; otherwise, a new letter uses today's date. Editing a non-insert letter preserves its saved date. Number reservations continue to use the current year.
+
+## Template downloads
+
+- The action column offers a `.docx` download for each type with a configured Google Docs template. Formulir Permintaan displays **Gunakan BOS** instead.
+- Downloads use the saved row's number and date, plus its available body, destination, date range, subject, recipient, and nature fields. Every occurrence of a supported placeholder is replaced; the source Google Doc is not modified.
+- Supported placeholders are `<<Nomor>>`, `<<Tanggal>>`, `<<isi_surat>>`, `<<tempat_tujuan>>`, `<<tanggal_mulai>>`, `<<tanggal_selesai>>`, `<<perihal>>`, `<<kepada>>`, and `<<sifat>>`.
+- The configured Google Docs links must remain accessible through their sharing links for the Edge Function to export them as `.docx`.
+
 ## Supabase function
 
 Apply the database migration and deploy the updated `google-sheets` Edge Function before using Sitatan. The function issues a short-lived signed session for logged-in users belonging to Satker 3210, requires that session for reads and writes to the Sitatan spreadsheet, and reserves numbers atomically by archive classification:

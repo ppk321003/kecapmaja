@@ -173,7 +173,7 @@ export const PersonMultiSelect: React.FC<PersonMultiSelectProps> = ({
           </div>
 
           {/* Options List */}
-          <div className="max-h-[200px] overflow-y-auto">
+          <div className="max-h-[200px] overflow-y-auto overscroll-contain">
             <div className="p-1">
               {loading ? (
                 <div className="flex justify-center p-4">
@@ -374,7 +374,7 @@ export const PersonSingleSelect: React.FC<PersonSingleSelectProps> = ({
           </div>
 
           {/* Options List */}
-          <div className="max-h-[200px] overflow-y-auto">
+          <div className="max-h-[200px] overflow-y-auto overscroll-contain">
             <div className="p-1">
               {loading ? (
                 <div className="flex justify-center p-4">

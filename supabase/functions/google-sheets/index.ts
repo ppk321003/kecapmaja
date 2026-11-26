@@ -15,7 +15,7 @@ const corsHeaders = {
 
 interface SheetOperation {
   spreadsheetId: string;
-  operation: 'read' | 'append' | 'update' | 'batch-update' | 'delete' | 'update-sisa-anggaran' | 'health' | 'metadata' | 'sitatan-authenticate' | 'sitatan-reserve-number';
+  operation: 'read' | 'append' | 'update' | 'batch-update' | 'delete' | 'update-sisa-anggaran' | 'health' | 'metadata' | 'sitatan-authenticate' | 'sitatan-reserve-number' | 'sitatan-download-template';
   range?: string;
   values?: any[][];
   rowIndex?: number;
@@ -25,6 +25,7 @@ interface SheetOperation {
   password?: string;
   year?: number;
   letterType?: string;
+  letterId?: string;
   archiveCode?: string;
   archiveSubcode?: string;
   bulan?: number;
@@ -58,6 +59,17 @@ const SITATAN_ARCHIVE_TYPES = new Set([
   'Surat Pengantar',
   'Formulir Permintaan',
 ]);
+const SITATAN_TEMPLATE_IDS: Record<string, string> = {
+  'Surat Keputusan': '1XKR_PWsAOjwpomZ_MJ0Yiq6oqgtwmqTGgTV12CfxtzI',
+  'Surat Perintah/Surat Tugas': '1FoekMR9FbNqc-4STMCKBLS8ucEQLruMetV79oonGURA',
+  'Surat Dinas': '1vuSK5x5-bZVXFrRmEDC5d61bd2l73dwqpOoX6d-Ybk4',
+  'Nota Dinas/Memorandum': '1NtFy7ReehHbrJNu0SFlImuJvslAJQ5-8oJGHNggtdcI',
+  'Surat Undangan Intern': '1c6gNAfqCg2T8NQUbTnaqAt-foNpwE7glMGB80CnrSwo',
+  'Surat Undangan Ekstern': '1FU6IAYGhOYuUlB4RcJrTtao1w6hXUB5QLObC7jzmU7M',
+  'Surat Keterangan': '1cFyqxp8KaGCtkDKrVE1I3Qc2guWFbNnIoiFPTCml4Ec',
+  'Surat Pengantar': '17jf2Ddz2s1PKBWe9P7Id6cml31xlOLRoDWxvJWe0oHU',
+  Laporan: '1jFtVfV9K7UHHQW_5XeZV2R7FeWQJpyUo',
+};
 
 function normalizeSitatanArchiveSubcode(value: string): string {
   const subcode = value.trim();
@@ -474,6 +486,7 @@ serve(async (req: Request) => {
       password,
       year,
       letterType,
+      letterId,
       archiveCode,
       archiveSubcode,
     }: SheetOperation = body;
@@ -670,6 +683,69 @@ serve(async (req: Request) => {
     }
 
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
+
+    if (operation === 'sitatan-download-template') {
+      if (
+        spreadsheetId !== SITATAN_SPREADSHEET_ID
+        || !sitatanSession
+        || !Number.isInteger(rowIndex)
+        || (rowIndex ?? 0) < 2
+        || !letterId
+        || !letterType
+        || !SITATAN_TYPES.some((type) => type === letterType)
+        || !SITATAN_TEMPLATE_IDS[letterType]
+      ) {
+        return new Response(JSON.stringify({ error: 'Permintaan unduh template Sitatan tidak valid.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const rowRange = encodeURIComponent(`DARI_WEB!A${rowIndex}:AE${rowIndex}`);
+      const rowData = await fetchGoogleSheetsWithRetry(
+        `${baseUrl}/values/${rowRange}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+        'Verify Sitatan template row',
+        3,
+      );
+      const savedRow: unknown[] | undefined = Array.isArray(rowData.values?.[0]) ? rowData.values[0] : undefined;
+      if (
+        !savedRow
+        || String(savedRow[0] ?? '').trim() !== letterId
+        || String(savedRow[2] ?? '').trim() !== letterType
+      ) {
+        return new Response(JSON.stringify({ error: 'Data surat berubah atau tidak ditemukan. Muat ulang daftar Sitatan.' }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const templateId = SITATAN_TEMPLATE_IDS[letterType];
+      const templateResponse = await fetch(
+        `https://docs.google.com/document/d/${templateId}/export?format=docx`,
+      );
+      const templateContentType = templateResponse.headers.get('content-type')?.split(';')[0].trim();
+      if (
+        !templateResponse.ok
+        || templateContentType !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ) {
+        console.error('[Sitatan] Template export failed:', {
+          letterType,
+          status: templateResponse.status,
+          contentType: templateContentType,
+        });
+        throw new Error(`Template ${letterType} tidak dapat diunduh. Pastikan Google Docs dapat diakses melalui tautannya.`);
+      }
+
+      return new Response(await templateResponse.arrayBuffer(), {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/octet-stream',
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
 
     if (operation === 'metadata') {
       const response = await fetch(`${baseUrl}?fields=sheets.properties`, {

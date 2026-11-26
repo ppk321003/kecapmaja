@@ -101,6 +101,7 @@ export interface SitatanDraft {
   type: SitatanType;
   body: string;
   insert: boolean;
+  date: string;
   archiveCode: string;
   archiveSubcode: string;
   nature: string;

@@ -45,11 +45,13 @@ export function Combobox({
   className,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          ref={triggerRef}
           id={id}
           variant="outline"
           role="combobox"
@@ -57,30 +59,48 @@ export function Combobox({
           disabled={disabled}
           className={cn("w-full justify-between", !value && "text-muted-foreground", className)}
         >
-          {value
-            ? options.find((option) => option.value === value)?.label
-            : placeholder}
+          <span className="min-w-0 flex-1 truncate text-left">
+            {value
+              ? options.find((option) => option.value === value)?.label
+              : placeholder}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0"
+        align="start"
+      >
         <Command
-          filter={(itemValue, search) => {
+          filter={(itemValue, search, keywords = []) => {
             // Pencocokan substring persis (bukan fuzzy) agar hasil search tepat
-            const normalizedValue = itemValue.toLowerCase().trim();
-            const normalizedSearch = search.toLowerCase().trim();
+            const normalizedValue = [itemValue, ...keywords].join(' ').toLocaleLowerCase('id').trim();
+            const normalizedSearch = search.toLocaleLowerCase('id').trim();
             if (!normalizedSearch) return 1;
             return normalizedValue.includes(normalizedSearch) ? 1 : 0;
           }}
         >
           <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
+          <CommandList
+            className="overscroll-contain"
+            onWheel={(event) => {
+              const list = event.currentTarget;
+              if (!triggerRef.current?.closest('[role="dialog"]') || list.scrollHeight <= list.clientHeight) return;
+              // Dialog scroll locking can suppress native wheel scrolling on this portaled list.
+              list.scrollTop = Math.max(0, Math.min(
+                list.scrollHeight - list.clientHeight,
+                list.scrollTop + event.deltaY,
+              ));
+            }}
+          >
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
                   value={option.value}
+                  keywords={[option.label]}
+                  className="items-start"
                   onSelect={(currentValue) => {
                     onValueChange?.(currentValue === value ? "" : currentValue)
                     setOpen(false)
@@ -88,11 +108,11 @@ export function Combobox({
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 mt-0.5 h-4 w-4 shrink-0",
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option.label}
+                  <span className="min-w-0 whitespace-normal break-words leading-5">{option.label}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

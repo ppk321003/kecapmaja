@@ -3,9 +3,12 @@ import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import {
   Ban,
+  ChevronLeft,
+  ChevronRight,
   Copy,
-  ExternalLink,
+  Download,
   FileText,
+  Info,
   Pencil,
   Plus,
   Search,
@@ -50,6 +53,7 @@ import {
   parseSitatanRows,
   requiresArchiveCode,
 } from '@/lib/sitatan';
+import { renderSitatanDocxTemplate } from '@/lib/sitatan-template';
 
 const TASK_ORDER_TYPE: SitatanType = 'Surat Perintah/Surat Tugas';
 const TASK_ORDER_ARCHIVE = { archiveCode: 'KP', archiveSubcode: '650' } as const;
@@ -62,7 +66,7 @@ const ARCHIVE_SELECTOR_TYPES = new Set<SitatanType>([
   'Surat Pengantar',
   'Formulir Permintaan',
 ]);
-const INSERT_TYPES = new Set<SitatanType>(['Surat Keputusan', 'Laporan']);
+const TEMPLATE_TYPES = new Set<SitatanType>(SITATAN_TYPES.filter((type) => type !== 'Formulir Permintaan'));
 const NATURE_REQUIRED_TYPES = new Set<SitatanType>([
   TASK_ORDER_TYPE,
   'Surat Dinas',
@@ -97,6 +101,7 @@ const emptyDraft = (type: SitatanType = 'Surat Dinas'): SitatanDraft => ({
   type,
   body: '',
   insert: false,
+  date: today(),
   ...archiveDefaultsForType(type),
   nature: '',
   subject: '',
@@ -186,6 +191,7 @@ function draftFromRecord(record: SitatanRecord): SitatanDraft {
     type: record.type,
     body: record.body,
     insert: record.insert,
+    date: record.date,
     archiveCode: record.archiveCode,
     archiveSubcode: record.archiveSubcode,
     nature: record.nature || 'Biasa',
@@ -231,6 +237,7 @@ export default function Sitatan() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [downloadingRecordId, setDownloadingRecordId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [draft, setDraft] = useState<SitatanDraft>(emptyDraft());
   const [editing, setEditing] = useState<SitatanRecord | null>(null);
@@ -240,7 +247,9 @@ export default function Sitatan() {
   const [search, setSearch] = useState('');
   const [filterYear, setFilterYear] = useState(currentYear());
   const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadData = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
@@ -356,12 +365,7 @@ export default function Sitatan() {
     return [...records]
       .filter((record) => record.year === filterYear)
       .filter((record) => filterType === 'all' || record.type === filterType)
-      .filter((record) => {
-        const status = record.status.toLocaleLowerCase('id');
-        return filterStatus === 'all'
-          || (filterStatus === 'active' && status !== 'batal')
-          || (filterStatus === 'cancelled' && status === 'batal');
-      })
+      .filter((record) => showCancelled || record.status.toLocaleLowerCase('id') !== 'batal')
       .filter((record) => !query || [
         record.number,
         record.subject,
@@ -370,7 +374,15 @@ export default function Sitatan() {
         record.creator,
       ].some((value) => value.toLocaleLowerCase('id').includes(query)))
       .sort((a, b) => b.rowIndex - a.rowIndex);
-  }, [filterStatus, filterType, filterYear, records, search]);
+  }, [filterType, filterYear, records, search, showCancelled]);
+  const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
+  const activePage = Math.min(currentPage, pageCount);
+  const pageStartIndex = (activePage - 1) * pageSize;
+  const displayedRecords = filteredRecords.slice(pageStartIndex, pageStartIndex + pageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, filterYear, search, showCancelled]);
 
   const openNew = () => {
     setEditing(null);
@@ -394,6 +406,72 @@ export default function Sitatan() {
       documentUrl: '',
     });
     setDialogOpen(true);
+  };
+
+  const downloadTemplate = async (record: SitatanRecord) => {
+    if (!user?.sitatanToken) {
+      toast({
+        title: 'Sesi Sitatan tidak tersedia',
+        description: 'Keluar dari KECAP MAJA lalu masuk kembali sebelum mengunduh template.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!record.number || !record.date) {
+      toast({
+        title: 'Data surat belum lengkap',
+        description: 'Nomor dan tanggal surat harus tersedia untuk mengisi template.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setDownloadingRecordId(record.id);
+    try {
+      const { data, error } = await supabase.functions.invoke<Blob>('google-sheets', {
+        body: {
+          operation: 'sitatan-download-template',
+          spreadsheetId: SITATAN_SPREADSHEET_ID,
+          sessionToken: user.sitatanToken,
+          rowIndex: record.rowIndex,
+          letterId: record.id,
+          letterType: record.type,
+        },
+      });
+      if (error) throw error;
+      if (!(data instanceof Blob) || data.size === 0) {
+        throw new Error('Template Word yang diterima kosong atau formatnya tidak sesuai.');
+      }
+
+      const placeholders = {
+        Nomor: record.number,
+        Tanggal: displayDate(record.date),
+        isi_surat: record.body,
+        tempat_tujuan: record.destination,
+        tanggal_mulai: record.startDate ? displayDate(record.startDate) : '',
+        tanggal_selesai: record.endDate ? displayDate(record.endDate) : '',
+        perihal: record.subject,
+        kepada: record.recipient,
+        sifat: record.nature,
+      };
+      const documentBlob = await renderSitatanDocxTemplate(data, placeholders);
+      const downloadUrl = URL.createObjectURL(documentBlob);
+      const link = document.createElement('a');
+      const fileName = `${record.type}_${record.number}`
+        .replace(/[<>:"/\\|?*]/g, '-');
+      link.href = downloadUrl;
+      link.download = `${fileName}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Terjadi kesalahan saat mengunduh template.';
+      console.error('[Sitatan] Gagal mengunduh template:', error);
+      toast({ title: 'Gagal mengunduh template', description: message, variant: 'destructive' });
+    } finally {
+      setDownloadingRecordId(null);
+    }
   };
 
   const saveDraft = async () => {
@@ -433,6 +511,20 @@ export default function Sitatan() {
       toast({ title: 'Lengkapi tanggal dan tempat tujuan', description: 'Surat Perintah/Surat Tugas memerlukan tanggal mulai, tanggal selesai, dan tempat tujuan.', variant: 'destructive' });
       return;
     }
+    if (draft.insert) {
+      const manualDate = parseISO(draft.date);
+      const validDate = !Number.isNaN(manualDate.getTime()) && format(manualDate, 'yyyy-MM-dd') === draft.date;
+      const withinCurrentYear = draft.date >= `${currentYear()}-01-01` && draft.date <= today();
+      const unchangedExistingDate = Boolean(editing && draft.date === editing.date);
+      if (!validDate || (!withinCurrentYear && !unchangedExistingDate)) {
+        toast({
+          title: 'Tanggal Surat Sisip tidak valid',
+          description: `Pilih tanggal dalam tahun berjalan (${currentYear()}) yang tidak melewati hari ini.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
     if (draft.documentUrl.trim() && !isHttpUrl(draft.documentUrl.trim())) {
       toast({ title: 'Tautan dokumen tidak valid', description: 'Gunakan tautan yang diawali http:// atau https://.', variant: 'destructive' });
       return;
@@ -446,7 +538,7 @@ export default function Sitatan() {
           year: editing.year,
           serial: editing.serial,
           number: editing.number,
-          date: editing.date,
+          date: draft.insert ? draft.date : editing.date,
           creator: editing.creator,
           createdAt: editing.createdAt,
           sourceId: editing.sourceId,
@@ -455,6 +547,7 @@ export default function Sitatan() {
           spreadsheetId: SITATAN_SPREADSHEET_ID,
           operation: 'batch-update',
           updates: [
+            { range: `DARI_WEB!F${editing.rowIndex}:F${editing.rowIndex}`, values: [[updateRow[5]]] },
             { range: `DARI_WEB!G${editing.rowIndex}:V${editing.rowIndex}`, values: [updateRow.slice(6, 22)] },
             { range: `DARI_WEB!Y${editing.rowIndex}:Z${editing.rowIndex}`, values: [updateRow.slice(24, 26)] },
           ],
@@ -489,7 +582,7 @@ export default function Sitatan() {
           year,
           serial: String(serial),
           number,
-          date: today(),
+          date: draft.insert ? draft.date : today(),
           creator: user.username,
           createdAt: new Date().toISOString(),
           sourceId,
@@ -510,7 +603,6 @@ export default function Sitatan() {
         }
         setFilterYear(year);
         setFilterType(draft.type);
-        setFilterStatus('all');
       }
 
       const refreshed = await loadData();
@@ -603,7 +695,7 @@ export default function Sitatan() {
           <CardDescription>Nomor resmi dibuat saat surat pertama kali disimpan. Nomor yang dibatalkan tetap tercatat.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Select value={filterYear} onValueChange={setFilterYear}>
               <SelectTrigger aria-label="Filter tahun"><SelectValue placeholder="Tahun" /></SelectTrigger>
               <SelectContent>
@@ -617,18 +709,22 @@ export default function Sitatan() {
                 {SITATAN_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger aria-label="Filter status surat"><SelectValue placeholder="Status surat" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua status</SelectItem>
-                <SelectItem value="active">Aktif</SelectItem>
-                <SelectItem value="cancelled">Batal</SelectItem>
-              </SelectContent>
-            </Select>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nomor, perihal, penerima..." className="pl-9" />
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="sitatan-show-cancelled"
+              checked={showCancelled}
+              onCheckedChange={(checked) => setShowCancelled(checked === true)}
+              aria-label="Tampilkan Status Batal"
+            />
+            <Label htmlFor="sitatan-show-cancelled" className="cursor-pointer text-xs text-muted-foreground">
+              Tampilkan Status Batal
+            </Label>
           </div>
 
           {isLoading ? (
@@ -636,78 +732,152 @@ export default function Sitatan() {
           ) : filteredRecords.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Belum ada surat untuk filter ini.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="p-3">Naskah Dinas</th>
-                    <th className="p-3">Nomor</th>
-                    <th className="p-3">Tanggal</th>
-                    <th className="p-3">Dokumen</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.map((record) => {
-                    const isCancelled = record.status.toLocaleLowerCase('id') === 'batal';
-                    return (
-                      <tr key={record.id} className={`border-b align-top ${isCancelled ? 'bg-muted/40 text-muted-foreground' : ''}`}>
-                        <td className="max-w-[360px] p-3">
-                          <div className="font-medium">{record.subject || record.body || 'Tanpa perihal'}</div>
-                          <div className="mt-1 text-xs text-muted-foreground">{record.type}</div>
-                          {record.eSign && <Badge variant="outline" className="mt-2">e-sign</Badge>}
-                        </td>
-                        <td className="whitespace-nowrap p-3 font-medium">{record.number || '—'}</td>
-                        <td className="whitespace-nowrap p-3">
-                          <div>{displayDate(record.date)}</div>
-                          <div className="text-xs text-muted-foreground">({record.creator || '—'})</div>
-                        </td>
-                        <td className="p-3">
-                          {record.documentUrl && isHttpUrl(record.documentUrl) ? (
-                            <a href={record.documentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                              <ExternalLink className="h-3.5 w-3.5" /> Lihat
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground">belum upload</span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          {isCancelled ? (
-                            <div>
-                              <Badge variant="destructive">Batal</Badge>
-                              <div className="mt-1 max-w-[190px] text-xs">{record.cancellationReason}</div>
-                            </div>
-                          ) : (
-                            <Badge variant="secondary">Aktif</Badge>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" aria-label="Duplikasi surat" title="Duplikasi" onClick={() => openDuplicate(record)}>
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            {!isCancelled && canManage(record) && (
-                              <>
-                                <Button variant="ghost" size="icon" aria-label="Edit surat" title="Edit" disabled={!user?.sitatanToken} onClick={() => openEdit(record)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" aria-label="Batalkan nomor" title="Batalkan nomor" disabled={!user?.sitatanToken} onClick={() => {
-                                  setCancelTarget(record);
-                                  setCancelReason('');
-                                }}>
-                                  <Ban className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </>
+            <>
+              <div className="overflow-x-auto rounded-lg border shadow-sm">
+                <table className="w-full min-w-[1000px] table-fixed text-sm">
+                  <thead className="bg-primary/10">
+                    <tr className="border-b border-primary/20 text-left text-xs font-semibold uppercase tracking-wide text-foreground">
+                      <th className="w-14 rounded-tl-lg p-3 text-center">No.</th>
+                      <th className="w-[25%] p-3">Naskah Dinas</th>
+                      <th className="w-[22%] p-3">Nomor</th>
+                      <th className="w-[18%] p-3">Tanggal</th>
+                      <th className="w-[20%] p-3">Kepada</th>
+                      <th className="w-[156px] rounded-tr-lg p-3 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedRecords.map((record, index) => {
+                      const isCancelled = record.status.toLocaleLowerCase('id') === 'batal';
+                      return (
+                        <tr
+                          key={record.id}
+                          className={`border-b border-border/70 align-top transition-colors hover:bg-primary/5 ${isCancelled ? 'bg-muted/40 text-muted-foreground' : 'even:bg-muted/20'}`}
+                        >
+                          <td className="p-3 text-center text-xs tabular-nums text-muted-foreground">
+                            {pageStartIndex + index + 1}
+                          </td>
+                          <td className="max-w-[360px] p-3">
+                            <div className="font-medium">{record.subject || record.body || 'Tanpa perihal'}</div>
+                            <div className="mt-1 text-xs text-muted-foreground">{record.type}</div>
+                            {record.eSign && <Badge variant="outline" className="mt-2">e-sign</Badge>}
+                            {isCancelled && (
+                              <div className="mt-2">
+                                <Badge variant="destructive">Batal</Badge>
+                                {record.cancellationReason && (
+                                  <div className="mt-1 max-w-[220px] text-xs">{record.cancellationReason}</div>
+                                )}
+                              </div>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          </td>
+                          <td className="whitespace-nowrap p-3 font-medium">{record.number || '—'}</td>
+                          <td className="whitespace-nowrap p-3">
+                            <div>{displayDate(record.date)}</div>
+                            <div className="text-xs text-muted-foreground">({record.creator || '—'})</div>
+                          </td>
+                          <td className="max-w-[260px] whitespace-pre-wrap p-3">{record.recipient || '—'}</td>
+                          <td className="whitespace-nowrap p-2">
+                            <div className="flex items-center justify-center gap-0.5">
+                              {TEMPLATE_TYPES.has(record.type) ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0 text-primary transition-colors hover:bg-primary/10 hover:text-primary"
+                                  aria-label={`Unduh template ${record.type}`}
+                                  title={`Unduh template ${record.type} (.docx)`}
+                                  disabled={!user?.sitatanToken || downloadingRecordId !== null}
+                                  onClick={() => void downloadTemplate(record)}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <div
+                                  role="note"
+                                  aria-label="Gunakan BOS"
+                                  title="Gunakan BOS"
+                                  className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-1 text-xs font-semibold text-amber-950"
+                                >
+                                  <Info className="h-3.5 w-3.5 shrink-0 text-amber-700" />
+                                  <span>Gunakan BOS</span>
+                                </div>
+                              )}
+                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Duplikasi surat" title="Duplikasi" onClick={() => openDuplicate(record)}>
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              {!isCancelled && canManage(record) && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit surat" title="Edit" disabled={!user?.sitatanToken} onClick={() => openEdit(record)}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Batalkan nomor" title="Batalkan nomor" disabled={!user?.sitatanToken} onClick={() => {
+                                    setCancelTarget(record);
+                                    setCancelReason('');
+                                  }}>
+                                    <Ban className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Label htmlFor="sitatan-page-size" className="whitespace-nowrap text-xs font-normal">
+                  Baris per halaman
+                </Label>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(value) => {
+                    setPageSize(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger id="sitatan-page-size" aria-label="Baris per halaman" className="h-8 w-[72px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="whitespace-nowrap">
+                  {filteredRecords.length === 0
+                    ? '0 data'
+                    : `${pageStartIndex + 1}–${Math.min(pageStartIndex + pageSize, filteredRecords.length)} dari ${filteredRecords.length}`}
+                </span>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  aria-label="Halaman sebelumnya"
+                  disabled={activePage <= 1}
+                  onClick={() => setCurrentPage(activePage - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="min-w-[100px] text-center text-xs text-muted-foreground">
+                  Halaman {activePage} dari {pageCount}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  aria-label="Halaman berikutnya"
+                  disabled={activePage >= pageCount}
+                  onClick={() => setCurrentPage(activePage + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -721,7 +891,7 @@ export default function Sitatan() {
             <DialogDescription>
               {!user?.sitatanToken
                 ? 'Sesi Sitatan belum tersedia. Keluar dari KECAP MAJA lalu masuk kembali untuk mengaktifkan penyimpanan.'
-                : 'Tanggal dan pembuat diambil otomatis. Nomor resmi baru ditetapkan saat disimpan.'}
+                : 'Tanggal biasanya diisi otomatis; Surat Sisip dapat memakai tanggal manual. Nomor resmi baru ditetapkan saat disimpan.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -736,7 +906,6 @@ export default function Sitatan() {
                   setDraft((current) => ({
                     ...current,
                     type: value,
-                    insert: INSERT_TYPES.has(value) ? current.insert : false,
                     notes: value === 'Nota Dinas/Memorandum' ? '' : current.notes,
                     ...archiveDefaultsForType(value),
                     nature: '',
@@ -760,16 +929,32 @@ export default function Sitatan() {
               </Select>
             </div>
 
-            {INSERT_TYPES.has(draft.type) && (
-              <div className="flex items-center gap-2 sm:col-span-2">
+            <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+              <div className="flex min-h-10 items-center gap-2">
                 <Checkbox
                   id="sitatan-sisip"
                   checked={draft.insert}
                   onCheckedChange={(checked) => setDraft((current) => ({ ...current, insert: checked === true }))}
                 />
-                <Label htmlFor="sitatan-sisip">Apakah termasuk Surat Sisip?</Label>
+                <Label htmlFor="sitatan-sisip" className="font-semibold italic text-amber-700 dark:text-amber-400">
+                  Apakah termasuk Surat Sisip?
+                </Label>
               </div>
-            )}
+              {draft.insert && (
+                <div className="space-y-2">
+                  <Label htmlFor="sitatan-date">Tanggal Surat <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="sitatan-date"
+                    type="date"
+                    required
+                    min={`${currentYear()}-01-01`}
+                    max={today()}
+                    value={draft.date}
+                    onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))}
+                  />
+                </div>
+              )}
+            </div>
 
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="sitatan-body">Isi Surat <span className="text-destructive">*</span></Label>
@@ -894,22 +1079,30 @@ export default function Sitatan() {
                 <Label htmlFor="sitatan-esign">Apakah menggunakan eTTD / e-sign?</Label>
               </div>
             )}
-            {editing && (
-              <div className="space-y-2">
-                <Label htmlFor="sitatan-url">Tautan Dokumen (opsional)</Label>
-                <Input id="sitatan-url" type="url" value={draft.documentUrl} onChange={(event) => setDraft((current) => ({ ...current, documentUrl: event.target.value }))} placeholder="https://..." />
-              </div>
-            )}
-            {draft.type !== 'Nota Dinas/Memorandum' && (
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="sitatan-notes">Catatan</Label>
-                <Textarea id="sitatan-notes" value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Catatan (opsional)..." rows={2} />
-              </div>
-            )}
+            <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
+              {editing && (
+                <div className="space-y-2">
+                  <Label htmlFor="sitatan-url">Tautan Dokumen (opsional)</Label>
+                  <Input id="sitatan-url" type="url" value={draft.documentUrl} onChange={(event) => setDraft((current) => ({ ...current, documentUrl: event.target.value }))} placeholder="https://..." />
+                </div>
+              )}
+              {draft.type !== 'Nota Dinas/Memorandum' && (
+                <div className="space-y-2">
+                  <Label htmlFor="sitatan-notes">Catatan</Label>
+                  <Textarea id="sitatan-notes" value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Catatan (opsional)..." rows={2} />
+                </div>
+              )}
+            </div>
 
             <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground sm:col-span-2">
-              Tanggal surat: <strong className="text-foreground">{displayDate(today())}</strong>
-              {' '}({user?.username || 'akun tidak diketahui'}). Tanggal diisi otomatis dan tidak dapat dimundurkan.
+              {draft.insert ? (
+                <>Tanggal surat manual: <strong className="text-foreground">{displayDate(draft.date)}</strong>. Pilih tanggal dalam tahun berjalan, tidak melewati hari ini.</>
+              ) : editing ? (
+                <>Tanggal surat yang tersimpan (<strong className="text-foreground">{displayDate(editing.date)}</strong>) dipertahankan.</>
+              ) : (
+                <>Tanggal surat: <strong className="text-foreground">{displayDate(today())}</strong>. Tanggal diisi otomatis.</>
+              )}
+              {' '}({user?.username || 'akun tidak diketahui'}).
             </div>
           </div>
 
