@@ -22,6 +22,8 @@ export interface ReadSheetOptions {
   noFallback?: boolean;
   /** Dahulukan Sheets API melalui Supabase untuk metadata/header yang tidak tersedia di gviz */
   preferSupabase?: boolean;
+  /** Sesi bertanda tangan untuk spreadsheet Sitatan yang dibatasi aksesnya */
+  sessionToken?: string;
 }
 
 const columnLettersToIndex = (letters: string): number => {
@@ -151,6 +153,7 @@ export async function readSheetValues(options: ReadSheetOptions): Promise<{ valu
         spreadsheetId: options.spreadsheetId,
         operation: 'read',
         range: options.range,
+        ...(options.sessionToken ? { sessionToken: options.sessionToken } : {}),
         ...(options.unformatted ? { valueRenderOption: 'UNFORMATTED_VALUE' } : {}),
       },
     });
@@ -170,6 +173,7 @@ export async function readSheetValues(options: ReadSheetOptions): Promise<{ valu
         spreadsheetId: options.spreadsheetId,
         operation: 'read',
         range: options.range,
+        ...(options.sessionToken ? { sessionToken: options.sessionToken } : {}),
         ...(options.unformatted ? { valueRenderOption: 'UNFORMATTED_VALUE' } : {}),
       },
     });

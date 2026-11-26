@@ -66,21 +66,21 @@ CREATE POLICY "pulsa_items_view_all_ppk_bendahara"
   ON pulsa_items 
   FOR SELECT 
   USING (
-    auth.jwt() ->> 'user_metadata'::text ->> 'role' IN ('Pejabat Pembuat Komitmen', 'Bendahara', 'admin', 'operator')
+    auth.jwt() -> 'user_metadata' ->> 'role' IN ('Pejabat Pembuat Komitmen', 'Bendahara', 'admin', 'operator')
   );
 
 -- 2. User bisa lihat data yang mereka buat
 CREATE POLICY "pulsa_items_view_own" 
   ON pulsa_items 
   FOR SELECT 
-  USING (created_by = auth.jwt() ->> 'user_metadata'::text ->> 'email');
+  USING (created_by = auth.jwt() -> 'user_metadata' ->> 'email');
 
 -- 3. User dengan role tertentu bisa insert
 CREATE POLICY "pulsa_items_insert" 
   ON pulsa_items 
   FOR INSERT 
   WITH CHECK (
-    auth.jwt() ->> 'user_metadata'::text ->> 'role' IN (
+    auth.jwt() -> 'user_metadata' ->> 'role' IN (
       'Fungsi Sosial', 'Fungsi Neraca', 'Fungsi Produksi', 'Fungsi Distribusi', 'Fungsi IPDS',
       'Bendahara', 'Pejabat Pembuat Komitmen', 'admin'
     )
@@ -90,7 +90,7 @@ CREATE POLICY "pulsa_items_insert"
 CREATE POLICY "pulsa_items_update_ppk" 
   ON pulsa_items 
   FOR UPDATE 
-  USING (auth.jwt() ->> 'user_metadata'::text ->> 'role' = 'Pejabat Pembuat Komitmen');
+  USING (auth.jwt() -> 'user_metadata' ->> 'role' = 'Pejabat Pembuat Komitmen');
 
 -- Similar policies untuk pulsa_bulanan
 CREATE POLICY "pulsa_bulanan_view_all" 
@@ -100,4 +100,4 @@ CREATE POLICY "pulsa_bulanan_view_all"
 
 CREATE POLICY "pulsa_bulanan_write_ppk" 
   ON pulsa_bulanan 
-  FOR INSERT WITH CHECK (auth.jwt() ->> 'user_metadata'::text ->> 'role' IN ('Pejabat Pembuat Komitmen', 'admin'));
+  FOR INSERT WITH CHECK (auth.jwt() -> 'user_metadata' ->> 'role' IN ('Pejabat Pembuat Komitmen', 'admin'));

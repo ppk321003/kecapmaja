@@ -73,6 +73,7 @@ import OlahCepatMakro from "./pages/OlahCepatMakro";
 import BahanRevisiAnggaran from "./components/bahanrevisi/BahanRevisiAnggaran";
 import BookAula from "./pages/BookAula";
 import SuratDisposisi from "./pages/SuratDisposisi";
+import Sitatan from "./pages/Sitatan";
 import PortalMitra from "./pages/PortalMitra";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,7 @@ const App = () => (
             <Route path="/kalender-kerja" element={<ProtectedRoute><Layout><KalenderKerja /></Layout></ProtectedRoute>} />
             <Route path="/book-aula" element={<ProtectedRoute><Layout><BookAula /></Layout></ProtectedRoute>} />
             <Route path="/surat-disposisi" element={<ProtectedRoute><Layout><SuratDisposisi /></Layout></ProtectedRoute>} />
+            <Route path="/sitatan" element={<ProtectedRoute><Layout><Sitatan /></Layout></ProtectedRoute>} />
             <Route path="/plotting-mitra" element={<ProtectedRoute><Layout><PlottingMitra /></Layout></ProtectedRoute>} />
             <Route path="/usulan-pencairan" element={<ProtectedRoute><Layout><UsulanPencairan /></Layout></ProtectedRoute>} />
             <Route path="/aki-to-bendahara" element={<ProtectedRoute><Layout><AkiToBendahara /></Layout></ProtectedRoute>} />

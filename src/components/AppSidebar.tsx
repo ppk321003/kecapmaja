@@ -88,6 +88,7 @@ const kepegawaianItems = [
 const umumItems = [
   { title: "Book Aula", url: "/book-aula", icon: Building2 },
   { title: "Surat & Disposisi", url: "/surat-disposisi", icon: Mail },
+  { title: "Sitatan", url: "/sitatan", icon: FileText },
 ];
 
 // MENU GROUP: SENSUS EKONOMI 2026 ITEMS (MAIN MENU GROUP NOW)

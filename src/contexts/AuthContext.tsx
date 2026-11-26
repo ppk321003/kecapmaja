@@ -6,6 +6,7 @@ interface User {
   username: string;
   role: string;
   satker: string;
+  sitatanToken?: string;
 }
 
 interface AuthContextType {
@@ -155,13 +156,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
 
       if (foundUser) {
+        let sitatanToken: string | undefined;
+        if (foundUser.satker === '3210') {
+          try {
+            const { data, error } = await supabase.functions.invoke('google-sheets', {
+              body: {
+                operation: 'sitatan-authenticate',
+                username: foundUser.username,
+                password,
+              },
+            });
+            if (error) throw error;
+            if (typeof data?.sessionToken === 'string') sitatanToken = data.sessionToken;
+          } catch (sessionError) {
+            console.warn('[AuthContext.login] Tidak dapat membuat sesi Sitatan:', sessionError);
+          }
+        }
+
         console.log('[AuthContext.login] User found:', {
           username: foundUser.username,
           role: foundUser.role,
           satker: foundUser.satker
         });
 
-        setUser({ username: foundUser.username, role: foundUser.role, satker: foundUser.satker });
+        setUser({
+          username: foundUser.username,
+          role: foundUser.role,
+          satker: foundUser.satker,
+          sitatanToken,
+        });
 
         const loginTimestamp = new Date().toISOString();
         try {
