@@ -68,7 +68,7 @@ const SITATAN_TEMPLATE_IDS: Record<string, string> = {
   'Surat Undangan Ekstern': '1FU6IAYGhOYuUlB4RcJrTtao1w6hXUB5QLObC7jzmU7M',
   'Surat Keterangan': '1cFyqxp8KaGCtkDKrVE1I3Qc2guWFbNnIoiFPTCml4Ec',
   'Surat Pengantar': '17jf2Ddz2s1PKBWe9P7Id6cml31xlOLRoDWxvJWe0oHU',
-  Laporan: '1jFtVfV9K7UHHQW_5XeZV2R7FeWQJpyUo',
+  Laporan: '1S3z3D8elcHYEWu9S8BXAbu8b--CfSnNcvN3O6OApxFA',
 };
 
 function normalizeSitatanArchiveSubcode(value: string): string {
