@@ -772,7 +772,9 @@ export default function Sitatan() {
                           <td className="whitespace-nowrap p-3 font-medium">{record.number || '—'}</td>
                           <td className="whitespace-nowrap p-3">
                             <div>{displayDate(record.date)}</div>
-                            <div className="text-xs text-muted-foreground">({record.creator || '—'})</div>
+                            <div className="text-xs font-semibold text-violet-700 dark:text-violet-400">
+                              ({record.creator || '—'})
+                            </div>
                           </td>
                           <td className="max-w-[260px] whitespace-pre-wrap p-3">{record.recipient || '—'}</td>
                           <td className="whitespace-nowrap p-2">
