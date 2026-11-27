@@ -2,17 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import {
-  Ban,
   ChevronLeft,
   ChevronRight,
   Copy,
   Download,
   ExternalLink,
   FileText,
-  Info,
   Pencil,
   Plus,
   Search,
+  Trash2,
   X,
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -1121,12 +1120,12 @@ export default function Sitatan() {
                   <thead className="bg-primary/10">
                     <tr className="border-b border-primary/20 text-left text-xs font-semibold uppercase tracking-wide text-foreground">
                       <th className="w-14 rounded-tl-lg p-3 text-center">No.</th>
-                      <th className="w-[140px] p-3">Jenis Surat</th>
-                      <th className="w-[30%] p-3">Naskah Dinas</th>
+                      <th className="w-[120px] p-3">Jenis Surat</th>
+                      <th className="w-[32%] p-3">Naskah Dinas</th>
                       <th className="w-[15%] p-3">Nomor</th>
                       <th className="w-[14%] p-3">Tanggal</th>
                       <th className="w-[11%] p-3">Kepada</th>
-                      <th className="w-[190px] rounded-tr-lg p-3 text-center">Aksi</th>
+                      <th className="w-[190px] rounded-tr-lg p-3 text-left">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1143,7 +1142,7 @@ export default function Sitatan() {
                           <td className="p-3 text-center text-xs tabular-nums text-muted-foreground">
                             {pageStartIndex + index + 1}
                           </td>
-                          <td className="max-w-[140px] whitespace-normal break-words p-3">
+                          <td className="max-w-[120px] whitespace-normal break-words p-3">
                             {record.type}
                           </td>
                           <td className="p-3">
@@ -1166,9 +1165,9 @@ export default function Sitatan() {
                             </div>
                           </td>
                           <td className="max-w-[260px] whitespace-pre-wrap p-3">{record.recipient || '—'}</td>
-                          <td className="whitespace-nowrap p-2">
-                            <div className="flex flex-col items-center gap-1">
-                              <div className="flex items-center justify-center gap-0.5">
+                          <td className="whitespace-nowrap p-2 text-left">
+                            <div className="flex flex-col items-start gap-1">
+                              <div className="flex items-center justify-start gap-0.5">
                                 {record.type === 'Surat Keputusan' ? (
                                   generatedSK?.documentUrl && isHttpUrl(generatedSK.documentUrl) ? (
                                     <Button
@@ -1216,15 +1215,34 @@ export default function Sitatan() {
                                     role="note"
                                     aria-label="BOS"
                                     title="BOS"
-                                    className="inline-flex items-center gap-1 rounded-md bg-red-100 px-1.5 py-1 text-xs font-semibold text-red-800 dark:bg-red-950 dark:text-red-300"
+                                  className="inline-flex items-center rounded-md bg-red-100 px-1.5 py-1 text-xs font-semibold text-red-800 dark:bg-red-950 dark:text-red-300"
                                   >
-                                    <Info className="h-3.5 w-3.5 shrink-0 text-red-700 dark:text-red-400" />
                                     <span>BOS</span>
                                   </div>
                                 )}
                                 <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Duplikasi surat" title="Duplikasi" onClick={() => openDuplicate(record)}>
                                   <Copy className="h-4 w-4" />
                                 </Button>
+                                {record.type === 'Surat Keputusan'
+                                && generatedSK?.documentUrl
+                                && isHttpUrl(generatedSK.documentUrl) && (
+                                <Button
+                                  asChild
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0 text-primary transition-colors hover:bg-primary/10 hover:text-primary"
+                                >
+                                  <a
+                                    href={generatedSK.documentUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    aria-label="Buka Dokumen SK"
+                                    title="Buka Dokumen SK"
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </a>
+                                </Button>
+                                )}
                                 {!isCancelled && canManage(record) && (
                                   <>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit surat" title="Edit" disabled={!user?.sitatanToken} onClick={() => openEdit(record)}>
@@ -1234,25 +1252,11 @@ export default function Sitatan() {
                                       setCancelTarget(record);
                                       setCancelReason('');
                                     }}>
-                                      <Ban className="h-4 w-4 text-destructive" />
+                                      <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
                                   </>
                                 )}
                               </div>
-                              {record.type === 'Surat Keputusan'
-                                && generatedSK?.documentUrl
-                                && isHttpUrl(generatedSK.documentUrl) && (
-                                <div className="flex flex-wrap items-center justify-center gap-1 whitespace-normal">
-                                  <a
-                                    href={generatedSK.documentUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                                  >
-                                    <ExternalLink className="h-3.5 w-3.5" /> Dokumen SK
-                                  </a>
-                                </div>
-                              )}
                             </div>
                           </td>
                         </tr>
