@@ -995,7 +995,7 @@ const SuratKeputusan = () => {
         selectedOrganikDetails.map(o => o.name).join(" | "),
         selectedMitraDetails.map(m => m.name).join(" | "),
         selectedPembuat?.name || "",
-        data.kegiatanList.length.toString()
+        ""
       ];
 
       console.log('Submitting data:', rowData);

@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Copy,
   Download,
+  ExternalLink,
   FileText,
   Info,
   Pencil,
@@ -21,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Combobox } from '@/components/ui/combobox';
 import { Person, PersonMultiSelect } from '@/components/PersonMultiSelect';
+import { SuratKeputusanFields } from '@/components/sitatan/SuratKeputusanFields';
 import {
   Dialog,
   DialogContent,
@@ -34,10 +36,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSatkerConfigContext } from '@/contexts/SatkerConfigContext';
 import { useMitraStatistik, useOrganikBPS } from '@/hooks/use-database';
 import { useToast } from '@/hooks/use-toast';
 import { readSheetValues } from '@/lib/sheets-read';
 import { supabase } from '@/integrations/supabase/client';
+import { generateNextDocumentId, getNextSequenceNumberFromSheet, monthlyPrefix } from '@/utils/document-id';
 import {
   ArchiveClassification,
   SITATAN_HEADERS,
@@ -54,6 +58,21 @@ import {
   requiresArchiveCode,
 } from '@/lib/sitatan';
 import { renderSitatanDocxTemplate } from '@/lib/sitatan-template';
+import {
+  SKGeneratorRecord,
+  SKMasterActivity,
+  SK_LINK_HEADER,
+  SK_MASTER_SPREADSHEET_ID,
+  SK_SHEET_NAME,
+  SK_SPREADSHEET_ID,
+  SitatanSKDetails,
+  emptySitatanSKDetails,
+  formatSKActivities,
+  formatSKDate,
+  hasDuplicateSKActivityNames,
+  parseSKGeneratorRows,
+  parseSKMasterActivities,
+} from '@/lib/sitatan-sk';
 
 const TASK_ORDER_TYPE: SitatanType = 'Surat Perintah/Surat Tugas';
 const TASK_ORDER_ARCHIVE = { archiveCode: 'KP', archiveSubcode: '650' } as const;
@@ -116,6 +135,7 @@ const emptyDraft = (type: SitatanType = 'Surat Dinas'): SitatanDraft => ({
   eSign: false,
   notes: '',
   documentUrl: '',
+  skDetails: emptySitatanSKDetails(),
 });
 
 function displayDate(value: string): string {
@@ -186,10 +206,73 @@ function createSheetRow(
   ];
 }
 
-function draftFromRecord(record: SitatanRecord): SitatanDraft {
+function sitatanDraftForRegistry(draft: SitatanDraft): SitatanDraft {
+  if (draft.type !== 'Surat Keputusan') return draft;
+  return {
+    ...draft,
+    body: draft.skDetails.tentang.trim(),
+    organik: draft.skDetails.organik.join('; '),
+    mitra: draft.skDetails.mitra.join('; '),
+  };
+}
+
+function createSKGeneratorRow(
+  draft: SitatanDraft,
+  record: Pick<SitatanRecord, 'id' | 'number' | 'date' | 'creator'>,
+  sequence: string | number,
+  generatorId: string,
+): string[] {
+  const details = draft.skDetails;
+  const noSK = record.number.trim();
+  return [
+    String(sequence),
+    generatorId,
+    /^\d+$/.test(noSK) ? noSK.padStart(3, '0') : noSK,
+    details.tentang.trim(),
+    details.menimbang1.trim(),
+    details.menimbang2.trim(),
+    details.menimbang3.trim(),
+    details.menimbang4.trim(),
+    details.kesatu.trim(),
+    formatSKActivities(details.kegiatan),
+    `${formatSKDate(draft.startDate)} | ${formatSKDate(draft.endDate)}`,
+    formatSKDate(record.date),
+    details.organik.join(' | '),
+    details.mitra.join(' | '),
+    details.pembuatDaftar,
+    '',
+    '',
+    record.id,
+  ];
+}
+
+async function writeSKNumberAsText(
+  spreadsheetId: string,
+  sessionToken: string,
+  rowIndex: number,
+  number: string,
+): Promise<void> {
+  const noSK = number.trim();
+  const formattedNoSK = /^\d+$/.test(noSK) ? noSK.padStart(3, '0') : noSK;
+  await writeSheet({
+    spreadsheetId,
+    operation: 'update',
+    range: `${SK_SHEET_NAME}!C${rowIndex}`,
+    values: [[`'${formattedNoSK}`]],
+    valueInputOption: 'USER_ENTERED',
+  }, sessionToken);
+}
+
+function draftFromRecord(record: SitatanRecord, skRecord?: SKGeneratorRecord): SitatanDraft {
+  const skDetails = skRecord?.details ?? {
+    ...emptySitatanSKDetails(),
+    tentang: record.body,
+    organik: parsePeopleSelection(record.organik),
+    mitra: parsePeopleSelection(record.mitra),
+  };
   return {
     type: record.type,
-    body: record.body,
+    body: record.type === 'Surat Keputusan' ? skDetails.tentang : record.body,
     insert: record.insert,
     date: record.date,
     archiveCode: record.archiveCode,
@@ -200,22 +283,101 @@ function draftFromRecord(record: SitatanRecord): SitatanDraft {
     sender: record.sender,
     organik: record.organik,
     mitra: record.mitra,
-    startDate: record.startDate,
-    endDate: record.endDate,
+    startDate: skRecord?.startDate || record.startDate,
+    endDate: skRecord?.endDate || record.endDate,
     destination: record.destination,
     costBearer: record.costBearer,
     eSign: record.eSign,
     notes: record.notes,
     documentUrl: record.documentUrl,
+    skDetails,
   };
 }
 
-async function writeSheet(body: Record<string, unknown>, sessionToken: string): Promise<void> {
+async function writeSheet(body: Record<string, unknown>, sessionToken: string): Promise<unknown> {
   const { data, error } = await supabase.functions.invoke('google-sheets', {
     body: { ...body, sessionToken },
   });
   if (error) throw error;
   if (data?.error) throw new Error(String(data.error));
+  return data;
+}
+
+async function saveSKGeneratorRow(
+  spreadsheetId: string,
+  sessionToken: string,
+  draft: SitatanDraft,
+  record: Pick<SitatanRecord, 'id' | 'number' | 'date' | 'creator'>,
+): Promise<void> {
+  const { values } = await readSheetValues({
+    spreadsheetId,
+    range: `${SK_SHEET_NAME}!A:R`,
+    preferSupabase: true,
+    sessionToken,
+  });
+  if (!values[0]) throw new Error('Tab SuratKeputusan belum memiliki baris header.');
+
+  const rows = parseSKGeneratorRows(values);
+  if (!values[0][17]?.trim()) {
+    await writeSheet({
+      spreadsheetId,
+      operation: 'update',
+      range: `${SK_SHEET_NAME}!R1`,
+      values: [[SK_LINK_HEADER]],
+      valueInputOption: 'RAW',
+    }, sessionToken);
+  }
+
+  const existing = rows.find((row) => row.sitatanId === record.id);
+  if (existing) {
+    const existingRow = values[existing.rowIndex - 1] ?? [];
+    const rowData = createSKGeneratorRow(
+      draft,
+      record,
+      existingRow[0] ?? '',
+      existing.generatorId,
+    );
+    await writeSheet({
+      spreadsheetId,
+      operation: 'update',
+      range: `${SK_SHEET_NAME}!A${existing.rowIndex}:R${existing.rowIndex}`,
+      values: [rowData],
+      valueInputOption: 'RAW',
+    }, sessionToken);
+    await writeSKNumberAsText(spreadsheetId, sessionToken, existing.rowIndex, record.number);
+    return;
+  }
+
+  const [sequence, generatorId] = await Promise.all([
+    getNextSequenceNumberFromSheet({ spreadsheetId, sheetName: SK_SHEET_NAME, column: 'A' }),
+    generateNextDocumentId({
+      spreadsheetId,
+      sheetName: SK_SHEET_NAME,
+      prefix: monthlyPrefix('sk'),
+      column: 'B',
+    }),
+  ]);
+  const rowData = createSKGeneratorRow(draft, record, sequence, generatorId);
+  const appendResult = await writeSheet({
+    spreadsheetId,
+    operation: 'append',
+    range: `${SK_SHEET_NAME}!A:R`,
+    values: [rowData],
+    valueInputOption: 'RAW',
+  }, sessionToken);
+  if (!appendResult || typeof appendResult !== 'object' || !('updates' in appendResult)) {
+    throw new Error('Nomor SK tersimpan di generator, tetapi posisi baris hasil append tidak dapat dipastikan.');
+  }
+  const updates = appendResult.updates;
+  if (!updates || typeof updates !== 'object' || !('updatedRange' in updates)
+    || typeof updates.updatedRange !== 'string') {
+    throw new Error('Nomor SK tersimpan di generator, tetapi posisi baris hasil append tidak dapat dipastikan.');
+  }
+  const appendedRow = updates.updatedRange.match(/!A(\d+):R\d+$/);
+  if (!appendedRow) {
+    throw new Error('Nomor SK tersimpan di generator, tetapi posisi baris hasil append tidak dapat dipastikan.');
+  }
+  await writeSKNumberAsText(spreadsheetId, sessionToken, Number(appendedRow[1]), record.number);
 }
 
 function isHttpUrl(value: string): boolean {
@@ -227,13 +389,26 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+function googleDocsDocxUrl(documentUrl: string): string {
+  const documentId = documentUrl.match(/docs\.google\.com\/document\/d\/([^/?#]+)/i)?.[1];
+  return documentId
+    ? `https://docs.google.com/document/d/${documentId}/export?format=docx`
+    : documentUrl;
+}
+
 export default function Sitatan() {
   const { user } = useAuth();
+  const satkerConfig = useSatkerConfigContext();
   const { data: organikData, loading: organikLoading, error: organikError } = useOrganikBPS();
   const { data: mitraData, loading: mitraLoading, error: mitraError } = useMitraStatistik();
   const { toast } = useToast();
   const [records, setRecords] = useState<SitatanRecord[]>([]);
   const [archives, setArchives] = useState<ArchiveClassification[]>([]);
+  const [skGeneratorRows, setSkGeneratorRows] = useState<SKGeneratorRecord[]>([]);
+  const [skGeneratorError, setSkGeneratorError] = useState('');
+  const [skMasterActivities, setSkMasterActivities] = useState<SKMasterActivity[]>([]);
+  const [skMasterLoading, setSkMasterLoading] = useState(false);
+  const [skMasterError, setSkMasterError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -250,6 +425,7 @@ export default function Sitatan() {
   const [showCancelled, setShowCancelled] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const skSpreadsheetId = satkerConfig?.getUserSatkerSheetId('sk') || SK_SPREADSHEET_ID;
 
   const loadData = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
@@ -278,6 +454,21 @@ export default function Sitatan() {
       ]);
       setRecords(parseSitatanRows(letterResult.values));
       setArchives(parseArchiveRows(archiveResult.values));
+      try {
+        const skResult = await readSheetValues({
+          spreadsheetId: skSpreadsheetId,
+          range: `${SK_SHEET_NAME}!A:R`,
+          preferSupabase: true,
+          sessionToken: user.sitatanToken,
+        });
+        setSkGeneratorRows(parseSKGeneratorRows(skResult.values));
+        setSkGeneratorError('');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Tidak dapat membaca data detail Surat Keputusan.';
+        console.error('[Sitatan] Gagal memuat detail Surat Keputusan:', error);
+        setSkGeneratorRows([]);
+        setSkGeneratorError(message);
+      }
       return true;
     } catch (error) {
       const message = !user.sitatanToken
@@ -290,7 +481,30 @@ export default function Sitatan() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, user?.satker, user?.sitatanToken]);
+  }, [skSpreadsheetId, toast, user?.satker, user?.sitatanToken]);
+
+  useEffect(() => {
+    let active = true;
+    setSkMasterLoading(true);
+    setSkMasterError('');
+    void readSheetValues({
+      spreadsheetId: SK_MASTER_SPREADSHEET_ID,
+      range: 'Sheet1!A:F',
+      preferSupabase: true,
+      sessionToken: user?.sitatanToken,
+    }).then(({ values }) => {
+      if (active) setSkMasterActivities(parseSKMasterActivities(values));
+    }).catch((error) => {
+      const message = error instanceof Error ? error.message : 'Tidak dapat membaca master kegiatan.';
+      console.error('[Sitatan] Gagal memuat master kegiatan SK:', error);
+      if (active) setSkMasterError(message);
+    }).finally(() => {
+      if (active) setSkMasterLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [user?.sitatanToken]);
 
   useEffect(() => {
     void loadData();
@@ -341,6 +555,29 @@ export default function Sitatan() {
         kecamatan: person.kecamatan,
       };
     })), [mitraData]);
+
+  const skOrganikOptions = useMemo(() => uniquePeople(organikData
+    .filter((person) => person.name.trim())
+    .map((person) => ({
+      id: person.name.trim(),
+      name: person.name.trim(),
+      jabatan: person.jabatan,
+      kecamatan: person.kecamatan,
+    }))), [organikData]);
+
+  const skMitraOptions = useMemo(() => uniquePeople(mitraData
+    .filter((person) => person.name.trim())
+    .map((person) => ({
+      id: person.name.trim(),
+      name: person.name.trim(),
+      jabatan: person.pekerjaan,
+      kecamatan: person.kecamatan,
+    }))), [mitraData]);
+
+  const skGeneratorBySitatanId = useMemo(
+    () => new Map(skGeneratorRows.map((row) => [row.sitatanId, row])),
+    [skGeneratorRows],
+  );
 
   const selectedOrganik = useMemo(() => parsePeopleSelection(draft.organik), [draft.organik]);
   const selectedMitra = useMemo(() => parsePeopleSelection(draft.mitra), [draft.mitra]);
@@ -394,7 +631,7 @@ export default function Sitatan() {
   const openEdit = (record: SitatanRecord) => {
     setEditing(record);
     setSourceId(record.sourceId);
-    setDraft(draftFromRecord(record));
+    setDraft(draftFromRecord(record, skGeneratorBySitatanId.get(record.id)));
     setDialogOpen(true);
   };
 
@@ -402,10 +639,18 @@ export default function Sitatan() {
     setEditing(null);
     setSourceId(record.id);
     setDraft({
-      ...draftFromRecord(record),
+      ...draftFromRecord(record, skGeneratorBySitatanId.get(record.id)),
       documentUrl: '',
     });
     setDialogOpen(true);
+  };
+
+  const updateSKDetails = (patch: Partial<SitatanSKDetails>) => {
+    setDraft((current) => ({
+      ...current,
+      body: patch.tentang ?? current.body,
+      skDetails: { ...current.skDetails, ...patch },
+    }));
   };
 
   const downloadTemplate = async (record: SitatanRecord) => {
@@ -483,9 +728,80 @@ export default function Sitatan() {
       });
       return;
     }
-    if (!draft.body.trim()) {
+    if (draft.type !== 'Surat Keputusan' && !draft.body.trim()) {
       toast({ title: 'Isi Surat wajib diisi', variant: 'destructive' });
       return;
+    }
+    if (draft.type === 'Surat Keputusan') {
+      const details = draft.skDetails;
+      if (!details.tentang.trim()) {
+        toast({ title: 'Tentang wajib diisi', variant: 'destructive' });
+        return;
+      }
+      if (!details.menimbang1.trim()) {
+        toast({ title: 'Menimbang kesatu wajib diisi', variant: 'destructive' });
+        return;
+      }
+      if (!details.menimbang2.trim()) {
+        toast({ title: 'Menimbang kedua wajib diisi', variant: 'destructive' });
+        return;
+      }
+      if (!details.kesatu.trim()) {
+        toast({ title: 'Memutuskan Kesatu wajib diisi', variant: 'destructive' });
+        return;
+      }
+      if (!details.kegiatan.length || details.kegiatan.some((activity) =>
+        !activity.namaKegiatan.trim()
+        || !activity.bebanAnggaran.trim()
+        || !activity.harga.trim()
+        || !activity.satuan.trim())) {
+        toast({
+          title: 'Lengkapi kegiatan dan pembebanan',
+          description: 'Setiap kegiatan harus memiliki nama, beban anggaran, harga, dan satuan.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (hasDuplicateSKActivityNames(details.kegiatan)) {
+        toast({
+          title: 'Nama kegiatan tidak boleh duplikat',
+          description: 'Pilih kegiatan yang berbeda pada setiap baris.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!draft.startDate || !draft.endDate || draft.endDate < draft.startDate) {
+        toast({
+          title: 'Tanggal kegiatan tidak valid',
+          description: 'Tanggal mulai dan tanggal selesai wajib diisi; tanggal selesai tidak boleh lebih awal.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!draft.date || draft.date >= draft.startDate) {
+        toast({
+          title: 'Tanggal SK tidak valid',
+          description: 'Tanggal SK harus sebelum Tanggal Mulai.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!details.organik.length && !details.mitra.length) {
+        toast({
+          title: 'Pilih minimal satu personel',
+          description: 'Pilih minimal satu orang dari Organik atau Mitra Statistik.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!details.pembuatDaftar) {
+        toast({
+          title: 'Pembuat Daftar wajib dipilih',
+          description: 'Pilih Pembuat Daftar dari master Organik.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
     if (requiresArchiveCode(draft.type) && (!draft.archiveCode || !draft.archiveSubcode)) {
       toast({ title: 'Pilih klasifikasi arsip', description: 'Kode dan subkode arsip diperlukan untuk nomor surat ini.', variant: 'destructive' });
@@ -530,10 +846,12 @@ export default function Sitatan() {
       return;
     }
 
+    const registryDraft = sitatanDraftForRegistry(draft);
+    let registryCommitted = false;
     setIsSaving(true);
     try {
       if (editing) {
-        const updateRow = createSheetRow(draft, {
+        const record = {
           id: editing.id,
           year: editing.year,
           serial: editing.serial,
@@ -542,7 +860,8 @@ export default function Sitatan() {
           creator: editing.creator,
           createdAt: editing.createdAt,
           sourceId: editing.sourceId,
-        });
+        };
+        const updateRow = createSheetRow(registryDraft, record);
         await writeSheet({
           spreadsheetId: SITATAN_SPREADSHEET_ID,
           operation: 'batch-update',
@@ -552,6 +871,10 @@ export default function Sitatan() {
             { range: `DARI_WEB!Y${editing.rowIndex}:Z${editing.rowIndex}`, values: [updateRow.slice(24, 26)] },
           ],
         }, user.sitatanToken);
+        registryCommitted = true;
+        if (registryDraft.type === 'Surat Keputusan') {
+          await saveSKGeneratorRow(skSpreadsheetId, user.sitatanToken, registryDraft, record);
+        }
       } else {
         const year = currentYear();
         const { data: reservation, error: reservationError } = await supabase.functions.invoke('google-sheets', {
@@ -560,9 +883,9 @@ export default function Sitatan() {
             spreadsheetId: SITATAN_SPREADSHEET_ID,
             sessionToken: user.sitatanToken,
             year: Number(year),
-            letterType: draft.type,
-            archiveCode: requiresArchiveCode(draft.type) ? draft.archiveCode : '',
-            archiveSubcode: requiresArchiveCode(draft.type) ? draft.archiveSubcode : '',
+            letterType: registryDraft.type,
+            archiveCode: requiresArchiveCode(registryDraft.type) ? registryDraft.archiveCode : '',
+            archiveSubcode: requiresArchiveCode(registryDraft.type) ? registryDraft.archiveSubcode : '',
           },
         });
         if (reservationError) throw reservationError;
@@ -571,22 +894,23 @@ export default function Sitatan() {
         }
         const serial = reservation.serial;
         const number = formatSitatanNumber(
-          draft.type,
+          registryDraft.type,
           serial,
           year,
-          draft.archiveCode,
-          draft.archiveSubcode,
+          registryDraft.archiveCode,
+          registryDraft.archiveSubcode,
         );
-        const row = createSheetRow(draft, {
+        const record = {
           id: crypto.randomUUID(),
           year,
           serial: String(serial),
           number,
-          date: draft.insert ? draft.date : today(),
+          date: registryDraft.insert ? registryDraft.date : today(),
           creator: user.username,
           createdAt: new Date().toISOString(),
           sourceId,
-        });
+        };
+        const row = createSheetRow(registryDraft, record);
         if (row.length !== SITATAN_HEADERS.length) {
           throw new Error('Struktur data surat tidak sesuai dengan header spreadsheet.');
         }
@@ -597,12 +921,56 @@ export default function Sitatan() {
             range: 'DARI_WEB!A:AE',
             values: [row],
           }, user.sitatanToken);
+          registryCommitted = true;
         } catch (error) {
           const detail = error instanceof Error ? ` ${error.message}` : '';
           throw new Error(`Nomor ${number} sudah dicadangkan dan tidak akan digunakan ulang, tetapi hasil simpan perlu diperiksa sebelum mencoba lagi.${detail}`);
         }
+        if (registryDraft.type === 'Surat Keputusan') {
+          try {
+            await saveSKGeneratorRow(skSpreadsheetId, user.sitatanToken, registryDraft, record);
+          } catch (error) {
+            const detail = error instanceof Error ? error.message : 'Kesalahan tidak diketahui.';
+            let savedRecord: SitatanRecord | undefined;
+            try {
+              await loadData();
+              const { values } = await readSheetValues({
+                spreadsheetId: SITATAN_SPREADSHEET_ID,
+                range: 'DARI_WEB!A:AE',
+                preferSupabase: true,
+                sessionToken: user.sitatanToken,
+              });
+              savedRecord = parseSitatanRows(values).find((item) => item.id === record.id);
+            } catch (refreshError) {
+              console.error('[Sitatan] Gagal memeriksa nomor SK yang sudah tersimpan:', refreshError);
+            }
+
+            if (savedRecord) {
+              setEditing(savedRecord);
+              setSourceId(savedRecord.sourceId);
+              setDraft(registryDraft);
+              setFilterYear(savedRecord.year);
+              setFilterType(savedRecord.type);
+              toast({
+                title: 'Nomor tersimpan, detail SK belum tersinkron',
+                description: `${detail} Data form dipertahankan; simpan kembali untuk mencoba sinkronisasi tanpa membuat nomor baru.`,
+                variant: 'destructive',
+              });
+            } else {
+              setDialogOpen(false);
+              setEditing(null);
+              setSourceId('');
+              toast({
+                title: 'Nomor mungkin sudah tersimpan',
+                description: `Nomor ${number} telah dicadangkan. Detail SK gagal disimpan: ${detail} Jangan kirim ulang sebelum memeriksa daftar SiTaTaN.`,
+                variant: 'destructive',
+              });
+            }
+            return;
+          }
+        }
         setFilterYear(year);
-        setFilterType(draft.type);
+        setFilterType(registryDraft.type);
       }
 
       const refreshed = await loadData();
@@ -624,7 +992,15 @@ export default function Sitatan() {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan surat.';
       console.error('[Sitatan] Gagal menyimpan surat:', error);
-      toast({ title: 'Gagal menyimpan surat', description: message, variant: 'destructive' });
+      toast({
+        title: registryCommitted && registryDraft.type === 'Surat Keputusan'
+          ? 'Data SiTaTaN tersimpan, sinkronisasi detail SK gagal'
+          : 'Gagal menyimpan surat',
+        description: registryCommitted && registryDraft.type === 'Surat Keputusan'
+          ? `${message} Data form tetap terbuka; simpan kembali untuk mencoba sinkronisasi tanpa mengubah nomor.`
+          : message,
+        variant: 'destructive',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -669,7 +1045,7 @@ export default function Sitatan() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold"><FileText className="h-6 w-6" /> Sitatan</h1>
-          <p className="text-sm text-muted-foreground">Sistem Pencatatan Tata Naskah (SiTaTaN) merupakan salah satu upaya dalam mendukung Reformasi Birokrasi BPS, dimana salah satu langkah implementasi RB yang disarankan oleh KemenPAN-RB di BPS adalah dengan mengarsipkan dokumen naskah dinas.</p>
+          <p className="text-sm text-muted-foreground">Sistem Pencatatan Tata Naskah (Si Tatan) merupakan salah satu upaya dalam mendukung Reformasi Birokrasi BPS, dimana salah satu langkah implementasi RB yang disarankan oleh KemenPAN-RB di BPS adalah dengan mengarsipkan dokumen naskah dinas.</p>
         </div>
         <Button onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" /> Tambah
@@ -734,20 +1110,24 @@ export default function Sitatan() {
           ) : (
             <>
               <div className="overflow-x-auto rounded-lg border shadow-sm">
-                <table className="w-full min-w-[1000px] table-fixed text-sm">
+                <table className="w-full min-w-[1100px] table-fixed text-sm">
                   <thead className="bg-primary/10">
                     <tr className="border-b border-primary/20 text-left text-xs font-semibold uppercase tracking-wide text-foreground">
                       <th className="w-14 rounded-tl-lg p-3 text-center">No.</th>
-                      <th className="w-[25%] p-3">Naskah Dinas</th>
-                      <th className="w-[22%] p-3">Nomor</th>
-                      <th className="w-[18%] p-3">Tanggal</th>
-                      <th className="w-[20%] p-3">Kepada</th>
-                      <th className="w-[156px] rounded-tr-lg p-3 text-center">Aksi</th>
+                      <th className="w-[140px] p-3">Jenis Surat</th>
+                      <th className="w-[30%] p-3">Naskah Dinas</th>
+                      <th className="w-[15%] p-3">Nomor</th>
+                      <th className="w-[14%] p-3">Tanggal</th>
+                      <th className="w-[11%] p-3">Kepada</th>
+                      <th className="w-[190px] rounded-tr-lg p-3 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayedRecords.map((record, index) => {
                       const isCancelled = record.status.toLocaleLowerCase('id') === 'batal';
+                      const generatedSK = record.type === 'Surat Keputusan'
+                        ? skGeneratorBySitatanId.get(record.id)
+                        : undefined;
                       return (
                         <tr
                           key={record.id}
@@ -756,9 +1136,11 @@ export default function Sitatan() {
                           <td className="p-3 text-center text-xs tabular-nums text-muted-foreground">
                             {pageStartIndex + index + 1}
                           </td>
-                          <td className="max-w-[360px] p-3">
+                          <td className="max-w-[140px] whitespace-normal break-words p-3">
+                            {record.type}
+                          </td>
+                          <td className="p-3">
                             <div className="font-medium">{record.subject || record.body || 'Tanpa perihal'}</div>
-                            <div className="mt-1 text-xs text-muted-foreground">{record.type}</div>
                             {record.eSign && <Badge variant="outline" className="mt-2">e-sign</Badge>}
                             {isCancelled && (
                               <div className="mt-2">
@@ -778,45 +1160,91 @@ export default function Sitatan() {
                           </td>
                           <td className="max-w-[260px] whitespace-pre-wrap p-3">{record.recipient || '—'}</td>
                           <td className="whitespace-nowrap p-2">
-                            <div className="flex items-center justify-center gap-0.5">
-                              {TEMPLATE_TYPES.has(record.type) ? (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 shrink-0 text-primary transition-colors hover:bg-primary/10 hover:text-primary"
-                                  aria-label={`Unduh template ${record.type}`}
-                                  title={`Unduh template ${record.type} (.docx)`}
-                                  disabled={!user?.sitatanToken || downloadingRecordId !== null}
-                                  onClick={() => void downloadTemplate(record)}
-                                >
-                                  <Download className="h-4 w-4" />
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="flex items-center justify-center gap-0.5">
+                                {record.type === 'Surat Keputusan' ? (
+                                  generatedSK?.documentUrl && isHttpUrl(generatedSK.documentUrl) ? (
+                                    <Button
+                                      asChild
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 shrink-0 text-primary transition-colors hover:bg-primary/10 hover:text-primary"
+                                    >
+                                      <a
+                                        href={googleDocsDocxUrl(generatedSK.documentUrl)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        aria-label="Unduh Surat Keputusan"
+                                        title="Unduh Surat Keputusan (.docx)"
+                                      >
+                                        <Download className="h-4 w-4" />
+                                      </a>
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 shrink-0 text-muted-foreground"
+                                      aria-label="Dokumen Surat Keputusan belum tersedia"
+                                      title="Dokumen Surat Keputusan dari kolom Q belum tersedia"
+                                      disabled
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  )
+                                ) : TEMPLATE_TYPES.has(record.type) ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0 text-primary transition-colors hover:bg-primary/10 hover:text-primary"
+                                    aria-label={`Unduh template ${record.type}`}
+                                    title={`Unduh template ${record.type} (.docx)`}
+                                    disabled={!user?.sitatanToken || downloadingRecordId !== null}
+                                    onClick={() => void downloadTemplate(record)}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                ) : (
+                                  <div
+                                    role="note"
+                                    aria-label="BOS"
+                                    title="BOS"
+                                    className="inline-flex items-center gap-1 rounded-md bg-red-100 px-1.5 py-1 text-xs font-semibold text-red-800 dark:bg-red-950 dark:text-red-300"
+                                  >
+                                    <Info className="h-3.5 w-3.5 shrink-0 text-red-700 dark:text-red-400" />
+                                    <span>BOS</span>
+                                  </div>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Duplikasi surat" title="Duplikasi" onClick={() => openDuplicate(record)}>
+                                  <Copy className="h-4 w-4" />
                                 </Button>
-                              ) : (
-                                <div
-                                  role="note"
-                                  aria-label="Gunakan BOS"
-                                  title="Gunakan BOS"
-                                  className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-1 text-xs font-semibold text-amber-950"
-                                >
-                                  <Info className="h-3.5 w-3.5 shrink-0 text-amber-700" />
-                                  <span>Gunakan BOS</span>
+                                {!isCancelled && canManage(record) && (
+                                  <>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit surat" title="Edit" disabled={!user?.sitatanToken} onClick={() => openEdit(record)}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Batalkan nomor" title="Batalkan nomor" disabled={!user?.sitatanToken} onClick={() => {
+                                      setCancelTarget(record);
+                                      setCancelReason('');
+                                    }}>
+                                      <Ban className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                              {record.type === 'Surat Keputusan'
+                                && generatedSK?.documentUrl
+                                && isHttpUrl(generatedSK.documentUrl) && (
+                                <div className="flex flex-wrap items-center justify-center gap-1 whitespace-normal">
+                                  <a
+                                    href={generatedSK.documentUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" /> Dokumen SK
+                                  </a>
                                 </div>
-                              )}
-                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Duplikasi surat" title="Duplikasi" onClick={() => openDuplicate(record)}>
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              {!isCancelled && canManage(record) && (
-                                <>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit surat" title="Edit" disabled={!user?.sitatanToken} onClick={() => openEdit(record)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Batalkan nomor" title="Batalkan nomor" disabled={!user?.sitatanToken} onClick={() => {
-                                    setCancelTarget(record);
-                                    setCancelReason('');
-                                  }}>
-                                    <Ban className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </>
                               )}
                             </div>
                           </td>
@@ -889,13 +1317,24 @@ export default function Sitatan() {
       }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Surat Keluar' : sourceId ? 'Duplikasi Surat Keluar' : 'Tambah Surat Keluar'}</DialogTitle>
+            <DialogTitle>
+              {draft.type === 'Surat Keputusan'
+                ? editing ? 'Edit Surat Keputusan' : sourceId ? 'Duplikasi Surat Keputusan' : 'Tambah Surat Keputusan'
+                : editing ? 'Edit Surat Keluar' : sourceId ? 'Duplikasi Surat Keluar' : 'Tambah Surat Keluar'}
+            </DialogTitle>
             <DialogDescription>
               {!user?.sitatanToken
                 ? 'Sesi Sitatan belum tersedia. Keluar dari KECAP MAJA lalu masuk kembali untuk mengaktifkan penyimpanan.'
                 : 'Tanggal biasanya diisi otomatis; Surat Sisip dapat memakai tanggal manual. Nomor resmi baru ditetapkan saat disimpan.'}
             </DialogDescription>
           </DialogHeader>
+          {draft.type === 'Surat Keputusan' && skGeneratorError && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                Detail Surat Keputusan pada sheet generator belum dapat dibaca: {skGeneratorError}
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
@@ -921,6 +1360,7 @@ export default function Sitatan() {
                     destination: '',
                     costBearer: '',
                     eSign: false,
+                    skDetails: emptySitatanSKDetails(),
                   }));
                 }}
               >
@@ -958,10 +1398,33 @@ export default function Sitatan() {
               )}
             </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="sitatan-body">Isi Surat <span className="text-destructive">*</span></Label>
-              <Textarea id="sitatan-body" value={draft.body} onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))} placeholder="Isi Surat..." rows={3} />
-            </div>
+            {draft.type === 'Surat Keputusan' ? (
+              <SuratKeputusanFields
+                details={draft.skDetails}
+                onDetailsChange={updateSKDetails}
+                startDate={draft.startDate}
+                endDate={draft.endDate}
+                date={draft.date}
+                isInsert={draft.insert}
+                onStartDateChange={(startDate) => setDraft((current) => ({ ...current, startDate }))}
+                onEndDateChange={(endDate) => setDraft((current) => ({ ...current, endDate }))}
+                onDateChange={(date) => setDraft((current) => ({ ...current, date }))}
+                organikOptions={skOrganikOptions}
+                mitraOptions={skMitraOptions}
+                organikLoading={organikLoading}
+                mitraLoading={mitraLoading}
+                organikError={organikError ?? ''}
+                mitraError={mitraError ?? ''}
+                masterActivities={skMasterActivities}
+                masterLoading={skMasterLoading}
+                masterError={skMasterError}
+              />
+            ) : (
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="sitatan-body">Isi Surat <span className="text-destructive">*</span></Label>
+                <Textarea id="sitatan-body" value={draft.body} onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))} placeholder="Isi Surat..." rows={3} />
+              </div>
+            )}
 
             {ARCHIVE_SELECTOR_TYPES.has(draft.type) && (
               <>
@@ -1075,7 +1538,7 @@ export default function Sitatan() {
               </>
             )}
 
-            {draft.type !== 'Nota Dinas/Memorandum' && (
+            {draft.type !== 'Nota Dinas/Memorandum' && draft.type !== 'Surat Keputusan' && (
               <div className="flex items-center gap-2">
                 <Checkbox id="sitatan-esign" checked={draft.eSign} onCheckedChange={(checked) => setDraft((current) => ({ ...current, eSign: checked === true }))} />
                 <Label htmlFor="sitatan-esign">Apakah menggunakan eTTD / e-sign?</Label>
@@ -1088,7 +1551,7 @@ export default function Sitatan() {
                   <Input id="sitatan-url" type="url" value={draft.documentUrl} onChange={(event) => setDraft((current) => ({ ...current, documentUrl: event.target.value }))} placeholder="https://..." />
                 </div>
               )}
-              {draft.type !== 'Nota Dinas/Memorandum' && (
+              {draft.type !== 'Nota Dinas/Memorandum' && draft.type !== 'Surat Keputusan' && (
                 <div className="space-y-2">
                   <Label htmlFor="sitatan-notes">Catatan</Label>
                   <Textarea id="sitatan-notes" value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Catatan (opsional)..." rows={2} />
@@ -1110,7 +1573,14 @@ export default function Sitatan() {
 
           <DialogFooter>
             <Button variant="outline" disabled={isSaving} onClick={() => setDialogOpen(false)}><X className="mr-2 h-4 w-4" /> Batal</Button>
-            <Button disabled={isSaving || !user?.sitatanToken} onClick={() => void saveDraft()}>
+            <Button
+              disabled={isSaving || !user?.sitatanToken || (
+                draft.type === 'Surat Keputusan'
+                && !draft.skDetails.organik.length
+                && !draft.skDetails.mitra.length
+              )}
+              onClick={() => void saveDraft()}
+            >
               {isSaving ? 'Menyimpan...' : editing ? 'Simpan Perubahan' : 'Simpan dan Tetapkan Nomor'}
             </Button>
           </DialogFooter>

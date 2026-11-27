@@ -21,6 +21,7 @@ interface SheetOperation {
   rowIndex?: number;
   sheetName?: string;
   sessionToken?: string;
+  valueInputOption?: 'RAW' | 'USER_ENTERED';
   username?: string;
   password?: string;
   year?: number;
@@ -783,7 +784,9 @@ serve(async (req: Request) => {
       console.log(`Append row count: ${Array.isArray(values) ? values.length : 0}`);
 
       const encodedAppendRange = encodeURIComponent(range || 'Sheet1');
-      const valueInputOption = spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED';
+      const valueInputOption = body.valueInputOption === 'RAW' || body.valueInputOption === 'USER_ENTERED'
+        ? body.valueInputOption
+        : spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED';
       const data = await fetchGoogleSheetsWithRetry(
         `${baseUrl}/values/${encodedAppendRange}:append?valueInputOption=${valueInputOption}`,
         {
@@ -817,7 +820,9 @@ serve(async (req: Request) => {
       console.log(`Update row count: ${Array.isArray(values) ? values.length : 0}`);
 
       const encodedUpdateRange = encodeURIComponent(updateRange);
-      const valueInputOption = spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED';
+      const valueInputOption = body.valueInputOption === 'RAW' || body.valueInputOption === 'USER_ENTERED'
+        ? body.valueInputOption
+        : spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED';
       const data = await fetchGoogleSheetsWithRetry(
         `${baseUrl}/values/${encodedUpdateRange}?valueInputOption=${valueInputOption}`,
         {
@@ -863,7 +868,9 @@ serve(async (req: Request) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              valueInputOption: spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED',
+              valueInputOption: body.valueInputOption === 'RAW' || body.valueInputOption === 'USER_ENTERED'
+                ? body.valueInputOption
+                : spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED',
               data: chunk,
             }),
           },

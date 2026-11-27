@@ -1,3 +1,5 @@
+import type { SitatanSKDetails } from './sitatan-sk';
+
 export const SITATAN_SPREADSHEET_ID = '1IvL9Dq6ITKUYMb6r1l6zkZYoaR4F1a0rKEe-0HtaCo0';
 
 export const SITATAN_HEADERS = [
@@ -117,6 +119,7 @@ export interface SitatanDraft {
   eSign: boolean;
   notes: string;
   documentUrl: string;
+  skDetails: SitatanSKDetails;
 }
 
 interface NumberRule {
