@@ -1608,11 +1608,7 @@ export default function Sitatan() {
           <DialogFooter>
             <Button variant="outline" disabled={isSaving} onClick={() => setDialogOpen(false)}><X className="mr-2 h-4 w-4" /> Batal</Button>
             <Button
-              disabled={isSaving || !user?.sitatanToken || (
-                draft.type === 'Surat Keputusan'
-                && !draft.skDetails.organik.length
-                && !draft.skDetails.mitra.length
-              )}
+              disabled={isSaving}
               onClick={() => void saveDraft()}
             >
               {isSaving ? 'Menyimpan...' : editing ? 'Simpan Perubahan' : 'Simpan dan Tetapkan Nomor'}
