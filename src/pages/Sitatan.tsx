@@ -868,14 +868,21 @@ export default function Sitatan() {
           sourceId: editing.sourceId,
         };
         const updateRow = createSheetRow(registryDraft, record);
+        const updates = [
+          { range: `DARI_WEB!F${editing.rowIndex}:F${editing.rowIndex}`, values: [[updateRow[5]]] },
+          { range: `DARI_WEB!G${editing.rowIndex}:V${editing.rowIndex}`, values: [updateRow.slice(6, 22)] },
+          { range: `DARI_WEB!Y${editing.rowIndex}:Z${editing.rowIndex}`, values: [updateRow.slice(24, 26)] },
+        ];
+        if (editing.status.toLocaleLowerCase('id') === 'batal') {
+          updates.push({
+            range: `DARI_WEB!AB${editing.rowIndex}:AB${editing.rowIndex}`,
+            values: [[updateRow[27]]],
+          });
+        }
         await writeSheet({
           spreadsheetId: SITATAN_SPREADSHEET_ID,
           operation: 'batch-update',
-          updates: [
-            { range: `DARI_WEB!F${editing.rowIndex}:F${editing.rowIndex}`, values: [[updateRow[5]]] },
-            { range: `DARI_WEB!G${editing.rowIndex}:V${editing.rowIndex}`, values: [updateRow.slice(6, 22)] },
-            { range: `DARI_WEB!Y${editing.rowIndex}:Z${editing.rowIndex}`, values: [updateRow.slice(24, 26)] },
-          ],
+          updates,
         }, user.sitatanToken);
         registryCommitted = true;
         if (registryDraft.type === 'Surat Keputusan') {
@@ -985,8 +992,10 @@ export default function Sitatan() {
       setSourceId('');
       if (refreshed) {
         toast({
-          title: editing ? 'Surat diperbarui' : 'Surat tersimpan',
-          description: editing ? 'Perubahan berhasil disimpan.' : 'Nomor resmi telah ditetapkan dan dicatat.',
+          title: isEditingCancelled ? 'Surat diaktifkan kembali' : editing ? 'Surat diperbarui' : 'Surat tersimpan',
+          description: isEditingCancelled
+            ? `Perubahan disimpan dan surat aktif kembali dengan nomor ${editing?.number}.`
+            : editing ? 'Perubahan berhasil disimpan.' : 'Nomor resmi telah ditetapkan dan dicatat.',
         });
       } else {
         toast({
@@ -1043,6 +1052,7 @@ export default function Sitatan() {
     }
   };
 
+  const isEditingCancelled = editing?.status.toLocaleLowerCase('id') === 'batal';
   const canManage = (record: SitatanRecord) =>
     record.creator === user?.username || user?.role.toLocaleLowerCase('id').includes('admin') === true;
 
@@ -1243,17 +1253,27 @@ export default function Sitatan() {
                                   </a>
                                 </Button>
                                 )}
-                                {!isCancelled && canManage(record) && (
+                                {canManage(record) && (
                                   <>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit surat" title="Edit" disabled={!user?.sitatanToken} onClick={() => openEdit(record)}>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      aria-label={isCancelled ? 'Edit dan aktifkan kembali surat' : 'Edit surat'}
+                                      title={isCancelled ? 'Edit dan aktifkan kembali' : 'Edit'}
+                                      disabled={!user?.sitatanToken}
+                                      onClick={() => openEdit(record)}
+                                    >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Batalkan nomor" title="Batalkan nomor" disabled={!user?.sitatanToken} onClick={() => {
-                                      setCancelTarget(record);
-                                      setCancelReason('');
-                                    }}>
-                                      <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
+                                    {!isCancelled && (
+                                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Batalkan nomor" title="Batalkan nomor" disabled={!user?.sitatanToken} onClick={() => {
+                                        setCancelTarget(record);
+                                        setCancelReason('');
+                                      }}>
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                      </Button>
+                                    )}
                                   </>
                                 )}
                               </div>
@@ -1330,8 +1350,12 @@ export default function Sitatan() {
           <DialogHeader>
             <DialogTitle>
               {draft.type === 'Surat Keputusan'
-                ? editing ? 'Edit Surat Keputusan' : sourceId ? 'Duplikasi Surat Keputusan' : 'Tambah Surat Keputusan'
-                : editing ? 'Edit Surat Keluar' : sourceId ? 'Duplikasi Surat Keluar' : 'Tambah Surat Keluar'}
+                ? editing
+                  ? isEditingCancelled ? 'Edit dan Aktifkan Kembali Surat Keputusan' : 'Edit Surat Keputusan'
+                  : sourceId ? 'Duplikasi Surat Keputusan' : 'Tambah Surat Keputusan'
+                : editing
+                  ? isEditingCancelled ? 'Edit dan Aktifkan Kembali Surat Keluar' : 'Edit Surat Keluar'
+                  : sourceId ? 'Duplikasi Surat Keluar' : 'Tambah Surat Keluar'}
             </DialogTitle>
             <DialogDescription>
               {!user?.sitatanToken
@@ -1611,7 +1635,11 @@ export default function Sitatan() {
               disabled={isSaving}
               onClick={() => void saveDraft()}
             >
-              {isSaving ? 'Menyimpan...' : editing ? 'Simpan Perubahan' : 'Simpan dan Tetapkan Nomor'}
+              {isSaving
+                ? 'Menyimpan...'
+                : isEditingCancelled
+                  ? 'Simpan dan Aktifkan Kembali'
+                  : editing ? 'Simpan Perubahan' : 'Simpan dan Tetapkan Nomor'}
             </Button>
           </DialogFooter>
         </DialogContent>
