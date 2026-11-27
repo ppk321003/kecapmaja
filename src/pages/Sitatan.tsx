@@ -107,6 +107,13 @@ const RECIPIENT_REQUIRED_TYPES = new Set<SitatanType>([
   'Surat Pengantar',
   'Formulir Permintaan',
 ]);
+const RECIPIENT_NOTES_LAYOUT_TYPES = new Set<SitatanType>([
+  'Surat Dinas',
+  'Surat Undangan Intern',
+  'Surat Undangan Ekstern',
+  'Surat Pengantar',
+  'Formulir Permintaan',
+]);
 
 const archiveDefaultsForType = (type: SitatanType) =>
   type === TASK_ORDER_TYPE
@@ -1454,7 +1461,7 @@ export default function Sitatan() {
               </>
             )}
 
-            {NATURE_REQUIRED_TYPES.has(draft.type) && (
+            {NATURE_REQUIRED_TYPES.has(draft.type) && draft.type !== TASK_ORDER_TYPE && (
               <div className="space-y-2">
                 <Label>Sifat <span className="text-destructive">*</span></Label>
                 <Select value={draft.nature} onValueChange={(nature) => setDraft((current) => ({ ...current, nature }))}>
@@ -1469,7 +1476,7 @@ export default function Sitatan() {
             )}
 
             {draft.type === TASK_ORDER_TYPE && (
-              <>
+              <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Organik</Label>
                   <PersonMultiSelect
@@ -1496,10 +1503,41 @@ export default function Sitatan() {
                   {mitraError && <p className="text-sm text-destructive">Gagal memuat master Mitra: {mitraError}</p>}
                   {!mitraLoading && !mitraError && mitraOptions.length === 0 && <p className="text-sm text-muted-foreground">Master Mitra belum berisi pilihan.</p>}
                 </div>
-              </>
+                <div className="space-y-2">
+                  <Label>Sifat <span className="text-destructive">*</span></Label>
+                  <Select value={draft.nature} onValueChange={(nature) => setDraft((current) => ({ ...current, nature }))}>
+                    <SelectTrigger><SelectValue placeholder="Pilih sifat surat" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Biasa">Biasa</SelectItem>
+                      <SelectItem value="Terbatas">Terbatas</SelectItem>
+                      <SelectItem value="Rahasia">Rahasia</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sitatan-subject">Perihal <span className="text-destructive">*</span></Label>
+                  <Input id="sitatan-subject" value={draft.subject} onChange={(event) => setDraft((current) => ({ ...current, subject: event.target.value }))} placeholder="Perihal surat" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sitatan-start">Tanggal Mulai <span className="text-destructive">*</span></Label>
+                  <Input id="sitatan-start" type="date" required value={draft.startDate} onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sitatan-end">Tanggal Selesai <span className="text-destructive">*</span></Label>
+                  <Input id="sitatan-end" type="date" required value={draft.endDate} onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sitatan-destination">Tempat Tujuan <span className="text-destructive">*</span></Label>
+                  <Input id="sitatan-destination" required value={draft.destination} onChange={(event) => setDraft((current) => ({ ...current, destination: event.target.value }))} placeholder="Tempat Tujuan..." />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sitatan-cost">Pembebanan Biaya</Label>
+                  <Input id="sitatan-cost" value={draft.costBearer} onChange={(event) => setDraft((current) => ({ ...current, costBearer: event.target.value }))} placeholder="Pembebanan Biaya (opsional)" />
+                </div>
+              </div>
             )}
 
-            {SUBJECT_REQUIRED_TYPES.has(draft.type) && (
+            {SUBJECT_REQUIRED_TYPES.has(draft.type) && draft.type !== TASK_ORDER_TYPE && (
               <div className="space-y-2">
                 <Label htmlFor="sitatan-subject">Perihal <span className="text-destructive">*</span></Label>
                 <Input id="sitatan-subject" value={draft.subject} onChange={(event) => setDraft((current) => ({ ...current, subject: event.target.value }))} placeholder="Perihal surat" />
@@ -1517,47 +1555,39 @@ export default function Sitatan() {
                 <Input id="sitatan-sender" value={draft.sender} onChange={(event) => setDraft((current) => ({ ...current, sender: event.target.value }))} placeholder="Asal atau unit pengirim" />
               </div>
             )}
-            {draft.type === TASK_ORDER_TYPE && (
+            {draft.type !== 'Nota Dinas/Memorandum' && draft.type !== 'Surat Keputusan' && (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="sitatan-start">Tanggal Mulai <span className="text-destructive">*</span></Label>
-                  <Input id="sitatan-start" type="date" required value={draft.startDate} onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sitatan-end">Tanggal Selesai <span className="text-destructive">*</span></Label>
-                  <Input id="sitatan-end" type="date" required value={draft.endDate} onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sitatan-destination">Tempat Tujuan <span className="text-destructive">*</span></Label>
-                  <Input id="sitatan-destination" required value={draft.destination} onChange={(event) => setDraft((current) => ({ ...current, destination: event.target.value }))} placeholder="Tempat Tujuan..." />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="sitatan-cost">Pembebanan Biaya</Label>
-                  <Input id="sitatan-cost" value={draft.costBearer} onChange={(event) => setDraft((current) => ({ ...current, costBearer: event.target.value }))} placeholder="Pembebanan Biaya (opsional)" />
-                </div>
+                {RECIPIENT_NOTES_LAYOUT_TYPES.has(draft.type) ? (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="sitatan-notes" className="leading-5">Catatan</Label>
+                      <div className="flex items-center gap-2">
+                        <Checkbox id="sitatan-esign" checked={draft.eSign} onCheckedChange={(checked) => setDraft((current) => ({ ...current, eSign: checked === true }))} />
+                        <Label htmlFor="sitatan-esign" className="whitespace-nowrap text-xs">Gunakan eTTD / e-sign</Label>
+                      </div>
+                    </div>
+                    <Textarea id="sitatan-notes" value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Catatan (opsional)..." rows={1} className="h-10 min-h-0 resize-y" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex min-h-10 items-center gap-2">
+                      <Checkbox id="sitatan-esign" checked={draft.eSign} onCheckedChange={(checked) => setDraft((current) => ({ ...current, eSign: checked === true }))} />
+                      <Label htmlFor="sitatan-esign">Apakah menggunakan eTTD / e-sign?</Label>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sitatan-notes">Catatan</Label>
+                      <Textarea id="sitatan-notes" value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Catatan (opsional)..." rows={1} className="h-10 min-h-0 resize-y" />
+                    </div>
+                  </>
+                )}
               </>
             )}
-
-            {draft.type !== 'Nota Dinas/Memorandum' && draft.type !== 'Surat Keputusan' && (
-              <div className="flex items-center gap-2">
-                <Checkbox id="sitatan-esign" checked={draft.eSign} onCheckedChange={(checked) => setDraft((current) => ({ ...current, eSign: checked === true }))} />
-                <Label htmlFor="sitatan-esign">Apakah menggunakan eTTD / e-sign?</Label>
+            {editing && (
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="sitatan-url">Tautan Dokumen (opsional)</Label>
+                <Input id="sitatan-url" type="url" value={draft.documentUrl} onChange={(event) => setDraft((current) => ({ ...current, documentUrl: event.target.value }))} placeholder="https://..." />
               </div>
             )}
-            <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
-              {editing && (
-                <div className="space-y-2">
-                  <Label htmlFor="sitatan-url">Tautan Dokumen (opsional)</Label>
-                  <Input id="sitatan-url" type="url" value={draft.documentUrl} onChange={(event) => setDraft((current) => ({ ...current, documentUrl: event.target.value }))} placeholder="https://..." />
-                </div>
-              )}
-              {draft.type !== 'Nota Dinas/Memorandum' && draft.type !== 'Surat Keputusan' && (
-                <div className="space-y-2">
-                  <Label htmlFor="sitatan-notes">Catatan</Label>
-                  <Textarea id="sitatan-notes" value={draft.notes} onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))} placeholder="Catatan (opsional)..." rows={2} />
-                </div>
-              )}
-            </div>
 
             <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground sm:col-span-2">
               {draft.insert ? (
