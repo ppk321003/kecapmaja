@@ -627,15 +627,11 @@ export default function Mitra2027() {
     void updateAksiPJ(row, val);
   };
 
-  const progressBarColor = (percent: number) => {
-    if (percent >= 100) return "bg-green-600";
-    if (percent >= 85) return "bg-emerald-500";
-    if (percent >= 70) return "bg-lime-500";
-    if (percent >= 55) return "bg-yellow-500";
-    if (percent >= 40) return "bg-amber-500";
-    if (percent >= 25) return "bg-orange-500";
-    if (percent > 0) return "bg-red-500";
-    return "bg-slate-300";
+  const targetProgressColor = (offered: number, ideal: number, limit: number) => {
+    if (offered > limit) return "bg-red-500";
+    if (offered === ideal) return "bg-green-500";
+    if (offered > ideal) return "bg-sky-500";
+    return "bg-amber-500";
   };
 
   const toggleSort = (key: SortKey) => {
@@ -729,7 +725,7 @@ export default function Mitra2027() {
                         <div className="text-xl font-semibold text-blue-800">{percent}%</div>
                         <div className="mt-2 h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${progressBarColor(percent)}`}
+                            className={`h-full rounded-full transition-all ${targetProgressColor(monitoring.totals.ditawarkan, monitoring.totals.ideal, monitoring.totals.batas)}`}
                             style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
                           />
                         </div>
@@ -815,7 +811,7 @@ export default function Mitra2027() {
                                 <div className="flex items-center gap-3">
                                   <div className="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
                                     <div
-                                      className={`h-full rounded-full transition-all ${progressBarColor(percent)}`}
+                                      className={`h-full rounded-full transition-all ${targetProgressColor(m.ditawarkan, m.ideal, m.batas)}`}
                                       style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
                                     />
                                   </div>
@@ -844,7 +840,7 @@ export default function Mitra2027() {
                                 <div className="flex items-center gap-3">
                                   <div className="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
                                     <div
-                                      className={`h-full rounded-full transition-all ${progressBarColor(totalPercent)}`}
+                                      className={`h-full rounded-full transition-all ${targetProgressColor(monitoring.totals.ditawarkan, monitoring.totals.ideal, monitoring.totals.batas)}`}
                                       style={{ width: `${Math.min(100, Math.max(0, totalPercent))}%` }}
                                     />
                                   </div>
@@ -886,13 +882,7 @@ export default function Mitra2027() {
                   const isOverLimit = offered > penawaranTarget.batas;
                   const isAtIdeal = offered === penawaranTarget.ideal;
                   const isWithinTolerance = offered > penawaranTarget.ideal && offered <= penawaranTarget.batas;
-                  const barColor = isOverLimit
-                    ? "bg-red-500"
-                    : isAtIdeal
-                      ? "bg-green-500"
-                      : isWithinTolerance
-                        ? "bg-sky-500"
-                        : "bg-amber-500";
+                  const barColor = targetProgressColor(offered, penawaranTarget.ideal, penawaranTarget.batas);
                   const statusText = isOverLimit
                     ? `Melampaui batas +${offered - penawaranTarget.batas}`
                     : isAtIdeal
