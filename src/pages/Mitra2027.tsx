@@ -69,31 +69,31 @@ const POSISI_BARU_OPTIONS = [
 // Target penawaran Mitra 2027. Batas penerimaan adalah Ideal ditambah cadangan 10%.
 const IDEAL_TARGET_BY_KECAMATAN: Record<string, number> = {
   argapura: 18,
-  sukahaji: 13,
+  banjaran: 13,
   kasokandel: 20,
   sindang: 10,
   palasah: 19,
   dawuan: 19,
-  bantarujeg: 33,
-  rajagaluh: 19,
+  bantarujeg: 19,
   jatitujuh: 17,
   kadipaten: 20,
-  jatiwangi: 24,
-  lemahsugih: 21,
+  lemahsugih: 24,
   maja: 25,
   ligung: 28,
   panyingkiran: 15,
   cingambul: 20,
+  jatiwangi: 33,
   kertajati: 18,
   sindangwangi: 14,
-  leuwimunding: 29,
-  banjaran: 22,
+  cikijing: 29,
+  leuwimunding: 22,
+  rajagaluh: 21,
   sumberjaya: 25,
   cigasong: 14,
   malausma: 17,
   talaga: 27,
   majalengka: 38,
-  cikijing: 20,
+  sukahaji: 20,
 };
 
 const getIdealTarget = (kecamatan: string): number =>
@@ -101,7 +101,7 @@ const getIdealTarget = (kecamatan: string): number =>
 
 const getIdealLimit = (kecamatan: string): number => {
   const ideal = getIdealTarget(kecamatan);
-  return ideal > 0 ? Math.ceil(ideal * 1.1) : 0;
+  return ideal > 0 ? Math.round(ideal * 1.1) : 0;
 };
 
 const normalizeKecamatanName = (raw: string): string => {
@@ -357,11 +357,11 @@ export default function Mitra2027() {
         acc.tidakDitawarkan += it.tidakDitawarkan;
         acc.belum += it.belum;
         acc.ideal += it.ideal;
-        acc.batas += it.batas;
         return acc;
       },
       { total: 0, ditawarkan: 0, tidakDitawarkan: 0, belum: 0, ideal: 0, batas: 0 }
     );
+    totals.batas = Math.round(totals.ideal * 1.1);
     return { list, totals };
   }, [rows]);
 
@@ -426,15 +426,15 @@ export default function Mitra2027() {
     } else if (filterKec !== "all") {
       items = items.filter((item) => item.key === filterKec);
     }
-    return items.reduce(
+    const targetTotals = items.reduce(
       (acc, item) => {
         acc.ideal += item.ideal;
-        acc.batas += item.batas;
         acc.ditawarkan += item.ditawarkan;
         return acc;
       },
-      { ideal: 0, batas: 0, ditawarkan: 0 }
+      { ideal: 0, ditawarkan: 0 }
     );
+    return { ...targetTotals, batas: Math.round(targetTotals.ideal * 1.1) };
   }, [monitoring.list, filterKec, myKecamatanKeys]);
 
   const filteredRows = useMemo(() => {
@@ -705,7 +705,7 @@ export default function Mitra2027() {
                   <div className="text-xl font-semibold text-indigo-800">{monitoring.totals.ideal}</div>
                 </div>
                 <div className="rounded-lg border p-3 bg-violet-50 border-violet-200">
-                  <div className="text-xs text-violet-700">Batas +10%</div>
+                  <div className="text-xs text-violet-700">Ideal+Cadangan</div>
                   <div className="text-xl font-semibold text-violet-800">{monitoring.totals.batas}</div>
                 </div>
                 <div className="rounded-lg border p-3 bg-green-50 border-green-200">
@@ -779,7 +779,8 @@ export default function Mitra2027() {
                       </TableHead>
                       <TableHead className="h-12 py-3 px-4 text-right font-semibold text-violet-700 whitespace-nowrap">
                         <button type="button" onClick={() => toggleMonSort("batas")} className="inline-flex items-center justify-end gap-1.5 hover:text-violet-900 w-full">
-                          Batas +10% {renderMonSortIcon("batas")}
+                          <span className="text-right leading-tight">Ideal +<br />Cadangan (10%)</span>
+                          {renderMonSortIcon("batas")}
                         </button>
                       </TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap min-w-[220px]">
