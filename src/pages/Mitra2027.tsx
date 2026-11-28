@@ -799,15 +799,15 @@ export default function Mitra2027() {
                           const percent = pct(m.ditawarkan, m.batas);
                           return (
                             <TableRow key={m.key} className="hover:bg-slate-50/70">
-                              <TableCell className="text-center text-slate-600 font-medium py-3">{idx + 1}</TableCell>
-                              <TableCell className="font-medium py-3">{m.label}</TableCell>
-                              <TableCell className="text-right py-3">{m.total}</TableCell>
-                              <TableCell className="text-right text-green-700 font-medium py-3">{m.ditawarkan}</TableCell>
-                              <TableCell className="text-right text-red-700 py-3">{m.tidakDitawarkan}</TableCell>
-                              <TableCell className="text-right text-amber-700 py-3">{m.belum}</TableCell>
-                              <TableCell className="text-right text-indigo-700 font-medium py-3">{m.ideal || "-"}</TableCell>
-                              <TableCell className="text-right text-violet-700 font-medium py-3">{m.batas || "-"}</TableCell>
-                              <TableCell className="py-3">
+                              <TableCell className="text-center text-slate-600 font-medium py-2">{idx + 1}</TableCell>
+                              <TableCell className="font-medium py-2">{m.label}</TableCell>
+                              <TableCell className="text-right py-2">{m.total}</TableCell>
+                              <TableCell className="text-right text-green-700 font-medium py-2">{m.ditawarkan}</TableCell>
+                              <TableCell className="text-right text-red-700 py-2">{m.tidakDitawarkan}</TableCell>
+                              <TableCell className="text-right text-amber-700 py-2">{m.belum}</TableCell>
+                              <TableCell className="text-right text-indigo-700 font-medium py-2">{m.ideal || "-"}</TableCell>
+                              <TableCell className="text-right text-violet-700 font-medium py-2">{m.batas || "-"}</TableCell>
+                              <TableCell className="py-2">
                                 <div className="flex items-center gap-3">
                                   <div className="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
                                     <div
@@ -828,15 +828,15 @@ export default function Mitra2027() {
                           const totalPercent = pct(monitoring.totals.ditawarkan, monitoring.totals.batas);
                           return (
                             <TableRow className="bg-slate-100/80 font-semibold border-t-2 border-slate-300 hover:bg-slate-100">
-                              <TableCell className="text-center text-slate-700 py-3"></TableCell>
-                              <TableCell className="text-slate-900 py-3">Jumlah</TableCell>
-                              <TableCell className="text-right text-slate-900 py-3">{monitoring.totals.total}</TableCell>
-                              <TableCell className="text-right text-green-700 py-3">{monitoring.totals.ditawarkan}</TableCell>
-                              <TableCell className="text-right text-red-700 py-3">{monitoring.totals.tidakDitawarkan}</TableCell>
-                              <TableCell className="text-right text-amber-700 py-3">{monitoring.totals.belum}</TableCell>
-                              <TableCell className="text-right text-indigo-700 py-3">{monitoring.totals.ideal}</TableCell>
-                              <TableCell className="text-right text-violet-700 py-3">{monitoring.totals.batas}</TableCell>
-                              <TableCell className="py-3">
+                              <TableCell className="text-center text-slate-700 py-2"></TableCell>
+                              <TableCell className="text-slate-900 py-2">Jumlah</TableCell>
+                              <TableCell className="text-right text-slate-900 py-2">{monitoring.totals.total}</TableCell>
+                              <TableCell className="text-right text-green-700 py-2">{monitoring.totals.ditawarkan}</TableCell>
+                              <TableCell className="text-right text-red-700 py-2">{monitoring.totals.tidakDitawarkan}</TableCell>
+                              <TableCell className="text-right text-amber-700 py-2">{monitoring.totals.belum}</TableCell>
+                              <TableCell className="text-right text-indigo-700 py-2">{monitoring.totals.ideal}</TableCell>
+                              <TableCell className="text-right text-violet-700 py-2">{monitoring.totals.batas}</TableCell>
+                              <TableCell className="py-2">
                                 <div className="flex items-center gap-3">
                                   <div className="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
                                     <div
