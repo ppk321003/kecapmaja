@@ -24,6 +24,8 @@ export interface ReadSheetOptions {
   preferSupabase?: boolean;
   /** Sesi bertanda tangan untuk spreadsheet Sitatan yang dibatasi aksesnya */
   sessionToken?: string;
+  /** Tandai pembacaan registry Sitatan agar Edge Function memvalidasi Satker */
+  module?: 'sitatan';
 }
 
 const columnLettersToIndex = (letters: string): number => {
@@ -153,6 +155,7 @@ export async function readSheetValues(options: ReadSheetOptions): Promise<{ valu
         spreadsheetId: options.spreadsheetId,
         operation: 'read',
         range: options.range,
+        ...(options.module ? { module: options.module } : {}),
         ...(options.sessionToken ? { sessionToken: options.sessionToken } : {}),
         ...(options.unformatted ? { valueRenderOption: 'UNFORMATTED_VALUE' } : {}),
       },
@@ -173,6 +176,7 @@ export async function readSheetValues(options: ReadSheetOptions): Promise<{ valu
         spreadsheetId: options.spreadsheetId,
         operation: 'read',
         range: options.range,
+        ...(options.module ? { module: options.module } : {}),
         ...(options.sessionToken ? { sessionToken: options.sessionToken } : {}),
         ...(options.unformatted ? { valueRenderOption: 'UNFORMATTED_VALUE' } : {}),
       },

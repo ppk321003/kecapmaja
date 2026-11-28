@@ -157,13 +157,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (foundUser) {
         let sitatanToken: string | undefined;
-        if (foundUser.satker === '3210') {
+        if (foundUser.satker) {
           try {
             const { data, error } = await supabase.functions.invoke('google-sheets', {
               body: {
                 operation: 'sitatan-authenticate',
                 username: foundUser.username,
                 password,
+                satker: foundUser.satker,
               },
             });
             if (error) throw error;

@@ -34,10 +34,14 @@ interface SheetOperation {
   unmatchedItems?: any[];
   rpdUpdates?: any[];
   updates?: Array<{ range: string; values: any[][] }>;
+  module?: 'sitatan';
+  satker?: string;
 }
 
 const SITATAN_SPREADSHEET_ID = '1IvL9Dq6ITKUYMb6r1l6zkZYoaR4F1a0rKEe-0HtaCo0';
 const SITATAN_USERS_SPREADSHEET_ID = '1kVxQHL3TPfDKJ1ZnZ_fxJECGctc1UBjU_8E--9UK938';
+const MASTER_CONFIG_SPREADSHEET_ID = '1CBpS-rhb5pSSHFoleUoRa8D8CGeMh61tCoF82S0W0cQ';
+const SITATAN_CONFIG_CACHE_TTL_MS = 60_000;
 const SITATAN_TYPES = [
   'Surat Keputusan',
   'Surat Perintah/Surat Tugas',
@@ -398,16 +402,62 @@ async function fetchGoogleSheetsWithRetry(
   throw new Error(`${context} failed after retries: ${JSON.stringify(lastError)}`);
 }
 
+type SitatanSheetConfig = {
+  bySatker: Map<string, string>;
+  satkersBySheetId: Map<string, string[]>;
+};
+
+let sitatanSheetConfigCache: { expiresAt: number; config: SitatanSheetConfig } | null = null;
+
+async function getSitatanSheetConfig(accessToken: string): Promise<SitatanSheetConfig> {
+  if (sitatanSheetConfigCache && sitatanSheetConfigCache.expiresAt > Date.now()) {
+    return sitatanSheetConfigCache.config;
+  }
+
+  const range = encodeURIComponent('satker_config!A:AG');
+  const data = await fetchGoogleSheetsWithRetry(
+    `https://sheets.googleapis.com/v4/spreadsheets/${MASTER_CONFIG_SPREADSHEET_ID}/values/${range}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+    'Read Sitatan Satker configuration',
+    3,
+  );
+  const rows: unknown[][] = Array.isArray(data.values) ? data.values : [];
+  if (String(rows[0]?.[32] ?? '').trim().toLowerCase() !== 'sitatan_sheet') {
+    throw new Error('Header kolom AG pada satker_config harus bernama sitatan_sheet.');
+  }
+
+  const bySatker = new Map<string, string>();
+  const satkersBySheetId = new Map<string, string[]>();
+  for (const row of rows.slice(1)) {
+    const satker = String(row[0] ?? '').trim();
+    const rawSheetId = String(row[32] ?? '').trim();
+    if (!satker || !rawSheetId) continue;
+    const sheetId = rawSheetId.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] ?? rawSheetId;
+    bySatker.set(satker, sheetId);
+    satkersBySheetId.set(sheetId, [...(satkersBySheetId.get(sheetId) ?? []), satker]);
+  }
+
+  const config = { bySatker, satkersBySheetId };
+  sitatanSheetConfigCache = { expiresAt: Date.now() + SITATAN_CONFIG_CACHE_TTL_MS, config };
+  return config;
+}
+
 function encodeBase64Url(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function decodeBase64Url(value: string): Uint8Array {
+function decodeBase64Url(value: string): ArrayBuffer {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
-  return Uint8Array.from(atob(padded), (char) => char.charCodeAt(0));
+  const binary = atob(padded);
+  const buffer = new ArrayBuffer(binary.length);
+  const bytes = new Uint8Array(buffer);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return buffer;
 }
 
 async function signSitatanSession(payload: {
@@ -452,7 +502,14 @@ async function verifySitatanSession(token: string): Promise<{ username: string; 
     if (!valid) return null;
     const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(encodedPayload)));
     if (typeof payload?.expiresAt !== 'number' || payload.expiresAt <= Date.now()) return null;
-    if (payload?.satker !== '3210' || typeof payload?.username !== 'string' || typeof payload?.role !== 'string') return null;
+    if (
+      typeof payload?.satker !== 'string'
+      || !payload.satker.trim()
+      || typeof payload?.username !== 'string'
+      || !payload.username.trim()
+      || typeof payload?.role !== 'string'
+      || !payload.role.trim()
+    ) return null;
     return { username: payload.username, role: payload.role, satker: payload.satker };
   } catch (error) {
     console.warn('[Sitatan] Session validation failed:', error);
@@ -490,6 +547,8 @@ serve(async (req: Request) => {
       letterId,
       archiveCode,
       archiveSubcode,
+      module,
+      satker,
     }: SheetOperation = body;
     
     // Health check endpoint - no credentials needed
@@ -532,12 +591,74 @@ serve(async (req: Request) => {
       });
     }
 
+    const accessToken = await getAccessToken();
+    const sitatanConfig = await getSitatanSheetConfig(accessToken);
+
+    if (operation === 'sitatan-authenticate') {
+      const normalizedUsername = (username || '').trim().toLowerCase();
+      const requestedSatker = (satker || '').trim();
+      if (!normalizedUsername || !password || !requestedSatker) {
+        return new Response(JSON.stringify({ error: 'Username, password, dan Satker wajib diisi.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (!sitatanConfig.bySatker.has(requestedSatker)) {
+        return new Response(JSON.stringify({ error: 'Satker belum memiliki ID Sitatan pada konfigurasi.' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const usersRange = encodeURIComponent('user!A:F');
+      const usersData = await fetchGoogleSheetsWithRetry(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SITATAN_USERS_SPREADSHEET_ID}/values/${usersRange}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+        'Validate Sitatan user',
+        3,
+      );
+      const userRow = (usersData.values || []).slice(1).find((row: string[]) =>
+        (row[0] || '').trim().toLowerCase() === normalizedUsername
+        && (row[1] || '').trim() === password
+        && (row[5] || '').trim() === requestedSatker,
+      );
+      if (!userRow) {
+        return new Response(JSON.stringify({ error: 'Akun tidak berwenang menggunakan Sitatan untuk Satker ini.' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const issuedToken = await signSitatanSession({
+        username: (userRow[0] || '').trim(),
+        role: (userRow[2] || '').trim(),
+        satker: requestedSatker,
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      });
+      return new Response(JSON.stringify({ sessionToken: issuedToken }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     let sitatanSession: { username: string; role: string; satker: string } | null = null;
-    if (spreadsheetId === SITATAN_SPREADSHEET_ID && operation !== 'sitatan-authenticate') {
+    const configuredSatkers = sitatanConfig.satkersBySheetId.get(spreadsheetId) ?? [];
+    if (
+      module === 'sitatan'
+      || configuredSatkers.length > 0
+      || spreadsheetId === SITATAN_SPREADSHEET_ID
+    ) {
       sitatanSession = await verifySitatanSession(sessionToken || '');
       if (!sitatanSession) {
         return new Response(JSON.stringify({ error: 'Sesi Sitatan tidak valid atau telah kedaluwarsa. Silakan masuk kembali.' }), {
           status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const authorizedSpreadsheetId = sitatanConfig.bySatker.get(sitatanSession.satker);
+      if (!authorizedSpreadsheetId || authorizedSpreadsheetId !== spreadsheetId) {
+        return new Response(JSON.stringify({ error: 'Spreadsheet Sitatan tidak sesuai dengan Satker pada sesi login.' }), {
+          status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -552,8 +673,7 @@ serve(async (req: Request) => {
         year: 'numeric',
       }).format(new Date()));
       if (
-        spreadsheetId !== SITATAN_SPREADSHEET_ID
-        || !sitatanSession
+        !sitatanSession
         || typeof year !== 'number'
         || !Number.isInteger(year)
         || year < 2026
@@ -569,10 +689,9 @@ serve(async (req: Request) => {
         });
       }
 
-      const accessToken = await getAccessToken();
       const sequenceRange = encodeURIComponent('DARI_WEB!B:J');
       const sequenceData = await fetchGoogleSheetsWithRetry(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SITATAN_SPREADSHEET_ID}/values/${sequenceRange}`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sequenceRange}`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
         'Read Sitatan number series',
         3,
@@ -620,6 +739,7 @@ serve(async (req: Request) => {
           p_letter_type: letterType,
           p_archive_code: normalizedArchiveCode || null,
           p_archive_subcode: normalizedArchiveSubcode || null,
+          p_satker_id: sitatanSession.satker,
           p_minimum_next_serial: highestSerial + 1,
           p_reserved_by: sitatanSession.username,
         }),
@@ -640,55 +760,11 @@ serve(async (req: Request) => {
       });
     }
     
-    console.log('Getting access token...');
-    const accessToken = await getAccessToken();
-
-    if (operation === 'sitatan-authenticate') {
-      const normalizedUsername = (username || '').trim().toLowerCase();
-      if (!normalizedUsername || !password) {
-        return new Response(JSON.stringify({ error: 'Username dan password wajib diisi.' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const usersRange = encodeURIComponent('user!A:F');
-      const usersData = await fetchGoogleSheetsWithRetry(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SITATAN_USERS_SPREADSHEET_ID}/values/${usersRange}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-        'Validate Sitatan user',
-        3,
-      );
-      const userRow = (usersData.values || []).slice(1).find((row: string[]) =>
-        (row[0] || '').trim().toLowerCase() === normalizedUsername
-        && (row[1] || '').trim() === password
-        && (row[5] || '').trim() === '3210',
-      );
-      if (!userRow) {
-        return new Response(JSON.stringify({ error: 'Akun tidak berwenang menggunakan Sitatan.' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const issuedToken = await signSitatanSession({
-        username: (userRow[0] || '').trim(),
-        role: (userRow[2] || '').trim(),
-        satker: (userRow[5] || '').trim(),
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      });
-      return new Response(JSON.stringify({ sessionToken: issuedToken }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
 
     if (operation === 'sitatan-download-template') {
       if (
-        spreadsheetId !== SITATAN_SPREADSHEET_ID
-        || !sitatanSession
+        !sitatanSession
         || !Number.isInteger(rowIndex)
         || (rowIndex ?? 0) < 2
         || !letterId
@@ -786,7 +862,7 @@ serve(async (req: Request) => {
       const encodedAppendRange = encodeURIComponent(range || 'Sheet1');
       const valueInputOption = body.valueInputOption === 'RAW' || body.valueInputOption === 'USER_ENTERED'
         ? body.valueInputOption
-        : spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED';
+        : module === 'sitatan' || spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED';
       const data = await fetchGoogleSheetsWithRetry(
         `${baseUrl}/values/${encodedAppendRange}:append?valueInputOption=${valueInputOption}`,
         {
@@ -822,7 +898,7 @@ serve(async (req: Request) => {
       const encodedUpdateRange = encodeURIComponent(updateRange);
       const valueInputOption = body.valueInputOption === 'RAW' || body.valueInputOption === 'USER_ENTERED'
         ? body.valueInputOption
-        : spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED';
+        : module === 'sitatan' || spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED';
       const data = await fetchGoogleSheetsWithRetry(
         `${baseUrl}/values/${encodedUpdateRange}?valueInputOption=${valueInputOption}`,
         {
@@ -870,7 +946,7 @@ serve(async (req: Request) => {
             body: JSON.stringify({
               valueInputOption: body.valueInputOption === 'RAW' || body.valueInputOption === 'USER_ENTERED'
                 ? body.valueInputOption
-                : spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED',
+                : module === 'sitatan' || spreadsheetId === SITATAN_SPREADSHEET_ID ? 'RAW' : 'USER_ENTERED',
               data: chunk,
             }),
           },

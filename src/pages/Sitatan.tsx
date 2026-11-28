@@ -44,7 +44,6 @@ import { generateNextDocumentId, getNextSequenceNumberFromSheet, monthlyPrefix }
 import {
   ArchiveClassification,
   SITATAN_HEADERS,
-  SITATAN_SPREADSHEET_ID,
   SITATAN_TYPES,
   SitatanDraft,
   SitatanRecord,
@@ -431,55 +430,79 @@ export default function Sitatan() {
   const [showCancelled, setShowCancelled] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const skSpreadsheetId = satkerConfig?.getUserSatkerSheetId('sk') || SK_SPREADSHEET_ID;
+  const sitatanSpreadsheetId = satkerConfig?.getUserSatkerSheetId('sitatan') || '';
+  const skSpreadsheetId = satkerConfig?.getUserSatkerSheetId('sk')
+    || (user?.satker === '3210' ? SK_SPREADSHEET_ID : '');
 
   const loadData = useCallback(async (): Promise<boolean> => {
+    if (satkerConfig?.isLoading) return false;
     setIsLoading(true);
     setLoadError('');
-    if (user?.satker !== '3210') {
-      const message = 'Sitatan hanya tersedia untuk Satker 3210.';
+    setRecords([]);
+    setArchives([]);
+    setSkGeneratorRows([]);
+    if (!user?.satker) {
+      const message = 'Satker pengguna tidak ditemukan.';
+      setLoadError(message);
+      setIsLoading(false);
+      return false;
+    }
+    if (!sitatanSpreadsheetId) {
+      const message = satkerConfig?.error
+        ? `Gagal membaca konfigurasi Satker: ${satkerConfig.error.message}`
+        : `ID spreadsheet Sitatan belum dikonfigurasi untuk Satker ${user.satker} pada satker_config kolom AG (sitatan_sheet).`;
+      setLoadError(message);
+      setIsLoading(false);
+      return false;
+    }
+    if (!user.sitatanToken) {
+      const message = 'Sesi Sitatan tidak tersedia. Keluar dari KECAP MAJA lalu masuk kembali, dan pastikan akun Sitatan terdaftar untuk Satker ini.';
       setLoadError(message);
       setIsLoading(false);
       return false;
     }
     try {
-      const hasSitatanSession = Boolean(user.sitatanToken);
       const [letterResult, archiveResult] = await Promise.all([
         readSheetValues({
-          spreadsheetId: SITATAN_SPREADSHEET_ID,
+          spreadsheetId: sitatanSpreadsheetId,
           range: 'DARI_WEB!A:AE',
-          preferSupabase: hasSitatanSession,
+          preferSupabase: true,
           sessionToken: user.sitatanToken,
+          module: 'sitatan',
         }),
         readSheetValues({
-          spreadsheetId: SITATAN_SPREADSHEET_ID,
+          spreadsheetId: sitatanSpreadsheetId,
           range: 'master_arsip!A:F',
-          preferSupabase: hasSitatanSession,
+          preferSupabase: true,
           sessionToken: user.sitatanToken,
+          module: 'sitatan',
         }),
       ]);
       setRecords(parseSitatanRows(letterResult.values));
       setArchives(parseArchiveRows(archiveResult.values));
-      try {
-        const skResult = await readSheetValues({
-          spreadsheetId: skSpreadsheetId,
-          range: `${SK_SHEET_NAME}!A:R`,
-          preferSupabase: true,
-          sessionToken: user.sitatanToken,
-        });
-        setSkGeneratorRows(parseSKGeneratorRows(skResult.values));
-        setSkGeneratorError('');
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Tidak dapat membaca data detail Surat Keputusan.';
-        console.error('[Sitatan] Gagal memuat detail Surat Keputusan:', error);
+      if (!skSpreadsheetId) {
         setSkGeneratorRows([]);
-        setSkGeneratorError(message);
+        setSkGeneratorError(`Spreadsheet generator SK belum dikonfigurasi untuk Satker ${user.satker}.`);
+      } else {
+        try {
+          const skResult = await readSheetValues({
+            spreadsheetId: skSpreadsheetId,
+            range: `${SK_SHEET_NAME}!A:R`,
+            preferSupabase: true,
+            sessionToken: user.sitatanToken,
+          });
+          setSkGeneratorRows(parseSKGeneratorRows(skResult.values));
+          setSkGeneratorError('');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Tidak dapat membaca data detail Surat Keputusan.';
+          console.error('[Sitatan] Gagal memuat detail Surat Keputusan:', error);
+          setSkGeneratorRows([]);
+          setSkGeneratorError(message);
+        }
       }
       return true;
     } catch (error) {
-      const message = !user.sitatanToken
-        ? 'Sheet tidak dapat dibaca secara publik. Deploy Edge Function Google Sheets terbaru, lalu keluar dan masuk kembali.'
-        : error instanceof Error ? error.message : 'Tidak dapat membaca spreadsheet Sitatan.';
+      const message = error instanceof Error ? error.message : 'Tidak dapat membaca spreadsheet Sitatan.';
       console.error('[Sitatan] Gagal memuat data:', error);
       setLoadError(message);
       toast({ title: 'Gagal memuat Sitatan', description: message, variant: 'destructive' });
@@ -487,7 +510,7 @@ export default function Sitatan() {
     } finally {
       setIsLoading(false);
     }
-  }, [skSpreadsheetId, toast, user?.satker, user?.sitatanToken]);
+  }, [satkerConfig?.isLoading, sitatanSpreadsheetId, skSpreadsheetId, toast, user?.satker, user?.sitatanToken]);
 
   useEffect(() => {
     let active = true;
@@ -682,8 +705,9 @@ export default function Sitatan() {
       const { data, error } = await supabase.functions.invoke<Blob>('google-sheets', {
         body: {
           operation: 'sitatan-download-template',
-          spreadsheetId: SITATAN_SPREADSHEET_ID,
+          spreadsheetId: sitatanSpreadsheetId,
           sessionToken: user.sitatanToken,
+          module: 'sitatan',
           rowIndex: record.rowIndex,
           letterId: record.id,
           letterType: record.type,
@@ -728,8 +752,24 @@ export default function Sitatan() {
   const saveDraft = async () => {
     if (!user?.username || !user.sitatanToken) {
       toast({
-        title: 'Mode baca saja',
-        description: 'Deploy Edge Function Google Sheets terbaru, lalu keluar dan masuk kembali sebelum menyimpan surat.',
+        title: 'Sesi Sitatan tidak tersedia',
+        description: 'Keluar dari KECAP MAJA lalu masuk kembali, dan pastikan akun Sitatan terdaftar untuk Satker ini.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!sitatanSpreadsheetId) {
+      toast({
+        title: 'Spreadsheet Sitatan belum dikonfigurasi',
+        description: `Isi ID pada satker_config kolom AG (sitatan_sheet) untuk Satker ${user.satker}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (draft.type === 'Surat Keputusan' && !skSpreadsheetId) {
+      toast({
+        title: 'Spreadsheet generator SK belum dikonfigurasi',
+        description: `Isi ID pada satker_config untuk modul SK pada Satker ${user.satker}.`,
         variant: 'destructive',
       });
       return;
@@ -880,9 +920,10 @@ export default function Sitatan() {
           });
         }
         await writeSheet({
-          spreadsheetId: SITATAN_SPREADSHEET_ID,
+          spreadsheetId: sitatanSpreadsheetId,
           operation: 'batch-update',
           updates,
+          module: 'sitatan',
         }, user.sitatanToken);
         registryCommitted = true;
         if (registryDraft.type === 'Surat Keputusan') {
@@ -893,8 +934,9 @@ export default function Sitatan() {
         const { data: reservation, error: reservationError } = await supabase.functions.invoke('google-sheets', {
           body: {
             operation: 'sitatan-reserve-number',
-            spreadsheetId: SITATAN_SPREADSHEET_ID,
+            spreadsheetId: sitatanSpreadsheetId,
             sessionToken: user.sitatanToken,
+            module: 'sitatan',
             year: Number(year),
             letterType: registryDraft.type,
             archiveCode: requiresArchiveCode(registryDraft.type) ? registryDraft.archiveCode : '',
@@ -929,10 +971,11 @@ export default function Sitatan() {
         }
         try {
           await writeSheet({
-            spreadsheetId: SITATAN_SPREADSHEET_ID,
+            spreadsheetId: sitatanSpreadsheetId,
             operation: 'append',
             range: 'DARI_WEB!A:AE',
             values: [row],
+            module: 'sitatan',
           }, user.sitatanToken);
           registryCommitted = true;
         } catch (error) {
@@ -948,10 +991,11 @@ export default function Sitatan() {
             try {
               await loadData();
               const { values } = await readSheetValues({
-                spreadsheetId: SITATAN_SPREADSHEET_ID,
+                spreadsheetId: sitatanSpreadsheetId,
                 range: 'DARI_WEB!A:AE',
                 preferSupabase: true,
                 sessionToken: user.sitatanToken,
+                module: 'sitatan',
               });
               savedRecord = parseSitatanRows(values).find((item) => item.id === record.id);
             } catch (refreshError) {
@@ -1026,10 +1070,11 @@ export default function Sitatan() {
     setIsSaving(true);
     try {
       await writeSheet({
-        spreadsheetId: SITATAN_SPREADSHEET_ID,
+        spreadsheetId: sitatanSpreadsheetId,
         operation: 'update',
         range: `DARI_WEB!AB${cancelTarget.rowIndex}:AE${cancelTarget.rowIndex}`,
         values: [['Batal', cancelReason.trim(), user.username, new Date().toISOString()]],
+        module: 'sitatan',
       }, user.sitatanToken);
       const refreshed = await loadData();
       setCancelTarget(null);
@@ -1076,7 +1121,7 @@ export default function Sitatan() {
       {!loadError && !user?.sitatanToken && (
         <Alert>
           <AlertDescription>
-            Sesi login ini belum memiliki token Sitatan. Klik Logout di KECAP MAJA (bukan Supabase), lalu masuk kembali. Data tetap dapat dibaca sementara; fitur simpan, edit, dan batal memerlukan sesi baru.
+            Sesi login ini belum memiliki token Sitatan. Keluar dari KECAP MAJA lalu masuk kembali, dan pastikan akun Sitatan terdaftar untuk Satker ini.
           </AlertDescription>
         </Alert>
       )}
