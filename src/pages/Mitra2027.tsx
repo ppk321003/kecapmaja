@@ -629,8 +629,8 @@ export default function Mitra2027() {
 
   const targetProgressColor = (offered: number, ideal: number, limit: number) => {
     if (offered > limit) return "bg-red-500";
-    if (offered === ideal) return "bg-green-500";
-    if (offered > ideal) return "bg-sky-500";
+    if (offered === ideal) return "bg-sky-500";
+    if (offered > ideal) return "bg-green-500";
     return "bg-amber-500";
   };
 
@@ -893,9 +893,9 @@ export default function Mitra2027() {
                   const statusColor = isOverLimit
                     ? "text-red-700"
                     : isAtIdeal
-                      ? "text-green-700"
+                      ? "text-sky-700"
                       : isWithinTolerance
-                        ? "text-sky-700"
+                        ? "text-green-700"
                         : "text-amber-700";
                   return (
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-white p-3 md:flex-nowrap md:p-4">
