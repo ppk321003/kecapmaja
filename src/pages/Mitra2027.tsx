@@ -66,6 +66,44 @@ const POSISI_BARU_OPTIONS = [
   { value: "Mitra Pengolahan", label: "Mitra Pengolahan", className: "bg-violet-100 text-violet-800 border-violet-300 hover:bg-violet-200" },
 ] as const;
 
+// Target penawaran Mitra 2027. Batas penerimaan adalah Ideal ditambah cadangan 10%.
+const IDEAL_TARGET_BY_KECAMATAN: Record<string, number> = {
+  argapura: 18,
+  sukahaji: 13,
+  kasokandel: 20,
+  sindang: 10,
+  palasah: 19,
+  dawuan: 19,
+  bantarujeg: 33,
+  rajagaluh: 19,
+  jatitujuh: 17,
+  kadipaten: 20,
+  jatiwangi: 24,
+  lemahsugih: 21,
+  maja: 25,
+  ligung: 28,
+  panyingkiran: 15,
+  cingambul: 20,
+  kertajati: 18,
+  sindangwangi: 14,
+  leuwimunding: 29,
+  banjaran: 22,
+  sumberjaya: 25,
+  cigasong: 14,
+  malausma: 17,
+  talaga: 27,
+  majalengka: 38,
+  cikijing: 20,
+};
+
+const getIdealTarget = (kecamatan: string): number =>
+  IDEAL_TARGET_BY_KECAMATAN[normalizeKey(kecamatan)] || 0;
+
+const getIdealLimit = (kecamatan: string): number => {
+  const ideal = getIdealTarget(kecamatan);
+  return ideal > 0 ? Math.ceil(ideal * 1.1) : 0;
+};
+
 const normalizeKecamatanName = (raw: string): string => {
   if (!raw) return "";
   return raw.replace(/^\(\d+\)\s*/i, "").trim();
@@ -131,7 +169,7 @@ const statusLabel = (value: string): "Ditawarkan" | "Tidak Ditawarkan" | "Belum"
 
 type SortKey = "nama" | "alamat" | "umur" | "pendidikan";
 type SortDir = "asc" | "desc";
-type MonSortKey = "label" | "total" | "ditawarkan" | "tidakDitawarkan" | "belum" | "progres";
+type MonSortKey = "label" | "total" | "ditawarkan" | "tidakDitawarkan" | "belum" | "ideal" | "batas" | "progres";
 
 const formatAlamat = (kecamatan: string, desa: string) => {
   const kec = normalizeKecamatanName(kecamatan || "") || (kecamatan || "").trim();
@@ -165,7 +203,7 @@ export default function Mitra2027() {
   const [detailRow, setDetailRow] = useState<RowWithMeta | null>(null);
   const [savingRow, setSavingRow] = useState<number | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [didSetDefaultKec, setDidSetDefaultKec] = useState(false);
@@ -277,14 +315,32 @@ export default function Mitra2027() {
   const monitoring = useMemo(() => {
     const map = new Map<
       string,
-      { key: string; label: string; total: number; ditawarkan: number; tidakDitawarkan: number; belum: number }
+      {
+        key: string;
+        label: string;
+        total: number;
+        ditawarkan: number;
+        tidakDitawarkan: number;
+        belum: number;
+        ideal: number;
+        batas: number;
+      }
     >();
     for (const r of rows) {
       const rawKec = (r[COL.alamatKecamatan] || "").trim();
       const key = normalizeKey(rawKec) || "(tanpa kecamatan)";
       const label = normalizeKecamatanName(rawKec) || "(Tanpa Kecamatan)";
       if (!map.has(key)) {
-        map.set(key, { key, label, total: 0, ditawarkan: 0, tidakDitawarkan: 0, belum: 0 });
+        map.set(key, {
+          key,
+          label,
+          total: 0,
+          ditawarkan: 0,
+          tidakDitawarkan: 0,
+          belum: 0,
+          ideal: getIdealTarget(label),
+          batas: getIdealLimit(label),
+        });
       }
       const item = map.get(key)!;
       item.total += 1;
@@ -300,9 +356,11 @@ export default function Mitra2027() {
         acc.ditawarkan += it.ditawarkan;
         acc.tidakDitawarkan += it.tidakDitawarkan;
         acc.belum += it.belum;
+        acc.ideal += it.ideal;
+        acc.batas += it.batas;
         return acc;
       },
-      { total: 0, ditawarkan: 0, tidakDitawarkan: 0, belum: 0 }
+      { total: 0, ditawarkan: 0, tidakDitawarkan: 0, belum: 0, ideal: 0, batas: 0 }
     );
     return { list, totals };
   }, [rows]);
@@ -328,9 +386,13 @@ export default function Mitra2027() {
           av = a.tidakDitawarkan; bv = b.tidakDitawarkan; break;
         case "belum":
           av = a.belum; bv = b.belum; break;
+        case "ideal":
+          av = a.ideal; bv = b.ideal; break;
+        case "batas":
+          av = a.batas; bv = b.batas; break;
         case "progres":
-          av = pct(a.ditawarkan + a.tidakDitawarkan, a.total);
-          bv = pct(b.ditawarkan + b.tidakDitawarkan, b.total);
+          av = pct(a.ditawarkan, a.batas);
+          bv = pct(b.ditawarkan, b.batas);
           break;
       }
       const diff = (Number(av) - Number(bv)) * dir;
@@ -355,6 +417,25 @@ export default function Mitra2027() {
       ? <ArrowUp className="h-3.5 w-3.5 text-slate-700" />
       : <ArrowDown className="h-3.5 w-3.5 text-slate-700" />;
   };
+
+  const penawaranTarget = useMemo(() => {
+    let items = monitoring.list;
+    if (filterKec === "__mine__") {
+      const mineSet = new Set(myKecamatanKeys);
+      items = items.filter((item) => mineSet.has(item.key));
+    } else if (filterKec !== "all") {
+      items = items.filter((item) => item.key === filterKec);
+    }
+    return items.reduce(
+      (acc, item) => {
+        acc.ideal += item.ideal;
+        acc.batas += item.batas;
+        acc.ditawarkan += item.ditawarkan;
+        return acc;
+      },
+      { ideal: 0, batas: 0, ditawarkan: 0 }
+    );
+  }, [monitoring.list, filterKec, myKecamatanKeys]);
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -614,10 +695,18 @@ export default function Mitra2027() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
                 <div className="rounded-lg border p-3 bg-slate-50">
                   <div className="text-xs text-slate-500">Total</div>
                   <div className="text-xl font-semibold">{monitoring.totals.total}</div>
+                </div>
+                <div className="rounded-lg border p-3 bg-indigo-50 border-indigo-200">
+                  <div className="text-xs text-indigo-700">Target Ideal</div>
+                  <div className="text-xl font-semibold text-indigo-800">{monitoring.totals.ideal}</div>
+                </div>
+                <div className="rounded-lg border p-3 bg-violet-50 border-violet-200">
+                  <div className="text-xs text-violet-700">Batas +10%</div>
+                  <div className="text-xl font-semibold text-violet-800">{monitoring.totals.batas}</div>
                 </div>
                 <div className="rounded-lg border p-3 bg-green-50 border-green-200">
                   <div className="text-xs text-green-700 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Ditawarkan</div>
@@ -634,8 +723,7 @@ export default function Mitra2027() {
                 <div className="rounded-lg border p-3 bg-blue-50 border-blue-200">
                   <div className="text-xs text-blue-700">Progres Penawaran</div>
                   {(() => {
-                    const processed = monitoring.totals.ditawarkan + monitoring.totals.tidakDitawarkan;
-                    const percent = pct(processed, monitoring.totals.total);
+                    const percent = pct(monitoring.totals.ditawarkan, monitoring.totals.batas);
                     return (
                       <>
                         <div className="text-xl font-semibold text-blue-800">{percent}%</div>
@@ -646,7 +734,7 @@ export default function Mitra2027() {
                           />
                         </div>
                         <div className="text-[11px] text-slate-600 mt-1 leading-snug">
-                          {monitoring.totals.ditawarkan} ditawarkan | {monitoring.totals.tidakDitawarkan} tidak ditawarkan
+                          {monitoring.totals.ditawarkan} dari batas {monitoring.totals.batas}
                         </div>
                       </>
                     );
@@ -684,6 +772,16 @@ export default function Mitra2027() {
                           Belum {renderMonSortIcon("belum")}
                         </button>
                       </TableHead>
+                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-indigo-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleMonSort("ideal")} className="inline-flex items-center justify-end gap-1.5 hover:text-indigo-900 w-full">
+                          Ideal {renderMonSortIcon("ideal")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="h-12 py-3 px-4 text-right font-semibold text-violet-700 whitespace-nowrap">
+                        <button type="button" onClick={() => toggleMonSort("batas")} className="inline-flex items-center justify-end gap-1.5 hover:text-violet-900 w-full">
+                          Batas +10% {renderMonSortIcon("batas")}
+                        </button>
+                      </TableHead>
                       <TableHead className="h-12 py-3 px-4 font-semibold text-slate-700 whitespace-nowrap min-w-[220px]">
                         <button type="button" onClick={() => toggleMonSort("progres")} className="inline-flex items-center gap-1.5 hover:text-slate-900">
                           Progres Penawaran {renderMonSortIcon("progres")}
@@ -694,15 +792,14 @@ export default function Mitra2027() {
                   <TableBody>
                     {monitoring.list.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-slate-500 py-10">
+                        <TableCell colSpan={9} className="text-center text-slate-500 py-10">
                           {loading ? "Memuat data..." : "Tidak ada data."}
                         </TableCell>
                       </TableRow>
                     ) : (
                       <>
                         {sortedMonitoringList.map((m, idx) => {
-                          const processed = m.ditawarkan + m.tidakDitawarkan;
-                          const percent = pct(processed, m.total);
+                          const percent = pct(m.ditawarkan, m.batas);
                           return (
                             <TableRow key={m.key} className="hover:bg-slate-50/70">
                               <TableCell className="text-center text-slate-600 font-medium py-3">{idx + 1}</TableCell>
@@ -711,6 +808,8 @@ export default function Mitra2027() {
                               <TableCell className="text-right text-green-700 font-medium py-3">{m.ditawarkan}</TableCell>
                               <TableCell className="text-right text-red-700 py-3">{m.tidakDitawarkan}</TableCell>
                               <TableCell className="text-right text-amber-700 py-3">{m.belum}</TableCell>
+                              <TableCell className="text-right text-indigo-700 font-medium py-3">{m.ideal || "-"}</TableCell>
+                              <TableCell className="text-right text-violet-700 font-medium py-3">{m.batas || "-"}</TableCell>
                               <TableCell className="py-3">
                                 <div className="flex items-center gap-3">
                                   <div className="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
@@ -722,15 +821,14 @@ export default function Mitra2027() {
                                   <span className="text-sm font-semibold text-slate-700 w-14 text-right tabular-nums">{percent}%</span>
                                 </div>
                                 <div className="text-[11px] text-slate-500 mt-1">
-                                  {m.ditawarkan} ditawarkan | {m.tidakDitawarkan} tidak ditawarkan | dari mitra tersedia {m.total}
+                                  {m.ditawarkan} ditawarkan | batas {m.batas} | ideal {m.ideal}
                                 </div>
                               </TableCell>
                             </TableRow>
                           );
                         })}
                         {(() => {
-                          const processed = monitoring.totals.ditawarkan + monitoring.totals.tidakDitawarkan;
-                          const totalPercent = pct(processed, monitoring.totals.total);
+                          const totalPercent = pct(monitoring.totals.ditawarkan, monitoring.totals.batas);
                           return (
                             <TableRow className="bg-slate-100/80 font-semibold border-t-2 border-slate-300 hover:bg-slate-100">
                               <TableCell className="text-center text-slate-700 py-3"></TableCell>
@@ -739,6 +837,8 @@ export default function Mitra2027() {
                               <TableCell className="text-right text-green-700 py-3">{monitoring.totals.ditawarkan}</TableCell>
                               <TableCell className="text-right text-red-700 py-3">{monitoring.totals.tidakDitawarkan}</TableCell>
                               <TableCell className="text-right text-amber-700 py-3">{monitoring.totals.belum}</TableCell>
+                              <TableCell className="text-right text-indigo-700 py-3">{monitoring.totals.ideal}</TableCell>
+                              <TableCell className="text-right text-violet-700 py-3">{monitoring.totals.batas}</TableCell>
                               <TableCell className="py-3">
                                 <div className="flex items-center gap-3">
                                   <div className="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
@@ -750,7 +850,7 @@ export default function Mitra2027() {
                                   <span className="text-sm font-semibold text-slate-900 w-14 text-right tabular-nums">{totalPercent}%</span>
                                 </div>
                                 <div className="text-[11px] text-slate-600 mt-1">
-                                  {monitoring.totals.ditawarkan} ditawarkan | {monitoring.totals.tidakDitawarkan} tidak ditawarkan | dari mitra tersedia {monitoring.totals.total}
+                                  {monitoring.totals.ditawarkan} ditawarkan | batas {monitoring.totals.batas} | ideal {monitoring.totals.ideal}
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -776,6 +876,75 @@ export default function Mitra2027() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {penawaranTarget.ideal > 0 && (
+                (() => {
+                  const offered = penawaranTarget.ditawarkan;
+                  const scale = Math.max(penawaranTarget.batas, offered, 1);
+                  const idealPosition = (penawaranTarget.ideal / scale) * 100;
+                  const limitPosition = (penawaranTarget.batas / scale) * 100;
+                  const isOverLimit = offered > penawaranTarget.batas;
+                  const isAtIdeal = offered === penawaranTarget.ideal;
+                  const isWithinTolerance = offered > penawaranTarget.ideal && offered <= penawaranTarget.batas;
+                  const barColor = isOverLimit
+                    ? "bg-red-500"
+                    : isAtIdeal
+                      ? "bg-green-500"
+                      : isWithinTolerance
+                        ? "bg-sky-500"
+                        : "bg-amber-500";
+                  const statusText = isOverLimit
+                    ? `Melampaui batas +${offered - penawaranTarget.batas}`
+                    : isAtIdeal
+                      ? "Target ideal terpenuhi"
+                      : isWithinTolerance
+                        ? `Cadangan +${offered - penawaranTarget.ideal}`
+                        : `Di bawah target -${penawaranTarget.ideal - offered}`;
+                  const statusColor = isOverLimit
+                    ? "text-red-700"
+                    : isAtIdeal
+                      ? "text-green-700"
+                      : isWithinTolerance
+                        ? "text-sky-700"
+                        : "text-amber-700";
+                  return (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-white p-3 md:flex-nowrap md:p-4">
+                      <div className="shrink-0 text-sm font-medium text-slate-700">
+                        Ditawarkan <span className="font-bold tabular-nums text-slate-900">{offered}</span>
+                      </div>
+                      <div className="relative min-w-[140px] flex-1">
+                        <div
+                          className="h-3 w-full overflow-hidden rounded-full bg-slate-100"
+                          role="progressbar"
+                          aria-label="Jumlah mitra ditawarkan terhadap target kecamatan"
+                          aria-valuenow={offered}
+                          aria-valuemin={0}
+                          aria-valuemax={penawaranTarget.batas}
+                        >
+                          <div
+                            className={`h-full rounded-full transition-all ${barColor}`}
+                            style={{ width: `${Math.min(100, (offered / scale) * 100)}%` }}
+                          />
+                        </div>
+                        <span
+                          className="absolute -top-1 h-5 w-0.5 bg-indigo-700"
+                          style={{ left: `${idealPosition}%` }}
+                          title={`Target Ideal: ${penawaranTarget.ideal}`}
+                        />
+                        <span
+                          className="absolute -top-1 h-5 w-0.5 bg-violet-700"
+                          style={{ left: `${limitPosition}%` }}
+                          title={`Batas +10%: ${penawaranTarget.batas}`}
+                        />
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        <span className="text-indigo-700">Ideal {penawaranTarget.ideal}</span>
+                        <span className="text-violet-700">Batas {penawaranTarget.batas}</span>
+                        <span className={`font-semibold ${statusColor}`}>{statusText}</span>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
               <div className="space-y-3">
                 <div className="flex flex-col md:flex-row md:flex-wrap gap-3">
                   <div className="relative flex-1">
